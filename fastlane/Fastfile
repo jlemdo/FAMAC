@@ -1,17 +1,16 @@
- lane :beta do
--  match(type: "appstore")
-+  match(type: "appstore")
+lane :beta do
+  match(type: "appstore")
 
-   cocoapods
+  cocoapods
 
-   build_app(
-     workspace: "ios/MyNewApp.xcworkspace",
-     scheme:    "MyNewApp",
-     export_method: "app-store",
-     clean:      true
-   )
+  build_app(
+    workspace: "ios/MyNewApp.xcworkspace",
+    scheme:    "MyNewApp",
+    export_method: "app-store",
+    clean:      true
+  )
 
   # Reusar la misma API Key que usó match
   api_key = lane_context[SharedValues::APP_STORE_CONNECT_API_KEY]
   upload_to_testflight(api_key: api_key)
- end
+end
