@@ -9,15 +9,18 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install JS dependencies
+        run: yarn install  # o npm install si no usas Yarn
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -25,7 +28,7 @@ jobs:
           ruby-version: 3.1
           bundler-cache: true
 
-      - name: Install dependencies & pods
+      - name: Install Ruby gems & CocoaPods
         run: |
           gem install bundler
           bundle install
@@ -36,6 +39,6 @@ jobs:
           MATCH_GIT_URL:                     ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD:                    ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta
