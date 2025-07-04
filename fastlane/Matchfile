@@ -1,18 +1,15 @@
-# fastlane/Matchfile
-
-# ─────── Definición de la API Key ───────
+# 1️⃣ Crear el objeto api_key
 api_key = app_store_connect_api_key(
   key_id:     ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
   issuer_id:  ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
   key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
 )
 
-# Indica a Match que use esta API Key
+# 2️⃣ Indicar a match que use esta api_key por defecto
 api_key(api_key)
 
-# ─────── Configuración de Match ───────
+# 3️⃣ Resto de configuración de match
 git_url("git@github.com:jlemdo/certi-ios.git")
 storage_mode("git")
 type("appstore")
 app_identifier(["com.occr.productos"])
-# Nota: ya NO necesitas `username("…")` ni `FASTLANE_PASSWORD`
