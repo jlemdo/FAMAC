@@ -1,29 +1,30 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build & upload to TestFlight con firma configurada en CI"
+  desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
   lane :beta do
-    ################################################
-    # 0️⃣  Inyectar el Team ID en el .xcodeproj
-    ################################################
-    update_project_team(
-      path:    "ios/MyNewApp.xcodeproj",   # ← ruta a tu proyecto
-      targets: ["MyNewApp"],                # ← array con tu target principal
-      teamid:  ENV["DEVELOPMENT_TEAM"]      # ← tu Team ID desde GitHub Secrets
+    # 0️⃣  Asegurar el Bundle Identifier coincide con Match
+    update_app_identifier(
+      xcodeproj:      "ios/MyNewApp.xcodeproj",
+      plist_path:     "ios/MyNewApp/Info.plist",
+      app_identifier: "com.occr.productos"
     )
 
-    ################################################
-    # 1️⃣  Configurar firma automática (Automatic Signing)
-    ################################################
+    # 1️⃣  Inyectar el Team ID en el proyecto
+    update_project_team(
+      path:    "ios/MyNewApp.xcodeproj",
+      targets: ["MyNewApp"],
+      teamid:  ENV["DEVELOPMENT_TEAM"]
+    )
+
+    # 2️⃣  Activar Signing Automático
     update_code_signing_settings(
       use_automatic_signing: true,
       path:                  "ios/MyNewApp.xcodeproj",
       team_id:               ENV["DEVELOPMENT_TEAM"]
     )
 
-    ################################################
-    # 2️⃣  Descargar certificados y perfiles con Match
-    ################################################
+    # 3️⃣  Descargar perfiles y certificados con Match (solo lectura)
     api_key = app_store_connect_api_key(
       key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
       issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
@@ -31,9 +32,7 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-    ################################################
-    # 3️⃣  Compilar y archivar
-    ################################################
+    # 4️⃣  Compilar, permitiendo actualizaciones de perfil si hiciera falta
     build_app(
       workspace:      "ios/MyNewApp.xcworkspace",
       scheme:         "MyNewApp",
@@ -44,12 +43,12 @@ platform :ios do
         provisioningProfiles: {
           "com.occr.productos" => "match AppStore com.occr.productos"
         }
-      }
+      },
+      xcargs:        "-allowProvisioningUpdates",
+      export_xcargs: "-allowProvisioningUpdates"
     )
 
-    ################################################
-    # 4️⃣  Subir la build a TestFlight
-    ################################################
+    # 5️⃣  Subir a TestFlight
     upload_to_testflight(api_key: api_key)
   end
 end
