@@ -20,7 +20,7 @@ jobs:
           node-version: 16
 
       - name: Install JS dependencies
-        run: yarn install  # o npm install si no usas Yarn
+        run: npm install  # o npm install si no usas Yarn
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
