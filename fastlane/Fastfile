@@ -1,47 +1,39 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight with automatic code signing"
+  desc "Build & upload to TestFlight con firma configurada en CI"
   lane :beta do
     ################################################
-    # 0️⃣  Ajusta el proyecto para usar el team id #
+    # 0️⃣  Inyectar el Team ID en el .xcodeproj
     ################################################
     update_project_team(
-      xcodeproj: "ios/MyNewApp.xcodeproj",   # path a tu proyecto
-      target:    "MyNewApp",                 # nombre de tu target
-      teamid:    ENV["DEVELOPMENT_TEAM"]     # inyecta el secret
-    )
-
-    ##########################################################
-    # 1️⃣  Ajusta estilo de firma y provisioning en el proyecto
-    ##########################################################
-    update_code_signing_settings(
-      project:                        "ios/MyNewApp.xcodeproj",
-      target:                         "MyNewApp",
-      build_configuration:            "Release",  # o también Debug si lo necesitas
-      code_signing_identity:          "iPhone Distribution",
-      development_team:               ENV["DEVELOPMENT_TEAM"],
-      provisioning_profile_specifier: "match AppStore com.occr.productos"
+      path:    "ios/MyNewApp.xcodeproj",   # ← ruta a tu proyecto
+      targets: ["MyNewApp"],                # ← array con tu target principal
+      teamid:  ENV["DEVELOPMENT_TEAM"]      # ← tu Team ID desde GitHub Secrets
     )
 
     ################################################
-    # 2️⃣  Descarga certificados y profiles con Match
+    # 1️⃣  Configurar firma automática (Automatic Signing)
+    ################################################
+    update_code_signing_settings(
+      use_automatic_signing: true,
+      path:                  "ios/MyNewApp.xcodeproj",
+      team_id:               ENV["DEVELOPMENT_TEAM"]
+    )
+
+    ################################################
+    # 2️⃣  Descargar certificados y perfiles con Match
     ################################################
     api_key = app_store_connect_api_key(
       key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
       issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
       key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
+    match(type: "appstore", api_key: api_key, readonly: true)
 
-    match(
-      type:    "appstore",
-      api_key: api_key,
-      readonly: true
-    )
-
-    ##############################################
-    # 3️⃣  Compila y archiva la app (archive)
-    ##############################################
+    ################################################
+    # 3️⃣  Compilar y archivar
+    ################################################
     build_app(
       workspace:      "ios/MyNewApp.xcworkspace",
       scheme:         "MyNewApp",
@@ -55,9 +47,9 @@ platform :ios do
       }
     )
 
-    ##############################################
-    # 4️⃣  Sube la build a TestFlight
-    ##############################################
+    ################################################
+    # 4️⃣  Subir la build a TestFlight
+    ################################################
     upload_to_testflight(api_key: api_key)
   end
 end
