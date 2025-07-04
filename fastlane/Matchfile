@@ -1,13 +1,18 @@
+# fastlane/Matchfile
+
+# ─────── Definición de la API Key ───────
+api_key = app_store_connect_api_key(
+  key_id:     ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+  issuer_id:  ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+  key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
+)
+
+# Indica a Match que use esta API Key
+api_key(api_key)
+
+# ─────── Configuración de Match ───────
 git_url("git@github.com:jlemdo/certi-ios.git")
-
 storage_mode("git")
-
-type("appstore") # The default type, can be: appstore, adhoc, enterprise or development
-
-app_identifier(["com.occr.productos"])  # usa tu real bundle ID
-username("integraciones@occrproductos.com.mx")         # tu Apple ID de Apple Developer
-
-# For all available options run `fastlane match --help`
-# Remove the # in the beginning of the line to enable the other options
-
-# The docs are available on https://docs.fastlane.tools/actions/match
+type("appstore")
+app_identifier(["com.occr.productos"])
+# Nota: ya NO necesitas `username("…")` ni `FASTLANE_PASSWORD`
