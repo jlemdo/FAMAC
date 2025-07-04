@@ -1,21 +1,20 @@
 # fastlane/Matchfile
 
-################################################
-# 1️⃣ Definir tu App Store Connect API Key
-################################################
+##########################################
+# 🔑  1. Configuración de tu App Store Connect API Key
+##########################################
 api_key = app_store_connect_api_key(
-  key_id:     ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
-  issuer_id:  ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
-  key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
+  key_id:     ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+  issuer_id:  ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+  key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
 )
-
-# Usar esta API Key en lugar de Apple ID + contraseña
+# Le decimos a Match que use esta API Key
 api_key(api_key)
 
-################################################
-# 2️⃣ Configuración de Match
-################################################
-git_url("git@github.com:jlemdo/certi-ios.git")  # tu repo de certificados
-storage_mode("git")
-type("appstore")                                # perfiles de App Store/TestFlight
-app_identifier(["com.occr.productos"])           # tu Bundle ID
+##########################################
+# 🔒  2. Configuración de Match
+##########################################
+git_url("git@github.com:jlemdo/certi-ios.git")    # tu repo privado de certificados
+storage_mode("git")                               # modo git
+type("appstore")                                  # distribución App Store / TestFlight
+app_identifier(["com.occr.productos"])            # tu bundle ID

@@ -7,43 +7,24 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
-      # 1️⃣ Checkout del código
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
 
-      # 2️⃣ Cargar SSH key para poder clonar certi-ios.git
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      # 3️⃣ Instalar Node.js y deps de JS
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-
-      - name: Install JS dependencies
-        run: npm install      # o `npm install` si prefieres npm
-
-      # 4️⃣ Instalar Ruby y CocoaPods
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.1
           bundler-cache: true
 
-      - name: Install Ruby gems & CocoaPods
+      - name: Install dependencies & pods
         run: |
           gem install bundler
           bundle install
           bundle exec pod install --project-directory=ios --repo-update
 
-      # 5️⃣ Build, match & TestFlight
       - name: Build & upload to TestFlight
         env:
           MATCH_GIT_URL:                       ${{ secrets.MATCH_GIT_URL }}
