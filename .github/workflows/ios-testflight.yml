@@ -46,6 +46,7 @@ jobs:
       # 5️⃣ Build, match & TestFlight
       - name: Build & upload to TestFlight
         env:
+          DEVELOPMENT_TEAM:                    ${{ secrets.DEVELOPMENT_TEAM }}
           MATCH_GIT_URL:                       ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD:                      ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
