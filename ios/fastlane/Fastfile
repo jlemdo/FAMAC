@@ -1,28 +1,38 @@
+# fastlane/Fastfile
+
 default_platform(:ios)
 
 platform :ios do
   desc "Build and upload to TestFlight"
   lane :beta do
-    # 1. Firma automática con certificados desde Match
+    ################################################
+    # 1️⃣ Descargar o generar certificados (Match)
+    ################################################
     match(type: "appstore")
 
-    # 2. Instalar pods
+    ################################################
+    # 2️⃣ Instalar pods
+    ################################################
     cocoapods
 
-    # 3. Compilar la app
+    ################################################
+    # 3️⃣ Compilar la app
+    ################################################
     build_app(
-      workspace: "MyNewApp.xcworkspace", # Cambia por el nombre correcto si es distinto
-      scheme: "MyNewApp",                # Cambia por tu esquema real
-      export_method: "app-store"
+      workspace:    "ios/MyNewApp.xcworkspace",  # Ajusta si tu workspace se llama distinto
+      scheme:       "MyNewApp",                  # Ajusta al scheme real de tu proyecto
+      export_method: "app-store",
+      clean:         true
     )
 
-    # 4. Subir a TestFlight usando API Key
+    ################################################
+    # 4️⃣ Subir a TestFlight usando la misma API Key
+    ################################################
     api_key = app_store_connect_api_key(
-      key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
+      key_id:     ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:  ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
     upload_to_testflight(api_key: api_key)
   end
 end
-
