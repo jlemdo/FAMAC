@@ -46,10 +46,10 @@ jobs:
       # 5️⃣ Build, match & TestFlight
       - name: Build & upload to TestFlight
         env:
-          DEVELOPMENT_TEAM:                    ${{ secrets.DEVELOPMENT_TEAM }}
-          MATCH_GIT_URL:                       ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD:                      ${{ secrets.MATCH_PASSWORD }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          MATCH_GIT_URL:   ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD:  ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_CONTENT:   ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT:    ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta

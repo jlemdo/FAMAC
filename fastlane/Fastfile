@@ -1,48 +1,53 @@
-# fastlane/Fastfile
-
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload a new beta build to TestFlight"
+  desc "Build and upload to TestFlight with automatic code signing"
   lane :beta do
     ################################################
-    # 1️⃣  Crea el App Store Connect API Key
+    # 0️⃣  Ajusta el proyecto para usar el team id #
+    ################################################
+    update_project_team(
+      xcodeproj: "ios/MyNewApp.xcodeproj",   # path a tu proyecto
+      target:    "MyNewApp",                 # nombre de tu target
+      teamid:    ENV["DEVELOPMENT_TEAM"]     # inyecta el secret
+    )
+
+    ##########################################################
+    # 1️⃣  Ajusta estilo de firma y provisioning en el proyecto
+    ##########################################################
+    update_code_signing_settings(
+      project:                        "ios/MyNewApp.xcodeproj",
+      target:                         "MyNewApp",
+      build_configuration:            "Release",  # o también Debug si lo necesitas
+      code_signing_identity:          "iPhone Distribution",
+      development_team:               ENV["DEVELOPMENT_TEAM"],
+      provisioning_profile_specifier: "match AppStore com.occr.productos"
+    )
+
+    ################################################
+    # 2️⃣  Descarga certificados y profiles con Match
     ################################################
     api_key = app_store_connect_api_key(
-      key_id:     ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
-      issuer_id:  ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
       key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
 
-    ################################################
-    # 2️⃣  Firma con match usando la API Key
-    ################################################
     match(
       type:    "appstore",
-      api_key: api_key
+      api_key: api_key,
+      readonly: true
     )
 
-    ################################################
-    # 3️⃣  (Pods ya fueron instalados en el workflow)
-    #     NO LLAMAMOS `cocoapods` AQUÍ
-    ################################################
-
-    ################################################
-    # 4️⃣  Compila la app
-    ################################################
-     build_app(
-      workspace:     "ios/MyNewApp.xcworkspace",     # ajusta al path real
-      scheme:        "MyNewApp",                      # ajusta al scheme real
-      export_method: "app-store",
-      clean:         true,
-
-      # 1️⃣ Permitimos a xcodebuild gestionar perfiles automáticamente
-      xcargs:        "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic",  
-      # 2️⃣ También al exportar el .ipa
-      export_xcargs: "-allowProvisioningUpdates",
-
-      # 3️⃣ Equipo y perfil de distribución (ya creado por match)
-      export_team_id: ENV['DEVELOPMENT_TEAM'],
+    ##############################################
+    # 3️⃣  Compila y archiva la app (archive)
+    ##############################################
+    build_app(
+      workspace:      "ios/MyNewApp.xcworkspace",
+      scheme:         "MyNewApp",
+      export_method:  "app-store",
+      clean:          true,
+      export_team_id: ENV["DEVELOPMENT_TEAM"],
       export_options: {
         provisioningProfiles: {
           "com.occr.productos" => "match AppStore com.occr.productos"
@@ -50,10 +55,9 @@ platform :ios do
       }
     )
 
-
-    ################################################
-    # 5️⃣  Sube a TestFlight usando la misma API Key
-    ################################################
+    ##############################################
+    # 4️⃣  Sube la build a TestFlight
+    ##############################################
     upload_to_testflight(api_key: api_key)
   end
 end
