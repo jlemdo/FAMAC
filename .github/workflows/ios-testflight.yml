@@ -1,18 +1,15 @@
-name: iOS CI – TestFlight
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: macos-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
+
+      # ─────────── Nuevo paso: cargar tu SSH key ───────────
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      # ───────────────────────────────────────────────────────
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -20,7 +17,7 @@ jobs:
           node-version: 16
 
       - name: Install JS dependencies
-        run: npm install  # o npm install si no usas Yarn
+        run: yarn install
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -39,6 +36,6 @@ jobs:
           MATCH_GIT_URL:                     ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD:                    ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta
