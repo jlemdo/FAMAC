@@ -1,0 +1,153 @@
+name: iOS Build & TestFlight
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    env:
+      NODE_ENV: development
+      APPLE_CERTIFICATE:    ${{ secrets.APPLE_CERTIFICATE }}
+      CERT_PASSWORD:        ${{ secrets.CERT_PASSWORD }}
+      PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+      APPSTORE_API_KEY:     ${{ secrets.APPSTORE_API_KEY }}
+      APPSTORE_KEY_ID:      ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_ISSUER_ID:   ${{ secrets.APPSTORE_ISSUER_ID }}
+      APP_IDENTIFIER:       ${{ secrets.APP_IDENTIFIER }}
+      APPLE_TEAM_ID:        ${{ secrets.APPLE_TEAM_ID }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🚫 Disable Husky hooks in CI
+        run: echo "HUSKY=0" >> $GITHUB_ENV
+
+      - name: 💎 Set up Ruby & Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1.7
+          bundler-cache: true
+
+      - name: 🔧 Set up Node.js & cache npm
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📦 Install JS dependencies
+        run: npm ci
+
+      - name: 🧩 Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: |
+            ios/Pods
+            ~/.cocoapods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('ios/Podfile.lock') }}
+
+      - name: 🛠️ Install iOS pods
+        working-directory: ios
+        run: pod install --repo-update --verbose
+
+      - name: 🔍 Debug secrets
+        run: |
+          echo "APPLE_CERTIFICATE length:"    $(echo -n "$APPLE_CERTIFICATE"    | wc -c)
+          echo "CERT_PASSWORD length:"        $(echo -n "$CERT_PASSWORD"        | wc -c)
+          echo "PROVISIONING_PROFILE length:" $(echo -n "$PROVISIONING_PROFILE" | wc -c)
+        shell: bash
+
+      - name: 🔑 Decode distribution certificate
+        run: |
+          mkdir -p ios
+          echo "$APPLE_CERTIFICATE" | base64 --decode > ios/ios_distribution.p12
+
+      - name: 🧐 Verify P12 integrity with OpenSSL
+        run: |
+          echo "🔍 Checking P12 with OpenSSL…"
+          openssl pkcs12 -info \
+            -in ios/ios_distribution.p12 \
+            -passin pass:"$CERT_PASSWORD" \
+            -noout
+        shell: bash
+
+      - name: 🔐 Create, set default & unlock keychain
+        run: |
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security list-keychains -s build.keychain
+
+      - name: 🛡️ Import certificate into keychain
+        run: |
+          echo "P12 file info:" && ls -lh ios/ios_distribution.p12
+          security import ios/ios_distribution.p12 \
+            -k ~/Library/Keychains/build.keychain \
+            -P "$CERT_PASSWORD" \
+            -A \
+            -T /usr/bin/codesign
+
+      - name: 📄 Decode provisioning profile
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROVISIONING_PROFILE" \
+            | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/$APP_IDENTIFIER.mobileprovision
+
+      - name: 🔑 Decode App Store Connect API Key
+        run: |
+          echo "$APPSTORE_API_KEY" | base64 --decode \
+            > ios/AuthKey_${APPSTORE_KEY_ID}.p8
+
+      - name: 💾 Install Fastlane
+        run: |
+          gem install fastlane --no-document
+
+      - name: 📝 Dump last lines of Gym log
+        run: |
+          echo "===== Últimas 60 líneas de Gym log ====="
+          tail -n 60 ~/Library/Logs/gym/MyNewApp-MyNewApp.log || true
+        shell: bash
+
+      - name: 🔍 List available schemes
+        run: |
+          cd ios
+          xcodebuild -workspace MyNewApp.xcworkspace -list
+        shell: bash
+
+      - name: 📄 Decode provisioning profile
+        run: |
+          # 1️⃣ Prepara el directorio
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+
+          # 2️⃣ Decodifica tu secreto a un .mobileprovision temporal
+          echo "$PROVISIONING_PROFILE" | base64 --decode \
+            > /tmp/profile.mobileprovision
+
+          # 3️⃣ Convierte a plist para poder leer sus campos
+          security cms -D -i /tmp/profile.mobileprovision \
+            > /tmp/profile.plist
+
+          # 4️⃣ Extrae UUID y Name del perfil
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /tmp/profile.plist)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' /tmp/profile.plist)
+
+          # 5️⃣ Instálalo con el nombre que Xcode busca
+          mv /tmp/profile.mobileprovision \
+            ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+
+          # 6️⃣ Expón el Name como variable de entorno para Fastfile
+          echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+
+          echo "✅ Installed provisioning profile:"
+          echo "   • UUID : $UUID"
+          echo "   • Name : $PROFILE_NAME"
+        shell: bash
+
+
+      - name: 🚀 Run Fastlane beta
+        working-directory: ios
+        run: bundle exec fastlane ios beta
