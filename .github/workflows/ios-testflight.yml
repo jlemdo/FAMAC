@@ -4,12 +4,12 @@
         with:
           submodules: true
 
-      # ─────────── Nuevo paso: cargar tu SSH key ───────────
+
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      # ───────────────────────────────────────────────────────
+
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
