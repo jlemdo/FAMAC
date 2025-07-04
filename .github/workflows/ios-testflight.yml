@@ -1,26 +1,35 @@
-  steps:
-    - uses: actions/checkout@v3
-      with: submodules: true
+name: iOS CI – TestFlight
 
-    # 👉 Agrega esto:
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16
+on:
+  push:
+    branches: [ main ]
 
-    - name: Install JS dependencies
-      run: yarn install       # o npm install
+jobs:
+  build:
+    runs-on: macos-latest
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 3.1
-        bundler-cache: true
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
 
-    - name: Install Ruby gems & pods
-      run: |
-        bundle install
-        bundle exec pod install --project-directory=ios --repo-update
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+          bundler-cache: true
+
+      - name: Install dependencies & pods
+        run: |
+          gem install bundler
+          bundle install
+          bundle exec pod install --project-directory=ios --repo-update
 
       - name: Build & upload to TestFlight
         env:
