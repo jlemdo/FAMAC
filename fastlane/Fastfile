@@ -1,30 +1,31 @@
-# fastlane/Fastfile
-
 default_platform(:ios)
 
 platform :ios do
   desc "Build and upload a new beta build to TestFlight"
   lane :beta do
-    # 1️⃣  Obtener certificados/provisioning con Match (AHORA usando API Key)
-    match(type: "appstore")
-
-    # 2️⃣  Instalar pods
-    cocoapods
-
-    # 3️⃣  Compilar la app
-    build_app(
-      workspace:   "ios/MyNewApp.xcworkspace",   # ajusta al nombre real
-      scheme:      "MyNewApp",                   # tu scheme
-      export_method:"app-store",
-      clean:       true
-    )
-
-    # 4️⃣  Subir a TestFlight usando la misma API Key
+    # 1️⃣ Crea aquí la API Key
     api_key = app_store_connect_api_key(
-      key_id:     ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-      issuer_id:  ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
+      key_id:     ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:  ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
+
+    # 2️⃣ Usa esa key en match
+    match(
+      type:    "appstore",
+      api_key: api_key
+    )
+
+    # 3️⃣ instala pods y compila
+    cocoapods
+    build_app(
+      workspace:     "ios/MyNewApp.xcworkspace",
+      scheme:        "MyNewApp",
+      export_method: "app-store",
+      clean:         true
+    )
+
+    # 4️⃣ sube a TestFlight
     upload_to_testflight(api_key: api_key)
   end
 end
