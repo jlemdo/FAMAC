@@ -30,12 +30,19 @@ platform :ios do
     ################################################
     # 4️⃣  Compila la app
     ################################################
-    build_app(
-      workspace:    "ios/MyNewApp.xcworkspace",
-      scheme:       "MyNewApp",
+     build_app(
+      workspace:     "ios/MyNewApp.xcworkspace",     # ajusta al path real
+      scheme:        "MyNewApp",                      # ajusta al scheme real
       export_method: "app-store",
       clean:         true,
-      xcargs:        "DEVELOPMENT_TEAM=#{ENV['DEVELOPMENT_TEAM']}",
+
+      # 1️⃣ Permitimos a xcodebuild gestionar perfiles automáticamente
+      xcargs:        "-allowProvisioningUpdates CODE_SIGN_STYLE=Automatic",  
+      # 2️⃣ También al exportar el .ipa
+      export_xcargs: "-allowProvisioningUpdates",
+
+      # 3️⃣ Equipo y perfil de distribución (ya creado por match)
+      export_team_id: ENV['DEVELOPMENT_TEAM'],
       export_options: {
         provisioningProfiles: {
           "com.occr.productos" => "match AppStore com.occr.productos"
