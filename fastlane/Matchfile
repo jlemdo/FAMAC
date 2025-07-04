@@ -4,9 +4,9 @@
 # 1️⃣ Definir tu App Store Connect API Key
 ################################################
 api_key = app_store_connect_api_key(
-  key_id:     ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-  issuer_id:  ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-  key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"].gsub("\\n", "\n")
+  key_id:     ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+  issuer_id:  ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+  key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
 )
 
 # Indica a Match que use esta API Key en lugar de Apple ID + contraseña
@@ -17,6 +17,5 @@ api_key(api_key)
 ################################################
 git_url("git@github.com:jlemdo/certi-ios.git")
 storage_mode("git")
-type("appstore")                            # Certificados de distribución (TestFlight/App Store)
+type("appstore")                            # Distribución App Store/TestFlight
 app_identifier(["com.occr.productos"])       # Tu Bundle ID
-# NO hace falta `username(...)` ni `api_key_path`
