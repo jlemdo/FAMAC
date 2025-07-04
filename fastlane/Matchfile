@@ -9,13 +9,13 @@ api_key = app_store_connect_api_key(
   key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
 )
 
-# Indica a Match que use esta API Key en lugar de Apple ID + contraseña
+# Usar esta API Key en lugar de Apple ID + contraseña
 api_key(api_key)
 
 ################################################
 # 2️⃣ Configuración de Match
 ################################################
-git_url("git@github.com:jlemdo/certi-ios.git")
+git_url("git@github.com:jlemdo/certi-ios.git")  # tu repo de certificados
 storage_mode("git")
-type("appstore")                            # Distribución App Store/TestFlight
-app_identifier(["com.occr.productos"])       # Tu Bundle ID
+type("appstore")                                # perfiles de App Store/TestFlight
+app_identifier(["com.occr.productos"])           # tu Bundle ID

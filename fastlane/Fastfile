@@ -3,15 +3,15 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight"
+  desc "Build and upload a new beta build to TestFlight"
   lane :beta do
     ################################################
-    # 1️⃣ Descargar o generar certificados (Match)
+    # 1️⃣ Obtener certificados (Match)
     ################################################
     match(type: "appstore")
 
     ################################################
-    # 2️⃣ Instalar pods
+    # 2️⃣ Instalar CocoaPods
     ################################################
     cocoapods
 
@@ -19,8 +19,8 @@ platform :ios do
     # 3️⃣ Compilar la app
     ################################################
     build_app(
-      workspace:    "ios/MyNewApp.xcworkspace",  # Ajusta si tu workspace se llama distinto
-      scheme:       "MyNewApp",                  # Ajusta al scheme real de tu proyecto
+      workspace:    "ios/MyNewApp.xcworkspace",  # ajusta al nombre real
+      scheme:       "MyNewApp",                  # ajusta al scheme real
       export_method: "app-store",
       clean:         true
     )
