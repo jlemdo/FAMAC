@@ -35,7 +35,7 @@
 	<string>Necesitamos tu ubicación incluso en segundo plano para rastrear tus entregas.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-	<string>location</string>
+		<string>location</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -76,25 +76,8 @@
 		<string>Raleway-SemiBoldItalic.ttf</string>
 		<string>Raleway-Thin.ttf</string>
 		<string>Raleway-ThinItalic.ttf</string>
-		<string>Futura-CondensedLight.otf</string>
 		<string>futur.ttf</string>
-		<string>Futura Bold font.ttf</string>
-		<string>Futura Bold Italic font.ttf</string>
-		<string>Futura Book font.ttf</string>
-		<string>Futura Book Italic font.ttf</string>
-		<string>Futura Extra Black font.ttf</string>
-		<string>Futura Heavy font.ttf</string>
-		<string>Futura Heavy Italic font.ttf</string>
-		<string>futura light bt.ttf</string>
-		<string>Futura Light font.ttf</string>
-		<string>Futura Light Italic font.ttf</string>
-		<string>futura medium bt.ttf</string>
-		<string>futura medium condensed bt.ttf</string>
-		<string>Futura Medium Italic font.ttf</string>
-		<string>Futura XBlk BT.ttf</string>
-		<string>tt0205m_.ttf</string>
-		<string>unicode.futurab.ttf</string>
-		<string>unicode.futurabb.ttf</string>
+		<string>WendyLPStdMedium.ttf</string>
 	</array>
 </dict>
 </plist>
