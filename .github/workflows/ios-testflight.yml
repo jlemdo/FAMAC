@@ -8,6 +8,10 @@ jobs:
   build:
     runs-on: macos-latest
 
+    env:
+      # Habilita firma de pods en paralelo
+      COCOAPODS_PARALLEL_CODE_SIGN: true
+
     steps:
       # 1️⃣ Checkout del código
       - name: Checkout code
@@ -15,7 +19,7 @@ jobs:
         with:
           submodules: true
 
-      # 2️⃣ Cargar SSH key para poder clonar certi-ios.git
+      # 2️⃣ Cargar SSH key para certi-ios.git
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
@@ -28,7 +32,7 @@ jobs:
           node-version: 18
 
       - name: Install JS dependencies
-        run: npm install      # o `npm install` si prefieres npm
+        run: npm install
 
       # 4️⃣ Instalar Ruby y CocoaPods
       - name: Set up Ruby
@@ -37,15 +41,35 @@ jobs:
           ruby-version: 3.1
           bundler-cache: true
 
+      # 4a️⃣ Cache de Pods
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      # 4b️⃣ Cache de DerivedData
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v3
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-deriveddata-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-deriveddata-
+
       - name: Install Ruby gems & CocoaPods
         run: |
           gem install bundler
           bundle install
           bundle exec pod install --project-directory=ios --repo-update
 
-      # 🧹 Clean Xcode DerivedData to avoid stale caches
+      # 4c️⃣ (Opcional) Limpia todo DerivedData para asegurar builds limpias
       - name: Clean DerivedData
-        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*    
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
       # 5️⃣ Build, match & TestFlight
       - name: Build & upload to TestFlight

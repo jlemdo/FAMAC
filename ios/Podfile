@@ -27,6 +27,7 @@ target 'MyNewApp' do
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+        cfg.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
       end
     end
 
