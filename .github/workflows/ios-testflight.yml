@@ -43,6 +43,10 @@ jobs:
           bundle install
           bundle exec pod install --project-directory=ios --repo-update
 
+      # 🧹 Clean Xcode DerivedData to avoid stale caches
+      - name: Clean DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*    
+
       # 5️⃣ Build, match & TestFlight
       - name: Build & upload to TestFlight
         env:
@@ -53,4 +57,3 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT:    ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta
-        

@@ -3,32 +3,32 @@ default_platform(:ios)
 platform :ios do
   desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
   lane :beta do
-    # 0️⃣  Asegurar el Bundle Identifier coincide con Match
+    # 0️⃣ Asegurar el Bundle Identifier coincide con Match
     update_app_identifier(
-      xcodeproj:      "ios/MyNewApp.xcodeproj",
-      plist_path:     "MyNewApp/Info.plist",
+      xcodeproj:  "ios/MyNewApp.xcodeproj",
+      plist_path: "MyNewApp/Info.plist",
       app_identifier: "com.occr.productos"
     )
 
-    # 1️⃣  Inyectar el Team ID en el proyecto
+    # 1️⃣ Inyectar el Team ID en el proyecto
     update_project_team(
       path:    "ios/MyNewApp.xcodeproj",
       targets: ["MyNewApp"],
       teamid:  ENV["DEVELOPMENT_TEAM"]
     )
 
-    # 2️⃣  Activar Signing Automático
-     update_code_signing_settings(
-       use_automatic_signing: false,                            # 🔒 Desactiva automatic signing
-       path:                  "ios/MyNewApp.xcodeproj",        # Ruta a tu proyecto
-       team_id:               ENV["DEVELOPMENT_TEAM"],         # Tu Team ID
-       targets:               ["MyNewApp"],                     # Sólo tu target principal
-       build_configurations:  ["Release"],                      # Sólo para Release (archive)
-       code_sign_identity:    "Apple Distribution",             # Tipo de certificado
-       profile_name:          "match AppStore com.occr.productos"  # Nombre exacto del profile
-     )
+    # 2️⃣ Desactivar signing automático en Release y configurar manualmente
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path:                  "ios/MyNewApp.xcodeproj",
+      team_id:               ENV["DEVELOPMENT_TEAM"],
+      targets:               ["MyNewApp"],
+      build_configurations:  ["Release"],
+      code_sign_identity:    "Apple Distribution",
+      profile_name:          "match AppStore com.occr.productos"
+    )
 
-    # 3️⃣  Descargar perfiles y certificados con Match (solo lectura)
+    # 3️⃣ Descargar perfiles y certificados con Match (solo lectura)
     api_key = app_store_connect_api_key(
       key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
       issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
@@ -36,23 +36,23 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-    # 4️⃣  Compilar, permitiendo actualizaciones de perfil si hiciera falta
+    # 4️⃣ Compilar usando Gym (build_app)
     build_app(
-      workspace:      "ios/MyNewApp.xcworkspace",
-      scheme:         "MyNewApp",
-      export_method:  "app-store",
-      clean:          true,
-      export_team_id: ENV["DEVELOPMENT_TEAM"],
+      workspace:        "ios/MyNewApp.xcworkspace",
+      scheme:           "MyNewApp",
+      configuration:    "Release",
+      clean:            true,
+      export_method:    "app-store",
+      output_directory: "build",   # donde quieres el .xcarchive
+      output_name:      "MyNewApp",
       export_options: {
         provisioningProfiles: {
           "com.occr.productos" => "match AppStore com.occr.productos"
         }
-      },
-      xcargs:        "-allowProvisioningUpdates",
-      export_xcargs: "-allowProvisioningUpdates"
+      }
     )
 
-    # 5️⃣  Subir a TestFlight
+    # 5️⃣ Subir a TestFlight
     upload_to_testflight(api_key: api_key)
   end
 end
