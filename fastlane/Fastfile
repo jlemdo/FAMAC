@@ -36,24 +36,29 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-      # 4️⃣  Compilar manualmente y capturar log sin cambiar de directorio
+    # 4️⃣  Compilar manualmente y capturar log usando PROJECT_ROOT
     sh <<~SHELL
       set -o pipefail
+
+      # Calcula el root del repo (un nivel arriba de fastlane/)
+      PROJECT_ROOT="#{File.expand_path('..', Dir.pwd)}"
+
+      # Invoca xcodebuild con rutas absolutas
       xcodebuild \
-        -workspace "#{Dir.pwd}/ios/MyNewApp.xcworkspace" \
+        -workspace "$PROJECT_ROOT/ios/MyNewApp.xcworkspace" \
         -scheme MyNewApp \
         -configuration Release \
         -sdk iphoneos \
         clean archive \
-        -archivePath "#{Dir.pwd}/build/MyNewApp.xcarchive" \
-      2>&1 | tee "#{Dir.pwd}/xcodebuild.log"
+        -archivePath "$PROJECT_ROOT/build/MyNewApp.xcarchive" \
+      2>&1 | tee "$PROJECT_ROOT/xcodebuild.log"
     SHELL
 
     # 4️⃣b  Mostrar últimas 200 líneas de log si falla
     sh <<~SHELL
       if [ $? -ne 0 ]; then
         echo "----- xcodebuild.log (últimas 200 líneas) -----"
-        tail -n 200 "#{Dir.pwd}/xcodebuild.log"
+        tail -n 200 "$PROJECT_ROOT/xcodebuild.log"
         exit 1
       fi
     SHELL
