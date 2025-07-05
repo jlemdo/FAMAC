@@ -7,11 +7,7 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
-  # 1️⃣ Indica dónde está el podspec generado
-  pod 'react-native-maps-generated',
-  path: '../node_modules/react-native-maps'
-
-  # Solo este pod
+  # Sólo este pod: el Podspec oficial arrastra react-native-maps-generated
   pod 'react-native-maps',
       path: '../node_modules/react-native-maps'
 
@@ -24,33 +20,12 @@ target 'MyNewApp' do
 
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
-
-    # Tus parches habituales (deployment target, C++ flags, HEADER_SEARCH_PATHS, etc.)
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       end
     end
 
-    # Ajustes C++ para react-native-maps
-    installer.pods_project.targets
-      .select { |t| t.name == 'react-native-maps' }
-      .each do |target|
-        target.build_configurations.each do |cfg|
-          cfg.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
-          cfg.build_settings['CLANG_CXX_LIBRARY']           = 'libc++'
-        end
-      end
-
-    # <<< PARCHE DE HEADER SEARCH PATHS >>>
-    installer.pods_project.targets
-      .select { |t| t.name == 'react-native-maps' }
-      .each do |target|
-        target.build_configurations.each do |cfg|
-          cfg.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
-          cfg.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../node_modules/react-native-maps/ios'
-          cfg.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../node_modules/react-native-maps/ios/AirMaps'
-        end
-      end
+    # Aquí puedes mantener tus parches de C++/HEADER_SEARCH_PATHS si los necesitas…
   end
 end
