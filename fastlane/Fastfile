@@ -36,21 +36,21 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-    # 4️⃣  Compilar, permitiendo actualizaciones de perfil si hiciera falta
-    build_app(
-      workspace:      "ios/MyNewApp.xcworkspace",
-      scheme:         "MyNewApp",
-      export_method:  "app-store",
-      clean:          true,
-      export_team_id: ENV["DEVELOPMENT_TEAM"],
-      export_options: {
-        provisioningProfiles: {
-          "com.occr.productos" => "match AppStore com.occr.productos"
-        }
-      },
-      xcargs:        "-allowProvisioningUpdates",
-      export_xcargs: "-allowProvisioningUpdates"
-    )
+      # 4️⃣  Compilar manualmente y capturar log
+        sh %(
+          set -o pipefail &&
+          xcodebuild \
+            -workspace ios/MyNewApp.xcworkspace \
+            -scheme MyNewApp \
+            -configuration Release \
+            -sdk iphoneos \
+            clean archive \
+            -archivePath ./build/MyNewApp.xcarchive \
+          2>&1 | tee xcodebuild.log
+        )
+
+        # 4️⃣b Mostrar últimas 200 líneas de log en CI
+        sh "tail -n 200 xcodebuild.log"
 
     # 5️⃣  Subir a TestFlight
     upload_to_testflight(api_key: api_key)

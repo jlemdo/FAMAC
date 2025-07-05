@@ -53,3 +53,10 @@ jobs:
           APP_STORE_CONNECT_API_KEY_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT:    ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta
+      
+      # 6️⃣ En caso de fallo, imprime el log de xcodebuild
+      - name: Print xcodebuild errors
+        if: failure()
+        run: |
+          echo "----- xcodebuild.log (últimas 200 líneas) -----"
+          tail -n 200 ios/xcodebuild.log
