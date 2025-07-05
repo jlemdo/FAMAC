@@ -69,7 +69,11 @@ target 'MyNewApp' do
       phase.add_file_reference(file_ref, true)
     end
 
-    # 7) Guarda los cambios en el proyecto de la app
+    # 8️⃣ Elimina la fase Embed Pods Frameworks de tu app
+    embed_phase = app_target.build_phases.find { |bp| bp.display_name == 'Embed Pods Frameworks' }
+    app_target.build_phases.delete(embed_phase) if embed_phase
+
+    # 9️⃣ Guarda y fin
     app_proj.save
   end
 end

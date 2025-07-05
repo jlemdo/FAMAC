@@ -42,7 +42,6 @@ platform :ios do
         workspace:        "ios/MyNewApp.xcworkspace",
         scheme:           "MyNewApp",
         configuration:    "Release",
-        use_legacy_build_api: true,
         clean:            true,
         export_method:    "app-store",
         output_directory: "build",   # donde quieres el .xcarchive
