@@ -85,7 +85,7 @@
 		C7FA48CDE53947A0B4E539C9 /* futur.ttf */ = {isa = PBXFileReference; name = "futur.ttf"; path = "../src/assets/fonts/futura/futur.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */ = {isa = PBXFileReference; name = "WendyLPStdMedium.ttf"; path = "../src/assets/fonts/WendyLPStdMedium/WendyLPStdMedium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		55955F5BE4B0768EF59B366A /* AppDelegate.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
-		CF2309CC481C82B34E21D865 /* AppDelegate.h */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		CF2309CC481C82B34E21D865 /* AppDelegate.h */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = MyNewApp/AppDelegate.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
