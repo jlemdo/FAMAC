@@ -21,37 +21,45 @@ target 'MyNewApp' do
   )
 
   post_install do |installer|
-    # React Native post-install hooks
-    react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+  react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
 
-    # 1) Ajustes en el proyecto de Pods (deployment target, etc.)
-    installer.pods_project.targets.each do |t|
-      t.build_configurations.each do |cfg|
-        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-      end
+  # 1) Ajustes en el proyecto de Pods
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |cfg|
+      cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
     end
-
-    # 2) Desactiva Swift y añade AppDelegate.m en tu proyecto MyNewApp.xcodeproj
-    app_proj_path = File.join(installer.pods_project.root, '..', 'MyNewApp.xcodeproj')
-    app_proj = Xcodeproj::Project.open(app_proj_path)
-    app_target = app_proj.targets.find { |t| t.name == 'MyNewApp' }
-
-    # 2a) Build Settings para no compilar Swift
-    app_target.build_configurations.each do |cfg|
-      cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
-      cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
-    end
-
-    # 2b) Asegura que AppDelegate.m está en Compile Sources
-    main_group = app_proj.main_group.find_subpath('MyNewApp', false)
-    file_ref = main_group.find_file_by_path('AppDelegate.m') ||
-               main_group.new_file('MyNewApp/AppDelegate.m')
-    phase = app_target.source_build_phase
-    unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
-      phase.add_file_reference(file_ref, true)
-    end
-
-    # Guarda los cambios en MyNewApp.xcodeproj
-    app_proj.save
   end
+
+  # 2) Ruta fija al proyecto de tu app (MyNewApp)
+  # ──> Cambiamos esta línea:
+  # app_proj_path = File.join(installer.pods_project.root, '..', 'MyNewApp.xcodeproj')
+  # ──> Por una como esta:
+  pods_xcodeproj_path = installer.pods_project.path                        # .../ios/Pods/Pods.xcodeproj
+  ios_folder          = File.dirname(pods_xcodeproj_path)                 # .../ios/Pods
+  project_root        = File.dirname(ios_folder)                          # .../ios
+  app_proj_path       = File.join(project_root, 'MyNewApp.xcodeproj')     # .../ios/MyNewApp.xcodeproj
+
+  # 3) Abre y modifica el proyecto de la app
+  require 'xcodeproj'
+  app_proj   = Xcodeproj::Project.open(app_proj_path)
+  app_target = app_proj.targets.find { |t| t.name == 'MyNewApp' }
+
+  # 4) Desactiva Swift en ese target
+  app_target.build_configurations.each do |cfg|
+    cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
+    cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
+  end
+
+  # 5) Asegura que AppDelegate.m está en Compile Sources
+  main_group = app_proj.main_group.find_subpath('MyNewApp', false)
+  file_ref   = main_group.find_file_by_path('AppDelegate.m') ||
+               main_group.new_file('MyNewApp/AppDelegate.m')
+  phase      = app_target.source_build_phase
+  unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
+    phase.add_file_reference(file_ref, true)
+  end
+
+  # 6) Guarda los cambios
+  app_proj.save
+end
 end
