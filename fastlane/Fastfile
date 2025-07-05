@@ -36,30 +36,28 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-      # 4️⃣  Compilar manualmente y capturar log
-    sh %(
-      set -o pipefail &&
-      # 1) Muévete al root de tu repo (donde está ios/)
-      cd "#{File.expand_path("..", Dir.pwd)}" && \
-      # 2) Ejecuta xcodebuild apuntando a la workspace dentro de ios/
-      xcodebuild \
-        -workspace "#{Dir.pwd}/ios/MyNewApp.xcworkspace" \
-        -scheme MyNewApp \
-        -configuration Release \
-        -sdk iphoneos \
-        clean archive \
-        -archivePath "#{Dir.pwd}/build/MyNewApp.xcarchive" \
+   # 4️⃣  Compilar manualmente y capturar log
+    sh <<~SHELL
+      set -o pipefail
+      cd "#{File.expand_path('..', Dir.pwd)}"
+      xcodebuild \\
+        -workspace "#{Dir.pwd}/ios/MyNewApp.xcworkspace" \\
+        -scheme MyNewApp \\
+        -configuration Release \\
+        -sdk iphoneos \\
+        clean archive \\
+        -archivePath "#{Dir.pwd}/build/MyNewApp.xcarchive" \\
       2>&1 | tee "#{Dir.pwd}/xcodebuild.log"
-    )
+    SHELL
 
     # 4️⃣b  Mostrar últimas 200 líneas de log si falla
-    sh <<~EOS
+    sh <<~SHELL
       if [ $? -ne 0 ]; then
         echo "----- xcodebuild.log (últimas 200 líneas) -----"
         tail -n 200 "#{Dir.pwd}/xcodebuild.log"
         exit 1
       fi
-    EOS
+    SHELL
 
     # 5️⃣  Subir a TestFlight
     upload_to_testflight(api_key: api_key)
