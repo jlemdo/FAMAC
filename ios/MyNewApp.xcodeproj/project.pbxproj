@@ -384,8 +384,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */, 
 				55955F5BE4B0768EF59B366A /* main.m in Sources */,
+				5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */, 
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
