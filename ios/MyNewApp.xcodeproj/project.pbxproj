@@ -35,7 +35,7 @@
 		210B730E59FF467D9DACDE6D /* Raleway-ThinItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */; };
 		685BAC9C09F646F280CC7858 /* futur.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C7FA48CDE53947A0B4E539C9 /* futur.ttf */; };
 		01B0A9A2E0E74857B12B9383 /* WendyLPStdMedium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */; };
-		BUILD_FILE_UUID /* main.m in Sources */ = { isa = PBXBuildFile; fileRef = FILE_REF_UUID /* main.m */; };
+		83FE80557F3A45488849BF1592947C97 /* main.m in Sources */ = { isa = PBXBuildFile; fileRef = DE3FC22C4FA748B68E0A58051DCBC66D /* main.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,7 +84,7 @@
 		3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */ = {isa = PBXFileReference; name = "Raleway-ThinItalic.ttf"; path = "../src/assets/fonts/Raleway/static/Raleway-ThinItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		C7FA48CDE53947A0B4E539C9 /* futur.ttf */ = {isa = PBXFileReference; name = "futur.ttf"; path = "../src/assets/fonts/futura/futur.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */ = {isa = PBXFileReference; name = "WendyLPStdMedium.ttf"; path = "../src/assets/fonts/WendyLPStdMedium/WendyLPStdMedium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		FILE_REF_UUID /* main.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = main.m; sourceTree = "<group>"; };
+		DE3FC22C4FA748B68E0A58051DCBC66D /* main.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = main.m; sourceTree = "<group>"; };
 
 /* End PBXFileReference section */
 
@@ -379,9 +379,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ABCD1234EFGH5678 /* AppDelegate.m in Sources */,
-				1234MAINUUID123456 /* main.m in Sources */,
-				BUILD_FILE_UUID       /* main.m in Sources */,
+				E76A02F51DA0436C8C1C4FC434F6B39C	   /* AppDelegate.m in Sources */,
+				DE3FC22C4FA748B68E0A58051DCBC66D       /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
