@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
-#import <React/RCTAppDelegate.h>  // Esto importa todo lo que necesitas
+#import <React/RCTAppDelegate.h>
 
 @interface AppDelegate : RCTAppDelegate <UIApplicationDelegate>
 @end

@@ -2,9 +2,8 @@
 
 @implementation AppDelegate
 
-// Delega toda la inicialización a RCTAppDelegate
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-{
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+  // Delega todo en RCTAppDelegate (incluye New Architecture, Fabric, TurboModules, bundle URL…)
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
