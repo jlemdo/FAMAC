@@ -18,18 +18,14 @@ target 'MyNewApp' do
     fabric_enabled: true
   )
 
-# En tu ios/Podfile, dentro del post_install:
-
-post_install do |installer|
-  react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
-  installer.pods_project.targets.each do |target|
-    # Ajustes que ya tenías para MyNewApp build settings…
-    if target.name == 'MyNewApp'
-      target.build_configurations.each do |config|
-        # ⚙️ Deshabilita totalmente la compilación Swift
-        config.build_settings['SWIFT_EMIT_MODULE']       = 'NO'
-        config.build_settings['SWIFT_COMPILATION_MODE']  = 'none'
+  post_install do |installer|
+    react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |cfg|
+        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       end
     end
+
+    # Aquí puedes mantener tus parches de C++/HEADER_SEARCH_PATHS si los necesitas…
   end
 end
