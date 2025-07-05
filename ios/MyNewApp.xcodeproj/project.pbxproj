@@ -84,8 +84,10 @@
 		3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */ = {isa = PBXFileReference; name = "Raleway-ThinItalic.ttf"; path = "../src/assets/fonts/Raleway/static/Raleway-ThinItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		C7FA48CDE53947A0B4E539C9 /* futur.ttf */ = {isa = PBXFileReference; name = "futur.ttf"; path = "../src/assets/fonts/futura/futur.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */ = {isa = PBXFileReference; name = "WendyLPStdMedium.ttf"; path = "../src/assets/fonts/WendyLPStdMedium/WendyLPStdMedium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		55955F5BE4B0768EF59B366A /* AppDelegate.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
-		CF2309CC481C82B34E21D865 /* AppDelegate.h */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = MyNewApp/AppDelegate.h; sourceTree = "<group>"; };
+		55955F5BE4B0768EF59B366A /* main.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyNewApp/main.m; sourceTree = "<group>"; };
+		CF2309CC481C82B34E21D865 /* AppDelegate.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
+		3087A938E6F5C21A9669EE81 /* AppDelegate.h */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = MyNewApp/AppDelegate.h; sourceTree = "<group>"; };
+
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,8 +117,9 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
-				CF2309CC481C82B34E21D865 /* AppDelegate.h */,
-				55955F5BE4B0768EF59B366A /* AppDelegate.m */,
+				55955F5BE4B0768EF59B366A /* main.m */,
+				CF2309CC481C82B34E21D865 /* AppDelegate.m */,
+				3087A938E6F5C21A9669EE81 /* AppDelegate.h */,
 			);
 			name = MyNewApp;
 			sourceTree = "<group>";
@@ -381,7 +384,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */,
+				5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */, 
+				55955F5BE4B0768EF59B366A /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
