@@ -7,6 +7,10 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
+  # 1️⃣ Indica dónde está el podspec generado
+  pod 'react-native-maps-generated',
+  path: '../node_modules/react-native-maps'
+
   # Solo este pod
   pod 'react-native-maps',
       path: '../node_modules/react-native-maps'
