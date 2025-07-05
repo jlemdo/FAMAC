@@ -36,17 +36,16 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-   # 4️⃣  Compilar manualmente y capturar log
+      # 4️⃣  Compilar manualmente y capturar log sin cambiar de directorio
     sh <<~SHELL
       set -o pipefail
-      cd "#{File.expand_path('..', Dir.pwd)}"
-      xcodebuild \\
-        -workspace "#{Dir.pwd}/ios/MyNewApp.xcworkspace" \\
-        -scheme MyNewApp \\
-        -configuration Release \\
-        -sdk iphoneos \\
-        clean archive \\
-        -archivePath "#{Dir.pwd}/build/MyNewApp.xcarchive" \\
+      xcodebuild \
+        -workspace "#{Dir.pwd}/ios/MyNewApp.xcworkspace" \
+        -scheme MyNewApp \
+        -configuration Release \
+        -sdk iphoneos \
+        clean archive \
+        -archivePath "#{Dir.pwd}/build/MyNewApp.xcarchive" \
       2>&1 | tee "#{Dir.pwd}/xcodebuild.log"
     SHELL
 
