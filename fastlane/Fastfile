@@ -37,20 +37,21 @@ platform :ios do
     match(type: "appstore", api_key: api_key, readonly: true)
 
     # 4️⃣ Compilar usando Gym (build_app)
-    build_app(
-      workspace:        "ios/MyNewApp.xcworkspace",
-      scheme:           "MyNewApp",
-      configuration:    "Release",
-      clean:            true,
-      export_method:    "app-store",
-      output_directory: "build",   # donde quieres el .xcarchive
-      output_name:      "MyNewApp",
-      export_options: {
-        provisioningProfiles: {
-          "com.occr.productos" => "match AppStore com.occr.productos"
+    begin
+      build_app(
+        workspace:        "ios/MyNewApp.xcworkspace",
+        scheme:           "MyNewApp",
+        configuration:    "Release",
+        clean:            true,
+        export_method:    "app-store",
+        output_directory: "build",   # donde quieres el .xcarchive
+        output_name:      "MyNewApp",
+        export_options: {
+          provisioningProfiles: {
+            "com.occr.productos" => "match AppStore com.occr.productos"
+          }
         }
-      }
-    )
+      )
     rescue => exception
       # Al fallar, sacamos el log
       sh("echo '----- GYM LOG (últimas 200 líneas) -----'")
