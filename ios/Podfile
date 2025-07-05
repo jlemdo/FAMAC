@@ -14,10 +14,13 @@ target 'MyNewApp' do
   # Instala los pods de RN automáticos
   config = use_native_modules!
 
-  # Usa react-native-maps desde node_modules para evitar problemas de headers
-  pod 'react-native-maps',
-      path: '../node_modules/react-native-maps',
-      :modular_headers => true
+  pod 'react-native-maps', '1.21.0', :modular_headers => true
+
+  use_react_native!(
+    path: '../node_modules/react-native',
+    new_arch_enabled: false,
+    fabric_enabled: false
+  )
 
   # Resto de pods de React Native
   use_react_native!(
