@@ -36,21 +36,28 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
-      # 4️⃣  Compilar manualmente y capturar log
-        sh %(
-          set -o pipefail &&
-          xcodebuild \
-            -workspace ios/MyNewApp.xcworkspace \
-            -scheme MyNewApp \
-            -configuration Release \
-            -sdk iphoneos \
-            clean archive \
-            -archivePath ./build/MyNewApp.xcarchive \
-          2>&1 | tee xcodebuild.log
-        )
+        # 4️⃣  Compilar manualmente y capturar log
+    sh %(
+      set -o pipefail &&
+      cd ios &&
+      xcodebuild \
+        -workspace MyNewApp.xcworkspace \
+        -scheme MyNewApp \
+        -configuration Release \
+        -sdk iphoneos \
+        clean archive \
+        -archivePath ../build/MyNewApp.xcarchive \
+      2>&1 | tee ../xcodebuild.log
+    )
 
-        # 4️⃣b Mostrar últimas 200 líneas de log en CI
-        sh "tail -n 200 xcodebuild.log"
+    # 4️⃣b  Mostrar últimas 200 líneas de log si falla
+    sh <<~EOS
+      if [ $? -ne 0 ]; then
+        echo "----- xcodebuild.log (últimas 200 líneas) -----"
+        tail -n 200 ../xcodebuild.log
+        exit 1
+      fi
+    EOS
 
     # 5️⃣  Subir a TestFlight
     upload_to_testflight(api_key: api_key)
