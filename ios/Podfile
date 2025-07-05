@@ -1,6 +1,6 @@
 require 'xcodeproj'
 
-platform :ios, '15.1'
+platform :ios, '16.0'
 source 'https://cdn.cocoapods.org/'
 
 require_relative '../node_modules/react-native/scripts/react_native_pods'
