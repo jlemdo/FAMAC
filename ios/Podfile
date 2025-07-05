@@ -16,10 +16,8 @@ target 'MyNewApp' do
 
   # Usa react-native-maps desde node_modules para evitar problemas de headers
   pod 'react-native-maps',
-    git: 'https://github.com/react-native-maps/react-native-maps.git',
-    tag: 'v1.21.0',   # 👈 estable, no depende de Fabric
-    :modular_headers => true
-
+      path: '../node_modules/react-native-maps',
+      :modular_headers => true
 
   # Resto de pods de React Native
   use_react_native!(
