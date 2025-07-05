@@ -1,8 +1,5 @@
 platform :ios, '16.0'
-
-# Fuentes oficiales de Specs
 source 'https://cdn.cocoapods.org/'
-source 'https://github.com/CocoaPods/Specs.git'
 
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 prepare_react_native_project!
@@ -10,35 +7,51 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
-  # Instalación de react-native-maps con modular_headers
+  # react-native-maps & generated desde node_modules
+  pod 'react-native-maps-generated',
+      path: '../node_modules/react-native-maps',
+      :modular_headers => true
+
   pod 'react-native-maps',
-      git: 'https://github.com/react-native-maps/react-native-maps.git',
-      tag: 'v1.23.7',
-      :modular_headers => true  # <- genera el .modulemap automático
+      path: '../node_modules/react-native-maps',
+      :modular_headers => true
 
   use_react_native!(
     path: config[:reactNativePath],
+    app_path: "#{Pod::Config.instance.installation_root}/..",
     new_arch_enabled: false,
     fabric_enabled: false
   )
 
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+    if installer.respond_to?(:__apply_Xcode_12_5_M1_post_install_workaround)
+      installer.__apply_Xcode_12_5_M1_post_install_workaround
+    end
 
-    # Opcional: ajustes globales de deployment target
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       end
     end
 
-    # Si necesitas C++20 para react-native-maps:
     installer.pods_project.targets
       .select { |t| t.name == 'react-native-maps' }
-      .each do |tgt|
-        tgt.build_configurations.each do |cfg|
+      .each do |target|
+        target.build_configurations.each do |cfg|
           cfg.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++20'
-          cfg.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+          cfg.build_settings['CLANG_CXX_LIBRARY']           = 'libc++'
+        end
+      end
+
+    # <<< PARCHE DE HEADERS >>>
+    installer.pods_project.targets
+      .select { |t| t.name == 'react-native-maps' }
+      .each do |target|
+        target.build_configurations.each do |cfg|
+          cfg.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+          cfg.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../node_modules/react-native-maps/ios'
+          cfg.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../node_modules/react-native-maps/ios/AirMaps'
         end
       end
   end
