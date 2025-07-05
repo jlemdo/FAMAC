@@ -3,7 +3,7 @@
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  // Delega todo en RCTAppDelegate (incluye New Architecture, Fabric, TurboModules, bundle URL…)
+  // Delega TODO en RCTAppDelegate (Fabric, TurboModules, bridge, bundle URL,…)
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
