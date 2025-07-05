@@ -1,3 +1,5 @@
+# ios/Podfile
+
 platform :ios, '16.0'
 source 'https://cdn.cocoapods.org/'
 
@@ -5,9 +7,10 @@ require_relative '../node_modules/react-native/scripts/react_native_pods'
 prepare_react_native_project!
 
 target 'MyNewApp' do
+  # 1️⃣ Autolink de todos los módulos RN
   config = use_native_modules!
 
-  # react-native-maps & generated desde node_modules
+  # 2️⃣ Instala el pod generado y luego el principal
   pod 'react-native-maps-generated',
       path: '../node_modules/react-native-maps',
       :modular_headers => true
@@ -16,6 +19,7 @@ target 'MyNewApp' do
       path: '../node_modules/react-native-maps',
       :modular_headers => true
 
+  # 3️⃣ Resto de pods autolinked
   use_react_native!(
     path: config[:reactNativePath],
     app_path: "#{Pod::Config.instance.installation_root}/..",
@@ -23,18 +27,28 @@ target 'MyNewApp' do
     fabric_enabled: false
   )
 
+  # 4️⃣ Post-install tweaks
   post_install do |installer|
-    react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+    # ➡️ Hook oficial de RN
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      mac_catalyst_enabled: false
+    )
+
+    # ➡️ Workaround Xcode 12.5 / M1
     if installer.respond_to?(:__apply_Xcode_12_5_M1_post_install_workaround)
       installer.__apply_Xcode_12_5_M1_post_install_workaround
     end
 
+    # ➡️ Forzar iOS 16.0 en todos los pods
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       end
     end
 
+    # ➡️ C++20 + libc++ para react-native-maps
     installer.pods_project.targets
       .select { |t| t.name == 'react-native-maps' }
       .each do |target|
@@ -44,7 +58,7 @@ target 'MyNewApp' do
         end
       end
 
-    # <<< PARCHE DE HEADERS >>>
+    # ➡️ HEADER_SEARCH_PATHS para RN Maps
     installer.pods_project.targets
       .select { |t| t.name == 'react-native-maps' }
       .each do |target|
@@ -54,5 +68,12 @@ target 'MyNewApp' do
           cfg.build_settings['HEADER_SEARCH_PATHS'] << '$(PODS_ROOT)/../node_modules/react-native-maps/ios/AirMaps'
         end
       end
+
+    # ➡️ COPIAR el modulemap faltante para react-native-maps-generated
+    require 'fileutils'
+    generated_modulemap = File.join(__dir__, '../node_modules/react-native-maps/react-native-maps-generated.modulemap')
+    dest_dir = File.join(installer.sandbox.root, 'Headers', 'Private', 'ReactNativeMapsGenerated')
+    FileUtils.mkdir_p(dest_dir)
+    FileUtils.cp(generated_modulemap, File.join(dest_dir, 'react-native-maps-generated.modulemap'))
   end
 end
