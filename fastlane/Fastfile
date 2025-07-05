@@ -6,7 +6,7 @@ platform :ios do
     # 0️⃣  Asegurar el Bundle Identifier coincide con Match
     update_app_identifier(
       xcodeproj:      "ios/MyNewApp.xcodeproj",
-      plist_path:     "ios/MyNewApp/Info.plist",
+      plist_path:     "MyNewApp/Info.plist",
       app_identifier: "com.occr.productos"
     )
 
