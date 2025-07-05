@@ -7,10 +7,9 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
-  # react-native-maps con subspecs incluyendo Generated
+  # Solo este pod
   pod 'react-native-maps',
-      path: '../node_modules/react-native-maps',
-      subspecs: ['Core', 'AirMaps', 'Generated']
+      path: '../node_modules/react-native-maps'
 
   use_react_native!(
     path: config[:reactNativePath],
@@ -21,11 +20,8 @@ target 'MyNewApp' do
 
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
-    if installer.respond_to?(:__apply_Xcode_12_5_M1_post_install_workaround)
-      installer.__apply_Xcode_12_5_M1_post_install_workaround
-    end
 
-    # Forzar deployment target
+    # Tus parches habituales (deployment target, C++ flags, HEADER_SEARCH_PATHS, etc.)
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
