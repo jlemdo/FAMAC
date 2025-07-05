@@ -1,19 +1,17 @@
 platform :ios, '16.0'
-
 source 'https://cdn.cocoapods.org/'
-source 'https://github.com/CocoaPods/Specs.git'
-
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 prepare_react_native_project!
 
 target 'MyNewApp' do
-  # 1️⃣  Autolink RN modules
   config = use_native_modules!
 
-  # 2️⃣  Install react-native-maps from node_modules (includes generated podspec)
-  pod 'react-native-maps', '1.21.0', :modular_headers => true
+  # 1️⃣ Instala react-native-maps desde tu node_modules (ambos podspecs incluidos)
+  pod 'react-native-maps',
+      path: '../node_modules/react-native-maps',
+      :modular_headers => true
 
-  # 3️⃣  Autolink the rest of your RN pods
+  # 2️⃣ Autolink del resto de librerías RN
   use_react_native!(
     path: config[:reactNativePath],
     app_path: "#{Pod::Config.instance.installation_root}/..",
@@ -21,26 +19,14 @@ target 'MyNewApp' do
     fabric_enabled: false
   )
 
-  # 4️⃣  Post-install tweaks
   post_install do |installer|
-    react_native_post_install(
-      installer,
-      config[:reactNativePath],
-      mac_catalyst_enabled: false
-    )
+    react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+    installer.__apply_Xcode_12_5_M1_post_install_workaround if installer.respond_to?(:__apply_Xcode_12_5_M1_post_install_workaround)
 
-    if installer.respond_to?(:__apply_Xcode_12_5_M1_post_install_workaround)
-      installer.__apply_Xcode_12_5_M1_post_install_workaround
-    end
-
-    # Enforce iOS 16.0 on every pod
     installer.pods_project.targets.each do |t|
-      t.build_configurations.each do |cfg|
-        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-      end
+      t.build_configurations.each { |cfg| cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0' }
     end
 
-    # C++20 + libc++ for react-native-maps
     installer.pods_project.targets
       .select { |t| t.name == 'react-native-maps' }
       .each do |target|
