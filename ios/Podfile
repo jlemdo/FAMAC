@@ -15,7 +15,7 @@ target 'MyNewApp' do
   #    - react-native-maps.podspec
   #    - react-native-maps-generated.podspec
   pod 'react-native-maps',
-      path: '../node_modules/react-native-maps',
+      :podspec => File.join(__dir__, '../node_modules/react-native-maps/react-native-maps.podspec'),
       :modular_headers => true
 
   # 3️⃣ El resto de pods autolinked
