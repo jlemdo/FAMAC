@@ -6,6 +6,8 @@ source 'https://cdn.cocoapods.org/'
 require_relative '../node_modules/react-native/scripts/react_native_pods'
 prepare_react_native_project!
 
+use_frameworks! :linkage => :static
+
 target 'MyNewApp' do
   config = use_native_modules!
 
@@ -28,6 +30,7 @@ target 'MyNewApp' do
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
         cfg.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        cfg.build_settings['ENABLE_BITCODE']          = 'NO'
       end
     end
 
