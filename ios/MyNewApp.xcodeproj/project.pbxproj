@@ -35,7 +35,8 @@
 		210B730E59FF467D9DACDE6D /* Raleway-ThinItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */; };
 		685BAC9C09F646F280CC7858 /* futur.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C7FA48CDE53947A0B4E539C9 /* futur.ttf */; };
 		01B0A9A2E0E74857B12B9383 /* WendyLPStdMedium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */; };
-		5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */ = { isa = PBXBuildFile; fileRef = 55955F5BE4B0768EF59B366A /* AppDelegate.m */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* main.m in Sources */ = { isa = PBXBuildFile; fileRef = 55955F5BE4B0768EF59B366A /* main.m */; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* AppDelegate.m in Sources */ = { isa = PBXBuildFile; fileRef = CF2309CC481C82B34E21D865 /* AppDelegate.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,7 +88,6 @@
 		55955F5BE4B0768EF59B366A /* main.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyNewApp/main.m; sourceTree = "<group>"; };
 		CF2309CC481C82B34E21D865 /* AppDelegate.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
 		3087A938E6F5C21A9669EE81 /* AppDelegate.h */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = MyNewApp/AppDelegate.h; sourceTree = "<group>"; };
-
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -384,8 +384,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				55955F5BE4B0768EF59B366A /* main.m in Sources */,
 				5B6273FD1B1A00C9D38EC74F /* AppDelegate.m in Sources */, 
+				55955F5BE4B0768EF59B366A /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
