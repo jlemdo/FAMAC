@@ -20,9 +20,17 @@ target 'MyNewApp' do
 
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
+
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
-        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0' 
+        # Mantenemos tu deployment target
+        cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+
+        if t.name == 'MyNewApp'
+          # ⚙️ Deshabilita toda compilación de Swift en este target:
+          cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
+          cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
+        end
       end
     end
 
