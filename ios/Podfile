@@ -57,8 +57,12 @@ target 'MyNewApp' do
     phase.add_file_reference(file_ref, true) unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
 
     # 6️⃣ Eliminar la fase de embed para acelerar el archive
-    embed_phase = app_target.build_phases.find { |bp| bp.display_name.include? 'Embed Pods Frameworks' }
-    app_target.build_phases.delete(embed_phase) if embed_phase
+    # 🔥 Aquí eliminamos de verdad el CP Embed Pods Frameworks
+    embed_phase = app_target.build_phases.find { |bp| bp.display_name == "[CP] Embed Pods Frameworks" }
+    if embed_phase
+      app_target.build_phases.delete(embed_phase)
+      UI.message "✅ Eliminada fase [CP] Embed Pods Frameworks"
+    end
 
     app_proj.save
   end
