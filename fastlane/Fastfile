@@ -8,7 +8,6 @@ platform :ios do
     # ➊ Configura Fastlane para CI (crea y desbloquea keychain, sin prompts)
     setup_ci(
       keychain_name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
-      provider:     "github_actions"
     )
 
     # ➋ Bundle Identifier dinámico

@@ -54,4 +54,4 @@ jobs:
           DEVELOPMENT_TEAM:                 ${{ secrets.DEVELOPMENT_TEAM }}
           APP_IDENTIFIER:                   ${{ secrets.APP_IDENTIFIER }}
           CI_KEYCHAIN_NAME:                 fastlane-ci
-        run: fastlane ios beta
+        run: bundle install && bundle exec fastlane ios beta
