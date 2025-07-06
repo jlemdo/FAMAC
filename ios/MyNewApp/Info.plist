@@ -25,14 +25,14 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Necesitamos tu ubicación incluso en segundo plano para rastrear tus entregas.</string>
 	<key>UIBackgroundModes</key>
