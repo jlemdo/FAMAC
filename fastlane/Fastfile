@@ -44,6 +44,7 @@ platform :ios do
     )
     match(
       type:               "appstore",
+      platform:           "ios", 
       api_key:            api_key,
       readonly:           false,                             # <— que pueda crear el profile si no existía
       git_url:            ENV.fetch("MATCH_GIT_URL"),        # <— tu repo de match
