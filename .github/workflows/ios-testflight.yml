@@ -68,5 +68,4 @@ jobs:
           APP_IDENTIFIER:                            ${{ secrets.APP_IDENTIFIER }}
           # Keychain dedicado que creará setup_ci
           CI_KEYCHAIN_NAME:                          fastlane-ci
-          CI_KEYCHAIN_PASSWORD:                      ${{ secrets.CI_KEYCHAIN_PASSWORD }}
         run: fastlane ios beta
