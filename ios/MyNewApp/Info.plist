@@ -25,6 +25,8 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
