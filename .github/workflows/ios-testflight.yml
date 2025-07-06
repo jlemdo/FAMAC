@@ -40,6 +40,14 @@ jobs:
       - name: Instala dependencias JS
         run: yarn install --frozen-lockfile
 
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+      
+      - name: Verifica versión de Xcode
+        run: xcodebuild -version
+
       - name: Instala CocoaPods pods
         working-directory: ios
         run: pod install --repo-update
