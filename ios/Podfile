@@ -10,8 +10,7 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
-  pod 'react-native-maps',
-    path: '../node_modules/react-native-maps'
+  pod 'react-native-maps', path: '../node_modules/react-native-maps'
 
   use_react_native!(
     path: config[:reactNativePath],
@@ -23,51 +22,43 @@ target 'MyNewApp' do
   post_install do |installer|
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
 
+    # 1️⃣ Pods: target settings
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
-        cfg.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-        cfg.build_settings['ENABLE_BITCODE'] = 'NO'
+        cfg.build_settings['CODE_SIGNING_ALLOWED']       = 'NO'
+        cfg.build_settings['ENABLE_BITCODE']             = 'NO'
       end
     end
 
-    # RUTA del proyecto de la app
-    app_proj_path = File.join(installer.pods_project.path.dirname.dirname, 'MyNewApp.xcodeproj')
-    app_proj = Xcodeproj::Project.open(app_proj_path)
-    app_target = app_proj.targets.find { |t| t.name == 'MyNewApp' }
+    # 2️⃣ App project
+    project_root = File.dirname(installer.pods_project.path.dirname)
+    app_proj     = Xcodeproj::Project.open(File.join(project_root, 'MyNewApp.xcodeproj'))
+    app_target   = app_proj.targets.find { |t| t.name == 'MyNewApp' }
 
-    # Desactivar Swift si lo estás forzando
+    # 3️⃣ Desactivar Swift
     app_target.build_configurations.each do |cfg|
-      cfg.build_settings['SWIFT_EMIT_MODULE'] = 'NO'
+      cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
       cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
     end
 
-    # Asegura que no haya archivos Swift
-    group = app_proj.main_group.find_subpath('MyNewApp', true)
-    swift_ref = group&.files&.find { |f| f.path&.end_with?('.swift') }
+    # 4️⃣ Eliminar Swift references (opcional)
+    group     = app_proj.main_group.find_subpath('MyNewApp', true)
+    swift_ref = group.files.find { |f| f.path.end_with?('.swift') }
     group.remove_reference(swift_ref) if swift_ref
 
     phase = app_target.source_build_phase
-    phase.files.each do |bf|
-      phase.remove_build_file(bf) if bf.file_ref&.path&.end_with?('.swift')
-    end
+    phase.files.each { |bf| phase.remove_build_file(bf) if bf.file_ref.path.end_with?('.swift') }
 
-    # Asegura que AppDelegate.m esté en Compile Sources
+    # 5️⃣ Asegurar AppDelegate.m en Compile Sources
     main_group = app_proj.main_group.find_subpath('MyNewApp', false)
-    file_ref = main_group.find_file_by_path('AppDelegate.m') || main_group.new_file('MyNewApp/AppDelegate.m')
-    unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
-      phase.add_file_reference(file_ref, true)
-    end
+    file_ref   = main_group.find_file_by_path('AppDelegate.m') ||
+                 main_group.new_file('MyNewApp/AppDelegate.m')
+    phase.add_file_reference(file_ref, true) unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
 
-    # ✅ Eliminar Embed Pods Frameworks de forma segura
-    app_proj.targets.each do |target|
-      target.build_phases.each do |phase|
-        if phase.respond_to?(:name) && phase.name == '[CP] Embed Pods Frameworks'
-          UI.message("🚫 Eliminando fase [CP] Embed Pods Frameworks del target #{target.name}")
-          target.build_phases.delete(phase)
-        end
-      end
-    end
+    # 6️⃣ Eliminar la fase de embed para acelerar el archive
+    embed_phase = app_target.build_phases.find { |bp| bp.display_name.include? 'Embed Pods Frameworks' }
+    app_target.build_phases.delete(embed_phase) if embed_phase
 
     app_proj.save
   end

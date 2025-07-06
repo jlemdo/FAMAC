@@ -10,62 +10,50 @@ jobs:
 
     steps:
       # 1️⃣ Checkout del código
-      - name: 🔄 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
 
-      # 2️⃣ Cargar SSH key para certi-ios.git
-      - name: 🔑 Setup SSH agent
+      # 2️⃣ Setup SSH agent (para repos privados de certificados)
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # 3️⃣ Instalar Node.js y deps de JS
-      - name: ⚙️ Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: 📦 Install JS dependencies
+      - name: Install JS dependencies
         run: npm install
 
-      # 4️⃣ Instalar Ruby
-      - name: 💎 Set up Ruby
+      # 4️⃣ Instalar Ruby y CocoaPods
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.1
           bundler-cache: true
 
-      # 5️⃣ Cache de gems y Pods (¡ojo con la indentación!)
-      - name: 📚 Cache Ruby gems and CocoaPods
-        uses: actions/cache@v3
-        with:
-          path: |
-              ~/.bundle
-               ios/Pods
-          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      # 6️⃣ Instalar gems y Pods
-      - name: 🛠️ Install Ruby gems & CocoaPods
+      - name: Install Ruby gems & CocoaPods
         run: |
           gem install bundler
           bundle install
           bundle exec pod install --project-directory=ios --repo-update
 
-      # 7️⃣ Limpieza de caches Xcode antiguos
-      - name: 🧹 Clean DerivedData
+      # 🧹 Limpiar DerivedData (evita cachés corruptos)
+      - name: Clean Xcode DerivedData
         run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
-      # 8️⃣ Lane de Fastlane: build + TestFlight
-      - name: 🚀 Build & upload to TestFlight
+      # 5️⃣ Build, match & TestFlight
+      - name: Build & upload to TestFlight
         env:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
-          MATCH_GIT_URL:    ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD:   ${{ secrets.MATCH_PASSWORD }}
-          APP_STORE_CONNECT_API_KEY_KEY_ID:   ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_CONTENT:   ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          MATCH_GIT_URL:   ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD:  ${{ secrets.MATCH_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID:    ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID:  ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT:    ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
         run: bundle exec fastlane beta
