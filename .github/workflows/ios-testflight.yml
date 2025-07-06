@@ -42,8 +42,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path:
-            - ~/.bundle
-            - ios/Pods
+              ~/.bundle
+               ios/Pods
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
