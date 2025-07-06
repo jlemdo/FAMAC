@@ -2,7 +2,7 @@
 
 require 'xcodeproj'
 
-# ➊ Deshabilita el re-ejecutado de fases por falta de outputs
+# ➊ Evita que CocoaPods re-ejecute fases sin outputs y se cuelgue en CI
 install! 'cocoapods', :disable_input_output_paths => true
 
 platform :ios, '16.0'
@@ -15,8 +15,10 @@ prepare_react_native_project!
 target 'MyNewApp' do
   config = use_native_modules!
 
+  # Dependencia adicional
   pod 'react-native-maps', path: '../node_modules/react-native-maps'
 
+  # Configuración React Native (New Architecture / Fabric)
   use_react_native!(
     path: config[:reactNativePath],
     app_path: "#{Pod::Config.instance.installation_root}/..",
@@ -25,17 +27,17 @@ target 'MyNewApp' do
   )
 
   post_install do |installer|
-    # React Native post-install hooks
+    # Hooks estándar RN
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
 
-    # ➋ Elimina cualquier fase de “[CP] Embed Pods Frameworks”
+    # ➋ Elimina la fase “[CP] Embed Pods Frameworks” en todos los targets
     installer.pods_project.targets.each do |t|
       t.shell_script_build_phases.delete_if { |phase|
         phase.name.include? 'Embed Pods Frameworks'
       }
     end
 
-    # ➌ Ajustes globales de pods
+    # ➌ Ajustes globales en cada pod
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
@@ -48,10 +50,12 @@ target 'MyNewApp' do
     project_root = File.dirname(installer.pods_project.path.dirname)
     app_proj     = Xcodeproj::Project.open(File.join(project_root, 'MyNewApp.xcodeproj'))
     app_target   = app_proj.targets.find { |t| t.name == 'MyNewApp' }
+
     app_target.build_configurations.each do |cfg|
       cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
       cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
     end
+
     app_proj.save
   end
 end
