@@ -13,8 +13,8 @@ platform :ios do
     # ➋ Bundle Identifier dinámico
     update_app_identifier(
       xcodeproj:      "ios/MyNewApp.xcodeproj",
-      plist_path:     "ios/MyNewApp/Info.plist",
-      app_identifier: ENV.fetch("APP_IDENTIFIER", "com.occr.productos")
+      plist_path:     "MyNewApp/Info.plist",
+      app_identifier: "com.occr.productos"
     )
 
     # ➌ Team ID
