@@ -36,7 +36,8 @@ target 'MyNewApp' do
     # 2) Calcula la ruta a MyNewApp.xcodeproj
     pods_xcproj = installer.pods_project.path                 # …/ios/Pods/Pods.xcodeproj
     ios_folder  = File.dirname(pods_xcproj)                   # …/ios/Pods
-    project_root= File.dirname(ios_folder)                    # …/ios
+    project_root= File.dirname(ios_folder) 
+    app_xcodeproj_path = File.join(installer.pods_project.path.dirname.dirname, 'MyNewApp.xcodeproj')                   # …/ios
     app_proj    = Xcodeproj::Project.open(File.join(project_root, 'MyNewApp.xcodeproj'))
     app_target  = app_proj.targets.find { |t| t.name == 'MyNewApp' }
 
@@ -64,9 +65,11 @@ target 'MyNewApp' do
       phase.add_file_reference(file_ref, true)
     end
 
-    # 6) Elimina la fase Embed Pods Frameworks
-    embed_phase = app_target.build_phases.find { |bp| bp.display_name == 'Embed Pods Frameworks' }
-    app_target.build_phases.delete(embed_phase) if embed_phase
+     embed_phase = app_target.build_phases.find { |bp| bp.display_name == 'Embed Pods Frameworks' }
+    if embed_phase
+      app_target.build_phases.delete(embed_phase)
+      UI.message "✅ Eliminada fase Embed Pods Frameworks"
+    end
 
     # 7) Guarda
     app_proj.save
