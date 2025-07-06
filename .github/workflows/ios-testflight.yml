@@ -1,50 +1,44 @@
 name: 🚀 Build & Upload TestFlight
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+on: [push, pull_request]
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-      - name: Cache Ruby gems y CocoaPods
+      - name: Cache Pods & node_modules
         uses: actions/cache@v3
         with:
           path: |
-            ~/.gem
-            ~/.cocoapods
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+            ios/Pods
+            node_modules
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock') }}
 
-      - name: Instala CocoaPods
-        run: sudo gem install cocoapods
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          node-version: 18
+          ruby-version: 3.3.0
+          bundler-cache: true
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: true
 
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Instala dependencias JS
+      - name: Install JS dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Instala CocoaPods pods
+      - name: Install CocoaPods
         working-directory: ios
-        run: pod install --repo-update
+        run: bundle exec pod install --repo-update
 
-      - name: Run Fastlane lane
+      - name: Run Fastlane βeta
         env:
           MATCH_GIT_URL:                    ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD:                   ${{ secrets.MATCH_PASSWORD }}
@@ -54,4 +48,4 @@ jobs:
           DEVELOPMENT_TEAM:                 ${{ secrets.DEVELOPMENT_TEAM }}
           APP_IDENTIFIER:                   ${{ secrets.APP_IDENTIFIER }}
           CI_KEYCHAIN_NAME:                 fastlane-ci
-        run: bundle install && bundle exec fastlane ios beta
+        run: bundle exec fastlane ios beta
