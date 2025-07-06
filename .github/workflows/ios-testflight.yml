@@ -9,17 +9,36 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: 📥 Checkout code
+      # 1️⃣ Checkout del código
+      - name: 🔄 Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
 
+      # 2️⃣ Cargar SSH key para certi-ios.git
       - name: 🔑 Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: 📦 Cache Ruby gems and CocoaPods
+      # 3️⃣ Instalar Node.js y deps de JS
+      - name: ⚙️ Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 📦 Install JS dependencies
+        run: npm install
+
+      # 4️⃣ Instalar Ruby
+      - name: 💎 Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+          bundler-cache: true
+
+      # 5️⃣ Cache de gems y Pods (¡ojo con la indentación!)
+      - name: 📚 Cache Ruby gems and CocoaPods
         uses: actions/cache@v3
         with:
           path:
@@ -29,33 +48,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
-      - name: 🛠 Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.1
-          bundler-cache: true
-
-      - name: 📦 Install JS deps
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - run: npm ci
-
-      - name: 📦 Install CocoaPods
+      # 6️⃣ Instalar gems y Pods
+      - name: 🛠️ Install Ruby gems & CocoaPods
         run: |
-          cd ios
-          pod repo update
-          pod install
-        working-directory: ios
+          gem install bundler
+          bundle install
+          bundle exec pod install --project-directory=ios --repo-update
 
+      # 7️⃣ Limpieza de caches Xcode antiguos
       - name: 🧹 Clean DerivedData
         run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
 
+      # 8️⃣ Lane de Fastlane: build + TestFlight
       - name: 🚀 Build & upload to TestFlight
         env:
-          DEVELOPMENT_TEAM:                ${{ secrets.DEVELOPMENT_TEAM }}
-          MATCH_GIT_URL:                  ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD:                 ${{ secrets.MATCH_PASSWORD }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          MATCH_GIT_URL:    ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD:   ${{ secrets.MATCH_PASSWORD }}
           APP_STORE_CONNECT_API_KEY_KEY_ID:   ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
           APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_CONTENT:   ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
