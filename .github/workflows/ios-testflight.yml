@@ -23,7 +23,7 @@ jobs:
         run: sudo gem install cocoapods
 
       - name: Set up Node.js
-        uses: actions/setup-node@v18
+        uses: actions/setup-node@v3
         with:
           node-version: 18
 
