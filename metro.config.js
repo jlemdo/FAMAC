@@ -1,23 +1,17 @@
-// metro.config.js
+/**
+ * Metro configuration
+ * https://reactnative.dev/docs/metro
+ */
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 const os = require('os');
 
-// En Node <18 no existe os.availableParallelism(), así que caemos a os.cpus().length
-const availableWorkers = typeof os.availableParallelism === 'function'
-  ? os.availableParallelism()
-  : os.cpus().length;
+const defaultConfig = getDefaultConfig(__dirname);
 
-module.exports = mergeConfig(
-  getDefaultConfig(__dirname),
-  {
-    // Inyectamos maxWorkers en la configuración final
-    maxWorkers: availableWorkers,
-    transformer: {
-      // tus otras opciones de transformer, si las tuvieras...
-    },
-    resolver: {
-      // tus otras opciones de resolver, si las tuvieras...
-    },
-    // etc.
-  }
-);
+// Fallback para Node < 18
+if (typeof os.availableParallelism !== 'function') {
+  os.availableParallelism = () => os.cpus().length;
+}
+
+module.exports = mergeConfig(defaultConfig, {
+  // tus overrides aquí (si los hay)
+});
