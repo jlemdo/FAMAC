@@ -63,7 +63,7 @@ platform :ios do
       disable_xcpretty: true,
       export_options: {
         provisioningProfiles: {
-          ENV.fetch("APP_IDENTIFIER") => "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
+          "com.occr.productos" => "match AppStore com.occr.productos"
         }
       }
     )
