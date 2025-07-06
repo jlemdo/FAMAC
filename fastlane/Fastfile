@@ -1,12 +1,10 @@
-# Fastfile
-
 default_platform(:ios)
 
 platform :ios do
-  desc "Build & upload a TestFlight beta with dynamic signing and bundle ID"
+  desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
   lane :beta do
-    # ➊ Configura Fastlane para CI: crea y desbloquea un keychain dedicado
-    create_keychain(
+    # 0️⃣ Bundle ID
+      create_keychain(
       name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
       password: ENV.fetch("CI_KEYCHAIN_PASSWORD", "fastlane"),
       default_keychain: true,
@@ -14,71 +12,61 @@ platform :ios do
       timeout: 3600,
       lock_when_sleeps: true
     )
-
-
-    # ➋ Actualiza el Bundle ID dinámicamente
     update_app_identifier(
-      xcodeproj:       "ios/MyNewApp.xcodeproj",
-      plist_path:      "MyNewApp/Info.plist",
-      app_identifier:  ENV.fetch("APP_IDENTIFIER", "com.occr.productos")
+      xcodeproj:      "ios/MyNewApp.xcodeproj",
+      plist_path:     "MyNewApp/Info.plist",
+      app_identifier: "com.occr.productos"
     )
 
-    # ➌ Asigna el Team ID correcto
+    # 1️⃣ Team ID
     update_project_team(
       path:    "ios/MyNewApp.xcodeproj",
       targets: ["MyNewApp"],
-      teamid:  ENV.fetch("DEVELOPMENT_TEAM")
+      teamid:  ENV["DEVELOPMENT_TEAM"]
     )
 
-    # ➍ Configura firma manual para Release con el perfil de match
+    # 2️⃣ Signing manual para Release
     update_code_signing_settings(
       use_automatic_signing: false,
       path:                  "ios/MyNewApp.xcodeproj",
-      team_id:               ENV.fetch("DEVELOPMENT_TEAM"),
+      team_id:               ENV["DEVELOPMENT_TEAM"],
       targets:               ["MyNewApp"],
       build_configurations:  ["Release"],
       code_sign_identity:    "Apple Distribution",
-      profile_name:          "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
+      profile_name:          "match AppStore com.occr.productos"
     )
 
-    # ➎ Genera el objeto api_key para App Store Connect
+    # 3️⃣ Match readonly
     api_key = app_store_connect_api_key(
-      key_id:      ENV.fetch("APP_STORE_CONNECT_API_KEY_KEY_ID"),
-      issuer_id:   ENV.fetch("APP_STORE_CONNECT_API_KEY_ISSUER_ID"),
-      key_content: ENV.fetch("APP_STORE_CONNECT_API_KEY_CONTENT").gsub("\\n", "\n")
+      key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
+    match(type: "appstore", api_key: api_key, readonly: true)
 
-    # ➏ Descarga certificados y perfiles en modo readonly,
-    #    clona solo la rama principal para mayor velocidad
-    match(
-      git_url:               ENV.fetch("MATCH_GIT_URL"),
-      type:                  "appstore",
-      api_key:               api_key,
-      readonly:              true,
-      clone_branch_directly: true
-    )
-
-    # ➐ Compila el IPA sin xcpretty para ver todos los logs
-    build_app(
-      workspace:         "ios/MyNewApp.xcworkspace",
-      scheme:            "MyNewApp",
-      configuration:     "Release",
-      clean:             true,
-      export_method:     "app-store",
-      output_directory:  "build",
-      output_name:       "MyNewApp.ipa",
-      disable_xcpretty:  true,
-      export_options: {
-        provisioningProfiles: {
-          ENV.fetch("APP_IDENTIFIER") => "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
+    # 4️⃣ Compilar con Gym
+    begin
+      build_app(
+        workspace:        "ios/MyNewApp.xcworkspace",
+        scheme:           "MyNewApp",
+        configuration:    "Release",
+        clean:            true,
+        export_method:    "app-store",
+        output_directory: "build",
+        output_name:      "MyNewApp",
+        export_options: {
+          provisioningProfiles: {
+            "com.occr.productos" => "match AppStore com.occr.productos"
+          }
         }
-      }
-    )
+      )
+    rescue => exception
+      sh("echo '----- GYM LOG (últimas 200 líneas) -----'")
+      sh("tail -n200 ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
+      raise exception
+    end
 
-    # ➑ Sube el build a TestFlight y no espera el procesamiento en App Store Connect
-    upload_to_testflight(
-      api_key:                            api_key,
-      skip_waiting_for_build_processing: true
-    )
+    # 5️⃣ Subir a TestFlight
+    upload_to_testflight(api_key: api_key)
   end
 end

@@ -1,71 +1,71 @@
-name: 🚀 Build & Upload TestFlight
+name: iOS CI – TestFlight
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-      # 1️⃣ Cache de gemas Ruby y repos de CocoaPods para acelerar install
-      - name: Cache Ruby gems y CocoaPods
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gem
-            ~/.cocoapods
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-
-      # 2️⃣ Instala la última versión de CocoaPods (corrige bugs de fases colgantes)
-      - name: Instala CocoaPods
-        run: sudo gem install cocoapods
-
-      # 3️⃣ Node.js LTS (v18) para tus dependencias JS
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      # 4️⃣ Carga tu clave SSH para poder clonar el repo privado de Match
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      # 5️⃣ Clona tu código (incluye submódulos)
-      - name: Checkout code
+      # 1️⃣ Checkout del código
+      - name: 🔄 Checkout code
         uses: actions/checkout@v3
         with:
           submodules: true
 
-      # 6️⃣ Instala dependencias JS
-      - name: Instala dependencias JS
-        run: yarn install --frozen-lockfile
+      # 2️⃣ Cargar SSH key para certi-ios.git
+      - name: 🔑 Setup SSH agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # 7️⃣ Instala pods de iOS
-      - name: Instala CocoaPods pods
-        working-directory: ios
-        run: pod install --repo-update
+      # 3️⃣ Instalar Node.js y deps de JS
+      - name: ⚙️ Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-      # 8️⃣ Ejecuta la lane de Fastlane
-      - name: Run Fastlane lane
+      - name: 📦 Install JS dependencies
+        run: npm install
+
+      # 4️⃣ Instalar Ruby
+      - name: 💎 Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.1
+          bundler-cache: true
+
+      # 5️⃣ Cache de gems y Pods (¡ojo con la indentación!)
+      - name: 📚 Cache Ruby gems and CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: |
+              ~/.bundle
+               ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      # 6️⃣ Instalar gems y Pods
+      - name: 🛠️ Install Ruby gems & CocoaPods
+        run: |
+          gem install bundler
+          bundle install
+          bundle exec pod install --project-directory=ios --repo-update
+
+      # 7️⃣ Limpieza de caches Xcode antiguos
+      - name: 🧹 Clean DerivedData
+        run: rm -rf ~/Library/Developer/Xcode/DerivedData/*
+
+      # 8️⃣ Lane de Fastlane: build + TestFlight
+      - name: 🚀 Build & upload to TestFlight
         env:
-          # Repo de certificados para match (SSH)
-          MATCH_GIT_URL:                             ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD:                            ${{ secrets.MATCH_PASSWORD }}
-          # Credenciales App Store Connect
-          APP_STORE_CONNECT_API_KEY_KEY_ID:          ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
-          APP_STORE_CONNECT_API_KEY_ISSUER_ID:       ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_CONTENT:         ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
-          # Equipo de desarrollo y bundle identifier
-          DEVELOPMENT_TEAM:                          ${{ secrets.DEVELOPMENT_TEAM }}
-          APP_IDENTIFIER:                            ${{ secrets.APP_IDENTIFIER }}
-          # Keychain dedicado que creará setup_ci
-          CI_KEYCHAIN_NAME:                          fastlane-ci
-        run: fastlane ios beta
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          MATCH_GIT_URL:    ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD:   ${{ secrets.MATCH_PASSWORD }}
+          APP_STORE_CONNECT_API_KEY_KEY_ID:   ${{ secrets.APP_STORE_CONNECT_API_KEY_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT:   ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: bundle exec fastlane beta
