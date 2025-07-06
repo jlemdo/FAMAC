@@ -36,6 +36,8 @@ platform :ios do
     )
     match(type: "appstore", api_key: api_key, readonly: true)
 
+     sh("security unlock-keychain -p \"#{ENV.fetch('KEYCHAIN_PASSWORD')}\" ~/Library/Keychains/login.keychain-db")
+
     # 4️⃣ Compilar con Gym
     begin
       build_app(

@@ -1,4 +1,9 @@
+# Podfile
+
 require 'xcodeproj'
+
+# ➊ Deshabilita el re-ejecutado de fases por falta de outputs
+install! 'cocoapods', :disable_input_output_paths => true
 
 platform :ios, '16.0'
 use_frameworks! :linkage => :static
@@ -20,9 +25,17 @@ target 'MyNewApp' do
   )
 
   post_install do |installer|
+    # React Native post-install hooks
     react_native_post_install(installer, config[:reactNativePath], mac_catalyst_enabled: false)
 
-    # 1️⃣ Pods: target settings
+    # ➋ Elimina cualquier fase de “[CP] Embed Pods Frameworks”
+    installer.pods_project.targets.each do |t|
+      t.shell_script_build_phases.delete_if { |phase|
+        phase.name.include? 'Embed Pods Frameworks'
+      }
+    end
+
+    # ➌ Ajustes globales de pods
     installer.pods_project.targets.each do |t|
       t.build_configurations.each do |cfg|
         cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
@@ -31,39 +44,14 @@ target 'MyNewApp' do
       end
     end
 
-    # 2️⃣ App project
+    # ➍ Desactivar compilación Swift en el proyecto de la app
     project_root = File.dirname(installer.pods_project.path.dirname)
     app_proj     = Xcodeproj::Project.open(File.join(project_root, 'MyNewApp.xcodeproj'))
     app_target   = app_proj.targets.find { |t| t.name == 'MyNewApp' }
-
-    # 3️⃣ Desactivar Swift
     app_target.build_configurations.each do |cfg|
       cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
       cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
     end
-
-    # 4️⃣ Eliminar Swift references (opcional)
-    group     = app_proj.main_group.find_subpath('MyNewApp', true)
-    swift_ref = group.files.find { |f| f.path.end_with?('.swift') }
-    group.remove_reference(swift_ref) if swift_ref
-
-    phase = app_target.source_build_phase
-    phase.files.each { |bf| phase.remove_build_file(bf) if bf.file_ref.path.end_with?('.swift') }
-
-    # 5️⃣ Asegurar AppDelegate.m en Compile Sources
-    main_group = app_proj.main_group.find_subpath('MyNewApp', false)
-    file_ref   = main_group.find_file_by_path('AppDelegate.m') ||
-                 main_group.new_file('MyNewApp/AppDelegate.m')
-    phase.add_file_reference(file_ref, true) unless phase.files_references.any? { |fr| fr.path == 'AppDelegate.m' }
-
-    # 6️⃣ Eliminar la fase de embed para acelerar el archive
-    # 🔥 Aquí eliminamos de verdad el CP Embed Pods Frameworks
-    embed_phase = app_target.build_phases.find { |bp| bp.display_name == "[CP] Embed Pods Frameworks" }
-    if embed_phase
-      app_target.build_phases.delete(embed_phase)
-      UI.message "✅ Eliminada fase [CP] Embed Pods Frameworks"
-    end
-
     app_proj.save
   end
 end
