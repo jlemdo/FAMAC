@@ -43,13 +43,7 @@ platform :ios do
     )
 
     # ➏ Descarga certificados/profiles con match (SSH+git_url) en readonly
-    match(
-      git_url:               ENV.fetch("MATCH_GIT_URL"),
-      type:                  "appstore",
-      api_key:               api_key,
-      readonly:              true,
-      clone_branch_directly: true
-    )
+    match(type: "appstore", api_key: api_key, readonly: true)
 
     # ➐ Compila el .ipa sin xcpretty para logs completos
     build_app(
@@ -75,3 +69,4 @@ platform :ios do
     )
   end
 end
+
