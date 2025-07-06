@@ -1,30 +1,29 @@
-# Fastfile
-
 default_platform(:ios)
 
 platform :ios do
-  desc "Build & upload a TestFlight beta con firma y bundle dinámicos"
+  desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
   lane :beta do
-    # ➊ Configura Fastlane para CI (crea y desbloquea keychain, sin prompts)
+    # ➊ Configura Fastlane para CI: keychain dedicado (sin provider github_actions, que no está soportado)
     setup_ci(
       keychain_name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
+      provider:     "circleci"
     )
 
-    # ➋ Bundle Identifier dinámico
+    # ➋ Bundle Identifier dinámico: asegura que modificamos el Info.plist que Xcode realmente usa
     update_app_identifier(
       xcodeproj:      "ios/MyNewApp.xcodeproj",
-      plist_path:     "MyNewApp/Info.plist",
-      app_identifier: "com.occr.productos"
+      plist_path:     "ios/MyNewApp/Info.plist",          # ← Cambiado: antes era "MyNewApp/Info.plist" y Fastlane no lo encontraba
+      app_identifier: ENV.fetch("APP_IDENTIFIER", "com.occr.productos")
     )
 
-    # ➌ Team ID
+    # ➌ Team ID en el proyecto
     update_project_team(
       path:    "ios/MyNewApp.xcodeproj",
       targets: ["MyNewApp"],
       teamid:  ENV.fetch("DEVELOPMENT_TEAM")
     )
 
-    # ➍ Firma manual para Release
+    # ➍ Signing manual para Release
     update_code_signing_settings(
       use_automatic_signing: false,
       path:                  "ios/MyNewApp.xcodeproj",
@@ -32,20 +31,30 @@ platform :ios do
       targets:               ["MyNewApp"],
       build_configurations:  ["Release"],
       code_sign_identity:    "Apple Distribution",
-      profile_name:          "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
+      profile_name:          "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"  
+      # ← Asegura que el provisioning profile coincida EXACTO con el que creamos: 
+      #    "match AppStore com.occr.productos"
     )
 
-    # ➎ Crea el objeto API Key para App Store Connect
+    # ➎ Descarga certificados y perfiles
     api_key = app_store_connect_api_key(
-      key_id:      ENV.fetch('APP_STORE_CONNECT_API_KEY_KEY_ID'),
-      issuer_id:   ENV.fetch('APP_STORE_CONNECT_API_KEY_ISSUER_ID'),
-      key_content: ENV.fetch('APP_STORE_CONNECT_API_KEY_CONTENT').gsub("\\n", "\n")
+      key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
+    )
+    match(
+      type:               "appstore",
+      api_key:            api_key,
+      readonly:           false,                             # <— que pueda crear el profile si no existía
+      git_url:            ENV.fetch("MATCH_GIT_URL"),        # <— tu repo de match
+      app_identifier:     [ENV.fetch("APP_IDENTIFIER")],
+      clone_branch_directly: true
     )
 
-    # ➏ Descarga certificados/profiles con match (SSH+git_url) en readonly
-  match(type: "appstore", api_key: api_key, readonly: true)
+    # (Opcional) Verifica en CI que el .mobileprovision esté instalado
+    sh("ls -1 ~/Library/MobileDevice/Provisioning\\ Profiles/ | grep #{ENV.fetch("APP_IDENTIFIER")}")
 
-    # ➐ Compila el .ipa sin xcpretty para logs completos
+    # ➏ Compila y archive IPA
     build_app(
       workspace:        "ios/MyNewApp.xcworkspace",
       scheme:           "MyNewApp",
@@ -54,13 +63,11 @@ platform :ios do
       export_method:    "app-store",
       output_directory: "build",
       output_name:      "MyNewApp"
-
+      # ← Eliminado export_options con provisioningProfiles que estaba generando el par vacío ""
     )
 
-    # ➑ Sube a TestFlight sin esperar procesamiento
-    upload_to_testflight(
-      api_key:                            api_key,
-      skip_waiting_for_build_processing: true
-    )
+    # ➐ Sube a TestFlight
+    upload_to_testflight(api_key: api_key)
   end
 end
+
