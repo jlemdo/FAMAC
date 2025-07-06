@@ -1,72 +1,78 @@
+# Fastfile
+
 default_platform(:ios)
 
 platform :ios do
-  desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
+  desc "Build & upload a TestFlight beta con firma y bundle dinámicos"
   lane :beta do
-    # 0️⃣ Bundle ID
-      create_keychain(
-      name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
-      password: ENV.fetch("CI_KEYCHAIN_PASSWORD", "fastlane"),
-      default_keychain: true,
-      unlock: true,
-      timeout: 3600,
-      lock_when_sleeps: true
+    # ➊ Configura Fastlane para CI (crea y desbloquea keychain, sin prompts)
+    setup_ci(
+      keychain_name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
+      provider:     "github_actions"
     )
+
+    # ➋ Bundle Identifier dinámico
     update_app_identifier(
       xcodeproj:      "ios/MyNewApp.xcodeproj",
       plist_path:     "MyNewApp/Info.plist",
-      app_identifier: "com.occr.productos"
+      app_identifier: ENV.fetch("APP_IDENTIFIER", "com.occr.productos")
     )
 
-    # 1️⃣ Team ID
+    # ➌ Team ID
     update_project_team(
       path:    "ios/MyNewApp.xcodeproj",
       targets: ["MyNewApp"],
-      teamid:  ENV["DEVELOPMENT_TEAM"]
+      teamid:  ENV.fetch("DEVELOPMENT_TEAM")
     )
 
-    # 2️⃣ Signing manual para Release
+    # ➍ Firma manual para Release
     update_code_signing_settings(
       use_automatic_signing: false,
       path:                  "ios/MyNewApp.xcodeproj",
-      team_id:               ENV["DEVELOPMENT_TEAM"],
+      team_id:               ENV.fetch("DEVELOPMENT_TEAM"),
       targets:               ["MyNewApp"],
       build_configurations:  ["Release"],
       code_sign_identity:    "Apple Distribution",
-      profile_name:          "match AppStore com.occr.productos"
+      profile_name:          "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
     )
 
-    # 3️⃣ Match readonly
+    # ➎ Crea el objeto API Key para App Store Connect
     api_key = app_store_connect_api_key(
-      key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
-      issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
-      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
+      key_id:      ENV.fetch('APP_STORE_CONNECT_API_KEY_KEY_ID'),
+      issuer_id:   ENV.fetch('APP_STORE_CONNECT_API_KEY_ISSUER_ID'),
+      key_content: ENV.fetch('APP_STORE_CONNECT_API_KEY_CONTENT').gsub("\\n", "\n")
     )
-    match(type: "appstore", api_key: api_key, readonly: true)
 
-    # 4️⃣ Compilar con Gym
-    begin
-      build_app(
-        workspace:        "ios/MyNewApp.xcworkspace",
-        scheme:           "MyNewApp",
-        configuration:    "Release",
-        clean:            true,
-        export_method:    "app-store",
-        output_directory: "build",
-        output_name:      "MyNewApp",
-        export_options: {
-          provisioningProfiles: {
-            "com.occr.productos" => "match AppStore com.occr.productos"
-          }
+    # ➏ Descarga certificados/profiles con match (SSH+git_url) en readonly
+    match(
+      git_url:               ENV.fetch("MATCH_GIT_URL"),
+      type:                  "appstore",
+      api_key:               api_key,
+      readonly:              true,
+      clone_branch_directly: true
+    )
+
+    # ➐ Compila el .ipa sin xcpretty para logs completos
+    build_app(
+      workspace:        "ios/MyNewApp.xcworkspace",
+      scheme:           "MyNewApp",
+      configuration:    "Release",
+      clean:            true,
+      export_method:    "app-store",
+      output_directory: "build",
+      output_name:      "MyNewApp.ipa",
+      disable_xcpretty: true,
+      export_options: {
+        provisioningProfiles: {
+          ENV.fetch("APP_IDENTIFIER") => "match AppStore #{ENV.fetch("APP_IDENTIFIER")}"
         }
-      )
-    rescue => exception
-      sh("echo '----- GYM LOG (últimas 200 líneas) -----'")
-      sh("tail -n200 ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
-      raise exception
-    end
+      }
+    )
 
-    # 5️⃣ Subir a TestFlight
-    upload_to_testflight(api_key: api_key)
+    # ➑ Sube a TestFlight sin esperar procesamiento
+    upload_to_testflight(
+      api_key:                            api_key,
+      skip_waiting_for_build_processing: true
+    )
   end
 end
