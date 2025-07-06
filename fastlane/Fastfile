@@ -5,8 +5,8 @@ platform :ios do
   lane :beta do
     # 0️⃣ Bundle ID
     update_app_identifier(
-      xcodeproj:      "ios/MyNewApp.xcodeproj",
-      plist_path:     "MyNewApp/Info.plist",
+      xcodeproj:  "ios/MyNewApp.xcodeproj",
+      plist_path: "MyNewApp/Info.plist",
       app_identifier: "com.occr.productos"
     )
 
@@ -35,6 +35,22 @@ platform :ios do
       key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
     match(type: "appstore", api_key: api_key, readonly: true)
+
+    # 🔐 Asegurar y desbloquear keychain antes de compilar
+    default_keychain(
+      keychain_path: "#{ENV['HOME']}/Library/Keychains/fastlane-ci-db.keychain-db",
+      unlock:        true
+    )
+    unlock_keychain(
+      path:     "#{ENV['HOME']}/Library/Keychains/fastlane-ci-db.keychain-db",
+      password: ENV['KEYCHAIN_PASSWORD']
+    )
+    set_keychain_settings(
+      keychain_path:    "#{ENV['HOME']}/Library/Keychains/fastlane-ci-db.keychain-db",
+      lock_when_sleeps: false,
+      timeout:          3600,
+      lock_timeout:     3600
+    )
 
     # 4️⃣ Compilar con Gym
     begin
