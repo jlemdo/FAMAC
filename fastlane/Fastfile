@@ -6,10 +6,15 @@ platform :ios do
   desc "Build & upload a TestFlight beta with dynamic signing and bundle ID"
   lane :beta do
     # ➊ Configura Fastlane para CI: crea y desbloquea un keychain dedicado
-    setup_ci(
-      keychain_name:     ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
-      provider:     "github_actions"
+    create_keychain(
+      name: ENV.fetch("CI_KEYCHAIN_NAME", "fastlane-ci"),
+      password: ENV.fetch("CI_KEYCHAIN_PASSWORD", "fastlane"),
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: true
     )
+
 
     # ➋ Actualiza el Bundle ID dinámicamente
     update_app_identifier(
