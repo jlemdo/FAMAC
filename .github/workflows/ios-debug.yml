@@ -1,8 +1,17 @@
-name: 🐞 iOS Quick Debug
+name: 🚀 CI
 
-# Se ejecuta solo manualmente
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      debug:
+        description: '¿Ejecutar Quick-Debug en simulador iOS?'
+        required: true
+        default: 'false'
+        type: boolean
 
 jobs:
   quick-debug:
