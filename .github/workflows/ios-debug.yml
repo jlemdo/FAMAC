@@ -1,3 +1,31 @@
+name: 🐞 iOS Quick Debug
+
+# Se ejecuta solo manualmente
+on:
+  workflow_dispatch:
+
+jobs:
+  quick-debug:
+    name: Quick Debug en Simulador iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout de código
+        uses: actions/checkout@v3
+
+      - name: Setup Ruby & CocoaPods
+        run: |
+          sudo gem install bundler cocoapods
+          bundle config set path vendor/bundle
+          bundle install
+
+      - name: Instala dependencias JS
+        run: yarn install --frozen-lockfile
+
+      - name: Pod install (iOS)
+        working-directory: ios
+        run: pod install --repo-update
+
       - name: Build & Run en Simulador
         run: |
           # 1. Apaga cualquier simulador corriendo
@@ -37,3 +65,4 @@
 
           # 5. Muestra logs nativos por 60 s
           xcrun simctl spawn booted log stream --style compact --predicate 'eventType == logEvent' --timeout 60
+
