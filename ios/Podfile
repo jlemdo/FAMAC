@@ -31,15 +31,15 @@ target 'MyNewApp' do
     app_path: "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # 1) Carga el spec generated vía path
   pod 'react-native-maps-generated',
-    :podspec => '../node_modules/react-native-maps/react-native-maps-generated.podspec'
+      path: '../node_modules/react-native-maps'
 
-
-  # ➎ Linkeo manual de react-native-maps (Core + AirMaps)
+  # 2) Carga el spec principal que incluye ios/AirMaps
   pod 'react-native-maps',
-    :path => '../node_modules/react-native-maps',
-    :podspec => '../node_modules/react-native-maps/react-native-maps.podspec',
-    :modular_headers => true
+      path: '../node_modules/react-native-maps',
+      podspec: '../node_modules/react-native-maps/react-native-maps.podspec',
+      modular_headers: true
 end
 
 post_install do |installer|
