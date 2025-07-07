@@ -84,7 +84,6 @@ platform :ios do
 
     ipa_path = Actions.lane_context[SharedValues::IPA_OUTPUT_PATH] # => "/Users/.../build/MyNewApp.ipa"
     sh("unzip -l #{ipa_path} | grep -i main.jsbundle")
-    sh("ls -R #{File.dirname(ipa_path)}/Payload/MyNewApp.app | grep main.jsbundle")
 
 
     # 5️⃣ Subir a TestFlight
