@@ -141,8 +141,8 @@ function AuthFlow() {
 
 export default function App() {
   return (
-    // <NotificationProvider>
-      // <StripeProvider publishableKey={PUBLISHABLE_KEY}>
+    <NotificationProvider>
+      <StripeProvider publishableKey={PUBLISHABLE_KEY}>
         <AuthProvider>
           <CartProvider>
             <OrderProvider>
@@ -150,8 +150,8 @@ export default function App() {
             </OrderProvider>
           </CartProvider>
         </AuthProvider>
-      // </StripeProvider>
-    // </NotificationProvider>
+      </StripeProvider>
+    </NotificationProvider>
   );
 }
 
