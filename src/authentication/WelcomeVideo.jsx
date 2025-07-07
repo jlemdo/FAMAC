@@ -51,7 +51,7 @@ const WelcomeVideo = () => {
   ).current;
 
   return (
-   <View><Text>Test</Text></View>
+   <View><Text>Occr Productos</Text></View>
   );
 };
 
