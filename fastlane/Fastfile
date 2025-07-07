@@ -43,7 +43,7 @@ platform :ios do
       key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
 
-    match(type: "appstore", api_key: api_key, readonly: true)
+    match(type: "appstore", api_key: api_key, readonly: true, clone_branch_directly:  true )
 
     # 1️⃣ Bundling RN para iOS
     sh(<<-CMD)
