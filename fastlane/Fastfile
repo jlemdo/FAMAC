@@ -82,9 +82,10 @@ platform :ios do
       raise exception
     end
 
-    # 🚀 Verificar que el JS bundle esté en el IPA
-    sh("unzip -l build/MyNewApp.ipa | grep -i jsbundle")
-    sh("ls -R build/Payload/MyNewApp.app | grep main.jsbundle")
+    ipa_path = Actions.lane_context[SharedValues::IPA_OUTPUT_PATH] # => "/Users/.../build/MyNewApp.ipa"
+    sh("unzip -l #{ipa_path} | grep -i main.jsbundle")
+    sh("ls -R #{File.dirname(ipa_path)}/Payload/MyNewApp.app | grep main.jsbundle")
+
 
     # 5️⃣ Subir a TestFlight
     upload_to_testflight(api_key: api_key)
