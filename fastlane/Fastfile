@@ -44,6 +44,22 @@ platform :ios do
 
     match(type: "appstore", api_key: api_key, readonly: true)
 
+    # 🚧 Bundling de React Native para iOS
+    sh(<<-CMD)
+      cd #{Dir.pwd} &&
+      npx react-native bundle \
+        --entry-file index.js \
+        --platform ios \
+        --dev false \
+        --bundle-output ios/main.jsbundle \
+        --assets-dest ios/assets
+    CMD
+
+    # ✅ Verifica que se generó el main.jsbundle y frena si no existe
+    unless File.exist?("ios/main.jsbundle") && Dir.exist?("ios/assets")
+      UI.user_error!("❌ Faltan archivos JS o assets — abortando build.")
+    end
+
     # 4️⃣ Compilar con Gym
     begin
       build_app(
@@ -65,6 +81,10 @@ platform :ios do
       sh("tail -n200 ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
       raise exception
     end
+
+    # 🚀 Verificar que el JS bundle esté en el IPA
+    sh("unzip -l build/MyNewApp.ipa | grep -i jsbundle")
+    sh("ls -R build/Payload/MyNewApp.app | grep main.jsbundle")
 
     # 5️⃣ Subir a TestFlight
     upload_to_testflight(api_key: api_key)
