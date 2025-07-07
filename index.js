@@ -9,3 +9,7 @@ AppRegistry.registerComponent(appName, () => () => (
     <Text>🚀 Hello World</Text>
   </View>
 ));
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  console.log('🔥 GLOBAL ERROR:', error.message, error.stack);
+  // opcional: envía a Sentry u otro servicio de logs
+});

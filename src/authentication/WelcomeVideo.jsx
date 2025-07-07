@@ -9,8 +9,8 @@ import {
   PanResponder,
   Image,
 } from 'react-native';
-import Video from 'react-native-video';
-import LinearGradient from 'react-native-linear-gradient';
+// import Video from 'react-native-video';
+// import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import fonts from '../theme/fonts';
 
@@ -51,45 +51,7 @@ const WelcomeVideo = () => {
   ).current;
 
   return (
-    <View style={styles.container}>
-      {/* Video de fondo */}
-      <Video
-        source={require('../assets/welcome.mp4')}
-        style={StyleSheet.absoluteFill}
-        resizeMode="cover"
-        repeat
-        muted={false}
-        posterResizeMode="cover"
-      />
-
-      {/* Degradado inferior para contraste */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.6)']}
-        style={styles.gradient}
-      />
-
-      {/* Overlay animado con logo y texto */}
-      <Animated.View
-        style={[
-          styles.overlay,
-          { transform: [{ translateY }], opacity: fadeAnim },
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <Image
-          source={require('../assets/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        <Text style={styles.heading}>
-          Desliza Hacia Arriba
-        </Text>
-        <Text style={styles.paragraph}>
-          para iniciar sesión{'\n'}o crear una cuenta
-        </Text>
-      </Animated.View>
-    </View>
+   <View><Text>Test</Text></View>
   );
 };
 
