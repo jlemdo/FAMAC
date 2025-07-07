@@ -1,0 +1,41 @@
+jobs:
+  quick-debug:
+    name: 🐞 Quick Debug (iOS Simulator)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Ruby & Bundler
+        run: |
+          sudo gem install bundler cocoapods
+
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Pod install
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Build Debug for Simulator
+        working-directory: ios
+        run: |
+          xcrun simctl shutdown all || true
+          xcrun simctl boot "iPhone 14"       # o el simulador que prefieras
+          xcodebuild \
+            -workspace MyNewApp.xcworkspace \
+            -scheme MyNewApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 14,OS=18.2' \
+            build \
+            | tee build.log
+
+      - name: Install & launch on Simulator
+        run: |
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name MyNewApp.app | head -n1)
+          xcrun simctl install booted "$APP_PATH"
+          xcrun simctl launch booted com.occr.productos || true
+
+      - name: Stream simulator logs for 60s
+        run: |
+          xcrun simctl spawn booted log stream --style compact --predicate 'eventType == logEvent' --timeout 60
