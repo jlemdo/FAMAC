@@ -1,28 +1,42 @@
+name: 🐞 iOS Quick Debug
+
+# Se ejecuta solo manualmente
+on:
+  workflow_dispatch:
+
 jobs:
   quick-debug:
-    name: 🐞 Quick Debug (iOS Simulator)
+    name: Quick Debug en Simulador iOS
     runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Install Ruby & Bundler
+    steps:
+      - name: Checkout de código
+        uses: actions/checkout@v3
+
+      - name: Setup Ruby & CocoaPods
         run: |
           sudo gem install bundler cocoapods
+          bundle config set path vendor/bundle
+          bundle install
 
-      - name: Install JS deps
+      - name: Instala dependencias JS
         run: yarn install --frozen-lockfile
 
-      - name: Pod install
+      - name: Pod install (iOS)
         working-directory: ios
         run: pod install --repo-update
 
-      - name: Build Debug for Simulator
-        working-directory: ios
+      - name: Build & Run en Simulador
         run: |
+          # Asegúrate que ningún sim esté corriendo
           xcrun simctl shutdown all || true
-          xcrun simctl boot "iPhone 14"       # o el simulador que prefieras
+
+          # Bootea un simulador limpio (iPhone 14 / iOS 18.2)
+          xcrun simctl boot "iPhone 14"
+
+          # Compila en modo Debug (más rápido)
           xcodebuild \
-            -workspace MyNewApp.xcworkspace \
+            -workspace ios/MyNewApp.xcworkspace \
             -scheme MyNewApp \
             -configuration Debug \
             -sdk iphonesimulator \
@@ -30,12 +44,10 @@ jobs:
             build \
             | tee build.log
 
-      - name: Install & launch on Simulator
-        run: |
+          # Instala y lanza la app
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name MyNewApp.app | head -n1)
           xcrun simctl install booted "$APP_PATH"
           xcrun simctl launch booted com.occr.productos || true
 
-      - name: Stream simulator logs for 60s
-        run: |
+          # Vuelca logs/crashes durante 60 s
           xcrun simctl spawn booted log stream --style compact --predicate 'eventType == logEvent' --timeout 60
