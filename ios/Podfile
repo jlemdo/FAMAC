@@ -15,11 +15,8 @@ use_frameworks! :linkage => :static
 
 source 'https://cdn.cocoapods.org/'
 
-# RN autolinking
+# RN autolinking genérico
 require_relative '../node_modules/react-native/scripts/react_native_pods'
-
-# Autolink específico de react-native-maps
-require_relative '../node_modules/react-native-maps/scripts/autolink_ios'
 
 prepare_react_native_project!
 
@@ -34,26 +31,24 @@ target 'MyNewApp' do
     app_path: "#{Pod::Config.instance.installation_root}/.."
   )
 
-  # ➎ react-native-maps con encabezados modulares
+  # ➎ Linkeo manual de react-native-maps (Core + AirMaps)
   pod 'react-native-maps',
       path: '../node_modules/react-native-maps',
-      :modular_headers => true
+      subspecs: ['Core', 'AirMaps'],
+      modular_headers: true
 end
 
 post_install do |installer|
   # Hook estándar de RN
   react_native_post_install(installer, mac_catalyst_enabled: false)
 
-  # Autolink de maps
-  ReactNativeMaps::Autolink.post_install(installer)
-
-  # Tus scripts de limpieza de fases y settings globales
+  # ➏ Tus scripts de limpieza de fases y ajustes globales
   installer.pods_project.targets.each do |t|
     # Elimina fases “Embed Pods Frameworks”
     t.shell_script_build_phases.delete_if { |phase|
       phase.name.include? 'Embed Pods Frameworks'
     }
-    # Ajustes globales
+    # Ajustes globales de build
     t.build_configurations.each do |cfg|
       cfg.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
       cfg.build_settings['CODE_SIGNING_ALLOWED']       = 'NO'
@@ -61,7 +56,7 @@ post_install do |installer|
     end
   end
 
-  # Desactiva compilación Swift en el proyecto de la app
+  # ➐ Desactiva compilación Swift en el proyecto de la app
   project_root = File.dirname(installer.pods_project.path.dirname)
   app_proj     = Xcodeproj::Project.open(File.join(project_root, 'MyNewApp.xcodeproj'))
   app_target   = app_proj.targets.find { |t| t.name == 'MyNewApp' }
