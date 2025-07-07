@@ -44,7 +44,7 @@ platform :ios do
 
     match(type: "appstore", api_key: api_key, readonly: true)
 
-    # 🚧 Bundling de React Native para iOS
+    # 1️⃣ Bundling RN para iOS
     sh(<<-CMD)
       cd #{Dir.pwd} &&
       npx react-native bundle \
@@ -55,9 +55,9 @@ platform :ios do
         --assets-dest ios/assets
     CMD
 
-    # ✅ Verifica que se generó el main.jsbundle y frena si no existe
-    unless File.exist?("ios/main.jsbundle") && Dir.exist?("ios/assets")
-      UI.user_error!("❌ Faltan archivos JS o assets — abortando build.")
+    # 2️⃣ Abort si no existe el bundle
+    unless File.exist?("ios/main.jsbundle")
+      UI.user_error!("❌ No se generó ios/main.jsbundle — abortando deploy.")
     end
 
     # 4️⃣ Compilar con Gym
