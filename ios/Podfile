@@ -33,9 +33,10 @@ target 'MyNewApp' do
 
   # ➎ Linkeo manual de react-native-maps (Core + AirMaps)
   pod 'react-native-maps',
-      path: '../node_modules/react-native-maps',
-      subspecs: ['Core', 'AirMaps'],
-      modular_headers: true
+    :path => '../node_modules/react-native-maps',
+    :podspec => '../node_modules/react-native-maps/react-native-maps.podspec',
+    :subspecs => ['Core', 'AirMaps'],
+    :modular_headers => true
 end
 
 post_install do |installer|
