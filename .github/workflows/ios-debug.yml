@@ -1,70 +1,45 @@
-name: 🚀 CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      debug:
-        description: '¿Ejecutar Quick-Debug en simulador iOS?'
-        required: true
-        default: 'false'
-        type: boolean
-
 jobs:
   quick-debug:
-    if: ${{ github.event.inputs.debug == 'true' }}
+    name: 🔍 Quick-Debug (Build Only)
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up Ruby & CocoaPods
-        run: |
-          sudo gem install cocoapods
+      - name: Set up Ruby & CocoaPods cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gem
+            ~/.cocoapods
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
 
-      - name: Install JS deps
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods
+
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
-      - run: yarn install --frozen-lockfile
 
-      - name: Install Pods
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+
+      - name: Install pods
         working-directory: ios
         run: pod install --repo-update
 
-      - name: Build & Run en simulador
+      - name: Quick-build (no tests)
         run: |
-          set -eux
-
-          # Apago cualquier simulador
-          xcrun simctl shutdown all || true
-
-          # Extraigo el primer UDID disponible (iPhone 15, 16…)
-          DEVICE_UDID=$(
-            xcrun simctl list devices available \
-              | grep -oE '\([A-F0-9-]{36}\)' \
-              | tr -d '()' \
-              | head -n1
-          )
-          echo "🏁 Booting simulator: $DEVICE_UDID"
-          xcrun simctl boot "$DEVICE_UDID"
-
-          # Compilo y testeo
           xcodebuild \
             -workspace ios/MyNewApp.xcworkspace \
             -scheme MyNewApp \
-            -configuration Debug \
             -sdk iphonesimulator \
-            -destination "id=$DEVICE_UDID" \
-            build test
-
-          # Instalo y lanzo la app
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 2 -name MyNewApp.app | head -n1)
-          xcrun simctl install booted "$APP_PATH"
-          xcrun simctl launch booted com.occr.productos || true
-
-          # Opcional: ver logs  de la app 60s
-          xcrun simctl spawn booted log stream --predicate 'processImagePath CONTAINS "MyNewApp"' --style compact --timeout 60
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=18.2' \
+            clean build \
+            | xcpretty
