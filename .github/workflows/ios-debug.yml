@@ -34,7 +34,7 @@ jobs:
           # 2. Elige dinámicamente un "iPhone 14" disponible y extrae su UDID
           DEVICE_UDID=$(
             xcrun simctl list devices available \
-              | grep -E "iPhone 14 .* \\(.*\\)" \
+              | grep -E "iPhone [0-9]+ .* \\(.*\\)"
               | head -1 \
               | sed -E 's/.*\\(([A-F0-9-]+)\\).*/\1/'
           )
