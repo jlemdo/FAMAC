@@ -41,7 +41,8 @@ jobs:
           submodules: true
 
       - name: Instala dependencias JS
-        run: yarn install --frozen-lockfile
+        # run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
