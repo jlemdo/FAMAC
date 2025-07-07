@@ -31,6 +31,10 @@ target 'MyNewApp' do
     app_path: "#{Pod::Config.instance.installation_root}/.."
   )
 
+  pod 'react-native-maps-generated',
+    :podspec => '../node_modules/react-native-maps/react-native-maps-generated.podspec'
+
+
   # ➎ Linkeo manual de react-native-maps (Core + AirMaps)
   pod 'react-native-maps',
     :path => '../node_modules/react-native-maps',
