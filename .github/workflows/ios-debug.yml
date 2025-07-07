@@ -1,53 +1,39 @@
-name: 🐞 iOS Quick Debug
-
-# Se ejecuta solo manualmente
-on:
-  workflow_dispatch:
-
-jobs:
-  quick-debug:
-    name: Quick Debug en Simulador iOS
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout de código
-        uses: actions/checkout@v3
-
-      - name: Setup Ruby & CocoaPods
-        run: |
-          sudo gem install bundler cocoapods
-          bundle config set path vendor/bundle
-          bundle install
-
-      - name: Instala dependencias JS
-        run: yarn install --frozen-lockfile
-
-      - name: Pod install (iOS)
-        working-directory: ios
-        run: pod install --repo-update
-
       - name: Build & Run en Simulador
         run: |
-          # Asegúrate que ningún sim esté corriendo
+          # 1. Apaga cualquier simulador corriendo
           xcrun simctl shutdown all || true
 
-          # Bootea un simulador limpio (iPhone 14 / iOS 18.2)
-          xcrun simctl boot "iPhone 14"
+          # 2. Elige dinámicamente un "iPhone 14" disponible y extrae su UDID
+          DEVICE_UDID=$(
+            xcrun simctl list devices available \
+              | grep -E "iPhone 14 .* \\(.*\\)" \
+              | head -1 \
+              | sed -E 's/.*\\(([A-F0-9-]+)\\).*/\1/'
+          )
 
-          # Compila en modo Debug (más rápido)
+          if [ -z "$DEVICE_UDID" ]; then
+            echo "⚠️ No encontré un iPhone 14 disponible. Listado de dispositivos:"
+            xcrun simctl list devices
+            exit 1
+          fi
+
+          echo "▶️ Booting simulator UDID=$DEVICE_UDID"
+          xcrun simctl boot "$DEVICE_UDID"
+
+          # 3. Compila en Debug (mucho más rápido)
           xcodebuild \
             -workspace ios/MyNewApp.xcworkspace \
             -scheme MyNewApp \
             -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 14,OS=18.2' \
+            -destination "id=$DEVICE_UDID" \
             build \
             | tee build.log
 
-          # Instala y lanza la app
+          # 4. Instala y lanza la app
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name MyNewApp.app | head -n1)
           xcrun simctl install booted "$APP_PATH"
           xcrun simctl launch booted com.occr.productos || true
 
-          # Vuelca logs/crashes durante 60 s
+          # 5. Muestra logs nativos por 60 s
           xcrun simctl spawn booted log stream --style compact --predicate 'eventType == logEvent' --timeout 60
