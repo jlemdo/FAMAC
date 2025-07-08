@@ -61,5 +61,29 @@
 	<false/>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Necesitamos tu permiso para enviarte notificaciones sobre el estado de tus pedidos y otras actualizaciones importantes.</string>
+	<key>UIAppFonts</key>
+	<array>
+	<string>WendyLPStdMedium.ttf</string>
+	<string>Raleway-Medium.ttf</string>
+	<string>Ionicons.ttf</string>
+	<string>FontAwesome.ttf</string>
+	<string>FontAwesome5_Brands.ttf</string>
+	<string>FontAwesome5_Regular.ttf</string>
+	<string>FontAwesome5_Solid.ttf</string>
+	<string>FontAwesome6_Brands.ttf</string>
+	<string>FontAwesome6_Regular.ttf</string>
+	<string>FontAwesome6_Solid.ttf</string>
+	<string>MaterialIcons.ttf</string>
+	<string>MaterialCommunityIcons.ttf</string>
+	<string>AntDesign.ttf</string>
+	<string>Feather.ttf</string>
+	<string>Entypo.ttf</string>
+	<string>EvilIcons.ttf</string>
+	<string>Fontisto.ttf</string>
+	<string>Foundation.ttf</string>
+	<string>Octicons.ttf</string>
+	<string>SimpleLineIcons.ttf</string>
+	<string>Zocial.ttf</string>
+	</array>
 </dict>
 </plist>
