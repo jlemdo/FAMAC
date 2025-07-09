@@ -15,8 +15,10 @@ const fonts = {
     medium: 16,
     large: 20,
     extraLarge: 24,
+    XL: 30,
     XLL: 36,
     XLLL: 48,
+
   },
 };
 

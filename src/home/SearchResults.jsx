@@ -116,21 +116,25 @@ useEffect(() => {
       </View>
       {/* <Text style={styles.heading}>Search Result</Text> */}
       <FlatList
-        data={results}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Image source={{ uri: item.photo }} style={styles.image} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.txt}>{item.name}</Text>
-              <Text style={styles.price}>{item.price} $MXN </Text>
-            </View>
-            <TouchableOpacity style={styles.cartButton} onPress={() => addToCart(item)}>
-              <Text style={styles.cartButtonText}>Agregar al Carrito</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+  data={results}
+  keyExtractor={(item) => item.id.toString()}
+  renderItem={({ item }) => (
+    <View style={styles.item}>
+      <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', { productData: item })}>
+        <Image source={{ uri: item.photo }} style={styles.image} />
+      </TouchableOpacity>
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.txt}>{item.name}</Text>
+        <Text style={styles.price}>{item.price} $MXN </Text>
+      </View>
+
+      <TouchableOpacity style={styles.cartButton} onPress={() => addToCart(item)}>
+        <Text style={styles.cartButtonText}>Agregar al Carrito</Text>
+      </TouchableOpacity>
+    </View>
+  )}
+/>
     </View>
   );
 };

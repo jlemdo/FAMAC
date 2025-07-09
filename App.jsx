@@ -1,21 +1,20 @@
-
-import React, { useContext } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, {useContext} from 'react';
+import {View, StyleSheet, ActivityIndicator} from 'react-native';
+import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import SpecificCategoryProduct from './src/home/SpecificCategoryProduct';
 import ProductDetails from './src/home/ProductDetails';
-import { CartContext, CartProvider } from './src/context/CartContext';
-import { OrderProvider } from './src/context/OrderContext';
-import { NotificationProvider } from './src/context/NotificationContext';
-import { StripeProvider } from '@stripe/stripe-react-native';
-import { AuthContext } from './src/context/AuthContext';
-import { AuthProvider } from './src/context/AuthContext';
+import {CartContext, CartProvider} from './src/context/CartContext';
+import {OrderProvider} from './src/context/OrderContext';
+import {NotificationProvider} from './src/context/NotificationContext';
+import {StripeProvider} from '@stripe/stripe-react-native';
+import {AuthContext} from './src/context/AuthContext';
+import {AuthProvider} from './src/context/AuthContext';
+import {AlertProvider} from './src/context/AlertContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
-
 
 import Cart from './src/cart/Cart';
 import Route from './src/tracking/Route';
@@ -30,16 +29,17 @@ import Order from './src/order/Order';
 import OrderDetails from './src/order/OrderDetail';
 import SearchResults from './src/home/SearchResults';
 
-import { OrderContext } from './src/context/OrderContext';
+import {OrderContext} from './src/context/OrderContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const PUBLISHABLE_KEY = 'pk_test_51OMmaHISCA0h3oYpdsnzpNlsLGm3WLtP7zb5mFyeEAKJqPZZXuP3J1ph7ShDzBUWiSJ64UHtfII8xmpbFkXbM4Bg00K0F4gAR9';
+const PUBLISHABLE_KEY =
+  'pk_test_51OMmaHISCA0h3oYpdsnzpNlsLGm3WLtP7zb5mFyeEAKJqPZZXuP3J1ph7ShDzBUWiSJ64UHtfII8xmpbFkXbM4Bg00K0F4gAR9';
 
 function LoginStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{headerShown: false}}>
       {/* <Stack.Screen name="Splash" component={SplashScreen} /> */}
       <Stack.Screen name="Splash" component={WelcomeVideo} />
       <Stack.Screen name="Login" component={Login} />
@@ -51,7 +51,7 @@ function LoginStack() {
 
 function OrderStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{headerShown: false}}>
       <Stack.Screen name="Order" component={Order} />
       <Stack.Screen name="OrderDetails" component={OrderDetails} />
     </Stack.Navigator>
@@ -60,67 +60,92 @@ function OrderStack() {
 
 function HomeStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{headerShown: false}}>
       <Stack.Screen name="CategoriesList" component={CategoriesList} />
-      <Stack.Screen name="CategoryProducts" component={SpecificCategoryProduct} />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} />
-      <Stack.Screen name="SearchResults" component={SearchResults} />
+      <Stack.Screen
+        name="CategoryProducts"
+        component={SpecificCategoryProduct}
+      />
+      {/* <Stack.Screen name="ProductDetails" component={ProductDetails} /> */}
+      {/* <Stack.Screen name="SearchResults" component={SearchResults} /> */}
     </Stack.Navigator>
   );
 }
 
 function MainTabs() {
-  const { user } = useContext(AuthContext);
-  const { orderCount } = useContext(OrderContext);
-  const { cart } = useContext(CartContext);
+  const {user} = useContext(AuthContext);
+  const {orderCount} = useContext(OrderContext);
+  const {cart} = useContext(CartContext);
 
   console.log('ccc', cart);
   return (
     <View style={styles.container}>
-      <Header />
+      {/* <Header /> */}
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
+        screenOptions={({route}) => ({
+          tabBarIcon: ({focused, color, size}) => {
             let iconName;
-            if (route.name === 'Home') {iconName = focused ? 'home' : 'home-outline';}
-            else if (route.name === 'Cart') {iconName = focused ? 'cart' : 'cart-outline';}
-            else if (route.name === 'Order' || route.name === 'Order History') {iconName = focused ? 'clipboard' : 'clipboard-outline';}
-            else if (route.name === 'Route') {iconName = focused ? 'navigate' : 'navigate-outline';}
-            else if (route.name === 'You') {iconName = focused ? 'person' : 'person-outline';}
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'Cart') {
+              iconName = focused ? 'cart' : 'cart-outline';
+            } else if (
+              route.name === 'Order' ||
+              route.name === 'Order History'
+            ) {
+              iconName = focused ? 'clipboard' : 'clipboard-outline';
+            } else if (route.name === 'Route') {
+              iconName = focused ? 'navigate' : 'navigate-outline';
+            } else if (route.name === 'You') {
+              iconName = focused ? 'person' : 'person-outline';
+            }
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarActiveTintColor: 'tomato',
           tabBarInactiveTintColor: 'gray',
-          tabBarStyle: { backgroundColor: 'white', paddingBottom: 5 },
+          tabBarStyle: {backgroundColor: 'white', paddingBottom: 5},
           headerShown: false,
-        })}
-      >
-        {
-          user.usertype === 'driver' ? (
-            <>
-              {/* <Tab.Screen name="Home" component={HomeStack} /> */}
-              <Tab.Screen name="Order History" component={OrderStack}
-                options={{
-                  tabBarBadge: orderCount > 0 ? orderCount : null,
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <Tab.Screen name="Home" component={HomeStack} />
-              <Tab.Screen name="Cart" component={Cart}
-                options={{
-                  tabBarBadge: cart.length > 0 ? cart.length : null,
-                }}
-              />
-              <Tab.Screen name="Order" component={OrderStack} />
-              {/* <Tab.Screen name="Route" component={Route} /> */}
-            </>
-          )
-        }
+        })}>
+        {user.usertype === 'driver' ? (
+          <>
+            {/* <Tab.Screen name="Home" component={HomeStack} /> */}
+            <Tab.Screen
+              name="Order History"
+              component={OrderStack}
+              options={{
+                tabBarBadge: orderCount > 0 ? orderCount : null,
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Tab.Screen name="Home" component={HomeStack} />
+            <Tab.Screen
+              name="Cart"
+              component={Cart}
+              options={{
+                tabBarBadge: cart.length > 0 ? cart.length : null,
+              }}
+            />
+            <Tab.Screen name="Order" component={OrderStack} />
+            {/* <Tab.Screen name="Route" component={Route} /> */}
+          </>
+        )}
         <Tab.Screen name="You" component={Profile} />
-
       </Tab.Navigator>
+    </View>
+  );
+}
+
+function RootStack() {
+  return (
+    <View style={{ flex: 1 }}>
+    <Header /> 
+    <Stack.Navigator screenOptions={{headerShown: false}}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="SearchResults" component={SearchResults} />
+      <Stack.Screen name="ProductDetails" component={ProductDetails} />
+    </Stack.Navigator>
     </View>
   );
 }
@@ -134,24 +159,29 @@ function AuthFlow() {
 
   return (
     <NavigationContainer>
-      {user ? <MainTabs /> : <LoginStack />}
+      {user ? <RootStack /> : <LoginStack />}
     </NavigationContainer>
   );
 }
 
+
+
+
 export default function App() {
   return (
-    <NotificationProvider>
-      <StripeProvider publishableKey={PUBLISHABLE_KEY}>
-        <AuthProvider>
-          <CartProvider>
-            <OrderProvider>
-              <AuthFlow />
-            </OrderProvider>
-          </CartProvider>
-        </AuthProvider>
-      </StripeProvider>
-    </NotificationProvider>
+    <AlertProvider>
+      <NotificationProvider>
+        <StripeProvider publishableKey={PUBLISHABLE_KEY}>
+          <AuthProvider>
+            <CartProvider>
+              <OrderProvider>
+                <AuthFlow />
+              </OrderProvider>
+            </CartProvider>
+          </AuthProvider>
+        </StripeProvider>
+      </NotificationProvider>
+    </AlertProvider>
   );
 }
 

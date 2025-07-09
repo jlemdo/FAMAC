@@ -68,9 +68,13 @@ const Order = () => {
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={fetchOrders}
-          contentContainerStyle={styles.listContent}
+          // Encabezado siempre arriba
           ListHeaderComponent={
             <Text style={styles.header}>Historial de Pedidos</Text>
+          }
+          // Mensaje cuando no hay pedidos
+          ListEmptyComponent={
+            <Text style={styles.emptyOrders}>No tienes pedidos aúns.</Text>
           }
           renderItem={({item}) => (
             <View style={styles.orderCard}>
@@ -259,6 +263,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+  emptyOrders: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.6)', // Gris Carbón @60%
+    textAlign: 'center',
+    marginTop: 50,
   },
 });
 

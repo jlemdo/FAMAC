@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-  View, Text, Image, FlatList, StyleSheet, ScrollView,
-  TouchableOpacity, ActivityIndicator,
+  View,
+  Text,
+  Image,
+  FlatList,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 
@@ -19,13 +25,15 @@ export default function CategoriesList() {
   useEffect(() => {
     axios
       .get('https://food.siliconsoft.pk/api/productscats')
-      .then((response) => {
-        console.log('response category',response);
+      .then(response => {
+        console.log('response category', response);
         setCategories(response.data.data); // Assuming the API returns an array
         setLoading(false);
       })
-      .catch((err) => {
-        setError('Error al cargar las categorías. Por favor, inténtalo de nuevo más tarde.');
+      .catch(err => {
+        setError(
+          'Error al cargar las categorías. Por favor, inténtalo de nuevo más tarde.',
+        );
         setLoading(false);
       });
   }, []);
@@ -33,39 +41,52 @@ export default function CategoriesList() {
   return (
     <View style={styles.container}>
       {/* <ScrollView showsVerticalScrollIndicator={false}> */}
-        <Text style={styles.mainTitle}>Categorías</Text>
+      <Text style={styles.mainTitle}>Categorías</Text>
 
-        {loading ? (
-          // Activity Indicator displayed in the center of the screen
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="tomato" />
-          </View>
-        ) : error ? (
-          // Error message if the API fails
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorMessage}>{error}</Text>
-          </View>
-        ) : (
-          // Display categories after loading
-          <FlatList
-            data={categories}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
-            contentContainerStyle={styles.categoryList}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.categoryCard}
-                onPress={() => navigation.navigate('CategoryProducts', { categoryId: item.id, categoryName: item.name })}
-              >
-                <View style={styles.imageContainer}>
-                  <Image source={{ uri: item.photo }} style={styles.categoryImage} />
-                </View>
-                <Text style={styles.categoryName}>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
+      {loading ? (
+        // Activity Indicator displayed in the center of the screen
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="tomato" />
+        </View>
+      ) : error ? (
+        // Error message if the API fails
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorMessage}>{error}</Text>
+        </View>
+      ) : (
+        // Display categories after loading
+        <FlatList
+          data={categories}
+          keyExtractor={item => item.id.toString()}
+          numColumns={2}
+          contentContainerStyle={styles.categoryList}
+          showsVerticalScrollIndicator={false}
+          renderItem={({item}) => (
+            <TouchableOpacity
+              style={styles.categoryCard}
+              onPress={() =>
+                navigation.navigate('CategoryProducts', {
+                  categoryId: item.id,
+                  categoryName: item.name,
+                })
+              }>
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{uri: item.photo}}
+                  style={styles.categoryImage}
+                />
+              </View>
+              <Text style={styles.categoryName}>{item.name}</Text>
+              <Text
+                style={styles.categoryDescription}
+                numberOfLines={2}
+                ellipsizeMode="tail">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Accusamus aliquam ipsa deserunt numquam eius officiis sapiente modi fugit excepturi possimus voluptate quae dolorum mollitia nesciunt, unde natus magni rerum expedita.
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
       {/* </ScrollView> */}
     </View>
   );
@@ -77,6 +98,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2EFE4',
     paddingHorizontal: 15,
     paddingTop: 20,
+    paddingHorizontal: 16, // escala: 16px
   },
   mainTitle: {
     fontSize: fonts.size.XLLL,
@@ -92,33 +114,44 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   categoryCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 140,
-    height: 140,
-    margin: 30,
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    // sombra iOS
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    // elevación Android
+    elevation: 5,
   },
   imageContainer: {
-    width: 130,
-    height: 130,
-    borderRadius: 60, // Circle shape
-    borderWidth: 1, // Thin border
-    borderColor: '#D27F27', // Light gray border
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '100%',
+    height: 180,
+    backgroundColor: '#EEE',
   },
   categoryImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 400 / 2,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   categoryName: {
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
-     // textTransform: "uppercase",
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.original,
     color: '#2F2F2F',
     textAlign: 'center',
-    marginTop: 8,
+    paddingVertical: 10,
+    backgroundColor: '#FFF',
+  },
+  categoryDescription: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#666',
+    textAlign: 'center',
+    paddingBottom: 12,
+    paddingHorizontal: 40,
   },
   loaderContainer: {
     flex: 1,

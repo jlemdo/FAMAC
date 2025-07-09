@@ -19,6 +19,7 @@ import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
 import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
+import {useAlert} from '../context/AlertContext';
 // import CheckBox from '@react-native-community/checkbox';
 import CheckBox from 'react-native-check-box';
 // import { useStripe } from "@stripe/stripe-react-native";
@@ -71,6 +72,7 @@ export default function Cart() {
     const inventory = {1: 10, 2: 5, 3: 2};
     return inventory[productId] || 0;
   };
+  const {showAlert} = useAlert();
 
   // const handleCheckout = () => {
   //     if (!user) {
@@ -171,137 +173,148 @@ export default function Cart() {
     checkLocation();
   }, [latlong]);
 
-  const decideCheckout = async () => {
+  // Invocado desde el botón de checkout
+  const decideCheckout = () => {
     completeOrder();
   };
 
+  // 1) Flujo único y robusto de pago
   const completeOrder = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(
-        'https://food.siliconsoft.pk/api/create-payment-intent',
-        {
-          amount: totalPrice * 100,
-          currency: 'usd',
-          email: user.email,
-        },
-      );
-
-      if (!response.data.clientSecret) {
-        Alert.alert('Error', 'Failed to get payment intent');
-        setLoading(false);
-        return;
-      }
-
-      const {clientSecret} = response.data;
-      console.log('clientSecret', clientSecret);
-      const {error} = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Food App',
+    if (loading) return;
+    if (totalPrice <= 0) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No hay productos en el carrito.',
+        confirmText: 'Cerrar',
       });
 
-      if (error) {
-        console.error('Payment Sheet Initialization Error:', error);
-        Alert.alert('Error', error.message);
-        setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1.1) Crear PaymentIntent en el servidor
+      const {data} = await axios.post(
+        'https://food.siliconsoft.pk/api/create-payment-intent',
+        {amount: totalPrice * 100, currency: 'usd', email: user.email},
+      );
+      // const clientSecret = data.clientSecret;
+      const clientSecret = response.data.clientSecret;
+      if (!clientSecret) {
+        throw new Error('No se obtuvo clientSecret del servidor.');
+      }
+
+      // 1.2) Inicializar Stripe PaymentSheet
+      const {error: initError} = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'Occr Productos',
+        applePay: {
+          // sólo iOS
+          merchantCountryCode: 'MX',
+        },
+        googlePay: {
+          // sólo Android
+          merchantCountryCode: 'MX',
+          testEnv: true, // sandbox
+        },
+      });
+      if (initError) throw initError;
+
+      // 1.3) Presentar la UI de pago
+      const {error: paymentError} = await presentPaymentSheet();
+      if (paymentError) {
+        if (paymentError.code === 'Canceled') {
+          showAlert({
+            type: 'warning',
+            title: 'Pago cancelado',
+            message: 'Has cancelado el pago.',
+            confirmText: 'Entendido',
+          });
+        } else {
+          showAlert({
+            type: 'error',
+            title: 'Error de pago',
+            message: paymentError.message,
+            confirmText: 'Intentar de nuevo',
+          });
+        }
         return;
       }
-
-      const {error: paymentError} = await presentPaymentSheet();
-
-      if (paymentError) {
-        completeOrderFunc();
-        Alert.alert('Payment Failed', paymentError.message);
-      } else {
-        Alert.alert('Success', 'Payment successful!');
-        completeOrderFunc();
-      }
-    } catch (error) {
-      console.error('Checkout Error:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      // 1.4) Pago exitoso: enviar la orden
+      await completeOrderFunc();
+      showAlert({
+        type: 'success',
+        title: '¡Éxito!',
+        message: 'Tu pedido se ha procesado correctamente.',
+        confirmText: 'OK',
+      });
+      clearCart();
+    } catch (err) {
+      console.error('Checkout failed:', err);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: err?.message || 'Ha ocurrido un error durante el pago.',
+        confirmText: 'Cerrar',
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  // 2) Envía la orden al backend y maneja fallos
   const completeOrderFunc = async () => {
     try {
-      setLoading(true);
-
-      // Lanza la Payment Sheet de Stripe
-      const {error: paymentError} = await presentPaymentSheet();
-
-      if (paymentError) {
-        // Si el usuario cierra la pasarela (toca la "X")
-        if (paymentError.code === 'Canceled') {
-          console.log('Pago cancelado por el usuario');
-          setLoading(false);
-          return;
-        }
-        // Otro error de pago
-        Alert.alert('Payment Failed', paymentError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Pago exitoso: preparar datos de la orden
-      let cartUpdateArr = cart.map(it => ({
+      const cartUpdateArr = cart.map(it => ({
         item_name: it.name,
         item_price: it.price,
         item_qty: it.quantity,
         item_image: it.photo,
       }));
-
-      const payload = {
+      await axios.post('https://food.siliconsoft.pk/api/ordersubmit', {
         userid: user.id,
         orderno: '1',
         orderdetails: cartUpdateArr,
         customer_lat: latlong.driver_lat,
         customer_long: latlong.driver_long,
-      };
+      });
+    } catch (err) {
+      console.error('Order submit failed:', err);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo enviar la orden. Inténtalo de nuevo.',
+        confirmText: 'Cerrar',
+      });
 
-      // Enviar orden al backend
-      const response = await axios.post(
-        'https://food.siliconsoft.pk/api/ordersubmit',
-        payload,
-      );
-
-      if (response.status === 200) {
-        Alert.alert('Success', 'Order Placed Successfully');
-        clearCart();
-      } else {
-        Alert.alert(
-          'Order Failed',
-          'Ha ocurrido un error al enviar tu pedido.',
-        );
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Algo salió mal. Por favor inténtalo de nuevo.');
-    } finally {
-      setLoading(false);
+      throw err; // para que completeOrder no continúe si falla
     }
   };
 
-  const handleCheckout = async () => {
+  // Decide flujo según tipo de usuario
+  const handleCheckout = () => {
     if (user.usertype === 'Guest') {
       setModalVisible(true);
-      return;
+    } else {
+      completeOrder();
     }
-    decideCheckout();
   };
 
+  // Validaciones antes de pago de invitado
   const handleGuestPayment = () => {
     if (!email.trim() || !address.trim() || !zipCode.trim()) {
-      Alert.alert(
-        'Datos incompletos',
-        'Por favor ingresa correo, dirección y código postal.',
-      );
+      showAlert({
+        type: 'warning',
+        title: 'Datos incompletos',
+        message: 'Por favor ingresa correo, dirección y código postal.',
+        confirmText: 'Entendido',
+      });
+
       return;
     }
-    // Ya validamos, procedemos:
     setModalVisible(false);
-    decideCheckout();
+    completeOrder();
   };
 
   useEffect(() => {
@@ -352,10 +365,12 @@ export default function Cart() {
             updatedTimers[id] -= 1;
 
             if (updatedTimers[id] === 600) {
-              addNotification(
-                'Cart Expiry',
-                'Your cart item will expire in 5 minutes.',
-              );
+              setTimeout(() => {
+                addNotification(
+                  'Vencimiento del carrito',
+                  'Tu artículo en el carrito expirará en 5 minutos.',
+                );
+              }, 0);
             }
 
             if (updatedTimers[id] === 0) {
@@ -383,114 +398,112 @@ export default function Cart() {
       <Text style={styles.title}>Carrito de Compras</Text>
 
       {cart.length === 0 ? (
-        // Carrito vacío: sólo mostramos el mensaje
         <Text style={styles.emptyCart}>Tu carrito está vacío.</Text>
       ) : (
-        // Carrito con ítems: lista, totales y sugerencias
-        <>
-          <FlatList
-            data={cart}
-            keyExtractor={item => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-            renderItem={({item}) => (
-              <View style={styles.cartItem}>
-                <Image source={{uri: item.photo}} style={styles.image} />
-                <View style={styles.info}>
-                  <View style={styles.row}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.timer}>
-                      {timers[item.id] > 0
-                        ? `${Math.floor(timers[item.id] / 60)}:${
-                            timers[item.id] % 60
-                          }`
-                        : 'Expirado'}
-                    </Text>
-                  </View>
-                  <Text style={styles.price}>
-                    ${item.price} x {item.quantity}
+        <FlatList
+          data={cart}
+          keyExtractor={item => item.id.toString()}
+          style={{flex: 1}}
+          contentContainerStyle={{flexGrow: 1}}
+          showsVerticalScrollIndicator={false}
+          renderItem={({item}) => (
+            <View style={styles.cartItem}>
+              <Image source={{uri: item.photo}} style={styles.image} />
+              <View style={styles.info}>
+                <View style={styles.row}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <Text style={styles.timer}>
+                    {timers[item.id] > 0
+                      ? `${Math.floor(timers[item.id] / 60)}:${
+                          timers[item.id] % 60
+                        }`
+                      : 'Expirado'}
                   </Text>
-                  <Text style={styles.stock}>
-                    Inventario:{' '}
-                    {checkInventory(item.id) > 0
-                      ? checkInventory(item.id)
-                      : 'Agotado'}
-                  </Text>
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, 'decrease')}
-                      style={styles.button}>
-                      <Text style={styles.buttonText}>-</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.quantity}>{item.quantity}</Text>
-                    <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, 'increase')}
-                      style={styles.button}>
-                      <Text style={styles.buttonText}>+</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => removeFromCart(item.id)}
-                      style={styles.deleteButton}>
-                      <Text style={styles.deleteText}>Eliminar</Text>
-                    </TouchableOpacity>
-                  </View>
                 </View>
-              </View>
-            )}
-            ListFooterComponent={() => (
-              <>
-                <View style={styles.totalContainer}>
-                  <Text style={styles.totalText}>Total: ${totalPrice}</Text>
-                  {needInvoice && (
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Ingresa datos fiscales"
-                      value={taxDetails}
-                      onChangeText={setTaxDetails}
-                      placeholderTextColor="rgba(47,47,47,0.6)"
-                    />
-                  )}
+                <Text style={styles.price}>
+                  ${item.price} x {item.quantity}
+                </Text>
+                <Text style={styles.stock}>
+                  Inventario:{' '}
+                  {checkInventory(item.id) > 0
+                    ? checkInventory(item.id)
+                    : 'Agotado'}
+                </Text>
+                <View style={styles.actions}>
                   <TouchableOpacity
-                    style={styles.checkoutButton}
-                    onPress={handleCheckout}>
-                    <Text style={styles.checkoutText}>Proceder al Pago</Text>
+                    onPress={() => updateQuantity(item.id, 'decrease')}
+                    style={styles.button}>
+                    <Text style={styles.buttonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.quantity}>{item.quantity}</Text>
+                  <TouchableOpacity
+                    onPress={() => updateQuantity(item.id, 'increase')}
+                    style={styles.button}>
+                    <Text style={styles.buttonText}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => removeFromCart(item.id)}
+                    style={styles.deleteButton}>
+                    <Text style={styles.deleteText}>Eliminar</Text>
                   </TouchableOpacity>
                 </View>
-
-                <Text style={styles.suggestionsTitle}>
-                  También te puede interesar
-                </Text>
-                {loadingUpsell ? (
-                  <ActivityIndicator size="large" color="#33A744" />
-                ) : (
-                  <FlatList
-                    data={upsellItems}
-                    keyExtractor={i => i.id.toString()}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    renderItem={({item}) => (
-                      <View style={styles.upsellItem}>
-                        <Image
-                          source={{uri: item.photo}}
-                          style={styles.upsellImage}
-                        />
-                        <Text style={styles.upsellName}>{item.name}</Text>
-                        <Text style={styles.upsellPrice}>${item.price}</Text>
-                        <TouchableOpacity
-                          style={styles.addButton}
-                          onPress={() => addToCart(item)}>
-                          <Text style={styles.addButtonText}>
-                            Agregar al carrito
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+              </View>
+            </View>
+          )}
+          ListFooterComponent={() => (
+            <>
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalText}>Total: ${totalPrice}</Text>
+                {needInvoice && (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ingresa datos fiscales"
+                    placeholderTextColor="rgba(47,47,47,0.6)"
+                    value={taxDetails}
+                    onChangeText={setTaxDetails}
                   />
                 )}
-              </>
-            )}
-            ListFooterComponentStyle={{paddingTop: 16}}
-          />
-        </>
+                <TouchableOpacity
+                  style={styles.checkoutButton}
+                  onPress={handleCheckout}>
+                  <Text style={styles.checkoutText}>Proceder al Pago</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.suggestionsTitle}>
+                También te puede interesar
+              </Text>
+              {loadingUpsell ? (
+                <ActivityIndicator size="large" color="#33A744" />
+              ) : (
+                <FlatList
+                  data={upsellItems}
+                  keyExtractor={item => item.id.toString()}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  renderItem={({item}) => (
+                    <View style={styles.upsellItem}>
+                      <Image
+                        source={{uri: item.photo}}
+                        style={styles.upsellImage}
+                      />
+                      <Text style={styles.upsellName}>{item.name}</Text>
+                      <Text style={styles.upsellPrice}>${item.price}</Text>
+                      <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => addToCart(item)}>
+                        <Text style={styles.addButtonText}>
+                          Agregar al carrito
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
+              )}
+            </>
+          )}
+          ListFooterComponentStyle={{paddingTop: 16}}
+        />
       )}
 
       <Modal
@@ -534,7 +547,6 @@ export default function Cart() {
               <TouchableOpacity
                 style={[
                   styles.modalButtonSave,
-                  // si falta alguno, atenuamos el botón
                   (!email.trim() || !address.trim() || !zipCode.trim()) && {
                     opacity: 0.5,
                   },

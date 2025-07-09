@@ -1,33 +1,57 @@
 // src/authentication/Login.jsx
-import React, { useState, useContext } from 'react';
+import React, {useState, useContext} from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, Image,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
+import {AuthContext} from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
 
 export default function Login() {
-  const { login, loginAsGuest } = useContext(AuthContext);
+  const {login, loginAsGuest} = useContext(AuthContext);
   const navigation = useNavigation();
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Ingresa email y contraseña.');
+      showAlert({
+        type: 'warning',
+        title: 'Error',
+        message: 'Ingresa email y contraseña.',
+        confirmText: 'Entendido',
+      });
+
       return;
     }
     setLoading(true);
     try {
-      const { data } = await axios.post('https://food.siliconsoft.pk/api/login', { email, password });
+      const {data} = await axios.post('https://food.siliconsoft.pk/api/login', {
+        email,
+        password,
+      });
       login(data.user);
     } catch (e) {
-      Alert.alert('Error', e.response?.data?.message || 'Credenciales inválidas');
-    } finally { setLoading(false); }
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: e.response?.data?.message || 'Credenciales inválidas',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,20 +80,21 @@ export default function Login() {
         style={styles.primaryBtn}
         onPress={handleLogin}
         activeOpacity={0.7}
-        accessible accessibilityLabel="Botón Iniciar Sesión"
-      >
-        {loading
-          ? <ActivityIndicator color="#2F2F2F" />
-          : <Text style={styles.btnText}>Iniciar Sesión</Text>
-        }
+        accessible
+        accessibilityLabel="Botón Iniciar Sesión">
+        {loading ? (
+          <ActivityIndicator color="#2F2F2F" />
+        ) : (
+          <Text style={styles.btnText}>Iniciar Sesión</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.secondaryBtn}
         onPress={loginAsGuest}
         activeOpacity={0.7}
-        accessible accessibilityLabel="Continuar como invitado"
-      >
+        accessible
+        accessibilityLabel="Continuar como invitado">
         <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
       </TouchableOpacity>
 
@@ -94,7 +119,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 120, height: 120,
+    width: 120,
+    height: 120,
     marginBottom: 20,
   },
   input: {

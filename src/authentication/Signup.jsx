@@ -133,7 +133,7 @@
 
 // export default SignUp;
 // src/authentication/SignUp.jsx
-import React, { useState, useContext } from 'react';
+import React, {useState, useContext} from 'react';
 import {
   View,
   Text,
@@ -145,15 +145,16 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import {Picker} from '@react-native-picker/picker';
 import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
-import { AuthContext } from '../context/AuthContext';
+import {useNavigation} from '@react-navigation/native';
+import {AuthContext} from '../context/AuthContext';
+import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 
 export default function SignUp() {
   const navigation = useNavigation();
-  const { login } = useContext(AuthContext);
+  const {login} = useContext(AuthContext);
 
   const [form, setForm] = useState({
     name: '',
@@ -171,21 +172,30 @@ export default function SignUp() {
   const [errors, setErrors] = useState({});
 
   const handleChange = (key, value) => {
-    setForm({ ...form, [key]: value });
-    setErrors({ ...errors, [key]: null });
+    setForm({...form, [key]: value});
+    setErrors({...errors, [key]: null});
   };
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) {e.name = 'Obligatorio';}
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      {e.email = 'Email inválido';}
-    if (!form.phone.trim()) {e.phone = 'Obligatorio';}
-    if (form.password.length < 6)
-      {e.password = 'Mínimo 6 caracteres';}
-    if (form.password !== form.confirmPassword)
-      {e.confirmPassword = 'No coincide';}
-    if (!form.zipCode.trim()) {e.zipCode = 'Obligatorio';}
+    if (!form.name.trim()) {
+      e.name = 'Obligatorio';
+    }
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      e.email = 'Email inválido';
+    }
+    if (!form.phone.trim()) {
+      e.phone = 'Obligatorio';
+    }
+    if (form.password.length < 6) {
+      e.password = 'Mínimo 6 caracteres';
+    }
+    if (form.password !== form.confirmPassword) {
+      e.confirmPassword = 'No coincide';
+    }
+    if (!form.zipCode.trim()) {
+      e.zipCode = 'Obligatorio';
+    }
     return e;
   };
 
@@ -210,21 +220,31 @@ export default function SignUp() {
       dob: `${form.birthMonth} ${form.birthYear}`,
     };
 
+    const {showAlert} = useAlert();
+
     try {
-      const { status, data } = await axios.post(
+      const {status, data} = await axios.post(
         'https://food.siliconsoft.pk/api/register',
-        payload
+        payload,
       );
       if (status === 201) {
         login(data.user);
-        Alert.alert('Éxito', 'Usuario registrado');
+        showAlert({
+          type: 'success',
+          title: 'Éxito',
+          message: 'Usuario registrado',
+          confirmText: 'OK',
+        });
+
         navigation.replace('Home');
       }
     } catch (err) {
-      Alert.alert(
-        'Error',
-        err.response?.data?.message || 'Intenta nuevamente'
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: err.response?.data?.message || 'Intenta nuevamente',
+        confirmText: 'Cerrar',
+      });
     } finally {
       setLoading(false);
     }
@@ -323,20 +343,49 @@ export default function SignUp() {
 
       {/** Fecha de nacimiento */}
       <View style={styles.row}>
-        <Picker
-          selectedValue={form.birthMonth}
-          style={styles.picker}
-          onValueChange={v => handleChange('birthMonth', v)}>
-          <Picker.Item label="Mes" value="" />
-          {[
-            'Enero','Febrero','Marzo','Abril','Mayo','Junio',
-            'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
-          ].map(m => (
-            <Picker.Item key={m} label={m} value={m} />
-          ))}
-        </Picker>
+        {/* Mes */}
+        <View
+          style={{
+            flex: 1,
+            marginRight: 8,
+            borderColor: '#8B5E3C',
+            borderWidth: 1,
+            borderRadius: 8,
+            overflow: 'hidden',
+            backgroundColor: '#FFF',
+          }}>
+          <Picker
+            selectedValue={form.birthMonth}
+            onValueChange={v => handleChange('birthMonth', v)}
+            style={
+              Platform.OS === 'android'
+                ? styles.picker
+                : {height: 48, width: '100%'}
+            }
+            dropdownIconColor="#2F2F2F">
+            <Picker.Item label="Mes" value="" />
+            {[
+              'Enero',
+              'Febrero',
+              'Marzo',
+              'Abril',
+              'Mayo',
+              'Junio',
+              'Julio',
+              'Agosto',
+              'Septiembre',
+              'Octubre',
+              'Noviembre',
+              'Diciembre',
+            ].map(m => (
+              <Picker.Item key={m} label={m} value={m} />
+            ))}
+          </Picker>
+        </View>
+
+        {/* Año */}
         <TextInput
-          style={[styles.input, styles.yearInput]}
+          style={[styles.input, {width: 100}]}
           placeholder="Año"
           placeholderTextColor="rgba(47,47,47,0.5)"
           value={form.birthYear}

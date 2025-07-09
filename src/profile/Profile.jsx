@@ -1,14 +1,22 @@
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, {useEffect, useState, useContext, useCallback} from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView,
-  Image, TouchableOpacity, Alert, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
+import {AuthContext} from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 
 export default function Profile() {
-  const { user } = useContext(AuthContext);
+  const {user} = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -25,15 +33,21 @@ export default function Profile() {
     password_confirmation: '',
   });
 
+  const { showAlert } = useAlert();
+
   useEffect(() => {
-    if (user?.id) {fetchUserDetails();}
+    if (user?.id) {
+      fetchUserDetails();
+    }
   }, [user?.id, fetchUserDetails]);
 
   const fetchUserDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`https://food.siliconsoft.pk/api/userdetails/${user.id}`);
-      console.log('res',res);
+      const res = await axios.get(
+        `https://food.siliconsoft.pk/api/userdetails/${user.id}`,
+      );
+      console.log('res', res);
       const data = res?.data?.data[0];
       console.log('data');
       if (data) {
@@ -46,190 +60,237 @@ export default function Profile() {
         });
       }
     } catch {
-      Alert.alert('Error', 'Failed to load profile.');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load profile.',
+        confirmText: 'Close',
+      });
     } finally {
       setLoading(false);
     }
   }, [user.id]);
 
   const handleProfileChange = (key, val) => {
-    setFormData({ ...formData, [key]: val });
+    setFormData({...formData, [key]: val});
   };
 
   const handlePasswordChange = (key, val) => {
-    setPasswordData({ ...passwordData, [key]: val });
+    setPasswordData({...passwordData, [key]: val});
   };
 
   const updateProfile = async () => {
     try {
       setLoading(true);
-      const res = await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
-        userid: user.id,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        phone: formData.phone,
-        address: formData.address,
-      });
+      const res = await axios.post(
+        'https://food.siliconsoft.pk/api/updateuserprofile',
+        {
+          userid: user.id,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          address: formData.address,
+        },
+      );
       if (res.status === 200) {
-        Alert.alert('Success', 'Profile updated successfully.');
+        showAlert({
+          type: 'success',
+          title: 'Success',
+          message: 'Profile updated successfully.',
+          confirmText: 'OK',
+        });
       }
     } catch {
-      Alert.alert('Error', 'Failed to update profile.');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to update profile.',
+        confirmText: 'Close',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const updatePassword = async () => {
-    const { current_password, password, password_confirmation } = passwordData;
+    const {current_password, password, password_confirmation} = passwordData;
 
-    if (!current_password || !password || !password_confirmation)
-      {return Alert.alert('Error', 'All password fields are required.');}
+    if (!current_password || !password || !password_confirmation) {
+      return showAlert({
+        type: 'warning',
+        title: 'Error',
+        message: 'All password fields are required.',
+        confirmText: 'OK',
+      });
+    }
 
-    if (password !== password_confirmation)
-      {return Alert.alert('Error', 'Passwords do not match.');}
+    if (password !== password_confirmation) {
+      return showAlert({
+        type: 'warning',
+        title: 'Error',
+        message: 'Passwords do not match.',
+        confirmText: 'OK',
+      });
+    }
 
     try {
       setLoading(true);
-      const res = await axios.post('https://food.siliconsoft.pk/api/updateusepassword', {
-        userid: user.id,
-        current_password,
-        password,
-        password_confirmation,
-      });
+      const res = await axios.post(
+        'https://food.siliconsoft.pk/api/updateusepassword',
+        {
+          userid: user.id,
+          current_password,
+          password,
+          password_confirmation,
+        },
+      );
       if (res.status === 200) {
-        Alert.alert('Success', 'Password updated.');
-        setPasswordData({ current_password: '', password: '', password_confirmation: '' });
+        showAlert({
+          type: 'success',
+          title: 'Success',
+          message: 'Password updated.',
+          confirmText: 'OK',
+        });
+
+        setPasswordData({
+          current_password: '',
+          password: '',
+          password_confirmation: '',
+        });
       }
     } catch (err) {
-      Alert.alert('Failed', err?.response?.data?.message || 'Could not update password.');
+      showAlert({
+        type: 'error',
+        title: 'Failed',
+        message: err?.response?.data?.message || 'Could not update password.',
+        confirmText: 'Close',
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // Return JSX
-return (
-  <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-    <View style={styles.header}>
-      <Image
-        source={{
-          uri:
-            formData.avatar ||
-            'https://www.w3schools.com/howto/img_avatar.png',
-        }}
-        style={styles.avatar}
-      />
-      <Text style={styles.name}>
-        {formData.first_name} {formData.last_name}
-      </Text>
-      <Text style={styles.email}>{formData.email}</Text>
-    </View>
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}>
+      <View style={styles.header}>
+        <Image
+          source={{
+            uri:
+              formData.avatar ||
+              'https://www.w3schools.com/howto/img_avatar.png',
+          }}
+          style={styles.avatar}
+        />
+        <Text style={styles.name}>
+          {formData.first_name} {formData.last_name}
+        </Text>
+        <Text style={styles.email}>{formData.email}</Text>
+      </View>
 
-    {loading && (
-      <ActivityIndicator
-        size="large"
-        color="#33A744"
-        style={styles.loading}
-      />
-    )}
+      {loading && (
+        <ActivityIndicator
+          size="large"
+          color="#33A744"
+          style={styles.loading}
+        />
+      )}
 
-    <View style={styles.section}>
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        value={formData.first_name}
-        onChangeText={text => handleProfileChange('first_name', text)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Apellido"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        value={formData.last_name}
-        onChangeText={text => handleProfileChange('last_name', text)}
-      />
-      <TextInput
-        style={[styles.input, styles.disabledInput]}
-        editable={false}
-        placeholder="Correo electrónico"
-        value={formData.email}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Teléfono"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        keyboardType="phone-pad"
-        value={formData.phone}
-        onChangeText={text => handleProfileChange('phone', text)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Dirección"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        value={formData.address}
-        onChangeText={text => handleProfileChange('address', text)}
-      />
+      <View style={styles.section}>
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          value={formData.first_name}
+          onChangeText={text => handleProfileChange('first_name', text)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Apellido"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          value={formData.last_name}
+          onChangeText={text => handleProfileChange('last_name', text)}
+        />
+        <TextInput
+          style={[styles.input, styles.disabledInput]}
+          editable={false}
+          placeholder="Correo electrónico"
+          value={formData.email}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Teléfono"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          keyboardType="phone-pad"
+          value={formData.phone}
+          onChangeText={text => handleProfileChange('phone', text)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Dirección"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          value={formData.address}
+          onChangeText={text => handleProfileChange('address', text)}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={updateProfile}>
-        <Text style={styles.buttonText}>Actualizar perfil</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.button} onPress={updateProfile}>
+          <Text style={styles.buttonText}>Actualizar perfil</Text>
+        </TouchableOpacity>
+      </View>
 
-    <View style={[styles.section, { marginTop: 24 }]}>
-      <Text style={styles.sectionTitle}>Cambiar contraseña</Text>
+      <View style={[styles.section, {marginTop: 24}]}>
+        <Text style={styles.sectionTitle}>Cambiar contraseña</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña actual"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        secureTextEntry
-        value={passwordData.current_password}
-        onChangeText={text =>
-          handlePasswordChange('current_password', text)
-        }
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Nueva contraseña"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        secureTextEntry
-        value={passwordData.password}
-        onChangeText={text => handlePasswordChange('password', text)}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirmar contraseña"
-        placeholderTextColor="rgba(47,47,47,0.6)"
-        secureTextEntry
-        value={passwordData.password_confirmation}
-        onChangeText={text =>
-          handlePasswordChange('password_confirmation', text)
-        }
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Contraseña actual"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          secureTextEntry
+          value={passwordData.current_password}
+          onChangeText={text => handlePasswordChange('current_password', text)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Nueva contraseña"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          secureTextEntry
+          value={passwordData.password}
+          onChangeText={text => handlePasswordChange('password', text)}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Confirmar contraseña"
+          placeholderTextColor="rgba(47,47,47,0.6)"
+          secureTextEntry
+          value={passwordData.password_confirmation}
+          onChangeText={text =>
+            handlePasswordChange('password_confirmation', text)
+          }
+        />
 
-      <TouchableOpacity style={styles.button} onPress={updatePassword}>
-        <Text style={styles.buttonText}>Cambiar contraseña</Text>
-      </TouchableOpacity>
-    </View>
-  </ScrollView>
-);
-
+        <TouchableOpacity style={styles.button} onPress={updatePassword}>
+          <Text style={styles.buttonText}>Cambiar contraseña</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
 }
 
 // Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2EFE4',      // Crema Suave
+    backgroundColor: '#F2EFE4', // Crema Suave
   },
   scrollContent: {
-    padding: 16,                      // escala 16px
+    padding: 16, // escala 16px
     paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,                 // escala 24px
+    marginBottom: 24, // escala 24px
   },
   avatar: {
     width: 100,
@@ -240,7 +301,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.large,
-    color: '#2F2F2F',                 // Gris Carbón
+    color: '#2F2F2F', // Gris Carbón
     marginBottom: 4,
   },
   email: {
@@ -259,7 +320,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     elevation: 2,
   },
   disabledInput: {
@@ -268,13 +329,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#33A744',                 // Verde Bosque
+    color: '#33A744', // Verde Bosque
     marginBottom: 12,
   },
   input: {
     height: 44,
     borderWidth: 1,
-    borderColor: '#8B5E3C',           // Marrón Tierra
+    borderColor: '#8B5E3C', // Marrón Tierra
     borderRadius: 8,
     marginBottom: 12,
     paddingHorizontal: 12,
@@ -284,7 +345,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
   },
   button: {
-    backgroundColor: '#D27F27',       // Dorado Campo
+    backgroundColor: '#D27F27', // Dorado Campo
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -295,4 +356,3 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 });
-

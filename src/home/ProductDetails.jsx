@@ -1,22 +1,30 @@
-import React, { useState, useContext } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, ScrollView  } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import React, {useState, useContext} from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  ScrollView,
+} from 'react-native';
+import {useNavigation, useRoute} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { CartContext } from '../context/CartContext';
+import {CartContext} from '../context/CartContext';
 import fonts from '../theme/fonts';
 
 export default function ProductDetails() {
-    const route = useRoute();
-    const product = route.params?.productData;
-    const navigation = useNavigation();
-    const { addToCart } = useContext(CartContext);
-    const [quantity, setQuantity] = useState(1);
-    const [modalVisible, setModalVisible] = useState(false);
-    console.log('1222', product);
-    const increaseQuantity = () => setQuantity(quantity + 1);
-    const decreaseQuantity = () => quantity > 1 && setQuantity(quantity - 1);
+  const route = useRoute();
+  const product = route.params?.productData;
+  const navigation = useNavigation();
+  const {addToCart} = useContext(CartContext);
+  const [quantity, setQuantity] = useState(1);
+  const [modalVisible, setModalVisible] = useState(false);
+  console.log('1222', product);
+  const increaseQuantity = () => setQuantity(quantity + 1);
+  const decreaseQuantity = () => quantity > 1 && setQuantity(quantity - 1);
 
-      const handleAddToCart = () => {
+  const handleAddToCart = () => {
     // call your addToCart function here
     addToCart(product, quantity);
     setModalVisible(true); // show modal after adding
@@ -24,123 +32,108 @@ export default function ProductDetails() {
 
   const handleNavigate = () => {
     setModalVisible(false);
-    navigation.navigate('Cart'); // or any page
+    navigation.navigate('MainTabs', {screen: 'Cart'});
   };
 
-
-
-return (
-  <View style={styles.containerMain}>
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          accessible
-          accessibilityLabel="Volver"
-        >
-          <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
-        </TouchableOpacity>
-        <Text style={styles.title}>{product.name}</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Image source={{ uri: product.photo }} style={styles.image} />
-
-        <Text style={styles.price}>${product.price}</Text>
-
-        <Text
-          style={[
-            styles.stockText,
-            product.available_qty === 0
-              ? styles.outOfStock
-              : styles.inStock,
-          ]}
-        >
-          {product.available_qty === 0
-            ? 'Agotado'
-            : `Stock: ${product.available_qty}`}
-        </Text>
-
-        <View style={styles.quantityContainer}>
+  return (
+    <View style={styles.containerMain}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerContainer}>
           <TouchableOpacity
-            onPress={decreaseQuantity}
-            style={styles.quantityButton}
-            disabled={product.available_qty === 0}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
             accessible
-            accessibilityLabel="Disminuir cantidad"
-          >
-            <Ionicons name="remove" size={20} color="#FFF" />
+            accessibilityLabel="Volver">
+            <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
           </TouchableOpacity>
-
-          <Text style={styles.quantity}>{quantity}</Text>
-
-          <TouchableOpacity
-            onPress={increaseQuantity}
-            style={styles.quantityButton}
-            disabled={product.available_qty === 0}
-            accessible
-            accessibilityLabel="Aumentar cantidad"
-          >
-            <Ionicons name="add" size={20} color="#FFF" />
-          </TouchableOpacity>
+          <Text style={styles.title}>{product.name}</Text>
         </View>
 
-        <Text style={styles.description}>{product.description}</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.card}>
+          <Image source={{uri: product.photo}} style={styles.image} />
 
-    {/* Sticky CTA al fondo */}
-    <TouchableOpacity
-      style={styles.cartButton}
-      onPress={handleAddToCart}
-      disabled={product.available_qty === 0}
-      activeOpacity={0.7}
-      accessible
-      accessibilityLabel={
-        product.available_qty === 0 ? 'Agotado' : 'Añadir al carrito'
-      }
-    >
-      <Text style={styles.cartText}>
-        {product.available_qty === 0 ? 'Agotado' : 'Añadir al carrito'}
-      </Text>
-    </TouchableOpacity>
+          <Text style={styles.price}>${product.price}</Text>
 
-    <Modal
-      visible={modalVisible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setModalVisible(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalText}>
-            ¿Deseas continuar al carrito?
+          <Text
+            style={[
+              styles.stockText,
+              product.available_qty === 0 ? styles.outOfStock : styles.inStock,
+            ]}>
+            {product.available_qty === 0
+              ? 'Agotado'
+              : `Stock: ${product.available_qty}`}
           </Text>
-          <View style={styles.buttonRow}>
+
+          <View style={styles.quantityContainer}>
             <TouchableOpacity
-              onPress={handleNavigate}
-              style={styles.modalButton}
+              onPress={decreaseQuantity}
+              style={styles.quantityButton}
+              disabled={product.available_qty === 0}
               accessible
-              accessibilityLabel="Sí, ir al carrito"
-            >
-              <Text style={styles.modalButtonText}>Sí</Text>
+              accessibilityLabel="Disminuir cantidad">
+              <Ionicons name="remove" size={20} color="#FFF" />
             </TouchableOpacity>
+
+            <Text style={styles.quantity}>{quantity}</Text>
+
             <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.modalButton}
+              onPress={increaseQuantity}
+              style={styles.quantityButton}
+              disabled={product.available_qty === 0}
               accessible
-              accessibilityLabel="Permanecer aquí"
-            >
-              <Text style={styles.modalButtonText}>No</Text>
+              accessibilityLabel="Aumentar cantidad">
+              <Ionicons name="add" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
-    </Modal>
-  </View>
-);
 
+          <Text style={styles.description}>{product.description}</Text>
+        </View>
+      </ScrollView>
+
+      {/* Sticky CTA al fondo */}
+      <TouchableOpacity
+        style={styles.cartButton}
+        onPress={handleAddToCart}
+        disabled={product.available_qty === 0}
+        activeOpacity={0.7}
+        accessible
+        accessibilityLabel={
+          product.available_qty === 0 ? 'Agotado' : 'Añadir al carrito'
+        }>
+        <Text style={styles.cartText}>
+          {product.available_qty === 0 ? 'Agotado' : 'Añadir al carrito'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalText}>¿Deseas continuar al carrito?</Text>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                onPress={handleNavigate}
+                style={styles.modalButton}
+                accessible
+                accessibilityLabel="Sí, ir al carrito">
+                <Text style={styles.modalButtonText}>Sí</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.modalButton}
+                accessible
+                accessibilityLabel="Permanecer aquí">
+                <Text style={styles.modalButtonText}>No</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -299,4 +292,3 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 });
-

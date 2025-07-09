@@ -77,7 +77,7 @@ const WelcomeVideo = () => {
         {...panResponder.panHandlers}
       >
         <Image
-          source={require('../assets/logo.png')}
+          source={require('../assets/logo-white.png')}
           style={styles.logo}
           resizeMode="contain"
         />

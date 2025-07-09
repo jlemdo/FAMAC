@@ -1,18 +1,26 @@
 // src/authentication/ForgotPassword.jsx
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { useAlert } from '../context/AlertContext';
+
 
 export default function ForgotPassword() {
   const navigation = useNavigation();
-  const [email, setEmail]       = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleResetPassword = async () => {
     const trimmed = email.trim();
@@ -23,12 +31,18 @@ export default function ForgotPassword() {
     setError('');
     setLoading(true);
     try {
-      const { status } = await axios.post(
+      const {status} = await axios.post(
         'https://food.siliconsoft.pk/api/forgetpasswordlink',
-        { email: trimmed }
+        {email: trimmed},
       );
       if (status === 200) {
-        Alert.alert('Éxito', 'Enviamos el enlace de restablecimiento.');
+        showAlert({
+          type: 'success',
+          title: 'Éxito',
+          message: 'Enviamos el enlace de restablecimiento.',
+          confirmText: 'OK',
+        });
+
         setEmail('');
         navigation.navigate('Login');
       }
@@ -36,7 +50,13 @@ export default function ForgotPassword() {
       if (e.response?.status === 404) {
         setError('Email no encontrado');
       } else {
-        Alert.alert('Error', 'Intenta de nuevo más tarde.');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Intenta de nuevo más tarde.',
+          confirmText: 'Cerrar',
+        });
+
         console.error(e);
       }
     } finally {
@@ -73,12 +93,12 @@ export default function ForgotPassword() {
         onPress={handleResetPassword}
         activeOpacity={0.7}
         accessible
-        accessibilityLabel="Enviar enlace de restablecimiento"
-      >
-        {loading
-          ? <ActivityIndicator color="#2F2F2F" />
-          : <Text style={styles.buttonText}>Enviar enlace</Text>
-        }
+        accessibilityLabel="Enviar enlace de restablecimiento">
+        {loading ? (
+          <ActivityIndicator color="#2F2F2F" />
+        ) : (
+          <Text style={styles.buttonText}>Enviar enlace</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -86,8 +106,7 @@ export default function ForgotPassword() {
         style={styles.backLink}
         accessible
         accessibilityRole="button"
-        accessibilityLabel="Volver a iniciar sesión"
-      >
+        accessibilityLabel="Volver a iniciar sesión">
         <Text style={styles.backText}>← Volver al login</Text>
       </TouchableOpacity>
     </View>

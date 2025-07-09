@@ -265,7 +265,7 @@ const Header = ({onLogout}) => {
   };
 
   const handleSelectSuggestion = item => {
-    setSearchText(item.name);
+    setSearchText('');
     setSuggestions([]);
     navigation.navigate('SearchResults', {query: item.name});
   };
@@ -339,6 +339,15 @@ const Header = ({onLogout}) => {
           value={searchText}
           placeholderTextColor="#666"
           onChangeText={handleSearch}
+          returnKeyType="search"                         // muestra “Buscar” en el teclado
+          onSubmitEditing={() => {
+            if (searchText.trim()) {
+              setSuggestions([]);                         // limpia sugerencias
+              navigation.navigate('SearchResults', {
+                query: searchText.trim()
+              });
+            }
+          }}
         />
       </View>
 
@@ -371,12 +380,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+                // escala: 16px
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,             // escala: 16px
+    marginTop: 18, 
   },
   appName: {
     fontSize: fonts.size.XLL,
