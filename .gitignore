@@ -22,6 +22,8 @@ DerivedData
 *.ipa
 *.xcuserstate
 **/.xcode.env.local
+/android_aab_deploy
+/android_debug
 
 # Android/IntelliJ
 #

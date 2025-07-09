@@ -199,8 +199,7 @@ export default function Cart() {
         'https://food.siliconsoft.pk/api/create-payment-intent',
         {amount: totalPrice * 100, currency: 'usd', email: user.email},
       );
-      // const clientSecret = data.clientSecret;
-      const clientSecret = response.data.clientSecret;
+      const clientSecret = data.clientSecret;
       if (!clientSecret) {
         throw new Error('No se obtuvo clientSecret del servidor.');
       }
