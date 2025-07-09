@@ -20,7 +20,7 @@ export default function ProductDetails() {
   const {addToCart} = useContext(CartContext);
   const [quantity, setQuantity] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
-  console.log('1222', product);
+  // console.log('Product:', product);
   const increaseQuantity = () => setQuantity(quantity + 1);
   const decreaseQuantity = () => quantity > 1 && setQuantity(quantity - 1);
 
