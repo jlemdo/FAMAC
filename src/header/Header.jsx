@@ -191,7 +191,6 @@ import {
   FlatList,
   StyleSheet,
   Modal,
-  SafeAreaView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
@@ -278,7 +277,7 @@ const Header = ({onLogout}) => {
   const [showNotif, setShowNotif] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Top Bar */}
       <View style={styles.headerTop}>
         <Text style={styles.appName}>Occr Productos</Text>
@@ -367,7 +366,7 @@ const Header = ({onLogout}) => {
           style={styles.suggestionsList}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -388,6 +387,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,             // escala: 16px
+    marginTop: 18, 
+    paddingTop: 20,
   },
   appName: {
     fontSize: fonts.size.XLL,

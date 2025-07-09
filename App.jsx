@@ -139,19 +139,19 @@ function MainTabs() {
 
 function RootStack() {
   return (
-    <View style={{ flex: 1 }}>
-    <Header /> 
-    <Stack.Navigator screenOptions={{headerShown: false}}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
-      <Stack.Screen name="SearchResults" component={SearchResults} />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} />
-    </Stack.Navigator>
+    <View style={{flex: 1}}>
+      <Header />
+      <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="SearchResults" component={SearchResults} />
+        <Stack.Screen name="ProductDetails" component={ProductDetails} />
+      </Stack.Navigator>
     </View>
   );
 }
 
 function AuthFlow() {
-  const { user } = useContext(AuthContext);
+  const {user} = useContext(AuthContext);
 
   if (user === undefined) {
     return <ActivityIndicator size="large" color="tomato" />;
@@ -164,14 +164,13 @@ function AuthFlow() {
   );
 }
 
-
-
-
 export default function App() {
   return (
     <AlertProvider>
       <NotificationProvider>
-        <StripeProvider publishableKey={PUBLISHABLE_KEY}>
+        <StripeProvider
+          publishableKey={PUBLISHABLE_KEY}
+          merchantIdentifier="merchant.com.occr.productos">
           <AuthProvider>
             <CartProvider>
               <OrderProvider>
