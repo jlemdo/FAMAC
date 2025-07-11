@@ -27,7 +27,7 @@ const DriverTracking = ({order}) => {
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(order.status);
 
-  console.log('order', order);
+  // console.log('order', order);
 
   const handleDriverLocation = async () => {
     submitDriverLocation();
@@ -49,7 +49,7 @@ const DriverTracking = ({order}) => {
         fetchOrder();
       }
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   }, [order.id, latlong, fetchOrder]);
 
@@ -64,7 +64,7 @@ const DriverTracking = ({order}) => {
       //     completeOrderFromDriver()
       // }
     } catch (err) {
-      console.log('Order fetch error:', err);
+      // console.log('Order fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -79,9 +79,9 @@ const DriverTracking = ({order}) => {
         },
       );
       fetchOrder();
-      console.log('response', response);
+      // console.log('response', response);
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   };
 
@@ -149,6 +149,11 @@ const DriverTracking = ({order}) => {
         timeout: 60000,
       });
 
+      console.log('Ubicación GPS actual:', {
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+
       if (location) {
         setLatlong({
           driver_lat: location.latitude,
@@ -174,7 +179,7 @@ const DriverTracking = ({order}) => {
         driver_long: parseFloat(lastLocation.driver_long),
       });
     } catch (error) {
-      console.log('Driver location fetch error:', error);
+      // console.log('Driver location fetch error:', error);
     }
   }, [order.id]);
 

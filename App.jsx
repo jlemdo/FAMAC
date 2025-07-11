@@ -68,7 +68,7 @@ function HomeStack() {
         name="CategoryProducts"
         component={SpecificCategoryProduct}
       />
-      {/* <Stack.Screen name="ProductDetails" component={ProductDetails} /> */}
+      <Stack.Screen name="ProductDetails" component={ProductDetails} />
       {/* <Stack.Screen name="SearchResults" component={SearchResults} /> */}
     </Stack.Navigator>
   );

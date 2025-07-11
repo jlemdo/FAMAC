@@ -20,6 +20,7 @@ import {AuthContext} from '../context/AuthContext';
 import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
 import {useAlert} from '../context/AlertContext';
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 // import CheckBox from '@react-native-community/checkbox';
 import CheckBox from 'react-native-check-box';
 // import { useStripe } from "@stripe/stripe-react-native";
@@ -118,60 +119,63 @@ export default function Cart() {
   //   };
   //   checkLocation();
   // }, [latlong]);
-  useEffect(() => {
-    const checkLocation = async () => {
-      try {
-        let granted = false;
+  // Asegúrate de tener estas importaciones:
 
-        if (Platform.OS === 'android') {
-          // Android: solicitamos permiso
-          const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Permiso de ubicación',
-              message: 'Necesitamos tu ubicación para mostrar dónde estás',
-            },
-          );
-          granted = result === PermissionsAndroid.RESULTS.GRANTED;
-        } else {
-          // iOS: solicitamos permiso con react-native-permissions
-          const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-          granted = status === RESULTS.GRANTED;
-          if (granted) {
-            // Abre el diálogo nativo de iOS
-            await Geolocation.requestAuthorization('whenInUse');
-          }
-        }
+useEffect(() => {
+  const checkLocation = async () => {
+    try {
+      let granted = false;
 
-        if (!granted) {
-          console.warn('Permiso de ubicación no otorgado');
-          return;
-        }
+      if (Platform.OS === 'android') {
+        // Android: solicitamos permiso
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Permiso de ubicación',
+            message: 'Necesitamos tu ubicación para mostrar dónde estás',
+          },
+        );
+        granted = result === PermissionsAndroid.RESULTS.GRANTED;
 
-        // Obtenemos la posición en ambas plataformas
-        GetLocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 60000,
-        })
-          .then(location => {
-            console.log('Location:', location);
-            setLatlong({
-              ...latlong,
-              driver_lat: location.latitude,
-              driver_long: location.longitude,
-            });
-          })
-          .catch(error => {
-            const {code, message} = error;
-            console.warn('Location error:', code, message);
-          });
-      } catch (error) {
-        console.warn('Error al solicitar permiso:', error);
+      } else {
+        // iOS: abrimos el diálogo nativo y luego comprobamos el permiso
+        Geolocation.requestAuthorization('whenInUse');
+        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+        console.log('Permiso iOS location status:', status);
+        granted = status === RESULTS.GRANTED;
       }
-    };
 
-    checkLocation();
-  }, [latlong]);
+      if (!granted) {
+        console.warn('Permiso de ubicación no otorgado');
+        return;
+      }
+
+      // Ya con permiso, obtenemos la posición en ambas plataformas
+      GetLocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 60000,
+      })
+        .then(location => {
+          console.log('Location:', location);
+          setLatlong({
+            ...latlong,
+            driver_lat: location.latitude,
+            driver_long: location.longitude,
+          });
+        })
+        .catch(error => {
+          const { code, message } = error;
+          console.warn('Location error:', code, message);
+        });
+
+    } catch (error) {
+      console.warn('Error al solicitar permiso:', error);
+    }
+  };
+
+  checkLocation();
+}, []);
+
 
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
@@ -321,11 +325,11 @@ export default function Cart() {
     const fetchUpsellItems = async () => {
       try {
         const response = await fetch(
-          'https://food.siliconsoft.pk/api/products/upselling',
+          'https://food.siliconsoft.pk/api/products/sugerencias',
         );
         const json = await response.json();
 
-        if (json.status === 'successupselling') {
+        if (json.status === 'successsugerencias') {
           setUpsellItems(json.data);
         } else {
           console.error('Error fetching upsell items:', json);

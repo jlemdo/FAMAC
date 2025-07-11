@@ -10,6 +10,7 @@ const CustomerTracking = ({ order }) => {
     const fetchDriverLocation = useCallback(async () => {
         try {
             const res = await axios.get(`https://food.siliconsoft.pk/api/driverlocationsagainstorder/${order.id}`);
+            //  console.log('Respuesta ubicación conductor:', res.data);
             const lastLoc = res.data.data;
             const lastLocation = lastLoc[lastLoc.length - 1];
             console.log('lastLocation', lastLocation);

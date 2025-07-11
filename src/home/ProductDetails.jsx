@@ -46,7 +46,9 @@ export default function ProductDetails() {
             accessibilityLabel="Volver">
             <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
           </TouchableOpacity>
-          <Text style={styles.title}>{product.name}</Text>
+          <Text style={styles.title}>
+            {product.name.toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+          </Text>
         </View>
 
         <View style={styles.card}>

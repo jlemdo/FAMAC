@@ -38,30 +38,29 @@ export default function CategoriesList() {
       });
   }, []);
 
-  return (
+   return (
     <View style={styles.container}>
-      {/* <ScrollView showsVerticalScrollIndicator={false}> */}
       <Text style={styles.mainTitle}>Categorías</Text>
 
       {loading ? (
-        // Activity Indicator displayed in the center of the screen
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="tomato" />
         </View>
       ) : error ? (
-        // Error message if the API fails
         <View style={styles.errorContainer}>
           <Text style={styles.errorMessage}>{error}</Text>
         </View>
       ) : (
-        // Display categories after loading
         <FlatList
+          style={{ flex: 1 }}
           data={categories}
           keyExtractor={item => item.id.toString()}
-          numColumns={2}
-          contentContainerStyle={styles.categoryList}
-          showsVerticalScrollIndicator={false}
-          renderItem={({item}) => (
+
+          // FORZAMOS UNA SOLA COLUMNA Y AÑADIMOS UN KEY
+          numColumns={1}
+          key="single-column"
+
+          renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.categoryCard}
               onPress={() =>
@@ -69,25 +68,31 @@ export default function CategoriesList() {
                   categoryId: item.id,
                   categoryName: item.name,
                 })
-              }>
+              }
+              accessibilityRole="button"
+            >
               <View style={styles.imageContainer}>
                 <Image
-                  source={{uri: item.photo}}
+                  source={{ uri: item.photo }}
                   style={styles.categoryImage}
+                  accessible
+                  accessibilityLabel={`Imagen de la categoría ${item.name}`}
                 />
               </View>
               <Text style={styles.categoryName}>{item.name}</Text>
               <Text
                 style={styles.categoryDescription}
                 numberOfLines={2}
-                ellipsizeMode="tail">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Accusamus aliquam ipsa deserunt numquam eius officiis sapiente modi fugit excepturi possimus voluptate quae dolorum mollitia nesciunt, unde natus magni rerum expedita.
+                ellipsizeMode="tail"
+              >
+                {item.description || 'Sin descripción disponible.'}
               </Text>
             </TouchableOpacity>
           )}
+          contentContainerStyle={{ paddingBottom: 30 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
-      {/* </ScrollView> */}
     </View>
   );
 }
