@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
+import Geolocation from 'react-native-geolocation-service';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import MapView, {Marker} from 'react-native-maps';
@@ -114,57 +116,22 @@ const DriverTracking = ({order}) => {
   //     }
   // };
 
-  const getCurrentLocation = async () => {
-    try {
-      let granted = false;
-
-      if (Platform.OS === 'android') {
-        // Android: PermissionsAndroid
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Permiso de ubicación',
-            message: 'Necesitamos tu ubicación para mostrar dónde estás',
-          },
-        );
-        granted = result === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        // iOS: react-native-permissions + geolocation-service
-        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-        granted = status === RESULTS.GRANTED;
-        if (granted) {
-          // Muestra el diálogo nativo de iOS
-          await Geolocation.requestAuthorization('whenInUse');
-        }
-      }
-
-      if (!granted) {
-        console.warn('Permiso de ubicación no otorgado');
-        return;
-      }
-
-      // Una vez autorizado, obtenemos la posición
-      const location = await GetLocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 60000,
-      });
-
-      console.log('Ubicación GPS actual:', {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
-
-      if (location) {
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      pos => {
+        console.log('Ubicación GPS actual:', pos.coords);
         setLatlong({
-          driver_lat: location.latitude,
-          driver_long: location.longitude,
+          driver_lat: pos.coords.latitude,
+          driver_long: pos.coords.longitude,
         });
-      }
-    } catch (error) {
-      const {code, message} = error;
-      console.warn('Location error:', code, message);
-    }
+      },
+      error => {
+        console.warn('Error obteniendo ubicación:', error);
+      },
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
+    );
   };
+
   const getDriverLocaton = useCallback(async () => {
     try {
       const response = await axios.get(
@@ -182,6 +149,26 @@ const DriverTracking = ({order}) => {
       // console.log('Driver location fetch error:', error);
     }
   }, [order.id]);
+
+  useEffect(() => {
+    async function askLocationPermission() {
+      if (Platform.OS === 'ios') {
+        Geolocation.requestAuthorization('whenInUse');
+        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+        if (status !== RESULTS.GRANTED) {
+          console.warn('Permiso de ubicación iOS no otorgado');
+        }
+      } else {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.warn('Permiso de ubicación Android no otorgado');
+        }
+      }
+    }
+    askLocationPermission();
+  }, []);
 
   useEffect(() => {
     getCurrentLocation(); // for initial map display
