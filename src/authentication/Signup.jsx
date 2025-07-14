@@ -133,7 +133,7 @@
 
 // export default SignUp;
 // src/authentication/SignUp.jsx
-import React, {useState, useContext} from 'react';
+import React, {useState, useContext, useEffect} from 'react';
 import {
   View,
   Text,
@@ -150,6 +150,12 @@ import axios from 'axios';
 import {useNavigation} from '@react-navigation/native';
 import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
+import {
+  GoogleSignin,
+  GoogleSigninButton,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import {Buffer} from 'buffer';
 import fonts from '../theme/fonts';
 
 export default function SignUp() {
@@ -170,6 +176,16 @@ export default function SignUp() {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const {showAlert} = useAlert();
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        '1058559455264-cjeasg5r6l4m41o28c6k2ff1s66jr4d7.apps.googleusercontent.com', // tu Web Client ID
+      offlineAccess: false,
+      scopes: ['profile', 'email'],
+    });
+  }, []);
 
   const handleChange = (key, value) => {
     setForm({...form, [key]: value});
@@ -220,8 +236,6 @@ export default function SignUp() {
       dob: `${form.birthMonth} ${form.birthYear}`,
     };
 
-    const {showAlert} = useAlert();
-
     try {
       const {status, data} = await axios.post(
         'https://food.siliconsoft.pk/api/register',
@@ -245,6 +259,61 @@ export default function SignUp() {
         message: err.response?.data?.message || 'Intenta nuevamente',
         confirmText: 'Cerrar',
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ──────────── PREFILL CON GOOGLE ────────────
+  const decodeIdToken = idToken => {
+    const base64Payload = idToken.split('.')[1];
+    const jsonPayload = Buffer.from(base64Payload, 'base64').toString('utf8');
+    return JSON.parse(jsonPayload);
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+      const res = await GoogleSignin.signIn();
+
+      // Aquí extraemos del lugar correcto
+      const userObj =
+        res.user || // si tu versión devolviera así…
+        res.data?.user || // …o si viene anidado en data.user
+        {}; // fallback
+
+      const name = userObj.name ?? '';
+      const email = userObj.email ?? '';
+
+      if (!name || !email) {
+        throw new Error('No se obtuvieron datos de usuario de Google.');
+      }
+
+      setForm(f => ({...f, name, email}));
+      showAlert({
+        type: 'info',
+        title: 'Completa tu registro',
+        message:
+          'Hemos rellenado tu nombre y correo. Completa los demás campos.',
+        confirmText: 'Continuar',
+      });
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        showAlert({
+          type: 'info',
+          title: 'Cancelado',
+          message: 'Inicio cancelado',
+          confirmText: 'OK',
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: error.message,
+          confirmText: 'Cerrar',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -408,6 +477,14 @@ export default function SignUp() {
           <Text style={styles.btnText}>Registrarse</Text>
         )}
       </TouchableOpacity>
+
+      <GoogleSigninButton
+        style={{width: '100%', height: 48, marginBottom: 16}}
+        size={GoogleSigninButton.Size.Wide}
+        color={GoogleSigninButton.Color.Dark}
+        onPress={handleGoogleSignUp}
+        disabled={loading}
+      />
 
       {/** Link a login */}
       <TouchableOpacity

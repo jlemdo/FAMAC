@@ -14,9 +14,11 @@ import {
 } from 'react-native';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import Geolocation from 'react-native-geolocation-service';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import MapView, {Marker} from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
+import Config from 'react-native-config';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AuthContext} from '../../context/AuthContext';
 import GetLocation from 'react-native-get-location';
 import axios from 'axios';
@@ -28,6 +30,8 @@ const DriverTracking = ({order}) => {
   const [latlong, setLatlong] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(order.status);
+  const [routeCoords, setRouteCoords] = useState([]);
+  const [eta, setEta] = useState({distance: 0, duration: 0});
 
   // console.log('order', order);
 
@@ -217,34 +221,93 @@ const DriverTracking = ({order}) => {
         {latlong ? (
           <View style={styles.mapContainer}>
             <MapView
+              ref={mapRef}
               style={styles.map}
+              showsTraffic={true}
               initialRegion={{
-                latitude: latlong.driver_lat,
-                longitude: latlong.driver_long,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
+                latitude:
+                  (latlong.driver_lat + parseFloat(order.customer_lat)) / 2,
+                longitude:
+                  (latlong.driver_long + parseFloat(order.customer_long)) / 2,
+                latitudeDelta:
+                  Math.abs(
+                    latlong.driver_lat - parseFloat(order.customer_lat),
+                  ) * 1.5,
+                longitudeDelta:
+                  Math.abs(
+                    latlong.driver_long - parseFloat(order.customer_long),
+                  ) * 1.5,
               }}>
-              {/* Driver Marker */}
+              {/* 1) Trazar la ruta */}
+              <MapViewDirections
+                origin={{
+                  latitude: latlong.driver_lat,
+                  longitude: latlong.driver_long,
+                }}
+                destination={{
+                  latitude: parseFloat(order.customer_lat),
+                  longitude: parseFloat(order.customer_long),
+                }}
+                apikey={Config.GOOGLE_DIRECTIONS_API_KEY}
+                strokeWidth={4}
+                strokeColor="#D27F27"
+                onReady={result => {
+                  setEta({
+                    distance: result.distance,
+                    duration: result.duration,
+                  });
+                  setRouteCoords(result.coordinates);
+                  mapRef.current.fitToCoordinates(result.coordinates, {
+                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
+                    animated: true,
+                  });
+                }}
+                onError={err => console.error('Directions error', err)}
+              />
+
+              {/* 2) Marcador del conductor */}
               <Marker
                 coordinate={{
                   latitude: latlong.driver_lat,
                   longitude: latlong.driver_long,
                 }}
-                title="Driver Location"
-                description="Your driver is here"
+                title="Conductor"
+                description="Tu repartidor está aquí"
               />
 
-              {/* Customer Marker */}
+              {/* 3) Marcador del cliente */}
               <Marker
                 coordinate={{
                   latitude: parseFloat(order.customer_lat),
                   longitude: parseFloat(order.customer_long),
                 }}
-                title="Customer Location"
-                pinColor="green"
-                description="Customer address"
+                title="Cliente"
+                pinColor="#33A744"
+                description="Ubicación del cliente"
               />
             </MapView>
+
+            {/* 4) HUD de distancia y tiempo */}
+            <View style={styles.hud}>
+              <Text style={styles.hudText}>
+                🚗 {eta.distance.toFixed(1)} km · ⏱ {Math.ceil(eta.duration)}{' '}
+                min
+              </Text>
+            </View>
+
+            {/* 5) Botón para recentrar la ruta */}
+            <TouchableOpacity
+              style={styles.recenterBtn}
+              onPress={() => {
+                if (routeCoords.length) {
+                  mapRef.current.fitToCoordinates(routeCoords, {
+                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
+                    animated: true,
+                  });
+                }
+              }}>
+              <Ionicons name="locate-outline" size={24} color="#FFF" />
+            </TouchableOpacity>
           </View>
         ) : (
           <ActivityIndicator
@@ -370,6 +433,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
+  },
+  hud: {
+    position: 'absolute',
+    top: 16,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    zIndex: 10,
+  },
+  hudText: {
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    fontSize: fonts.size.small,
+  },
+  recenterBtn: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: '#D27F27',
+    padding: 12,
+    borderRadius: 24,
+    elevation: 4,
   },
 });
 
