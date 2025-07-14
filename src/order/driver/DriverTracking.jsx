@@ -1,4 +1,10 @@
-import React, {useContext, useState, useEffect, useCallback} from 'react';
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   View,
   Text,
@@ -32,6 +38,7 @@ const DriverTracking = ({order}) => {
   const [currentStatus, setCurrentStatus] = useState(order.status);
   const [routeCoords, setRouteCoords] = useState([]);
   const [eta, setEta] = useState({distance: 0, duration: 0});
+  const mapRef = useRef(null);
 
   // console.log('order', order);
 
@@ -154,6 +161,12 @@ const DriverTracking = ({order}) => {
     }
   }, [order.id]);
 
+  // Define customer coords antes del return
+  const customer = {
+    latitude: parseFloat(order.customer_lat),
+    longitude: parseFloat(order.customer_long),
+  };
+
   useEffect(() => {
     async function askLocationPermission() {
       if (Platform.OS === 'ios') {
@@ -225,29 +238,20 @@ const DriverTracking = ({order}) => {
               style={styles.map}
               showsTraffic={true}
               initialRegion={{
-                latitude:
-                  (latlong.driver_lat + parseFloat(order.customer_lat)) / 2,
-                longitude:
-                  (latlong.driver_long + parseFloat(order.customer_long)) / 2,
+                latitude: (latlong.driver_lat + customer.latitude) / 2,
+                longitude: (latlong.driver_long + customer.longitude) / 2,
                 latitudeDelta:
-                  Math.abs(
-                    latlong.driver_lat - parseFloat(order.customer_lat),
-                  ) * 1.5,
+                  Math.abs(latlong.driver_lat - customer.latitude) * 1.5,
                 longitudeDelta:
-                  Math.abs(
-                    latlong.driver_long - parseFloat(order.customer_long),
-                  ) * 1.5,
+                  Math.abs(latlong.driver_long - customer.longitude) * 1.5,
               }}>
-              {/* 1) Trazar la ruta */}
+              {/* 1) Ruta */}
               <MapViewDirections
                 origin={{
                   latitude: latlong.driver_lat,
                   longitude: latlong.driver_long,
                 }}
-                destination={{
-                  latitude: parseFloat(order.customer_lat),
-                  longitude: parseFloat(order.customer_long),
-                }}
+                destination={customer}
                 apikey={Config.GOOGLE_DIRECTIONS_API_KEY}
                 strokeWidth={4}
                 strokeColor="#D27F27"
@@ -258,36 +262,34 @@ const DriverTracking = ({order}) => {
                   });
                   setRouteCoords(result.coordinates);
                   mapRef.current.fitToCoordinates(result.coordinates, {
-                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
+                    edgePadding: {
+                      top: 80,
+                      right: 40,
+                      bottom: 80,
+                      left: 40,
+                    },
                     animated: true,
                   });
                 }}
                 onError={err => console.error('Directions error', err)}
               />
 
-              {/* 2) Marcador del conductor */}
+              {/* 2) Marcadores */}
               <Marker
                 coordinate={{
                   latitude: latlong.driver_lat,
                   longitude: latlong.driver_long,
                 }}
                 title="Conductor"
-                description="Tu repartidor está aquí"
               />
-
-              {/* 3) Marcador del cliente */}
               <Marker
-                coordinate={{
-                  latitude: parseFloat(order.customer_lat),
-                  longitude: parseFloat(order.customer_long),
-                }}
+                coordinate={customer}
                 title="Cliente"
                 pinColor="#33A744"
-                description="Ubicación del cliente"
               />
             </MapView>
 
-            {/* 4) HUD de distancia y tiempo */}
+            {/* 3) HUD de ETA */}
             <View style={styles.hud}>
               <Text style={styles.hudText}>
                 🚗 {eta.distance.toFixed(1)} km · ⏱ {Math.ceil(eta.duration)}{' '}
@@ -295,7 +297,7 @@ const DriverTracking = ({order}) => {
               </Text>
             </View>
 
-            {/* 5) Botón para recentrar la ruta */}
+            {/* 4) Botón recenter */}
             <TouchableOpacity
               style={styles.recenterBtn}
               onPress={() => {
@@ -311,9 +313,9 @@ const DriverTracking = ({order}) => {
           </View>
         ) : (
           <ActivityIndicator
+            style={styles.loader}
             size="large"
-            color="#0000ff"
-            style={{marginTop: 20}}
+            color="#D27F27"
           />
         )}
       </View>
