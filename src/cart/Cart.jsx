@@ -20,7 +20,8 @@ import {AuthContext} from '../context/AuthContext';
 import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
 import {useAlert} from '../context/AlertContext';
-import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
+import DeliverySlotPicker from '../components/DeliverySlotPicker'; // ajusta la ruta si estás en otro directorio
 // import CheckBox from '@react-native-community/checkbox';
 import CheckBox from 'react-native-check-box';
 // import { useStripe } from "@stripe/stripe-react-native";
@@ -56,6 +57,8 @@ export default function Cart() {
     driver_lat: '',
     driver_long: '',
   });
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState(null);
   // const { initPaymentSheet, presentPaymentSheet } = useStripe();
   // const upsellItems = [
   //     { id: 101, name: "Cheez", price: 49.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
@@ -121,61 +124,58 @@ export default function Cart() {
   // }, [latlong]);
   // Asegúrate de tener estas importaciones:
 
-useEffect(() => {
-  const checkLocation = async () => {
-    try {
-      let granted = false;
+  useEffect(() => {
+    const checkLocation = async () => {
+      try {
+        let granted = false;
 
-      if (Platform.OS === 'android') {
-        // Android: solicitamos permiso
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Permiso de ubicación',
-            message: 'Necesitamos tu ubicación para mostrar dónde estás',
-          },
-        );
-        granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        if (Platform.OS === 'android') {
+          // Android: solicitamos permiso
+          const result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Permiso de ubicación',
+              message: 'Necesitamos tu ubicación para mostrar dónde estás',
+            },
+          );
+          granted = result === PermissionsAndroid.RESULTS.GRANTED;
+        } else {
+          // iOS: abrimos el diálogo nativo y luego comprobamos el permiso
+          Geolocation.requestAuthorization('whenInUse');
+          const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+          console.log('Permiso iOS location status:', status);
+          granted = status === RESULTS.GRANTED;
+        }
 
-      } else {
-        // iOS: abrimos el diálogo nativo y luego comprobamos el permiso
-        Geolocation.requestAuthorization('whenInUse');
-        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-        console.log('Permiso iOS location status:', status);
-        granted = status === RESULTS.GRANTED;
-      }
+        if (!granted) {
+          console.warn('Permiso de ubicación no otorgado');
+          return;
+        }
 
-      if (!granted) {
-        console.warn('Permiso de ubicación no otorgado');
-        return;
-      }
-
-      // Ya con permiso, obtenemos la posición en ambas plataformas
-      GetLocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 60000,
-      })
-        .then(location => {
-          console.log('Location:', location);
-          setLatlong({
-            ...latlong,
-            driver_lat: location.latitude,
-            driver_long: location.longitude,
-          });
+        // Ya con permiso, obtenemos la posición en ambas plataformas
+        GetLocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 60000,
         })
-        .catch(error => {
-          const { code, message } = error;
-          console.warn('Location error:', code, message);
-        });
+          .then(location => {
+            console.log('Location:', location);
+            setLatlong({
+              ...latlong,
+              driver_lat: location.latitude,
+              driver_long: location.longitude,
+            });
+          })
+          .catch(error => {
+            const {code, message} = error;
+            console.warn('Location error:', code, message);
+          });
+      } catch (error) {
+        console.warn('Error al solicitar permiso:', error);
+      }
+    };
 
-    } catch (error) {
-      console.warn('Error al solicitar permiso:', error);
-    }
-  };
-
-  checkLocation();
-}, []);
-
+    checkLocation();
+  }, []);
 
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
@@ -454,62 +454,33 @@ useEffect(() => {
               </View>
             </View>
           )}
-          ListFooterComponent={() => (
-            <>
-              <View style={styles.totalContainer}>
-                <Text style={styles.totalText}>Total: ${totalPrice}</Text>
-                {needInvoice && (
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ingresa datos fiscales"
-                    placeholderTextColor="rgba(47,47,47,0.6)"
-                    value={taxDetails}
-                    onChangeText={setTaxDetails}
-                  />
-                )}
-                <TouchableOpacity
-                  style={styles.checkoutButton}
-                  onPress={handleCheckout}>
-                  <Text style={styles.checkoutText}>Proceder al Pago</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.suggestionsTitle}>
-                También te puede interesar
-              </Text>
-              {loadingUpsell ? (
-                <ActivityIndicator size="large" color="#33A744" />
-              ) : (
-                <FlatList
-                  data={upsellItems}
-                  keyExtractor={item => item.id.toString()}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  renderItem={({item}) => (
-                    <View style={styles.upsellItem}>
-                      <Image
-                        source={{uri: item.photo}}
-                        style={styles.upsellImage}
-                      />
-                      <Text style={styles.upsellName}>{item.name}</Text>
-                      <Text style={styles.upsellPrice}>${item.price}</Text>
-                      <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => addToCart(item)}>
-                        <Text style={styles.addButtonText}>
-                          Agregar al carrito
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                />
-              )}
-            </>
-          )}
+          ListFooterComponent={
+            <CartFooter
+              deliveryInfo={deliveryInfo}
+              totalPrice={totalPrice}
+              needInvoice={needInvoice}
+              setNeedInvoice={setNeedInvoice}
+              taxDetails={taxDetails}
+              setTaxDetails={setTaxDetails}
+              handleCheckout={handleCheckout}
+              setPickerVisible={setPickerVisible}
+              loadingUpsell={loadingUpsell}
+              upsellItems={upsellItems}
+              addToCart={addToCart}
+            />
+          }
           ListFooterComponentStyle={{paddingTop: 16}}
         />
       )}
 
+      <DeliverySlotPicker
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={({date, slot}) => {
+          setDeliveryInfo({date, slot});
+          setPickerVisible(false);
+        }}
+      />
       <Modal
         visible={modalVisible}
         transparent
@@ -592,7 +563,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 16,
+    // marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -619,6 +590,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
+  },
+  deliveryTime: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 5,
   },
   timer: {
     fontSize: fonts.size.small,
@@ -805,4 +783,144 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
   },
+  deliveryButton: {
+    backgroundColor: '#D27F27',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  deliveryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  deliverySummary: {
+    backgroundColor: '#F2F2F2',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+  },
+  deliverySummaryTitle: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  invoiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+
+  invoiceLabel: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+  },
 });
+
+// <-- justo después de StyleSheet.create({...})
+const CartFooter = ({
+  deliveryInfo,
+  totalPrice,
+  needInvoice,
+  setNeedInvoice,
+  taxDetails,
+  setTaxDetails,
+  handleCheckout,
+  setPickerVisible,
+  loadingUpsell,
+  upsellItems,
+  addToCart,
+}) => (
+  <View>
+    {/* Selector de horario */}
+    <View style={styles.totalContainer}>
+      <TouchableOpacity
+        onPress={() => setPickerVisible(true)}
+        style={styles.checkoutButton}>
+        <Text style={styles.checkoutText}>Seleccionar Horario de Entrega</Text>
+      </TouchableOpacity>
+
+      {deliveryInfo ? (
+        <View style={{marginTop: 10}}>
+          <Text style={styles.deliveryTime}>
+            Horario de Entrega seleccionada:
+          </Text>
+          <Text style={styles.deliveryTime}>
+            {deliveryInfo.date.toLocaleDateString()} en horario{' '}
+            {deliveryInfo.slot}
+          </Text>
+        </View>
+      ) : (
+        <Text
+          style={{
+            marginTop: 10,
+            color: '#888',
+            textAlign: 'center',
+          }}>
+          No has seleccionado un horario de entrega aún.
+        </Text>
+      )}
+    </View>
+
+    {/* Facturación (solo si hay deliveryInfo) */}
+    {deliveryInfo && (
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>Total: ${totalPrice}</Text>
+
+        <View style={styles.invoiceRow}>
+          <Text style={styles.invoiceLabel}>¿Necesitas factura?</Text>
+          <Switch
+            value={needInvoice}
+            onValueChange={setNeedInvoice}
+            trackColor={{false: '#ccc', true: '#D27F27'}}
+            thumbColor={needInvoice ? '#FFF' : '#f4f3f4'}
+          />
+        </View>
+
+        {needInvoice && (
+          <TextInput
+            style={styles.input}
+            placeholder="Ingresa datos fiscales"
+            placeholderTextColor="rgba(47,47,47,0.6)"
+            value={taxDetails || ''}
+            onChangeText={setTaxDetails}
+          />
+        )}
+
+        <TouchableOpacity
+          style={[styles.checkoutButton, !deliveryInfo && {opacity: 0.5}]}
+          onPress={handleCheckout}
+          disabled={!deliveryInfo}>
+          <Text style={styles.checkoutText}>Proceder al Pago</Text>
+        </TouchableOpacity>
+      </View>
+    )}
+
+    {/* Upsell */}
+    <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
+    {loadingUpsell ? (
+      <ActivityIndicator size="large" color="#33A744" />
+    ) : (
+      <FlatList
+        data={upsellItems}
+        keyExtractor={item => item.id.toString()}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        renderItem={({item}) => (
+          <View style={styles.upsellItem}>
+            <Image source={{uri: item.photo}} style={styles.upsellImage} />
+            <Text style={styles.upsellName}>{item.name}</Text>
+            <Text style={styles.upsellPrice}>${item.price}</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => addToCart(item)}>
+              <Text style={styles.addButtonText}>Agregar al carrito</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    )}
+  </View>
+);

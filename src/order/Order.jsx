@@ -41,9 +41,16 @@ const Order = () => {
         user.usertype === 'driver'
           ? `https://food.siliconsoft.pk/api/orderhistorydriver/${user.id}`
           : `https://food.siliconsoft.pk/api/orderhistory/${user.id}`;
+
       const {data} = await axios.get(url);
-      setOrders(data.orders);
-      updateOrders(data.orders); // sigue actualizando el contexto
+
+      // Ordenar los pedidos por fecha descendente (más reciente primero)
+      const sortedOrders = data.orders.sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      );
+
+      setOrders(sortedOrders);
+      updateOrders(sortedOrders); // actualizar también el contexto ordenado
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
