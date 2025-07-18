@@ -280,7 +280,7 @@ const Header = ({onLogout}) => {
     <View style={styles.container}>
       {/* Top Bar */}
       <View style={styles.headerTop}>
-        <Text style={styles.appName}>Occr Productos</Text>
+        <Text style={styles.appName}>Lácteos y más...</Text>
 
         <View style={styles.rightIcons}>
           <TouchableOpacity
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   appName: {
-    fontSize: fonts.size.XLL,
+    fontSize: fonts.size.XLLL,
     fontFamily: fonts.original,
     color: '#2F2F2F',             // Gris Carbón
   },

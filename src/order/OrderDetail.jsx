@@ -73,7 +73,7 @@ const OrderDetails = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.orderInfo}>
           <View style={styles.infoHeader}>
-            <Text style={styles.infoText}>ID del pedido: #{order?.id}</Text>
+            <Text style={styles.infoText}>Numero de pedido: #{order?.id}</Text>
             <Text style={styles.infoText}>Estado: {order?.status}</Text>
           </View>
 

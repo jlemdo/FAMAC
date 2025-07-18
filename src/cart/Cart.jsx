@@ -211,7 +211,7 @@ export default function Cart() {
       // 1.2) Inicializar Stripe PaymentSheet
       const {error: initError} = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Occr Productos',
+        merchantDisplayName: 'Lácteos y más',
         allowsDelayedPaymentMethods: true,
         applePay: {
           // sólo iOS
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     padding: 16,
     borderRadius: 12,
-    // marginBottom: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -834,6 +834,30 @@ const CartFooter = ({
   addToCart,
 }) => (
   <View>
+    {/* Upsell */}
+    <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
+    {loadingUpsell ? (
+      <ActivityIndicator size="large" color="#33A744" />
+    ) : (
+      <FlatList
+        data={upsellItems}
+        keyExtractor={item => item.id.toString()}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        renderItem={({item}) => (
+          <View style={styles.upsellItem}>
+            <Image source={{uri: item.photo}} style={styles.upsellImage} />
+            <Text style={styles.upsellName}>{item.name}</Text>
+            <Text style={styles.upsellPrice}>${item.price}</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => addToCart(item)}>
+              <Text style={styles.addButtonText}>Agregar al carrito</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    )}
     {/* Selector de horario */}
     <View style={styles.totalContainer}>
       <TouchableOpacity
@@ -896,31 +920,6 @@ const CartFooter = ({
           <Text style={styles.checkoutText}>Proceder al Pago</Text>
         </TouchableOpacity>
       </View>
-    )}
-
-    {/* Upsell */}
-    <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
-    {loadingUpsell ? (
-      <ActivityIndicator size="large" color="#33A744" />
-    ) : (
-      <FlatList
-        data={upsellItems}
-        keyExtractor={item => item.id.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <View style={styles.upsellItem}>
-            <Image source={{uri: item.photo}} style={styles.upsellImage} />
-            <Text style={styles.upsellName}>{item.name}</Text>
-            <Text style={styles.upsellPrice}>${item.price}</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => addToCart(item)}>
-              <Text style={styles.addButtonText}>Agregar al carrito</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
     )}
   </View>
 );

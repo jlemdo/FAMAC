@@ -87,18 +87,18 @@ function MainTabs() {
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;
-            if (route.name === 'Home') {
+            if (route.name === 'Inicio') {
               iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'Cart') {
+            } else if (route.name === 'Carrito') {
               iconName = focused ? 'cart' : 'cart-outline';
             } else if (
-              route.name === 'Order' ||
-              route.name === 'Order History'
+              route.name === 'Ordenes' ||
+              route.name === 'Historial de Ordenes'
             ) {
               iconName = focused ? 'clipboard' : 'clipboard-outline';
-            } else if (route.name === 'Route') {
+            } else if (route.name === 'Ruta') {
               iconName = focused ? 'navigate' : 'navigate-outline';
-            } else if (route.name === 'You') {
+            } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
             }
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -112,7 +112,7 @@ function MainTabs() {
           <>
             {/* <Tab.Screen name="Home" component={HomeStack} /> */}
             <Tab.Screen
-              name="Order History"
+              name="Historial de Ordenes"
               component={OrderStack}
               options={{
                 tabBarBadge: orderCount > 0 ? orderCount : null,
@@ -121,19 +121,19 @@ function MainTabs() {
           </>
         ) : (
           <>
-            <Tab.Screen name="Home" component={HomeStack} />
+            <Tab.Screen name="Inicio" component={HomeStack} />
             <Tab.Screen
-              name="Cart"
+              name="Carrito"
               component={Cart}
               options={{
                 tabBarBadge: cart.length > 0 ? cart.length : null,
               }}
             />
-            <Tab.Screen name="Order" component={OrderStack} />
+            <Tab.Screen name="Ordenes" component={OrderStack} />
             {/* <Tab.Screen name="Route" component={Route} /> */}
           </>
         )}
-        <Tab.Screen name="You" component={Profile} />
+        <Tab.Screen name="Perfil" component={Profile} />
       </Tab.Navigator>
     </View>
   );

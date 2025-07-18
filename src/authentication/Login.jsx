@@ -1,5 +1,5 @@
 // src/authentication/Login.jsx
-import React, {useState, useContext} from 'react';
+import React, {useContext} from 'react';
 import {
   View,
   Text,
@@ -7,50 +7,47 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Image,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import {Formik} from 'formik';
+import * as Yup from 'yup';
 import axios from 'axios';
 import {AuthContext} from '../context/AuthContext';
-import { useAlert } from '../context/AlertContext';
+import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 
-export default function Login() {
+export default function Login({ showGuest = true }) {
   const {login, loginAsGuest} = useContext(AuthContext);
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { showAlert } = useAlert();
+  const {showAlert} = useAlert();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      showAlert({
-        type: 'warning',
-        title: 'Error',
-        message: 'Ingresa email y contraseña.',
-        confirmText: 'Entendido',
-      });
+  // 1️⃣ Definimos el esquema de validación
+  const LoginSchema = Yup.object().shape({
+    email: Yup.string()
+      .email('Email inválido')
+      .required('El correo es obligatorio'),
+    password: Yup.string().required('La contraseña es obligatoria'),
+  });
 
-      return;
-    }
-    setLoading(true);
+  // 2️⃣ Función que llama al endpoint
+  const handleLogin = async (values, {setSubmitting}) => {
     try {
       const {data} = await axios.post('https://food.siliconsoft.pk/api/login', {
-        email,
-        password,
+        email: values.email,
+        password: values.password,
       });
       login(data.user);
-    } catch (e) {
+    } catch (err) {
       showAlert({
         type: 'error',
         title: 'Error',
-        message: e.response?.data?.message || 'Credenciales inválidas',
+        message: 'Credenciales inválidas',
+        // message: err.response?.data?.message || 'Credenciales inválidas',
         confirmText: 'Cerrar',
       });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -58,54 +55,103 @@ export default function Login() {
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="rgba(47,47,47,0.5)"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
+      <Formik
+        initialValues={{email: '', password: ''}}
+        validationSchema={LoginSchema}
+        onSubmit={handleLogin}>
+        {({
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          values,
+          errors,
+          touched,
+          isSubmitting,
+        }) => (
+          <>
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <TextInput
+                style={[
+                  styles.input,
+                  touched.email && errors.email && styles.inputError,
+                ]}
+                placeholder="Email"
+                placeholderTextColor="rgba(47,47,47,0.5)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={values.email}
+                onChangeText={handleChange('email')}
+                onBlur={handleBlur('email')}
+              />
+              {touched.email && errors.email && (
+                <Text style={styles.error}>{errors.email}</Text>
+              )}
+            </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        placeholderTextColor="rgba(47,47,47,0.5)"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+            {/* Contraseña */}
+            <View style={styles.inputGroup}>
+              <TextInput
+                style={[
+                  styles.input,
+                  touched.password && errors.password && styles.inputError,
+                ]}
+                placeholder="Contraseña"
+                placeholderTextColor="rgba(47,47,47,0.5)"
+                secureTextEntry
+                value={values.password}
+                onChangeText={handleChange('password')}
+                onBlur={handleBlur('password')}
+              />
+              {touched.password && errors.password && (
+                <Text style={styles.error}>{errors.password}</Text>
+              )}
+            </View>
 
-      <TouchableOpacity
-        style={styles.primaryBtn}
-        onPress={handleLogin}
-        activeOpacity={0.7}
-        accessible
-        accessibilityLabel="Botón Iniciar Sesión">
-        {loading ? (
-          <ActivityIndicator color="#2F2F2F" />
-        ) : (
-          <Text style={styles.btnText}>Iniciar Sesión</Text>
+            {/* Olvidaste tu contraseña */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgetPass')}
+              style={styles.link}>
+              <Text style={styles.linkTextPass}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            {/* Botón Iniciar Sesión */}
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+              accessibilityLabel="Botón Iniciar Sesión">
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.btnText}>Iniciar Sesión</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Continuar como invitado */}
+            {showGuest && (
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={loginAsGuest}
+                disabled={isSubmitting}
+                activeOpacity={0.7}
+                accessibilityLabel="Continuar como invitado">
+                <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Link a registro */}
+            <View style={styles.links}>
+              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                <Text style={styles.linkTextRegister}>
+                  Regístrate para desbloquear todo
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.secondaryBtn}
-        onPress={loginAsGuest}
-        activeOpacity={0.7}
-        accessible
-        accessibilityLabel="Continuar como invitado">
-        <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
-      </TouchableOpacity>
-
-      <View style={styles.links}>
-        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-          <Text style={styles.linkText}>Regístrate para desbloquear todo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('ForgetPass')}>
-          <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
-        </TouchableOpacity>
-      </View>
+      </Formik>
     </View>
   );
 }
@@ -123,6 +169,10 @@ const styles = StyleSheet.create({
     height: 120,
     marginBottom: 20,
   },
+  inputGroup: {
+    width: '100%',
+    marginBottom: 12,
+  },
   input: {
     width: '100%',
     height: 48,
@@ -131,8 +181,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
-    marginBottom: 12,
     color: '#2F2F2F',
+  },
+  inputError: {
+    borderColor: '#E63946',
+  },
+  error: {
+    color: '#E63946',
+    fontSize: fonts.size.small,
+    marginTop: 4,
+  },
+  link: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+  },
+  linkTextPass: {
+    color: '#007AFF',
+    fontSize: fonts.size.small,
   },
   primaryBtn: {
     width: '100%',
@@ -143,6 +208,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     elevation: 2,
   },
+  btnText: {
+    color: '#ffffff',
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+  },
   secondaryBtn: {
     width: '100%',
     borderWidth: 1.5,
@@ -151,11 +221,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 12,
-  },
-  btnText: {
-    color: '#ffffff',
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
   },
   btnTextGuest: {
     color: '#2F2F2F',
@@ -166,10 +231,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     alignItems: 'center',
   },
-  linkText: {
+  linkTextRegister: {
     color: '#2F2F2F',
     fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium,
     marginTop: 6,
   },
 });

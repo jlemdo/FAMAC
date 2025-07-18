@@ -13,6 +13,7 @@
     "@mapbox/polyline": "^1.2.1",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/checkbox": "^0.5.17",
+    "@react-native-community/datetimepicker": "^8.4.2",
     "@react-native-google-signin/google-signin": "^15.0.0",
     "@react-native-picker/picker": "^2.11.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -20,6 +21,7 @@
     "@react-navigation/native-stack": "^7.3.10",
     "@stripe/stripe-react-native": "^0.44.0",
     "axios": "^1.8.4",
+    "formik": "^2.4.6",
     "react": "19.0.0",
     "react-native": "0.79.1",
     "react-native-check-box": "^2.1.7",
@@ -33,7 +35,8 @@
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.10.0",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-video": "^6.15.0"
+    "react-native-video": "^6.15.0",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

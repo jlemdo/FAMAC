@@ -81,7 +81,7 @@ const Order = () => {
           }
           // Mensaje cuando no hay pedidos
           ListEmptyComponent={
-            <Text style={styles.emptyOrders}>No tienes pedidos aúns.</Text>
+            <Text style={styles.emptyOrders}>No tienes pedidos aún.</Text>
           }
           renderItem={({item}) => (
             <View style={styles.orderCard}>
@@ -145,7 +145,7 @@ const Order = () => {
                 <TouchableOpacity
                   style={styles.invoiceButton}
                   onPress={() => handleInvoices(item)}>
-                  <Text style={styles.invoiceText}>Ver factura</Text>
+                  <Text style={styles.invoiceText}>Ver ticket</Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -1,39 +1,39 @@
 // src/authentication/ForgotPassword.jsx
-import React, {useState} from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { Formik } from 'formik';
+import * as Yup from 'yup';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 
-
 export default function ForgotPassword() {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
 
-  const handleResetPassword = async () => {
-    const trimmed = email.trim();
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Introduce un email válido');
-      return;
-    }
-    setError('');
-    setLoading(true);
+  // 1️⃣ Schema de validación con Yup
+  const ForgotSchema = Yup.object().shape({
+    email: Yup.string()
+      .trim()
+      .email('Correo inválido')
+      .required('Correo es obligatorio'),
+  });
+
+  // 2️⃣ Handler de envío
+  const handleResetPassword = async (values, { setSubmitting, resetForm }) => {
+    setSubmitting(true);
     try {
-      const {status} = await axios.post(
+      const { status } = await axios.post(
         'https://food.siliconsoft.pk/api/forgetpasswordlink',
-        {email: trimmed},
+        { email: values.email.trim() }
       );
       if (status === 200) {
         showAlert({
@@ -42,13 +42,18 @@ export default function ForgotPassword() {
           message: 'Enviamos el enlace de restablecimiento.',
           confirmText: 'OK',
         });
-
-        setEmail('');
+        resetForm();
         navigation.navigate('Login');
       }
     } catch (e) {
       if (e.response?.status === 404) {
-        setError('Email no encontrado');
+        // Email no encontrado
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Correo no encontrado',
+          confirmText: 'Cerrar',
+        });
       } else {
         showAlert({
           type: 'error',
@@ -56,11 +61,10 @@ export default function ForgotPassword() {
           message: 'Intenta de nuevo más tarde.',
           confirmText: 'Cerrar',
         });
-
         console.error(e);
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -71,42 +75,67 @@ export default function ForgotPassword() {
         Ingresa tu correo para recibir el enlace
       </Text>
 
-      <TextInput
-        style={[styles.input, error && styles.inputError]}
-        placeholder="Correo electrónico"
-        placeholderTextColor="rgba(47,47,47,0.5)"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        onBlur={() => {
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setError('Correo inválido');
-          }
-        }}
-        accessible
-        accessibilityLabel="Campo de correo"
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Formik
+        initialValues={{ email: '' }}
+        validationSchema={ForgotSchema}
+        onSubmit={handleResetPassword}
+      >
+        {({
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          values,
+          errors,
+          touched,
+          isSubmitting,
+        }) => (
+          <>
+            {/* Email */}
+            <TextInput
+              style={[
+                styles.input,
+                touched.email && errors.email && styles.inputError,
+              ]}
+              placeholder="Correo electrónico"
+              placeholderTextColor="rgba(47,47,47,0.5)"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={values.email}
+              onChangeText={handleChange('email')}
+              onBlur={handleBlur('email')}
+              accessible
+              accessibilityLabel="Campo de correo"
+            />
+            {touched.email && errors.email && (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            )}
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleResetPassword}
-        activeOpacity={0.7}
-        accessible
-        accessibilityLabel="Enviar enlace de restablecimiento">
-        {loading ? (
-          <ActivityIndicator color="#2F2F2F" />
-        ) : (
-          <Text style={styles.buttonText}>Enviar enlace</Text>
+            {/* Botón Enviar enlace */}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+              accessibilityLabel="Enviar enlace de restablecimiento"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#2F2F2F" />
+              ) : (
+                <Text style={styles.buttonText}>Enviar enlace</Text>
+              )}
+            </TouchableOpacity>
+          </>
         )}
-      </TouchableOpacity>
+      </Formik>
 
+      {/* Volver al login */}
       <TouchableOpacity
         onPress={() => navigation.navigate('Login')}
         style={styles.backLink}
         accessible
         accessibilityRole="button"
-        accessibilityLabel="Volver a iniciar sesión">
+        accessibilityLabel="Volver a iniciar sesión"
+      >
         <Text style={styles.backText}>← Volver al login</Text>
       </TouchableOpacity>
     </View>
@@ -147,7 +176,7 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
   },
   inputError: {
-    borderColor: '#E63946', // color error si aplica
+    borderColor: '#E63946',
   },
   errorText: {
     width: '100%',
@@ -176,7 +205,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium,
     color: '#2F2F2F',
   },
 });
