@@ -1,5 +1,5 @@
 // src/profile/RegisterPrompt.jsx
-import React, {useState, useContext} from 'react';
+import React, {useState, useContext, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,30 @@ import fonts from '../theme/fonts';
 
 export default function RegisterPrompt() {
   const {user} = useContext(AuthContext);
-  const [mode, setMode] = useState('prompt'); // <-- sin genéricos
+  const [mode, setMode] = useState('prompt');
+
+  // Callbacks estables para evitar re-renders innecesarios
+  const handleForgotPassword = useCallback(() => {
+    setMode('forgot');
+  }, []);
+
+  const handleLogin = useCallback(() => {
+    setMode('login');
+  }, []);
+
+  const handleSignUp = useCallback(() => {
+    setMode('signup');
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setMode('prompt');
+  }, []);
+
+  const handleSuccess = useCallback(() => {
+    // El usuario se registró exitosamente
+    // El AuthContext se actualizará automáticamente y Profile se re-renderizará
+    // No hacemos nada para evitar problemas de estado durante render
+  }, []);
 
   // 1️⃣ Pantalla de Invitado
   if (mode === 'prompt') {
@@ -36,13 +59,13 @@ export default function RegisterPrompt() {
 
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={() => setMode('signup')}>
+          onPress={handleSignUp}>
           <Text style={styles.btnText}>Regístrate Ahora</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondaryBtn}
-          onPress={() => setMode('login')}>
+          onPress={handleLogin}>
           <Text style={styles.secondaryText}>
             ¿Ya tienes cuenta? Inicia sesión
           </Text>
@@ -51,19 +74,20 @@ export default function RegisterPrompt() {
     );
   }
 
-  // 2️⃣ Login / Signup / Forgot inlined
+  // 2️⃣ Pantallas de autenticación integradas
   return (
     <ScrollView
       contentContainerStyle={styles.authContainer}
       keyboardShouldPersistTaps="handled">
-        
+      
       {mode === 'login' && (
         <>
-          <Login showGuest={false} />
-          <TouchableOpacity onPress={() => setMode('forgot')}>
-            <Text style={styles.link}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setMode('prompt')}>
+          <Login 
+            showGuest={false} 
+            onForgotPassword={handleForgotPassword}
+            onSignUp={handleSignUp}
+          />
+          <TouchableOpacity onPress={handleBack}>
             <Text style={styles.link}>← Volver</Text>
           </TouchableOpacity>
         </>
@@ -71,8 +95,12 @@ export default function RegisterPrompt() {
 
       {mode === 'signup' && (
         <>
-          <SignUp />
-          <TouchableOpacity onPress={() => setMode('prompt')}>
+          <SignUp 
+            onForgotPassword={handleForgotPassword}
+            onLogin={handleLogin}
+            onSuccess={handleSuccess}
+          />
+          <TouchableOpacity onPress={handleBack}>
             <Text style={styles.link}>← Volver</Text>
           </TouchableOpacity>
         </>
@@ -80,8 +108,8 @@ export default function RegisterPrompt() {
 
       {mode === 'forgot' && (
         <>
-          <ForgotPassword />
-          <TouchableOpacity onPress={() => setMode('login')}>
+          <ForgotPassword onBackToLogin={handleLogin} />
+          <TouchableOpacity onPress={handleLogin}>
             <Text style={styles.link}>← Volver al inicio de sesión</Text>
           </TouchableOpacity>
         </>

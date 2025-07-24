@@ -8,6 +8,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {Formik} from 'formik';
@@ -17,7 +22,7 @@ import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 
-export default function Login({ showGuest = true }) {
+export default function Login({ showGuest = true, onForgotPassword, onSignUp }) {
   const {login, loginAsGuest} = useContext(AuthContext);
   const navigation = useNavigation();
   const {showAlert} = useAlert();
@@ -52,107 +57,129 @@ export default function Login({ showGuest = true }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          
+          <Image source={require('../assets/logo.png')} style={styles.logo} />
 
-      <Formik
-        initialValues={{email: '', password: ''}}
-        validationSchema={LoginSchema}
-        onSubmit={handleLogin}>
-        {({
-          handleChange,
-          handleBlur,
-          handleSubmit,
-          values,
-          errors,
-          touched,
-          isSubmitting,
-        }) => (
-          <>
-            {/* Email */}
-            <View style={styles.inputGroup}>
-              <TextInput
-                style={[
-                  styles.input,
-                  touched.email && errors.email && styles.inputError,
-                ]}
-                placeholder="Email"
-                placeholderTextColor="rgba(47,47,47,0.5)"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={values.email}
-                onChangeText={handleChange('email')}
-                onBlur={handleBlur('email')}
-              />
-              {touched.email && errors.email && (
-                <Text style={styles.error}>{errors.email}</Text>
-              )}
-            </View>
+          <Formik
+            initialValues={{email: '', password: ''}}
+            validationSchema={LoginSchema}
+            onSubmit={handleLogin}>
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              errors,
+              touched,
+              isSubmitting,
+            }) => (
+              <>
+                {/* Email */}
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      touched.email && errors.email && styles.inputError,
+                    ]}
+                    placeholder="Email"
+                    placeholderTextColor="rgba(47,47,47,0.5)"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    value={values.email}
+                    onChangeText={handleChange('email')}
+                    onBlur={handleBlur('email')}
+                  />
+                  {touched.email && errors.email && (
+                    <Text style={styles.error}>{errors.email}</Text>
+                  )}
+                </View>
 
-            {/* Contraseña */}
-            <View style={styles.inputGroup}>
-              <TextInput
-                style={[
-                  styles.input,
-                  touched.password && errors.password && styles.inputError,
-                ]}
-                placeholder="Contraseña"
-                placeholderTextColor="rgba(47,47,47,0.5)"
-                secureTextEntry
-                value={values.password}
-                onChangeText={handleChange('password')}
-                onBlur={handleBlur('password')}
-              />
-              {touched.password && errors.password && (
-                <Text style={styles.error}>{errors.password}</Text>
-              )}
-            </View>
+                {/* Contraseña */}
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      touched.password && errors.password && styles.inputError,
+                    ]}
+                    placeholder="Contraseña"
+                    placeholderTextColor="rgba(47,47,47,0.5)"
+                    secureTextEntry
+                    returnKeyType="done"
+                    value={values.password}
+                    onChangeText={handleChange('password')}
+                    onBlur={handleBlur('password')}
+                    onSubmitEditing={handleSubmit}
+                  />
+                  {touched.password && errors.password && (
+                    <Text style={styles.error}>{errors.password}</Text>
+                  )}
+                </View>
 
-            {/* Olvidaste tu contraseña */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ForgetPass')}
-              style={styles.link}>
-              <Text style={styles.linkTextPass}>¿Olvidaste tu contraseña?</Text>
-            </TouchableOpacity>
+                {/* Olvidaste tu contraseña */}
+                <TouchableOpacity
+                  onPress={() => {
+                    if (onForgotPassword) {
+                      onForgotPassword();
+                    } else {
+                      navigation.navigate('ForgetPass');
+                    }
+                  }}
+                  style={styles.link}>
+                  <Text style={styles.linkTextPass}>¿Olvidaste tu contraseña?</Text>
+                </TouchableOpacity>
 
-            {/* Botón Iniciar Sesión */}
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.7}
-              accessibilityLabel="Botón Iniciar Sesión">
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.btnText}>Iniciar Sesión</Text>
-              )}
-            </TouchableOpacity>
+                {/* Botón Iniciar Sesión */}
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Botón Iniciar Sesión">
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.btnText}>Iniciar Sesión</Text>
+                  )}
+                </TouchableOpacity>
 
-            {/* Continuar como invitado */}
-            {showGuest && (
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={loginAsGuest}
-                disabled={isSubmitting}
-                activeOpacity={0.7}
-                accessibilityLabel="Continuar como invitado">
-                <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
-              </TouchableOpacity>
+                {/* Continuar como invitado */}
+                {showGuest && (
+                  <TouchableOpacity
+                    style={styles.secondaryBtn}
+                    onPress={loginAsGuest}
+                    disabled={isSubmitting}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Continuar como invitado">
+                    <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Link a registro */}
+                {!onSignUp && (
+                  <View style={styles.links}>
+                    <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                      <Text style={styles.linkTextRegister}>
+                        Regístrate para desbloquear todo
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
-
-            {/* Link a registro */}
-            <View style={styles.links}>
-              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                <Text style={styles.linkTextRegister}>
-                  Regístrate para desbloquear todo
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </Formik>
-    </View>
+          </Formik>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -160,9 +187,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: '100%',
   },
   logo: {
     width: 120,

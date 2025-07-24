@@ -51,47 +51,82 @@ export default function CategoriesList() {
           <Text style={styles.errorMessage}>{error}</Text>
         </View>
       ) : (
-        <FlatList
-          style={{ flex: 1 }}
-          data={categories}
-          keyExtractor={item => item.id.toString()}
+        <>
+          {/* Carrusel de categorías en círculos estilo Uber Eats */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.carouselContainer}
+            contentContainerStyle={styles.carouselContent}>
+            {categories.map((item) => (
+              <TouchableOpacity
+                key={`carousel-${item.id}`}
+                style={styles.circleCategory}
+                onPress={() =>
+                  navigation.navigate('CategoryProducts', {
+                    categoryId: item.id,
+                    categoryName: item.name,
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Categoría ${item.name}`}>
+                <View style={styles.circleImageContainer}>
+                  <Image
+                    source={{ uri: item.photo }}
+                    style={styles.circleImage}
+                    accessible={false}
+                  />
+                </View>
+                <Text style={styles.circleCategoryName} numberOfLines={2}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-          // FORZAMOS UNA SOLA COLUMNA Y AÑADIMOS UN KEY
-          numColumns={1}
-          key="single-column"
+          {/* Lista original de categorías */}
+          <FlatList
+            style={{ flex: 1 }}
+            data={categories}
+            keyExtractor={item => item.id.toString()}
 
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.categoryCard}
-              onPress={() =>
-                navigation.navigate('CategoryProducts', {
-                  categoryId: item.id,
-                  categoryName: item.name,
-                })
-              }
-              accessibilityRole="button"
-            >
-              <View style={styles.imageContainer}>
-                <Image
-                  source={{ uri: item.photo }}
-                  style={styles.categoryImage}
-                  accessible
-                  accessibilityLabel={`Imagen de la categoría ${item.name}`}
-                />
-              </View>
-              <Text style={styles.categoryName}>{item.name}</Text>
-              <Text
-                style={styles.categoryDescription}
-                numberOfLines={2}
-                ellipsizeMode="tail"
+            // FORZAMOS UNA SOLA COLUMNA Y AÑADIMOS UN KEY
+            numColumns={1}
+            key="single-column"
+
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.categoryCard}
+                onPress={() =>
+                  navigation.navigate('CategoryProducts', {
+                    categoryId: item.id,
+                    categoryName: item.name,
+                  })
+                }
+                accessibilityRole="button"
               >
-                {item.description || 'Sin descripción disponible.'}
-              </Text>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={{ paddingBottom: 30 }}
-          showsVerticalScrollIndicator={false}
-        />
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: item.photo }}
+                    style={styles.categoryImage}
+                    accessible
+                    accessibilityLabel={`Imagen de la categoría ${item.name}`}
+                  />
+                </View>
+                <Text style={styles.categoryName}>{item.name}</Text>
+                <Text
+                  style={styles.categoryDescription}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.description || 'Sin descripción disponible.'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={{ paddingBottom: 30 }}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
     </View>
   );
@@ -175,5 +210,51 @@ const styles = StyleSheet.create({
     color: 'red',
     textAlign: 'center',
     fontFamily: fonts.regular,
+  },
+  
+  // Estilos del carrusel de círculos
+  carouselContainer: {
+    marginBottom: 24,
+    maxHeight: 120,
+  },
+  carouselContent: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  circleCategory: {
+    alignItems: 'center',
+    marginHorizontal: 8,
+    width: 80,
+  },
+  circleImageContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    // Sombra sutil
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // Borde opcional para mejor definición
+    borderWidth: 2,
+    borderColor: '#8B5E3C',
+  },
+  circleImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    resizeMode: 'cover',
+  },
+  circleCategoryName: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 14,
   },
 });

@@ -27,7 +27,8 @@ export default function ProductDetails() {
   const handleAddToCart = () => {
     // call your addToCart function here
     addToCart(product, quantity);
-    setModalVisible(true); // show modal after adding
+    // Modal cancelado por el momento
+    // setModalVisible(true); // show modal after adding
   };
 
   const handleNavigate = () => {

@@ -27,9 +27,9 @@ export function AuthProvider({ children }) {
   // 3️⃣ Verifica login en AsyncStorage (si está disponible)
   useEffect(() => {
     if (!AsyncStorage) {
-      // Fallback inmediato: guest
-      setUser({ user: 'Guest', usertype: 'Guest' });
-      setIsLoggedIn(true);
+      // Fallback inmediato: mostrar login
+      setUser(null);
+      setIsLoggedIn(false);
       return;
     }
 
@@ -40,12 +40,16 @@ export function AuthProvider({ children }) {
           const stored = JSON.parse(raw);
           setUser(stored);
           setIsLoggedIn(true);
+        } else {
+          // No hay datos guardados, mantener null para mostrar login
+          setUser(null);
+          setIsLoggedIn(false);
         }
       } catch (err) {
         console.warn('⚠️ AuthContext: fallo al leer AsyncStorage', err);
-        // Fallback de guest para que no crashee
-        setUser({ user: 'Guest', usertype: 'Guest' });
-        setIsLoggedIn(true);
+        // En caso de error, mostrar login
+        setUser(null);
+        setIsLoggedIn(false);
       }
     })();
   }, []);
@@ -64,7 +68,14 @@ export function AuthProvider({ children }) {
   };
 
   const loginAsGuest = () => {
-    setUser({ user: 'Guest', usertype: 'Guest' });
+    setUser({ 
+      id: null,
+      user: 'Guest', 
+      usertype: 'Guest',
+      email: null,
+      first_name: 'Invitado',
+      last_name: ''
+    });
     setIsLoggedIn(true);
   };
 

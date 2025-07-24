@@ -10,6 +10,11 @@ import {
   PermissionsAndroid,
   TextInput,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -22,15 +27,21 @@ import DriverTracking from './driver/DriverTracking';
 import CustomerTracking from './driver/CustomerTracking';
 import Chat from './Chat';
 import fonts from '../theme/fonts';
+import {Formik} from 'formik';
+import * as Yup from 'yup';
+import {useAlert} from '../context/AlertContext';
 
 const OrderDetails = () => {
   const {user} = useContext(AuthContext);
+  const {showAlert} = useAlert();
   const navigation = useNavigation();
   const route = useRoute();
   const orderId = route.params?.orderId;
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportLoading, setSupportLoading] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -49,6 +60,51 @@ const OrderDetails = () => {
   useEffect(() => {
     if (orderId) {fetchOrder();}
   }, [orderId, fetchOrder]);
+
+  // Schema de validación para el formulario de soporte
+  const SupportSchema = Yup.object().shape({
+    message: Yup.string().required('El mensaje es obligatorio'),
+  });
+
+  // Función para manejar el envío del formulario de soporte
+  const handleSupportSubmit = async (values, { setSubmitting, resetForm }) => {
+    setSupportLoading(true);
+    try {
+      const response = await axios.post(
+        'https://food.siliconsoft.pk/api/compsubmit',
+        {
+          orderno: order?.id?.toString() || '',
+          message: values.message,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (response.status === 201) {
+        showAlert({
+          type: 'success',
+          title: '¡Enviado!',
+          message: 'Tu mensaje fue enviado con éxito',
+          confirmText: 'OK',
+        });
+        resetForm();
+        setShowSupportModal(false);
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo enviar tu mensaje. Inténtalo de nuevo',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setSupportLoading(false);
+      setSubmitting(false);
+    }
+  };
 
   if (loading || !order) {
     return (
@@ -133,7 +189,117 @@ const OrderDetails = () => {
             </Text>
           </View>
         )}
+
+        {/* Botón de Atención al Cliente */}
+        <TouchableOpacity
+          style={styles.supportButton}
+          onPress={() => setShowSupportModal(true)}
+          activeOpacity={0.8}>
+          <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal de Atención al Cliente */}
+      <Modal
+        visible={showSupportModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSupportModal(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Atención al Cliente</Text>
+                  
+                  <Formik
+                    initialValues={{
+                      message: '',
+                    }}
+                    validationSchema={SupportSchema}
+                    onSubmit={handleSupportSubmit}
+                    enableReinitialize={true}>
+                    {({
+                      handleChange,
+                      handleBlur,
+                      handleSubmit,
+                      values,
+                      errors,
+                      touched,
+                      isSubmitting,
+                    }) => (
+                      <>
+                        {/* Mostrar información de la orden */}
+                        <View style={styles.modalInputGroup}>
+                          <Text style={styles.modalLabel}>Orden seleccionada</Text>
+                          <View style={styles.orderInfoBox}>
+                            <Text style={styles.orderInfoText}>
+                              Orden #{order?.id} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </Text>
+                            <Text style={styles.orderInfoPrice}>
+                              ${parseFloat(order?.total_price || 0).toFixed(2)}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Mensaje */}
+                        <View style={styles.modalInputGroup}>
+                          <Text style={styles.modalLabel}>Mensaje *</Text>
+                          <TextInput
+                            style={[
+                              styles.modalTextArea,
+                              touched.message && errors.message && styles.modalInputError
+                            ]}
+                            placeholder="Describe tu consulta o problema sobre esta orden..."
+                            placeholderTextColor="rgba(47,47,47,0.6)"
+                            value={values.message}
+                            onChangeText={handleChange('message')}
+                            onBlur={handleBlur('message')}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            returnKeyType="done"
+                          />
+                          {touched.message && errors.message && (
+                            <Text style={styles.modalErrorText}>{errors.message}</Text>
+                          )}
+                        </View>
+
+                        {/* Botones */}
+                        <View style={styles.modalButtons}>
+                          <TouchableOpacity
+                            style={styles.modalCancelButton}
+                            onPress={() => setShowSupportModal(false)}
+                            disabled={isSubmitting || supportLoading}>
+                            <Text style={styles.modalCancelButtonText}>Cancelar</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.modalSendButton}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting || supportLoading}>
+                            {isSubmitting || supportLoading ? (
+                              <ActivityIndicator color="#FFF" size="small" />
+                            ) : (
+                              <Text style={styles.modalSendButtonText}>Enviar</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </Formik>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -266,6 +432,137 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
     textAlign: 'center',
+  },
+  
+  // Estilos del botón de Atención al Cliente
+  supportButton: {
+    backgroundColor: '#33A744',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  supportButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // Estilos del modal
+  modalContainer: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  modalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalInputGroup: {
+    marginBottom: 16,
+  },
+  modalLabel: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  orderInfoBox: {
+    backgroundColor: '#F2EFE4',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+  },
+  orderInfoText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    marginBottom: 4,
+  },
+  orderInfoPrice: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+  },
+  modalTextArea: {
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    backgroundColor: '#FFF',
+  },
+  modalInputError: {
+    borderColor: '#E63946',
+  },
+  modalErrorText: {
+    color: '#E63946',
+    fontSize: fonts.size.small,
+    marginTop: 4,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  modalSendButton: {
+    flex: 1,
+    backgroundColor: '#33A744',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalSendButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
   },
 });
 

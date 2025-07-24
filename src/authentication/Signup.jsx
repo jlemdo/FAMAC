@@ -10,6 +10,9 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -27,7 +30,7 @@ import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 
-export default function SignUp() {
+export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const navigation = useNavigation();
   const {login} = useContext(AuthContext);
   const {showAlert} = useAlert();
@@ -120,7 +123,13 @@ export default function SignUp() {
           message: 'Registro exitoso',
           confirmText: 'OK',
         });
-        navigation.replace('Home');
+        
+        // Usar callback si está disponible, sino navegar normalmente
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigation.replace('Home');
+        }
       }
     } catch (error) {
       showAlert({
@@ -135,9 +144,15 @@ export default function SignUp() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView 
+      style={styles.keyboardContainer} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
 
       <Formik
@@ -324,7 +339,13 @@ export default function SignUp() {
 
             {/* Olvidaste tu contraseña */}
             <TouchableOpacity
-              onPress={() => navigation.navigate('ForgetPass')}
+              onPress={() => {
+                if (onForgotPassword) {
+                  onForgotPassword();
+                } else {
+                  navigation.navigate('ForgetPass');
+                }
+              }}
               style={styles.link}>
               <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
@@ -353,7 +374,13 @@ export default function SignUp() {
             {/* Ya tienes cuenta */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <TouchableOpacity onPress={() => {
+                if (onLogin) {
+                  onLogin();
+                } else {
+                  navigation.navigate('Login');
+                }
+              }}>
                 <Text style={[styles.footerText, styles.footerLink]}>
                   Inicia sesión
                 </Text>
@@ -362,11 +389,17 @@ export default function SignUp() {
           </>
         )}
       </Formik>
-    </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: {
+    flex: 1,
+    backgroundColor: '#F2EFE4',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#F2EFE4',

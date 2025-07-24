@@ -7,6 +7,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
@@ -15,7 +20,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 
-export default function ForgotPassword() {
+export default function ForgotPassword({ onBackToLogin }) {
   const navigation = useNavigation();
   const { showAlert } = useAlert();
 
@@ -43,7 +48,11 @@ export default function ForgotPassword() {
           confirmText: 'OK',
         });
         resetForm();
-        navigation.navigate('Login');
+        if (onBackToLogin) {
+          onBackToLogin();
+        } else {
+          navigation.navigate('Login');
+        }
       }
     } catch (e) {
       if (e.response?.status === 404) {
@@ -69,76 +78,95 @@ export default function ForgotPassword() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Restablecer contraseña</Text>
-      <Text style={styles.subtitle}>
-        Ingresa tu correo para recibir el enlace
-      </Text>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          
+          <Text style={styles.title}>Restablecer contraseña</Text>
+          <Text style={styles.subtitle}>
+            Ingresa tu correo para recibir el enlace
+          </Text>
 
-      <Formik
-        initialValues={{ email: '' }}
-        validationSchema={ForgotSchema}
-        onSubmit={handleResetPassword}
-      >
-        {({
-          handleChange,
-          handleBlur,
-          handleSubmit,
-          values,
-          errors,
-          touched,
-          isSubmitting,
-        }) => (
-          <>
-            {/* Email */}
-            <TextInput
-              style={[
-                styles.input,
-                touched.email && errors.email && styles.inputError,
-              ]}
-              placeholder="Correo electrónico"
-              placeholderTextColor="rgba(47,47,47,0.5)"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={values.email}
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              accessible
-              accessibilityLabel="Campo de correo"
-            />
-            {touched.email && errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
+          <Formik
+            initialValues={{ email: '' }}
+            validationSchema={ForgotSchema}
+            onSubmit={handleResetPassword}
+          >
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              errors,
+              touched,
+              isSubmitting,
+            }) => (
+              <>
+                {/* Email */}
+                <TextInput
+                  style={[
+                    styles.input,
+                    touched.email && errors.email && styles.inputError,
+                  ]}
+                  placeholder="Correo electrónico"
+                  placeholderTextColor="rgba(47,47,47,0.5)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  value={values.email}
+                  onChangeText={handleChange('email')}
+                  onBlur={handleBlur('email')}
+                  onSubmitEditing={handleSubmit}
+                  accessible
+                  accessibilityLabel="Campo de correo"
+                />
+                {touched.email && errors.email && (
+                  <Text style={styles.errorText}>{errors.email}</Text>
+                )}
+
+                {/* Botón Enviar enlace */}
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Enviar enlace de restablecimiento"
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#2F2F2F" />
+                  ) : (
+                    <Text style={styles.buttonText}>Enviar enlace</Text>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
+          </Formik>
 
-            {/* Botón Enviar enlace */}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.7}
-              accessibilityLabel="Enviar enlace de restablecimiento"
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#2F2F2F" />
-              ) : (
-                <Text style={styles.buttonText}>Enviar enlace</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-      </Formik>
-
-      {/* Volver al login */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Login')}
-        style={styles.backLink}
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel="Volver a iniciar sesión"
-      >
-        <Text style={styles.backText}>← Volver al login</Text>
-      </TouchableOpacity>
-    </View>
+          {/* Volver al login */}
+          <TouchableOpacity
+            onPress={() => {
+              if (onBackToLogin) {
+                onBackToLogin();
+              } else {
+                navigation.navigate('Login');
+              }
+            }}
+            style={styles.backLink}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Volver a iniciar sesión"
+          >
+            <Text style={styles.backText}>← Volver al login</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -146,9 +174,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: '100%',
   },
   title: {
     fontSize: fonts.size.extraLarge,
