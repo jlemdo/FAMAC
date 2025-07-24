@@ -68,7 +68,7 @@ function HomeStack() {
         name="CategoryProducts"
         component={SpecificCategoryProduct}
       />
-      <Stack.Screen name="ProductDetails" component={ProductDetails} />
+      {/* ProductDetails moved to RootStack to preserve bottom tabs */}
       {/* <Stack.Screen name="SearchResults" component={SearchResults} /> */}
     </Stack.Navigator>
   );
@@ -76,10 +76,23 @@ function HomeStack() {
 
 function MainTabs() {
   const {user} = useContext(AuthContext);
-  const {orderCount} = useContext(OrderContext);
+  const {orders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
+  
+  // Calculate orders badge with +99 logic
+  const getOrdersBadge = () => {
+    if (!orders || orders.length === 0) return null;
+    
+    // Count only active orders (not delivered/completed)
+    const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+    const activeOrders = orders.filter(order => 
+      order.status && !completedStatuses.includes(order.status.toLowerCase())
+    );
+    
+    if (activeOrders.length === 0) return null;
+    return activeOrders.length > 99 ? '+99' : activeOrders.length;
+  };
 
-  console.log('ccc', cart);
   return (
     <View style={styles.container}>
       {/* <Header /> */}
@@ -115,7 +128,7 @@ function MainTabs() {
               name="Historial de Ordenes"
               component={OrderStack}
               options={{
-                tabBarBadge: orderCount > 0 ? orderCount : null,
+                tabBarBadge: getOrdersBadge(),
               }}
             />
           </>
@@ -129,11 +142,27 @@ function MainTabs() {
                 tabBarBadge: cart.length > 0 ? cart.length : null,
               }}
             />
-            <Tab.Screen name="Ordenes" component={OrderStack} />
+            <Tab.Screen 
+              name="Ordenes" 
+              component={OrderStack}
+              options={{
+                tabBarBadge: getOrdersBadge(),
+              }}
+            />
             {/* <Tab.Screen name="Route" component={Route} /> */}
           </>
         )}
         <Tab.Screen name="Perfil" component={Profile} />
+        {/* Hidden tabs - screens that need bottom navigation but no tab icon */}
+        <Tab.Screen 
+          name="ProductDetails" 
+          component={ProductDetails}
+          options={{
+            tabBarButton: () => null, // Hide from tab bar completely
+            tabBarStyle: { display: 'flex' }, // Keep tab bar visible
+            tabBarItemStyle: { display: 'none' }, // Don't reserve space
+          }}
+        />
       </Tab.Navigator>
     </View>
   );
@@ -146,7 +175,7 @@ function RootStack() {
       <Stack.Navigator screenOptions={{headerShown: false}}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
-        <Stack.Screen name="ProductDetails" component={ProductDetails} />
+        {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>
     </View>
   );

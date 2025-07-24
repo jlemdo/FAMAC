@@ -70,9 +70,11 @@ export default function SpecificCategoryProduct() {
 
             return (
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('ProductDetails', {productData: item})
-                }>
+                onPress={() => {
+                  // Navigate to ProductDetails via the Tab Navigator
+                  const tabNavigator = navigation.getParent();
+                  tabNavigator?.navigate('ProductDetails', {productData: item});
+                }}>
                 <View style={styles.productCard}>
                   <Image source={{uri: item.photo}} style={styles.image} />
                   <Text style={styles.name}>{item.name}</Text>

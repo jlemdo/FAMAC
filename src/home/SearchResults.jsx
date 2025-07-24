@@ -120,7 +120,13 @@ useEffect(() => {
   keyExtractor={(item) => item.id.toString()}
   renderItem={({ item }) => (
     <View style={styles.item}>
-      <TouchableOpacity onPress={() => navigation.navigate('ProductDetails', { productData: item })}>
+      <TouchableOpacity onPress={() => {
+        // Navigate to ProductDetails in MainTabs from RootStack
+        navigation.navigate('MainTabs', {
+          screen: 'ProductDetails', 
+          params: { productData: item }
+        });
+      }}>
         <Image source={{ uri: item.photo }} style={styles.image} />
       </TouchableOpacity>
 

@@ -1,5 +1,5 @@
 // src/profile/RegisterPrompt.jsx
-import React, {useState, useContext, useEffect, useCallback} from 'react';
+import React, {useState, useContext, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Login from '../authentication/Login';
 import SignUp from '../authentication/Signup';
@@ -14,32 +15,25 @@ import ForgotPassword from '../authentication/ForgotPassword';
 import {AuthContext} from '../context/AuthContext';
 import fonts from '../theme/fonts';
 
-export default function RegisterPrompt() {
+function RegisterPrompt() {
   const {user} = useContext(AuthContext);
   const [mode, setMode] = useState('prompt');
+  const [previousUserType, setPreviousUserType] = useState(user?.usertype);
 
-  // Callbacks estables para evitar re-renders innecesarios
-  const handleForgotPassword = useCallback(() => {
-    setMode('forgot');
-  }, []);
+  // Detectar cambio de Guest a usuario registrado
+  useEffect(() => {
+    if (previousUserType === 'Guest' && user?.usertype !== 'Guest' && user?.usertype) {
+      // Usuario acaba de autenticarse, no hacer nada más para evitar hooks
+      return;
+    }
+    setPreviousUserType(user?.usertype);
+  }, [user?.usertype, previousUserType]);
 
-  const handleLogin = useCallback(() => {
-    setMode('login');
-  }, []);
+  // Si el usuario ya no es Guest, no renderizar nada para evitar problemas de hooks
+  if (user?.usertype !== 'Guest') {
+    return null;
+  }
 
-  const handleSignUp = useCallback(() => {
-    setMode('signup');
-  }, []);
-
-  const handleBack = useCallback(() => {
-    setMode('prompt');
-  }, []);
-
-  const handleSuccess = useCallback(() => {
-    // El usuario se registró exitosamente
-    // El AuthContext se actualizará automáticamente y Profile se re-renderizará
-    // No hacemos nada para evitar problemas de estado durante render
-  }, []);
 
   // 1️⃣ Pantalla de Invitado
   if (mode === 'prompt') {
@@ -59,13 +53,13 @@ export default function RegisterPrompt() {
 
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={handleSignUp}>
+          onPress={() => setMode('signup')}>
           <Text style={styles.btnText}>Regístrate Ahora</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondaryBtn}
-          onPress={handleLogin}>
+          onPress={() => setMode('login')}>
           <Text style={styles.secondaryText}>
             ¿Ya tienes cuenta? Inicia sesión
           </Text>
@@ -74,47 +68,53 @@ export default function RegisterPrompt() {
     );
   }
 
-  // 2️⃣ Pantallas de autenticación integradas
+  // 2️⃣ Pantallas de autenticación integradas - sin ScrollView anidado
   return (
-    <ScrollView
-      contentContainerStyle={styles.authContainer}
-      keyboardShouldPersistTaps="handled">
-      
+    <View style={styles.authContainer}>
       {mode === 'login' && (
-        <>
-          <Login 
-            showGuest={false} 
-            onForgotPassword={handleForgotPassword}
-            onSignUp={handleSignUp}
-          />
-          <TouchableOpacity onPress={handleBack}>
+        <View key="login-view" style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 400 }}>
+            <Login 
+              showGuest={false}
+              onForgotPassword={() => setMode('forgot')}
+              onSignUp={() => setMode('signup')}
+            />
+          </View>
+          <TouchableOpacity onPress={() => setMode('prompt')} style={styles.backButton}>
             <Text style={styles.link}>← Volver</Text>
           </TouchableOpacity>
-        </>
+        </View>
       )}
 
       {mode === 'signup' && (
-        <>
-          <SignUp 
-            onForgotPassword={handleForgotPassword}
-            onLogin={handleLogin}
-            onSuccess={handleSuccess}
-          />
-          <TouchableOpacity onPress={handleBack}>
+        <View key="signup-view" style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 400 }}>
+            <SignUp 
+              onForgotPassword={() => setMode('forgot')}
+              onLogin={() => setMode('login')}
+              onSuccess={() => {
+                // El AuthContext cambiará automáticamente y el componente se desmontará
+                // No necesitamos hacer nada aquí
+              }}
+            />
+          </View>
+          <TouchableOpacity onPress={() => setMode('prompt')} style={styles.backButton}>
             <Text style={styles.link}>← Volver</Text>
           </TouchableOpacity>
-        </>
+        </View>
       )}
 
       {mode === 'forgot' && (
-        <>
-          <ForgotPassword onBackToLogin={handleLogin} />
-          <TouchableOpacity onPress={handleLogin}>
-            <Text style={styles.link}>← Volver al inicio de sesión</Text>
+        <View key="forgot-view" style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 400 }}>
+            <ForgotPassword onBackToLogin={() => setMode('login')} />
+          </View>
+          <TouchableOpacity onPress={() => setMode('prompt')} style={styles.backButton}>
+            <Text style={styles.link}>← Volver</Text>
           </TouchableOpacity>
-        </>
+        </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -127,9 +127,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2EFE4',
   },
   authContainer: {
-    flexGrow: 1,
+    flex: 1,
     padding: 16,
     backgroundColor: '#F2EFE4',
+  },
+  backButton: {
+    marginTop: 16,
+    alignItems: 'center',
   },
   title: {
     fontFamily: fonts.bold,
@@ -182,3 +186,5 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 });
+
+export default RegisterPrompt;

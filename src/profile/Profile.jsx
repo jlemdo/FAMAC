@@ -1,5 +1,5 @@
 // src/authentication/Profile.jsx
-import React, { useEffect, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useState, useContext, useCallback, Fragment } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,7 @@ export default function Profile({ navigation }) {
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
-  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);  
   const [supportLoading, setSupportLoading] = useState(false);
   const [showOrderPicker, setShowOrderPicker] = useState(false);
   const [formattedOrders, setFormattedOrders] = useState([]);
@@ -44,13 +44,6 @@ export default function Profile({ navigation }) {
     address: '',
   });
 
-  // Formatear órdenes cuando cambien
-  useEffect(() => {
-    const sortedOrders = getSortedOrders();
-    const formatted = sortedOrders.map(order => formatOrderDisplay(order));
-    setFormattedOrders(formatted);
-  }, [orders, getSortedOrders, formatOrderDisplay]);
-
   // Función para obtener el label de la orden seleccionada
   const getSelectedOrderLabel = useCallback((orderno) => {
     if (!orderno) return formattedOrders.length === 0 ? 'Aún no tienes órdenes' : 'Seleccionar orden...';
@@ -58,9 +51,12 @@ export default function Profile({ navigation }) {
     return found ? found.label : 'Orden seleccionada';
   }, [formattedOrders]);
 
-  if (user?.usertype === 'Guest') {
-    return <RegisterPrompt />;
-  }
+  // Formatear órdenes cuando cambien
+  useEffect(() => {
+    const sortedOrders = getSortedOrders();
+    const formatted = sortedOrders.map(order => formatOrderDisplay(order));
+    setFormattedOrders(formatted);
+  }, [orders, getSortedOrders, formatOrderDisplay]);
 
   const fetchUserDetails = useCallback(async () => {
     setLoading(true);
@@ -230,8 +226,25 @@ export default function Profile({ navigation }) {
     }
   }, [showSupportModal]);
 
+  // Early return checks after all hooks
+  if (!user) {
+    return null;
+  }
+
+  // Check if user is Guest - return RegisterPrompt with unique key
+  if (user?.usertype === 'Guest') {
+    return (
+      <Fragment key={`guest-wrapper-${Date.now()}`}>
+        <RegisterPrompt />
+      </Fragment>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <Fragment key={`profile-wrapper-${user?.id || 'registered'}`}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Image
           source={{
@@ -657,7 +670,8 @@ export default function Profile({ navigation }) {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </Fragment>
   );
 }
 
