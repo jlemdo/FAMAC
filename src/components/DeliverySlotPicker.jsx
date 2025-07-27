@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
+import axios from 'axios';
 
 const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
-
-  // Define slot ranges
-  const slotsMorning = [{ label: '9:00 AM - 1:00 PM', value: '9-13' }];
-  const slotsEvening = [{ label: '4:00 PM - 10:00 PM', value: '16-22' }];
-  const slotsFullDay = [{ label: '9:00 AM - 5:00 PM', value: '9-17' }];
+  const [days, setDays] = useState([]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Generate next 4 days
-  const [days, setDays] = useState([]);
   useEffect(() => {
     const tempDays = [];
     for (let i = 0; i < 4; i++) {
@@ -20,13 +18,50 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       tempDays.push({
         date,
         label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'numeric' }),
+        isoDate: date.toISOString().split('T')[0], // YYYY-MM-DD format
       });
     }
     setDays(tempDays);
   }, []);
 
-  // Combine slots as needed (adjust here to switch between full-day or split slots)
-  const availableSlots = [...slotsMorning, ...slotsEvening];
+  // Fetch slots when date changes
+  useEffect(() => {
+    if (days.length > 0 && selectedDateIndex >= 0) {
+      fetchDeliverySlots(days[selectedDateIndex].isoDate);
+    }
+  }, [selectedDateIndex, days]);
+
+  const fetchDeliverySlots = async (dateString) => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`https://food.siliconsoft.pk/api/fetch_ddates/${dateString}`);
+      console.log('📅 Slots received:', response.data);
+      
+      // Mapear los slots del backend al formato que esperamos
+      if (response.data && Array.isArray(response.data)) {
+        const formattedSlots = response.data.map(slot => ({
+          label: slot.time_slot || slot.label || slot,
+          value: slot.time_slot || slot.value || slot,
+        }));
+        setAvailableSlots(formattedSlots);
+      } else {
+        // Fallback slots si el API falla
+        setAvailableSlots([
+          { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
+          { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching delivery slots:', error);
+      // Fallback slots en caso de error
+      setAvailableSlots([
+        { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
+        { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleConfirm = () => {
     const selectedDay = days[selectedDateIndex];
@@ -84,23 +119,32 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
           {/* Horarios */}
           <Text style={styles.subtitle}>Slots Disponibles</Text>
           <View style={styles.slotsContainer}>
-            {availableSlots.map((slot) => (
-              <TouchableOpacity
-                key={slot.value}
-                style={[
-                  styles.slotItem,
-                  selectedSlot === slot.value && styles.slotItemSelected,
-                ]}
-                onPress={() => setSelectedSlot(slot.value)}
-              >
-                <Text style={[
-                  styles.slotLabel,
-                  selectedSlot === slot.value && styles.slotLabelSelected
-                ]}>
-                  {slot.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#D27F27" />
+                <Text style={styles.loadingText}>Cargando horarios...</Text>
+              </View>
+            ) : availableSlots.length > 0 ? (
+              availableSlots.map((slot) => (
+                <TouchableOpacity
+                  key={slot.value}
+                  style={[
+                    styles.slotItem,
+                    selectedSlot === slot.value && styles.slotItemSelected,
+                  ]}
+                  onPress={() => setSelectedSlot(slot.value)}
+                >
+                  <Text style={[
+                    styles.slotLabel,
+                    selectedSlot === slot.value && styles.slotLabelSelected
+                  ]}>
+                    {slot.label}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.noSlotsText}>No hay horarios disponibles para esta fecha</Text>
+            )}
           </View>
 
           {/* Acciones */}
@@ -232,5 +276,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+  },
+  noSlotsText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    paddingVertical: 20,
   },
 });

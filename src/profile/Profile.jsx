@@ -1,5 +1,5 @@
 // src/authentication/Profile.jsx
-import React, { useEffect, useState, useContext, useCallback, Fragment } from 'react';
+import React, { useEffect, useState, useContext, useCallback, Fragment, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   Platform,
   FlatList
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -25,6 +26,69 @@ import { OrderContext } from '../context/OrderContext';
 import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
+import AddressPicker from '../components/AddressPicker';
+
+// Helper function para parsear fechas en múltiples formatos
+const parseFlexibleDate = (dateValue) => {
+  if (!dateValue) return null;
+  
+  try {
+    let parsedDate = null;
+    
+    if (typeof dateValue === 'string') {
+      // Formato 1: ISO date (YYYY-MM-DD)
+      if (dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
+        parsedDate = new Date(dateValue);
+      }
+      // Formato 2: "Month YYYY" como "June 1993" o "diciembre de 1976"
+      else if (dateValue.match(/^[A-Za-zñáéíóú]+ (de )?\d{4}$/)) {
+        // Remover "de" si existe y dividir
+        const cleanDate = dateValue.replace(' de ', ' ');
+        const [monthName, year] = cleanDate.split(' ');
+        
+        // Meses en inglés
+        const monthNamesEn = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        
+        // Meses en español
+        const monthNamesEs = [
+          'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+          'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+        
+        // Buscar en inglés primero
+        let monthIndex = monthNamesEn.indexOf(monthName);
+        
+        // Si no se encuentra en inglés, buscar en español (case insensitive)
+        if (monthIndex === -1) {
+          monthIndex = monthNamesEs.indexOf(monthName.toLowerCase());
+        }
+        
+        if (monthIndex !== -1) {
+          parsedDate = new Date(parseInt(year), monthIndex, 1);
+        }
+      }
+      // Formato 3: Intentar parsing directo
+      else {
+        parsedDate = new Date(dateValue);
+      }
+    } else {
+      parsedDate = new Date(dateValue);
+    }
+    
+    // Verificar que la fecha sea válida y normalizar al día 1
+    if (parsedDate && !isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900) {
+      // Siempre normalizar al día 1 del mes
+      return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1);
+    }
+  } catch (error) {
+    console.warn('Error parsing date:', error);
+  }
+  
+  return null;
+};
 
 export default function Profile({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -36,6 +100,11 @@ export default function Profile({ navigation }) {
   const [showOrderPicker, setShowOrderPicker] = useState(false);
   const [formattedOrders, setFormattedOrders] = useState([]);
   const [selectedOrderLabel, setSelectedOrderLabel] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const formikRef = useRef(null);
   
   // Estados para secciones colapsables
   const [showProfileSection, setShowProfileSection] = useState(true);
@@ -46,6 +115,7 @@ export default function Profile({ navigation }) {
     email: '',
     phone: '',
     address: '',
+    birthDate: null,
   });
 
   // Función para obtener el label de la orden seleccionada
@@ -69,12 +139,34 @@ export default function Profile({ navigation }) {
         `https://food.siliconsoft.pk/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
+      console.log('🎂 API data received:', {
+        birthDate: data.birthDate,
+        birth_date: data.birth_date,
+        dob: data.dob,
+        phone: data.phone,
+        address: data.address
+      });
+      
+      const dateValue = data.birthDate || data.birth_date || data.dob;
+      const birthDate = parseFlexibleDate(dateValue);
+      
+      console.log('🎂 Parsing date:', dateValue, 'Result:', birthDate, 'Valid:', !!birthDate);
+      
+      if (!birthDate && dateValue) {
+        console.warn('Failed to parse birth date:', dateValue);
+      } else if (!dateValue) {
+        console.log('🎂 No birth date found in API response');
+      } else {
+        console.log('🎂 Valid birth date set:', birthDate);
+      }
+      
       setProfile({
         first_name: data.first_name || '',
         last_name:  data.last_name  || '',
         email:      data.email      || '',
         phone:      data.phone      || '',
         address:    data.address    || '',
+        birthDate:  birthDate,
       });
     } catch {
       showAlert({
@@ -92,6 +184,39 @@ export default function Profile({ navigation }) {
     if (user?.id) fetchUserDetails();
   }, [user?.id, fetchUserDetails]);
 
+  // Función para verificar datos faltantes
+  const getMissingData = useCallback(() => {
+    const missing = [];
+    
+    console.log('🔍 Checking missing data for profile:', {
+      phone: profile.phone,
+      address: profile.address,
+      birthDate: profile.birthDate,
+      birthDateType: typeof profile.birthDate,
+      birthDateValid: profile.birthDate instanceof Date ? !isNaN(profile.birthDate.getTime()) : false
+    });
+    
+    if (!profile.phone || profile.phone.trim() === '') {
+      missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
+    }
+    if (!profile.address || profile.address.trim() === '') {
+      missing.push({ field: 'address', label: 'Dirección', reason: 'para poder hacer pedidos a domicilio' });
+    }
+    
+    // Verificar fecha de cumpleaños (debe existir y ser una fecha válida)
+    if (!profile.birthDate || 
+        !(profile.birthDate instanceof Date) || 
+        isNaN(profile.birthDate.getTime()) ||
+        profile.birthDate.getFullYear() < 1900) {
+      missing.push({ field: 'birthDate', label: 'Fecha de cumpleaños', reason: 'para beneficios especiales en tu día' });
+    }
+    
+    console.log('📝 Missing data detected:', missing.map(m => m.field));
+    return missing;
+  }, [profile]);
+
+  const missingData = getMissingData();
+
   const ProfileSchema = Yup.object().shape({
     first_name: Yup.string().required('Nombre es obligatorio'),
     last_name:  Yup.string().required('Apellido es obligatorio'),
@@ -99,6 +224,7 @@ export default function Profile({ navigation }) {
       .matches(/^[0-9+]+$/, 'Teléfono inválido')
       .required('Teléfono es obligatorio'),
     address:    Yup.string(), // opcional
+    birthDate:  Yup.date().nullable(), // opcional
   });
 
   const PasswordSchema = Yup.object().shape({
@@ -262,6 +388,20 @@ export default function Profile({ navigation }) {
         <Text style={styles.email}>{profile.email}</Text>
       </View>
 
+      {/* Alerta sutil para datos faltantes */}
+      {missingData.length > 0 && (
+        <View style={styles.missingDataAlert}>
+          <Text style={styles.missingDataTitle}>
+            📝 Completa tu perfil ({missingData.length} campo{missingData.length !== 1 ? 's' : ''} pendiente{missingData.length !== 1 ? 's' : ''})
+          </Text>
+          {missingData.map((item, index) => (
+            <Text key={item.field} style={styles.missingDataItem}>
+              • {item.label} - {item.reason}
+            </Text>
+          ))}
+        </View>
+      )}
+
       {loading && <ActivityIndicator size="large" color="#33A744" style={styles.loading} />}
 
       {/* Botones de Acción Rápida */}
@@ -292,26 +432,57 @@ export default function Profile({ navigation }) {
 
       {showProfileSection && (
         <Formik
+        innerRef={formikRef}
         initialValues={{
           first_name: profile.first_name,
           last_name:  profile.last_name,
           phone:      profile.phone,
           address:    profile.address,
+          birthDate:  profile.birthDate,
         }}
         enableReinitialize
         validationSchema={ProfileSchema}
         onSubmit={async (values, { setSubmitting }) => {
           setLoading(true);
           try {
+            // Preparar la fecha para envío - formato "Month YYYY"
+            // Solo enviar fecha si el usuario no tenía fecha previamente establecida
+            let dobFormatted = null;
+            const shouldUpdateBirthDate = !profile.birthDate || isNaN(profile.birthDate.getTime());
+            
+            if (shouldUpdateBirthDate && values.birthDate && values.birthDate instanceof Date && !isNaN(values.birthDate.getTime())) {
+              const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+              ];
+              const monthName = monthNames[values.birthDate.getMonth()];
+              const year = values.birthDate.getFullYear();
+              dobFormatted = `${monthName} ${year}`;
+            }
+            
+            console.log('💾 Submitting profile update:', {
+              ...values,
+              birthDate: values.birthDate,
+              dobFormatted
+            });
+            
+            // Preparar payload - solo incluir dob si debe actualizarse
+            const payload = {
+              userid:      user.id,
+              first_name:  values.first_name,
+              last_name:   values.last_name,
+              phone:       values.phone,
+              address:     values.address,
+            };
+            
+            // Solo agregar dob si debe actualizarse
+            if (shouldUpdateBirthDate && dobFormatted) {
+              payload.dob = dobFormatted;
+            }
+            
             const res = await axios.post(
               'https://food.siliconsoft.pk/api/updateuserprofile',
-              {
-                userid:      user.id,
-                first_name:  values.first_name,
-                last_name:   values.last_name,
-                phone:       values.phone,
-                address:     values.address,
-              }
+              payload
             );
             if (res.status === 200) {
               showAlert({
@@ -345,6 +516,7 @@ export default function Profile({ navigation }) {
           errors,
           isSubmitting,
           submitCount,
+          setFieldValue,
         }) => (
           <View style={styles.section}>
             <TextInput
@@ -397,13 +569,145 @@ export default function Profile({ navigation }) {
               <Text style={styles.errorText}>{errors.phone}</Text>
             )}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Dirección"
-              placeholderTextColor="rgba(47,47,47,0.6)"
-              value={values.address}
-              onChangeText={handleChange('address')}
-            />
+            {/* Campo de dirección con AddressPicker */}
+            <TouchableOpacity
+              style={[styles.input, styles.dateInput]}
+              onPress={() => setShowAddressPicker(true)}
+              activeOpacity={0.7}>
+              <Text
+                style={values.address ? styles.dateText : styles.datePlaceholder}>
+                {values.address || 'Dirección completa'}
+              </Text>
+              <Text style={styles.dateIcon}>📍</Text>
+            </TouchableOpacity>
+
+            {/* Fecha de cumpleaños */}
+            <TouchableOpacity
+              style={[
+                styles.input,
+                styles.dateInput,
+                submitCount > 0 && errors.birthDate && styles.inputError,
+                // Bloquear si ya tiene fecha de cumpleaños (solo permitir cambio si no tiene fecha)
+                profile.birthDate && !isNaN(profile.birthDate.getTime()) && styles.disabledInput,
+              ]}
+              onPress={() => {
+                // Solo permitir abrir el picker si no tiene fecha de cumpleaños
+                if (!profile.birthDate || isNaN(profile.birthDate.getTime())) {
+                  console.log('📅 Opening month/year picker...');
+                  setShowMonthYearPicker(true);
+                } else {
+                  console.log('📅 Birth date picker disabled - user already has birth date');
+                }
+              }}
+              activeOpacity={profile.birthDate && !isNaN(profile.birthDate.getTime()) ? 1 : 0.7}
+              disabled={profile.birthDate && !isNaN(profile.birthDate.getTime())}>
+              <Text
+                style={values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder}>
+                {values.birthDate && !isNaN(values.birthDate.getTime())
+                  ? values.birthDate.toLocaleDateString('es-ES', {
+                      month: 'long',
+                      year: 'numeric',
+                    })
+                  : 'Mes y año de cumpleaños'}
+              </Text>
+              <Text style={styles.dateIcon}>📅</Text>
+            </TouchableOpacity>
+            {submitCount > 0 && errors.birthDate && (
+              <Text style={styles.errorText}>{errors.birthDate}</Text>
+            )}
+            
+            {/* Selector personalizado de mes y año - solo si no tiene fecha bloqueada */}
+            {showMonthYearPicker && (!profile.birthDate || isNaN(profile.birthDate.getTime())) && (
+              <Modal
+                transparent
+                animationType="fade"
+                visible={showMonthYearPicker}
+                onRequestClose={() => setShowMonthYearPicker(false)}>
+                <TouchableWithoutFeedback onPress={() => setShowMonthYearPicker(false)}>
+                  <View style={styles.pickerModalOverlay}>
+                    <TouchableWithoutFeedback onPress={() => {}}>
+                      <View style={styles.pickerModalContent}>
+                        <Text style={styles.pickerModalTitle}>Seleccionar mes y año de nacimiento</Text>
+                        
+                        <View style={styles.pickerContainer}>
+                          {/* Selector de Mes */}
+                          <View style={styles.pickerColumn}>
+                            <Text style={styles.pickerColumnTitle}>Mes</Text>
+                            <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                              {[
+                                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                              ].map((month, index) => {
+                                const currentMonth = values.birthDate ? values.birthDate.getMonth() : -1;
+                                const isSelected = currentMonth === index;
+                                
+                                return (
+                                  <TouchableOpacity
+                                    key={month}
+                                    style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                                    onPress={() => {
+                                      const currentYear = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 25;
+                                      const newDate = new Date(currentYear, index, 1);
+                                      setFieldValue('birthDate', newDate);
+                                    }}>
+                                    <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
+                                      {month}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          </View>
+
+                          {/* Selector de Año */}
+                          <View style={styles.pickerColumn}>
+                            <Text style={styles.pickerColumnTitle}>Año</Text>
+                            <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                              {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => {
+                                const currentYear = values.birthDate ? values.birthDate.getFullYear() : -1;
+                                const isSelected = currentYear === year;
+                                
+                                return (
+                                  <TouchableOpacity
+                                    key={year}
+                                    style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                                    onPress={() => {
+                                      const currentMonth = values.birthDate ? values.birthDate.getMonth() : 0;
+                                      const newDate = new Date(year, currentMonth, 1);
+                                      setFieldValue('birthDate', newDate);
+                                    }}>
+                                    <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
+                                      {year}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          </View>
+                        </View>
+
+                        <View style={styles.pickerModalButtons}>
+                          <TouchableOpacity
+                            style={styles.pickerCancelButton}
+                            onPress={() => setShowMonthYearPicker(false)}>
+                            <Text style={styles.pickerCancelButtonText}>Cancelar</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={styles.pickerConfirmButton}
+                            onPress={() => {
+                              console.log('📅 Month/Year selected:', values.birthDate);
+                              setShowMonthYearPicker(false);
+                            }}>
+                            <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
+            )}
 
             <TouchableOpacity
               style={styles.button}
@@ -556,16 +860,7 @@ export default function Profile({ navigation }) {
       <View style={styles.accountActions}>
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => {
-            showAlert({
-              type: 'confirm',
-              title: '¿Cerrar sesión?',
-              message: '¿Estás seguro que quieres cerrar tu sesión?',
-              confirmText: 'Sí, cerrar',
-              cancelText: 'Cancelar',
-              onConfirm: logout,
-            });
-          }}
+          onPress={() => setShowLogoutConfirm(true)}
           activeOpacity={0.8}>
           <Text style={styles.logoutButtonText}>🚪 Cerrar Sesión</Text>
         </TouchableOpacity>
@@ -580,20 +875,17 @@ export default function Profile({ navigation }) {
           Keyboard.dismiss();
           setShowSupportModal(false);
         }}>
-        <TouchableWithoutFeedback 
-          onPress={() => {
-            Keyboard.dismiss();
-            setShowSupportModal(false);
-          }}>
-          <KeyboardAvoidingView
-            style={styles.modalContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <TouchableWithoutFeedback onPress={() => {
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableWithoutFeedback 
+            onPress={() => {
               Keyboard.dismiss();
+              setShowSupportModal(false);
               setShowOrderPicker(false);
             }}>
-              <View style={styles.modalOverlay}>
-                <TouchableWithoutFeedback onPress={() => setShowOrderPicker(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
@@ -740,8 +1032,62 @@ export default function Profile({ navigation }) {
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal de confirmación de cierre de sesión */}
+      <Modal
+        visible={showLogoutConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutConfirm(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowLogoutConfirm(false)}>
+          <View style={styles.logoutModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.logoutModalContent}>
+                <Text style={styles.logoutModalTitle}>¿Cerrar sesión?</Text>
+                <Text style={styles.logoutModalMessage}>
+                  ¿Estás seguro que quieres cerrar tu sesión?
+                </Text>
+                
+                <View style={styles.logoutModalButtons}>
+                  <TouchableOpacity
+                    style={styles.logoutCancelButton}
+                    onPress={() => setShowLogoutConfirm(false)}
+                    activeOpacity={0.8}>
+                    <Text style={styles.logoutCancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.logoutConfirmButton}
+                    onPress={() => {
+                      setShowLogoutConfirm(false);
+                      logout();
+                    }}
+                    activeOpacity={0.8}>
+                    <Text style={styles.logoutConfirmButtonText}>Sí, cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* AddressPicker Modal */}
+      <AddressPicker
+        visible={showAddressPicker}
+        onClose={() => setShowAddressPicker(false)}
+        onConfirm={(addressData) => {
+          console.log('📍 Address selected:', addressData);
+          // Actualizar el campo de dirección en Formik
+          if (formikRef.current) {
+            formikRef.current.setFieldValue('address', addressData.fullAddress);
+          }
+          setShowAddressPicker(false);
+        }}
+        initialAddress={profile.address || ''}
+        title="Dirección de Entrega"
+      />
       </ScrollView>
     </Fragment>
   );
@@ -854,7 +1200,7 @@ const styles = StyleSheet.create({
 
   // Estilos del botón Cerrar Sesión
   logoutButton: {
-    backgroundColor: '#E63946',
+    backgroundColor: '#6B4226',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -1031,7 +1377,7 @@ const styles = StyleSheet.create({
   // Estilos del selector personalizado
   selectorWrapper: {
     position: 'relative',
-    zIndex: 1000,
+    zIndex: 9999,
   },
   customPicker: {
     borderWidth: 1,
@@ -1073,12 +1419,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
     backgroundColor: '#FFF',
     maxHeight: 150,
-    zIndex: 1001,
+    zIndex: 10000,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 15,
+    marginTop: 1,
   },
   orderScrollView: {
     flex: 1,
@@ -1100,5 +1447,225 @@ const styles = StyleSheet.create({
   orderOptionSelectedText: {
     fontFamily: fonts.bold,
     color: '#8B5E3C',
+  },
+  
+  // Estilos para datos faltantes
+  missingDataAlert: {
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  missingDataTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#D27F27',
+    marginBottom: 8,
+  },
+  missingDataItem: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  
+  // Estilos para fecha de cumpleaños
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  dateText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  datePlaceholder: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: 'rgba(47,47,47,0.6)',
+    flex: 1,
+  },
+  dateIcon: {
+    fontSize: fonts.size.medium,
+    marginLeft: 8,
+  },
+  iosDatePicker: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  
+  // Estilos del selector personalizado de mes/año
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  pickerModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    height: 200,
+    marginBottom: 20,
+  },
+  pickerColumn: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  pickerColumnTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pickerScrollView: {
+    maxHeight: 160,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+  },
+  pickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  pickerOptionSelected: {
+    backgroundColor: 'rgba(139, 94, 60, 0.15)',
+  },
+  pickerOptionText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+  },
+  pickerOptionSelectedText: {
+    fontFamily: fonts.bold,
+    color: '#8B5E3C',
+  },
+  pickerModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pickerCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  pickerConfirmButton: {
+    flex: 1,
+    backgroundColor: '#D27F27',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerConfirmButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+  
+  // Estilos del modal de confirmación de logout
+  logoutModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  logoutModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 300,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  logoutModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  logoutModalMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: 'rgba(47,47,47,0.8)',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  logoutModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  logoutCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  logoutCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  logoutConfirmButton: {
+    flex: 1,
+    backgroundColor: '#6B4226',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  logoutConfirmButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
   },
 });

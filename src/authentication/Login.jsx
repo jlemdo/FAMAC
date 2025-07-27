@@ -1,5 +1,5 @@
 // src/authentication/Login.jsx
-import React, {useContext} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -21,13 +21,31 @@ import axios from 'axios';
 import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
+import Config from 'react-native-config';
+import {
+  GoogleSignin,
+  GoogleSigninButton,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 
 export default function Login({ showGuest = true, onForgotPassword, onSignUp }) {
   const {login, loginAsGuest} = useContext(AuthContext);
   const navigation = useNavigation();
   const {showAlert} = useAlert();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  // 1️⃣ Definimos el esquema de validación
+  // 1️⃣ Configurar Google Sign-In
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: false,
+      scopes: ['profile', 'email'],
+      forceCodeForRefreshToken: true,
+      accountName: '', // Esto fuerza el selector de cuenta
+    });
+  }, []);
+
+  // 2️⃣ Definimos el esquema de validación
   const LoginSchema = Yup.object().shape({
     email: Yup.string()
       .email('Email inválido')
@@ -35,7 +53,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     password: Yup.string().required('La contraseña es obligatoria'),
   });
 
-  // 2️⃣ Función que llama al endpoint
+  // 3️⃣ Función que llama al endpoint
   const handleLogin = async (values, {setSubmitting}) => {
     try {
       const {data} = await axios.post('https://food.siliconsoft.pk/api/login', {
@@ -53,6 +71,78 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 4️⃣ Función para login con Google
+  const handleGoogleLogin = async () => {
+    if (googleLoading) return;
+    
+    setGoogleLoading(true);
+    try {
+      // Cerrar sesión silenciosamente para mostrar selector de cuenta
+      try {
+        await GoogleSignin.signOut();
+      } catch (error) {
+        // Ignorar errores si no hay sesión activa
+      }
+      
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+      const userInfo = await GoogleSignin.signIn();
+      
+      // Obtener el ID token
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+
+      // Enviar el ID token al backend
+      const {data} = await axios.post('https://food.siliconsoft.pk/api/auth/google', {
+        id_token: idToken,
+      });
+
+      // Login exitoso con datos del backend
+      login(data.user);
+      
+      showAlert({
+        type: 'success',
+        title: 'Bienvenido',
+        message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
+        confirmText: 'Continuar',
+      });
+
+    } catch (error) {
+      console.log('Google Sign-In Error:', error);
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        showAlert({
+          type: 'warning',
+          title: 'Cancelado',
+          message: 'Has cancelado el login con Google.',
+          confirmText: 'OK',
+        });
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        showAlert({
+          type: 'warning',
+          title: 'En progreso',
+          message: 'El login con Google ya está en progreso.',
+          confirmText: 'OK',
+        });
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Google Play Services no está disponible.',
+          confirmText: 'OK',
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Error al iniciar sesión con Google. Inténtalo de nuevo.',
+          confirmText: 'OK',
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -134,8 +224,8 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                       navigation.navigate('ForgetPass');
                     }
                   }}
-                  style={styles.link}>
-                  <Text style={styles.linkTextPass}>¿Olvidaste tu contraseña?</Text>
+                  style={styles.linkButton}>
+                  <Text style={styles.linkButtonText}>¿Olvidaste tu contraseña?</Text>
                 </TouchableOpacity>
 
                 {/* Botón Iniciar Sesión */}
@@ -149,6 +239,32 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     <ActivityIndicator color="#FFF" />
                   ) : (
                     <Text style={styles.btnText}>Iniciar Sesión</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* Separador */}
+                <View style={styles.separator}>
+                  <View style={styles.separatorLine} />
+                  <Text style={styles.separatorText}>o continúa con</Text>
+                  <View style={styles.separatorLine} />
+                </View>
+
+                {/* Botón Google Sign-In */}
+                <TouchableOpacity
+                  style={[styles.googleButton, (isSubmitting || googleLoading) && styles.buttonDisabled]}
+                  onPress={handleGoogleLogin}
+                  disabled={isSubmitting || googleLoading}
+                  activeOpacity={0.8}>
+                  {googleLoading ? (
+                    <ActivityIndicator color="#2F2F2F" size="small" />
+                  ) : (
+                    <>
+                      <Image 
+                        source={{uri: 'https://developers.google.com/identity/images/g-logo.png'}}
+                        style={styles.googleIcon}
+                      />
+                      <Text style={styles.googleButtonText}>Iniciar sesión con Google</Text>
+                    </>
                   )}
                 </TouchableOpacity>
 
@@ -166,13 +282,14 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
                 {/* Link a registro */}
                 {!onSignUp && (
-                  <View style={styles.links}>
-                    <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                      <Text style={styles.linkTextRegister}>
-                        Regístrate para desbloquear todo
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity 
+                    style={styles.registerButton}
+                    onPress={() => navigation.navigate('SignUp')}
+                    activeOpacity={0.8}>
+                    <Text style={styles.registerButtonText}>
+                      🚀 Regístrate para desbloquear todo
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </>
             )}
@@ -190,7 +307,8 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100%',
@@ -198,11 +316,12 @@ const styles = StyleSheet.create({
   logo: {
     width: 120,
     height: 120,
-    marginBottom: 20,
+    marginBottom: 32,
+    resizeMode: 'contain',
   },
   inputGroup: {
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   input: {
     width: '100%',
@@ -222,22 +341,34 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     marginTop: 4,
   },
-  link: {
+  linkButton: {
     alignSelf: 'flex-end',
-    marginBottom: 12,
+    marginBottom: 20,
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
   },
-  linkTextPass: {
+  linkButtonText: {
     color: '#007AFF',
     fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
   },
   primaryBtn: {
     width: '100%',
     backgroundColor: '#D27F27',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 10,
-    elevation: 2,
+    marginBottom: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   btnText: {
     color: '#ffffff',
@@ -248,24 +379,83 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1.5,
     borderColor: '#D27F27',
+    backgroundColor: 'transparent',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 16,
   },
   btnTextGuest: {
     color: '#2F2F2F',
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
   },
-  links: {
-    marginTop: 16,
+  registerButton: {
+    width: '100%',
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderWidth: 2,
+    borderColor: '#D27F27',
+    borderRadius: 8,
+    paddingVertical: 16,
     alignItems: 'center',
+    marginTop: 20,
+    elevation: 2,
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  linkTextRegister: {
-    color: '#2F2F2F',
-    fontFamily: fonts.regular,
+  registerButtonText: {
+    color: '#D27F27',
+    fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    marginTop: 6,
+    textAlign: 'center',
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    width: '100%',
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.3)',
+  },
+  separatorText: {
+    marginHorizontal: 16,
+    color: 'rgba(47, 47, 47, 0.6)',
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+  },
+  googleButton: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#2F2F2F',
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

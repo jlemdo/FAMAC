@@ -17,6 +17,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
 import {useStripe} from '@stripe/stripe-react-native';
@@ -33,6 +34,7 @@ import Geolocation from 'react-native-geolocation-service';
 import fonts from '../theme/fonts';
 
 export default function Cart() {
+  const navigation = useNavigation();
   const {addNotification} = useNotification();
   const {
     cart,
@@ -44,6 +46,7 @@ export default function Cart() {
   } = useContext(CartContext);
   const {user} = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet} = useStripe();
   const [timers, setTimers] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
@@ -61,6 +64,9 @@ export default function Cart() {
   });
   const [pickerVisible, setPickerVisible] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
+  
+  // Ref para el scroll automático al botón de pagar
+  const flatListRef = React.useRef(null);
   // const { initPaymentSheet, presentPaymentSheet } = useStripe();
   // const upsellItems = [
   //     { id: 101, name: "Cheez", price: 49.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
@@ -179,6 +185,24 @@ export default function Cart() {
     checkLocation();
   }, []);
 
+  // Efecto para limpiar carrito cuando cambia el usuario
+  useEffect(() => {
+    const userId = user?.id || null;
+    
+    // Si hay un usuario previo diferente al actual, limpiar carrito
+    if (currentUserId !== null && currentUserId !== userId) {
+      console.log('🛒 Usuario cambió, limpiando carrito:', {
+        previousUser: currentUserId,
+        currentUser: userId
+      });
+      clearCart();
+      setTimers({});
+    }
+    
+    // Actualizar el ID del usuario actual
+    setCurrentUserId(userId);
+  }, [user?.id, currentUserId, clearCart]);
+
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
     completeOrder();
@@ -215,6 +239,7 @@ export default function Cart() {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Lácteos y más',
         allowsDelayedPaymentMethods: true,
+        returnURL: 'occr-productos-app://stripe-redirect',
         applePay: {
           // sólo iOS
           merchantCountryCode: 'MX',
@@ -225,7 +250,10 @@ export default function Cart() {
           testEnv: true, // sandbox
         },
       });
-      if (initError) throw initError;
+      if (initError) {
+        console.error('❌ Error inicializando Stripe:', initError);
+        throw initError;
+      }
 
       // 1.3) Presentar la UI de pago
       const {error: paymentError} = await presentPaymentSheet();
@@ -248,12 +276,30 @@ export default function Cart() {
         return;
       }
       // 1.4) Pago exitoso: enviar la orden
-      await completeOrderFunc();
+      const orderData = await completeOrderFunc();
+      
+      // Crear resumen del pedido
+      const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
+      const deliveryText = deliveryInfo ? 
+        `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}` : 
+        'Horario pendiente';
+      
       showAlert({
         type: 'success',
-        title: '¡Éxito!',
-        message: 'Tu pedido se ha procesado correctamente.',
-        confirmText: 'OK',
+        title: '¡Pedido Realizado!',
+        message: `Tu pedido ha sido procesado exitosamente.\n\n` +
+                 `💰 Total: $${totalPrice}\n` +
+                 `📦 ${itemCount} producto${itemCount !== 1 ? 's' : ''}\n` +
+                 `🚚 ${deliveryText}` +
+                 `${needInvoice ? '\n🧾 Factura solicitada' : ''}`,
+        confirmText: 'Ir al Inicio',
+        onConfirm: () => {
+          // Redirigir al inicio para actualizar el estado de órdenes
+          navigation.navigate('MainTabs', { 
+            screen: 'Inicio',
+            params: { screen: 'CategoriesList' }
+          });
+        }
       });
       clearCart();
     } catch (err) {
@@ -274,19 +320,38 @@ export default function Cart() {
     try {
       const cartUpdateArr = cart.map(it => ({
         item_name: it.name,
-        item_price: it.price,
-        item_qty: it.quantity,
+        item_price: it.price.toString(),
+        item_qty: it.quantity.toString(),
         item_image: it.photo,
       }));
-      await axios.post('https://food.siliconsoft.pk/api/ordersubmit', {
+      
+      const payload = {
         userid: user.id,
         orderno: '1',
         orderdetails: cartUpdateArr,
-        customer_lat: latlong.driver_lat,
-        customer_long: latlong.driver_long,
-      });
+        customer_lat: latlong.driver_lat || '',
+        customer_long: latlong.driver_long || '',
+        need_invoice: needInvoice ? "true" : "false",
+        tax_details: needInvoice ? (taxDetails || '') : '',
+        delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
+        delivery_slot: deliveryInfo?.slot || '',
+        user_email: user.email || '',
+      };
+      
+      console.log('🛒 Enviando orden al backend:', payload);
+      
+      const response = await axios.post('https://food.siliconsoft.pk/api/ordersubmit', payload);
+      
+      console.log('✅ Orden enviada exitosamente:', response.data);
+      return response.data;
     } catch (err) {
-      console.error('Order submit failed:', err);
+      console.error('❌ Order submit failed:', {
+        error: err,
+        response: err.response?.data,
+        status: err.response?.status,
+        config: err.config
+      });
+      
       showAlert({
         type: 'error',
         title: 'Error',
@@ -350,7 +415,7 @@ export default function Cart() {
     const initialTimers = {};
     cart.forEach(item => {
       if (timers[item.id] == null) {
-        initialTimers[item.id] = 900;
+        initialTimers[item.id] = 3600; // 1 hora = 3600 segundos
       }
     });
     if (Object.keys(initialTimers).length > 0) {
@@ -374,7 +439,7 @@ export default function Cart() {
               setTimeout(() => {
                 addNotification(
                   'Vencimiento del carrito',
-                  'Tu artículo en el carrito expirará en 5 minutos.',
+                  'Tu artículo en el carrito expirará en 10 minutos.',
                 );
               }, 0);
             }
@@ -420,6 +485,7 @@ export default function Cart() {
             </View>
           </View>
           <FlatList
+            ref={flatListRef}
             data={cart}
             keyExtractor={item => item.id.toString()}
             style={{flex: 1}}
@@ -495,6 +561,11 @@ export default function Cart() {
         onConfirm={({date, slot}) => {
           setDeliveryInfo({date, slot});
           setPickerVisible(false);
+          
+          // Scroll automático al final donde está el botón de pagar
+          setTimeout(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }, 300); // Pequeño delay para que se actualice el estado primero
         }}
       />
       <Modal

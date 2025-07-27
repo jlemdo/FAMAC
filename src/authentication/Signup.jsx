@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Modal,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -35,18 +36,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const {login} = useContext(AuthContext);
   const {showAlert} = useAlert();
   const [showPicker, setShowPicker] = useState(false);
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId:
-        Config.GOOGLE_WEB_CLIENT_ID,
+      webClientId: Config.GOOGLE_WEB_CLIENT_ID,
       offlineAccess: false,
-      scopes: [
-        'profile',
-        'email',
-        'https://www.googleapis.com/auth/user.birthday.read',
-      ],
+      scopes: ['profile', 'email'],
+      forceCodeForRefreshToken: true,
+      accountName: '', // Esto fuerza el selector de cuenta
     });
   }, []);
 
@@ -70,28 +70,80 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .required('Verificar contraseña'),
   });
 
-  // 3️⃣ Pre-llenado con Google
-  const handleGoogleFill = async setFieldValue => {
+  // 3️⃣ Registro con Google usando backend API
+  const handleGoogleSignup = async () => {
+    if (googleLoading) return;
+    
+    setGoogleLoading(true);
     try {
-      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
-      const res = await GoogleSignin.signIn();
-      const userObj = res.data.user || {};
-
-      if (userObj.email) setFieldValue('email', userObj.email);
-      if (userObj.givenName) setFieldValue('first_name', userObj.givenName);
-      if (userObj.familyName) setFieldValue('last_name', userObj.familyName);
-
-      const {accessToken} = await GoogleSignin.getTokens();
-      const {data} = await axios.get(
-        'https://people.googleapis.com/v1/people/me?personFields=birthdays',
-        {headers: {Authorization: `Bearer ${accessToken}`}},
-      );
-      const bd = data.birthdays?.[0]?.date;
-      if (bd && bd.year && bd.month && bd.day) {
-        setFieldValue('birthDate', new Date(bd.year, bd.month - 1, bd.day));
+      // Cerrar sesión silenciosamente para mostrar selector de cuenta
+      try {
+        await GoogleSignin.signOut();
+      } catch (error) {
+        // Ignorar errores si no hay sesión activa
       }
-    } catch (err) {
-      if (err.code !== statusCodes.SIGN_IN_CANCELLED) console.warn(err);
+      
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+      const userInfo = await GoogleSignin.signIn();
+      
+      // Obtener el ID token
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+
+      // Enviar el ID token al backend para registro
+      const {data} = await axios.post('https://food.siliconsoft.pk/api/auth/google', {
+        id_token: idToken,
+      });
+
+      // Login exitoso con datos del backend
+      login(data.user);
+      
+      showAlert({
+        type: 'success',
+        title: 'Bienvenido',
+        message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
+        confirmText: 'Continuar',
+      });
+
+      // Después del registro exitoso con Google
+      if (onSuccess) {
+        onSuccess();
+      }
+
+    } catch (error) {
+      console.log('Google Sign-Up Error:', error);
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        showAlert({
+          type: 'warning',
+          title: 'Cancelado',
+          message: 'Has cancelado el registro con Google.',
+          confirmText: 'OK',
+        });
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        showAlert({
+          type: 'warning',
+          title: 'En progreso',
+          message: 'El registro con Google ya está en progreso.',
+          confirmText: 'OK',
+        });
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Google Play Services no está disponible.',
+          confirmText: 'OK',
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Error al registrarse con Google. Inténtalo de nuevo.',
+          confirmText: 'OK',
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -240,17 +292,19 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.dateInput,
                   touched.birthDate && errors.birthDate && styles.inputError,
                 ]}
-                onPress={() => setShowPicker(true)}
+                onPress={() => {
+                  console.log('📅 Opening month/year picker in signup...');
+                  setShowMonthYearPicker(true);
+                }}
                 activeOpacity={0.7}>
                 <Text
                   style={values.birthDate ? styles.text : styles.placeholder}>
                   {values.birthDate
                     ? values.birthDate.toLocaleDateString('es-ES', {
-                        day: '2-digit',
                         month: 'long',
                         year: 'numeric',
                       })
-                    : 'Fecha de nacimiento'}
+                    : 'Mes y año de nacimiento'}
                 </Text>
                 <Ionicons
                   name="calendar-outline"
@@ -261,18 +315,97 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
               {touched.birthDate && errors.birthDate && (
                 <Text style={styles.error}>{errors.birthDate}</Text>
               )}
-              {showPicker && (
-                <DateTimePicker
-                  value={values.birthDate || new Date(1990, 0, 1)}
-                  mode="date"
-                  display={Platform.OS === 'android' ? 'calendar' : 'spinner'}
-                  onChange={(_, date) => {
-                    setShowPicker(Platform.OS === 'ios');
-                    if (date) setFieldValue('birthDate', date);
-                  }}
-                  maximumDate={new Date()}
-                  minimumDate={new Date(1900, 0, 1)}
-                />
+              {/* Selector personalizado de mes y año */}
+              {showMonthYearPicker && (
+                <Modal
+                  transparent
+                  animationType="fade"
+                  visible={showMonthYearPicker}
+                  onRequestClose={() => setShowMonthYearPicker(false)}>
+                  <TouchableWithoutFeedback onPress={() => setShowMonthYearPicker(false)}>
+                    <View style={styles.pickerModalOverlay}>
+                      <TouchableWithoutFeedback onPress={() => {}}>
+                        <View style={styles.pickerModalContent}>
+                          <Text style={styles.pickerModalTitle}>Seleccionar mes y año de nacimiento</Text>
+                          
+                          <View style={styles.pickerContainer}>
+                            {/* Selector de Mes */}
+                            <View style={styles.pickerColumn}>
+                              <Text style={styles.pickerColumnTitle}>Mes</Text>
+                              <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                                {[
+                                  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                                ].map((month, index) => {
+                                  const currentMonth = values.birthDate ? values.birthDate.getMonth() : -1;
+                                  const isSelected = currentMonth === index;
+                                  
+                                  return (
+                                    <TouchableOpacity
+                                      key={month}
+                                      style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                                      onPress={() => {
+                                        const currentYear = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 25;
+                                        const newDate = new Date(currentYear, index, 1);
+                                        setFieldValue('birthDate', newDate);
+                                      }}>
+                                      <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
+                                        {month}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </ScrollView>
+                            </View>
+
+                            {/* Selector de Año */}
+                            <View style={styles.pickerColumn}>
+                              <Text style={styles.pickerColumnTitle}>Año</Text>
+                              <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                                {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => {
+                                  const currentYear = values.birthDate ? values.birthDate.getFullYear() : -1;
+                                  const isSelected = currentYear === year;
+                                  
+                                  return (
+                                    <TouchableOpacity
+                                      key={year}
+                                      style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
+                                      onPress={() => {
+                                        const currentMonth = values.birthDate ? values.birthDate.getMonth() : 0;
+                                        const newDate = new Date(year, currentMonth, 1);
+                                        setFieldValue('birthDate', newDate);
+                                      }}>
+                                      <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
+                                        {year}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </ScrollView>
+                            </View>
+                          </View>
+
+                          <View style={styles.pickerModalButtons}>
+                            <TouchableOpacity
+                              style={styles.pickerCancelButton}
+                              onPress={() => setShowMonthYearPicker(false)}>
+                              <Text style={styles.pickerCancelButtonText}>Cancelar</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity
+                              style={styles.pickerConfirmButton}
+                              onPress={() => {
+                                console.log('📅 Month/Year selected in signup:', values.birthDate);
+                                setShowMonthYearPicker(false);
+                              }}>
+                              <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </TouchableWithoutFeedback>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </Modal>
               )}
             </View>
 
@@ -345,8 +478,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   navigation.navigate('ForgetPass');
                 }
               }}
-              style={styles.link}>
-              <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
+              style={styles.linkButton}>
+              <Text style={styles.linkButtonText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
 
             {/* Registrar */}
@@ -361,30 +494,47 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
               )}
             </TouchableOpacity>
 
-            {/* Google Sign-In */}
-            <GoogleSigninButton
-              style={styles.googleBtn}
-              size={GoogleSigninButton.Size.Wide}
-              color={GoogleSigninButton.Color.Dark}
-              onPress={() => handleGoogleFill(setFieldValue)}
-              disabled={isSubmitting}
-            />
+            {/* Separador */}
+            <View style={styles.separator}>
+              <View style={styles.separatorLine} />
+              <Text style={styles.separatorText}>o regístrate con</Text>
+              <View style={styles.separatorLine} />
+            </View>
+
+            {/* Botón Google Sign-Up */}
+            <TouchableOpacity
+              style={[styles.googleButton, (isSubmitting || googleLoading) && styles.buttonDisabled]}
+              onPress={handleGoogleSignup}
+              disabled={isSubmitting || googleLoading}
+              activeOpacity={0.8}>
+              {googleLoading ? (
+                <ActivityIndicator color="#2F2F2F" size="small" />
+              ) : (
+                <>
+                  <Image 
+                    source={{uri: 'https://developers.google.com/identity/images/g-logo.png'}}
+                    style={styles.googleIcon}
+                  />
+                  <Text style={styles.googleButtonText}>Registrarse con Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
             {/* Ya tienes cuenta */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
-              <TouchableOpacity onPress={() => {
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={() => {
                 if (onLogin) {
                   onLogin();
                 } else {
                   navigation.navigate('Login');
                 }
-              }}>
-                <Text style={[styles.footerText, styles.footerLink]}>
-                  Inicia sesión
-                </Text>
-              </TouchableOpacity>
-            </View>
+              }}
+              activeOpacity={0.8}>
+              <Text style={styles.loginButtonText}>
+                ✨ ¿Ya tienes cuenta? Inicia sesión
+              </Text>
+            </TouchableOpacity>
           </>
         )}
       </Formik>
@@ -402,17 +552,19 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: '#F2EFE4',
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
     alignItems: 'center',
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 24,
+    width: 120,
+    height: 120,
+    marginBottom: 32,
+    resizeMode: 'contain',
   },
   inputGroup: {
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   input: {
     width: '100%',
@@ -429,7 +581,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dateInput: {
-    paddingRight: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   placeholder: {
     color: '#999',
@@ -447,41 +603,211 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     marginTop: 4,
   },
-  link: {
+  linkButton: {
     alignSelf: 'flex-end',
-    marginBottom: 12,
+    marginBottom: 20,
+    marginTop: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
   },
-  linkText: {
+  linkButtonText: {
     color: '#007AFF',
     fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
   },
   primaryBtn: {
     width: '100%',
     backgroundColor: '#D27F27',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   btnText: {
     color: '#FFF',
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
   },
-  googleBtn: {
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    width: '100%',
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.3)',
+  },
+  separatorText: {
+    marginHorizontal: 16,
+    color: 'rgba(47, 47, 47, 0.6)',
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+  },
+  googleButton: {
     width: '100%',
     height: 48,
-    marginTop: 16,
-  },
-  footer: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
     flexDirection: 'row',
-    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  footerText: {
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+  },
+  googleButtonText: {
     color: '#2F2F2F',
     fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
   },
-  footerLink: {
-    fontWeight: '600',
+  loginButton: {
+    width: '100%',
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderWidth: 2,
+    borderColor: '#33A744',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+    elevation: 2,
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  loginButtonText: {
+    color: '#33A744',
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    textAlign: 'center',
+  },
+  iosDatePicker: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  
+  // Estilos del selector personalizado de mes/año
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pickerModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  pickerModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    height: 200,
+    marginBottom: 20,
+  },
+  pickerColumn: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  pickerColumnTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pickerScrollView: {
+    maxHeight: 160,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+  },
+  pickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  pickerOptionSelected: {
+    backgroundColor: 'rgba(139, 94, 60, 0.15)',
+  },
+  pickerOptionText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+  },
+  pickerOptionSelectedText: {
+    fontFamily: fonts.bold,
+    color: '#8B5E3C',
+  },
+  pickerModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pickerCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  pickerConfirmButton: {
+    flex: 1,
+    backgroundColor: '#D27F27',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerConfirmButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
   },
 });
