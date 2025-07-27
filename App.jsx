@@ -1,4 +1,4 @@
-import React, {useContext} from 'react';
+import React, {useContext, useCallback, useMemo} from 'react';
 import {View, StyleSheet, ActivityIndicator} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
@@ -79,8 +79,17 @@ function MainTabs() {
   const {orders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
   
-  // Calculate orders badge with +99 logic
-  const getOrdersBadge = () => {
+  // Memoized cart badge calculation with real-time updates
+  const cartBadge = useMemo(() => {
+    if (!cart || cart.length === 0) return null;
+    
+    // Calculate total items (considering quantities)
+    const totalItems = cart.reduce((total, item) => total + (item.quantity || 1), 0);
+    return totalItems > 99 ? '+99' : totalItems;
+  }, [cart]);
+
+  // Memoized orders badge calculation with real-time updates
+  const ordersBadge = useMemo(() => {
     if (!orders || orders.length === 0) return null;
     
     // Count only active orders (not delivered/completed)
@@ -91,7 +100,22 @@ function MainTabs() {
     
     if (activeOrders.length === 0) return null;
     return activeOrders.length > 99 ? '+99' : activeOrders.length;
-  };
+  }, [orders]);
+
+  // Optimized tab bar configuration
+  const tabBarOptions = useMemo(() => ({
+    tabBarActiveTintColor: '#D27F27', // Usar color del theme
+    tabBarInactiveTintColor: '#8B5E3C',
+    tabBarStyle: {
+      backgroundColor: 'white',
+      paddingBottom: 5,
+      paddingTop: 5,
+      height: 60,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(139, 94, 60, 0.1)',
+    },
+    headerShown: false,
+  }), []);
 
   return (
     <View style={styles.container}>
@@ -116,10 +140,7 @@ function MainTabs() {
             }
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: 'tomato',
-          tabBarInactiveTintColor: 'gray',
-          tabBarStyle: {backgroundColor: 'white', paddingBottom: 5},
-          headerShown: false,
+          ...tabBarOptions,
         })}>
         {user.usertype === 'driver' ? (
           <>
@@ -128,25 +149,38 @@ function MainTabs() {
               name="Historial de Ordenes"
               component={OrderStack}
               options={{
-                tabBarBadge: getOrdersBadge(),
+                tabBarBadge: ordersBadge,
               }}
             />
           </>
         ) : (
           <>
-            <Tab.Screen name="Inicio" component={HomeStack} />
+            <Tab.Screen 
+              name="Inicio" 
+              component={HomeStack}
+              listeners={({navigation}) => ({
+                tabPress: (e) => {
+                  // Prevenir el comportamiento por defecto
+                  e.preventDefault();
+                  // Navegar siempre a la raíz del HomeStack
+                  navigation.navigate('Inicio', {
+                    screen: 'CategoriesList'
+                  });
+                },
+              })}
+            />
             <Tab.Screen
               name="Carrito"
               component={Cart}
               options={{
-                tabBarBadge: cart.length > 0 ? cart.length : null,
+                tabBarBadge: cartBadge,
               }}
             />
             <Tab.Screen 
               name="Ordenes" 
               component={OrderStack}
               options={{
-                tabBarBadge: getOrdersBadge(),
+                tabBarBadge: ordersBadge,
               }}
             />
             {/* <Tab.Screen name="Route" component={Route} /> */}

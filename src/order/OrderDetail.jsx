@@ -204,13 +204,21 @@ const OrderDetails = () => {
         visible={showSupportModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowSupportModal(false)}>
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowSupportModal(false);
+        }}>
+        <TouchableWithoutFeedback 
+          onPress={() => {
+            Keyboard.dismiss();
+            setShowSupportModal(false);
+          }}>
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
@@ -275,14 +283,20 @@ const OrderDetails = () => {
                         <View style={styles.modalButtons}>
                           <TouchableOpacity
                             style={styles.modalCancelButton}
-                            onPress={() => setShowSupportModal(false)}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setShowSupportModal(false);
+                            }}
                             disabled={isSubmitting || supportLoading}>
                             <Text style={styles.modalCancelButtonText}>Cancelar</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
                             style={styles.modalSendButton}
-                            onPress={handleSubmit}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              handleSubmit();
+                            }}
                             disabled={isSubmitting || supportLoading}>
                             {isSubmitting || supportLoading ? (
                               <ActivityIndicator color="#FFF" size="small" />
@@ -299,6 +313,7 @@ const OrderDetails = () => {
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

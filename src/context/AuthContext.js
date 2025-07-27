@@ -22,7 +22,7 @@ export const AuthContext = createContext({
 
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser]         = useState(null);
+  const [user, setUser]         = useState(undefined); // undefined = loading
 
   // 3️⃣ Verifica login en AsyncStorage (si está disponible)
   useEffect(() => {
@@ -36,12 +36,14 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('userData');
-        if (raw) {
+        const shouldPersist = await AsyncStorage.getItem('persistSession');
+        
+        if (raw && shouldPersist === 'true') {
           const stored = JSON.parse(raw);
           setUser(stored);
           setIsLoggedIn(true);
         } else {
-          // No hay datos guardados, mantener null para mostrar login
+          // No hay datos guardados o no se debe persistir
           setUser(null);
           setIsLoggedIn(false);
         }
@@ -59,6 +61,7 @@ export function AuthProvider({ children }) {
     if (AsyncStorage) {
       try {
         await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        await AsyncStorage.setItem('persistSession', 'true'); // Activar persistencia permanente
       } catch (err) {
         console.warn('⚠️ AuthContext: fallo al guardar AsyncStorage', err);
       }
@@ -67,15 +70,26 @@ export function AuthProvider({ children }) {
     setIsLoggedIn(true);
   };
 
-  const loginAsGuest = () => {
-    setUser({ 
+  const loginAsGuest = async () => {
+    const guestUser = { 
       id: null,
       user: 'Guest', 
       usertype: 'Guest',
       email: null,
       first_name: 'Invitado',
       last_name: ''
-    });
+    };
+    
+    if (AsyncStorage) {
+      try {
+        await AsyncStorage.setItem('userData', JSON.stringify(guestUser));
+        await AsyncStorage.setItem('persistSession', 'true'); // Persistir también sesión de invitado
+      } catch (err) {
+        console.warn('⚠️ AuthContext: fallo al guardar sesión de invitado', err);
+      }
+    }
+    
+    setUser(guestUser);
     setIsLoggedIn(true);
   };
 
@@ -83,6 +97,7 @@ export function AuthProvider({ children }) {
     if (AsyncStorage) {
       try {
         await AsyncStorage.removeItem('userData');
+        await AsyncStorage.removeItem('persistSession'); // Eliminar también bandera de persistencia
       } catch (err) {
         console.warn('⚠️ AuthContext: fallo al eliminar AsyncStorage', err);
       }

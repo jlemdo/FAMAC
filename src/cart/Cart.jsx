@@ -14,6 +14,8 @@ import {
   Switch,
   PermissionsAndroid,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
@@ -404,73 +406,87 @@ export default function Cart() {
       {cart.length === 0 ? (
         <Text style={styles.emptyCart}>Tu carrito está vacío.</Text>
       ) : (
-        <FlatList
-          data={cart}
-          keyExtractor={item => item.id.toString()}
-          style={{flex: 1}}
-          contentContainerStyle={{flexGrow: 1}}
-          showsVerticalScrollIndicator={false}
-          renderItem={({item}) => (
-            <View style={styles.cartItem}>
-              <Image source={{uri: item.photo}} style={styles.image} />
-              <View style={styles.info}>
-                <View style={styles.row}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.timer}>
-                    {timers[item.id] > 0
-                      ? `${Math.floor(timers[item.id] / 60)}:${
-                          timers[item.id] % 60
-                        }`
-                      : 'Expirado'}
+        <>
+          {/* Total sticky - siempre visible */}
+          <View style={styles.stickyTotalContainer}>
+            <View style={styles.stickyTotalContent}>
+              <Text style={styles.stickyTotalLabel}>Total de tu compra:</Text>
+              <Text style={styles.stickyTotalPrice}>${totalPrice}</Text>
+            </View>
+            <View style={styles.stickyTotalDetails}>
+              <Text style={styles.stickyTotalItems}>
+                {cart.reduce((total, item) => total + item.quantity, 0)} {cart.reduce((total, item) => total + item.quantity, 0) === 1 ? 'producto' : 'productos'}
+              </Text>
+            </View>
+          </View>
+          <FlatList
+            data={cart}
+            keyExtractor={item => item.id.toString()}
+            style={{flex: 1}}
+            contentContainerStyle={{flexGrow: 1}}
+            showsVerticalScrollIndicator={false}
+            renderItem={({item}) => (
+              <View style={styles.cartItem}>
+                <Image source={{uri: item.photo}} style={styles.image} />
+                <View style={styles.info}>
+                  <View style={styles.row}>
+                    <Text style={styles.name}>{item.name}</Text>
+                    <Text style={styles.timer}>
+                      {timers[item.id] > 0
+                        ? `${Math.floor(timers[item.id] / 60)}:${
+                            timers[item.id] % 60
+                          }`
+                        : 'Expirado'}
+                    </Text>
+                  </View>
+                  <Text style={styles.price}>
+                    ${item.price} x {item.quantity}
                   </Text>
-                </View>
-                <Text style={styles.price}>
-                  ${item.price} x {item.quantity}
-                </Text>
-                <Text style={styles.stock}>
-                  Inventario:{' '}
-                  {checkInventory(item.id) > 0
-                    ? checkInventory(item.id)
-                    : 'Agotado'}
-                </Text>
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(item.id, 'decrease')}
-                    style={styles.button}>
-                    <Text style={styles.buttonText}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.quantity}>{item.quantity}</Text>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(item.id, 'increase')}
-                    style={styles.button}>
-                    <Text style={styles.buttonText}>+</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => removeFromCart(item.id)}
-                    style={styles.deleteButton}>
-                    <Text style={styles.deleteText}>Eliminar</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.stock}>
+                    Inventario:{' '}
+                    {checkInventory(item.id) > 0
+                      ? checkInventory(item.id)
+                      : 'Agotado'}
+                  </Text>
+                  <View style={styles.actions}>
+                    <TouchableOpacity
+                      onPress={() => updateQuantity(item.id, 'decrease')}
+                      style={styles.button}>
+                      <Text style={styles.buttonText}>-</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.quantity}>{item.quantity}</Text>
+                    <TouchableOpacity
+                      onPress={() => updateQuantity(item.id, 'increase')}
+                      style={styles.button}>
+                      <Text style={styles.buttonText}>+</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => removeFromCart(item.id)}
+                      style={styles.deleteButton}>
+                      <Text style={styles.deleteText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
-          ListFooterComponent={
-            <CartFooter
-              deliveryInfo={deliveryInfo}
-              totalPrice={totalPrice}
-              needInvoice={needInvoice}
-              setNeedInvoice={setNeedInvoice}
-              taxDetails={taxDetails}
-              setTaxDetails={setTaxDetails}
-              handleCheckout={handleCheckout}
-              setPickerVisible={setPickerVisible}
-              loadingUpsell={loadingUpsell}
-              upsellItems={upsellItems}
-              addToCart={addToCart}
-            />
-          }
-          ListFooterComponentStyle={{paddingTop: 16}}
-        />
+            )}
+            ListFooterComponent={
+              <CartFooter
+                deliveryInfo={deliveryInfo}
+                totalPrice={totalPrice}
+                needInvoice={needInvoice}
+                setNeedInvoice={setNeedInvoice}
+                taxDetails={taxDetails}
+                setTaxDetails={setTaxDetails}
+                handleCheckout={handleCheckout}
+                setPickerVisible={setPickerVisible}
+                loadingUpsell={loadingUpsell}
+                upsellItems={upsellItems}
+                addToCart={addToCart}
+              />
+            }
+            ListFooterComponentStyle={{paddingTop: 16}}
+          />
+        </>
       )}
 
       <DeliverySlotPicker
@@ -485,54 +501,77 @@ export default function Cart() {
         visible={modalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Compra como invitado</Text>
-            <TextInput
-              placeholder="Correo electrónico"
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              placeholderTextColor="rgba(47,47,47,0.6)"
-            />
-            <TextInput
-              placeholder="Dirección"
-              style={styles.input}
-              value={address}
-              onChangeText={setAddress}
-              placeholderTextColor="rgba(47,47,47,0.6)"
-            />
-            <TextInput
-              placeholder="Código postal"
-              style={styles.input}
-              value={zipCode}
-              onChangeText={setZipCode}
-              keyboardType="numeric"
-              placeholderTextColor="rgba(47,47,47,0.6)"
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalButtonText}>Cerrar</Text>
-              </TouchableOpacity>
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setModalVisible(false);
+        }}>
+        <TouchableWithoutFeedback 
+          onPress={() => {
+            Keyboard.dismiss();
+            setModalVisible(false);
+          }}>
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Compra como invitado</Text>
+                <TextInput
+                  placeholder="Correo electrónico"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  placeholderTextColor="rgba(47,47,47,0.6)"
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  placeholder="Dirección"
+                  style={styles.input}
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholderTextColor="rgba(47,47,47,0.6)"
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  placeholder="Código postal"
+                  style={styles.input}
+                  value={zipCode}
+                  onChangeText={setZipCode}
+                  keyboardType="numeric"
+                  placeholderTextColor="rgba(47,47,47,0.6)"
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                  returnKeyType="done"
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setModalVisible(false);
+                    }}>
+                    <Text style={styles.modalButtonText}>Cerrar</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.modalButtonSave,
-                  (!email.trim() || !address.trim() || !zipCode.trim()) && {
-                    opacity: 0.5,
-                  },
-                ]}
-                onPress={handleGuestPayment}
-                disabled={!email.trim() || !address.trim() || !zipCode.trim()}>
-                <Text style={styles.modalButtonText}>Pagar</Text>
-              </TouchableOpacity>
-            </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButtonSave,
+                      (!email.trim() || !address.trim() || !zipCode.trim()) && {
+                        opacity: 0.5,
+                      },
+                    ]}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      handleGuestPayment();
+                    }}
+                    disabled={!email.trim() || !address.trim() || !zipCode.trim()}>
+                    <Text style={styles.modalButtonText}>Pagar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
@@ -816,6 +855,46 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
+  },
+  
+  // Estilos para el total sticky
+  stickyTotalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+  },
+  stickyTotalContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  stickyTotalLabel: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+  },
+  stickyTotalPrice: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
+  stickyTotalDetails: {
+    alignItems: 'center',
+  },
+  stickyTotalItems: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+    textAlign: 'center',
   },
 });
 

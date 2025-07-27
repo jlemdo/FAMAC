@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList, Keyboard, TouchableWithoutFeedback } from 'react-native';
 
 const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
@@ -35,9 +35,22 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
+    <Modal 
+      visible={visible} 
+      transparent 
+      animationType="slide"
+      onRequestClose={() => {
+        Keyboard.dismiss();
+        onClose();
+      }}>
+      <TouchableWithoutFeedback 
+        onPress={() => {
+          Keyboard.dismiss();
+          onClose();
+        }}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.container}>
           <Text style={styles.title}>Selecciona Fecha y Hora</Text>
 
           {/* Fecha */}
@@ -92,7 +105,12 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
 
           {/* Acciones */}
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.buttonClose} onPress={onClose}>
+            <TouchableOpacity 
+              style={styles.buttonClose} 
+              onPress={() => {
+                Keyboard.dismiss();
+                onClose();
+              }}>
               <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -100,14 +118,19 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
                 styles.buttonConfirm,
                 !selectedSlot && styles.buttonDisabled,
               ]}
-              onPress={handleConfirm}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleConfirm();
+              }}
               disabled={!selectedSlot}
             >
               <Text style={styles.buttonText}>Confirmar</Text>
             </TouchableOpacity>
           </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

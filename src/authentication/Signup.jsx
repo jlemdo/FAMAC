@@ -124,11 +124,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           confirmText: 'OK',
         });
         
-        // Usar callback si está disponible, sino navegar normalmente
+        // Después del registro exitoso, no es necesario navegar
+        // El AuthContext automáticamente cambiará el flujo a la app principal
         if (onSuccess) {
           onSuccess();
-        } else {
-          navigation.replace('Home');
         }
       }
     } catch (error) {

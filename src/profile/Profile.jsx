@@ -27,7 +27,7 @@ import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
 
 export default function Profile({ navigation }) {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,10 @@ export default function Profile({ navigation }) {
   const [showOrderPicker, setShowOrderPicker] = useState(false);
   const [formattedOrders, setFormattedOrders] = useState([]);
   const [selectedOrderLabel, setSelectedOrderLabel] = useState('');
+  
+  // Estados para secciones colapsables
+  const [showProfileSection, setShowProfileSection] = useState(true);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
@@ -260,16 +264,34 @@ export default function Profile({ navigation }) {
 
       {loading && <ActivityIndicator size="large" color="#33A744" style={styles.loading} />}
 
-      {/* Botón Atención al Cliente */}
-      <TouchableOpacity
-        style={styles.supportButton}
-        onPress={() => setShowSupportModal(true)}
+      {/* Botones de Acción Rápida */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity
+          style={styles.supportButton}
+          onPress={() => setShowSupportModal(true)}
+          activeOpacity={0.8}>
+          <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Información del Perfil */}
+      <TouchableOpacity 
+        style={styles.sectionHeader}
+        onPress={() => setShowProfileSection(!showProfileSection)}
         activeOpacity={0.8}>
-        <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+        <View style={styles.sectionHeaderContent}>
+          <Text style={styles.sectionHeaderTitle}>👤 Mi Información</Text>
+          <Text style={styles.sectionHeaderIcon}>
+            {showProfileSection ? '▲' : '▼'}
+          </Text>
+        </View>
+        <Text style={styles.sectionHeaderSubtitle}>
+          Actualiza tus datos personales
+        </Text>
       </TouchableOpacity>
 
-      {/* Perfil */}
-      <Formik
+      {showProfileSection && (
+        <Formik
         initialValues={{
           first_name: profile.first_name,
           last_name:  profile.last_name,
@@ -396,9 +418,26 @@ export default function Profile({ navigation }) {
             </TouchableOpacity>
           </View>
         )}
-      </Formik>
+        </Formik>
+      )}
 
-      {/* Contraseña */}
+      {/* Sección de Contraseña */}
+      <TouchableOpacity 
+        style={styles.sectionHeader}
+        onPress={() => setShowPasswordSection(!showPasswordSection)}
+        activeOpacity={0.8}>
+        <View style={styles.sectionHeaderContent}>
+          <Text style={styles.sectionHeaderTitle}>🔒 Seguridad</Text>
+          <Text style={styles.sectionHeaderIcon}>
+            {showPasswordSection ? '▲' : '▼'}
+          </Text>
+        </View>
+        <Text style={styles.sectionHeaderSubtitle}>
+          Cambiar contraseña de acceso
+        </Text>
+      </TouchableOpacity>
+
+      {showPasswordSection && (
       <Formik
         initialValues={{
           current_password: '',
@@ -452,8 +491,6 @@ export default function Profile({ navigation }) {
           submitCount,
         }) => (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Cambiar contraseña</Text>
-
             <TextInput
               style={[
                 styles.input,
@@ -513,22 +550,50 @@ export default function Profile({ navigation }) {
           </View>
         )}
       </Formik>
+      )}
+
+      {/* Zona de Acciones de Cuenta */}
+      <View style={styles.accountActions}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => {
+            showAlert({
+              type: 'confirm',
+              title: '¿Cerrar sesión?',
+              message: '¿Estás seguro que quieres cerrar tu sesión?',
+              confirmText: 'Sí, cerrar',
+              cancelText: 'Cancelar',
+              onConfirm: logout,
+            });
+          }}
+          activeOpacity={0.8}>
+          <Text style={styles.logoutButtonText}>🚪 Cerrar Sesión</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Modal de Atención al Cliente */}
       <Modal
         visible={showSupportModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowSupportModal(false)}>
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={() => {
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowSupportModal(false);
+        }}>
+        <TouchableWithoutFeedback 
+          onPress={() => {
             Keyboard.dismiss();
-            setShowOrderPicker(false);
+            setShowSupportModal(false);
           }}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={() => setShowOrderPicker(false)}>
+          <KeyboardAvoidingView
+            style={styles.modalContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <TouchableWithoutFeedback onPress={() => {
+              Keyboard.dismiss();
+              setShowOrderPicker(false);
+            }}>
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback onPress={() => setShowOrderPicker(false)}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
@@ -645,14 +710,20 @@ export default function Profile({ navigation }) {
                         <View style={styles.modalButtons}>
                           <TouchableOpacity
                             style={styles.modalCancelButton}
-                            onPress={() => setShowSupportModal(false)}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setShowSupportModal(false);
+                            }}
                             disabled={isSubmitting || supportLoading}>
                             <Text style={styles.modalCancelButtonText}>Cancelar</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
                             style={styles.modalSendButton}
-                            onPress={handleSubmit}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              handleSubmit();
+                            }}
                             disabled={isSubmitting || supportLoading}>
                             {isSubmitting || supportLoading ? (
                               <ActivityIndicator color="#FFF" size="small" />
@@ -669,6 +740,7 @@ export default function Profile({ navigation }) {
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </Modal>
       </ScrollView>
     </Fragment>
@@ -778,6 +850,73 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+
+  // Estilos del botón Cerrar Sesión
+  logoutButton: {
+    backgroundColor: '#E63946',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  logoutButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // Estilos de secciones colapsables
+  sectionHeader: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D27F27',
+  },
+  sectionHeaderContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sectionHeaderTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  sectionHeaderIcon: {
+    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+    marginLeft: 8,
+  },
+  sectionHeaderSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: 'rgba(47,47,47,0.6)',
+    marginTop: 2,
+  },
+  quickActions: {
+    marginBottom: 16,
+  },
+  accountActions: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 94, 60, 0.1)',
   },
 
   // Estilos del modal

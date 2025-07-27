@@ -8,7 +8,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
+  Modal,
+  StatusBar,
+  PanResponder,
 } from 'react-native';
+import Video from 'react-native-video';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
@@ -20,6 +26,104 @@ export default function CategoriesList() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Estados para el carrusel de videos
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  
+  // Estados para el modal de pantalla completa
+  const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
+  const [fullscreenVideoIndex, setFullscreenVideoIndex] = useState(0);
+  const [fullscreenPaused, setFullscreenPaused] = useState(false);
+  const [fullscreenMuted, setFullscreenMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  
+  // Videos de ejemplo (por ahora usando el mismo video)
+  const videos = [
+    {
+      id: 1,
+      title: "¡Lácteos frescos todos los días!",
+      description: "Calidad garantizada en cada producto",
+      source: require('../assets/welcome.mp4'),
+    },
+    {
+      id: 2,
+      title: "Entrega rápida a domicilio",
+      description: "Recibe tus productos favoritos en minutos",
+      source: require('../assets/welcome.mp4'),
+    },
+    {
+      id: 3,
+      title: "Los mejores precios del mercado",
+      description: "Ahorra en cada compra",
+      source: require('../assets/welcome.mp4'),
+    },
+  ];
+
+  // Funciones para el video en pantalla completa
+  const openFullscreenVideo = (index) => {
+    setFullscreenVideoIndex(index);
+    setShowFullscreenVideo(true);
+    setFullscreenPaused(false);
+    setFullscreenMuted(false);
+    setShowControls(true);
+  };
+
+  const closeFullscreenVideo = () => {
+    setShowFullscreenVideo(false);
+    setFullscreenPaused(false);
+  };
+
+  const toggleFullscreenPlay = () => {
+    setFullscreenPaused(!fullscreenPaused);
+    setShowControls(true);
+    // Ocultar controles después de 3 segundos
+    setTimeout(() => {
+      if (!fullscreenPaused) {
+        setShowControls(false);
+      }
+    }, 3000);
+  };
+
+  const toggleFullscreenMute = () => {
+    setFullscreenMuted(!fullscreenMuted);
+  };
+
+  // Funciones para navegar entre videos
+  const goToNextVideo = () => {
+    const nextIndex = (fullscreenVideoIndex + 1) % videos.length;
+    setFullscreenVideoIndex(nextIndex);
+    setFullscreenPaused(false);
+  };
+
+  const goToPreviousVideo = () => {
+    const prevIndex = fullscreenVideoIndex === 0 ? videos.length - 1 : fullscreenVideoIndex - 1;
+    setFullscreenVideoIndex(prevIndex);
+    setFullscreenPaused(false);
+  };
+
+  // PanResponder para gestos de swipe
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      return Math.abs(gestureState.dy) > 30; // Reducido el umbral
+    },
+    onPanResponderGrant: () => {
+      // El usuario ha comenzado a hacer swipe
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      // Opcional: agregar feedback visual durante el gesto
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      if (gestureState.dy < -80) {
+        // Swipe up - siguiente video
+        goToNextVideo();
+      } else if (gestureState.dy > 80) {
+        // Swipe down - video anterior
+        goToPreviousVideo();
+      }
+    },
+    onPanResponderTerminationRequest: () => false, // No permitir que otros componentes tomen el control
+  });
 
   // Fetch categories from the API
   useEffect(() => {
@@ -40,7 +144,7 @@ export default function CategoriesList() {
 
    return (
     <View style={styles.container}>
-      <Text style={styles.mainTitle}>Categorías</Text>
+      {/* <Text style={styles.mainTitle}>Categorías</Text> */}
 
       {loading ? (
         <View style={styles.loaderContainer}>
@@ -84,8 +188,148 @@ export default function CategoriesList() {
             ))}
           </ScrollView>
 
+          {/* Carrusel de Videos */}
+          <View style={styles.videoSection}>
+            <Text style={styles.videoSectionTitle}>🎬 Descubre más</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.videoCarousel}
+              contentContainerStyle={styles.videoCarouselContent}
+              pagingEnabled
+              onMomentumScrollEnd={(event) => {
+                const newIndex = Math.round(
+                  event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 32)
+                );
+                setCurrentVideoIndex(newIndex);
+              }}>
+              {videos.map((video, index) => (
+                <View key={video.id} style={styles.videoCard}>
+                  <TouchableOpacity
+                    style={styles.videoContainer}
+                    onPress={() => openFullscreenVideo(index)}
+                    activeOpacity={0.9}>
+                    <Video
+                      source={video.source}
+                      style={styles.video}
+                      resizeMode="cover"
+                      repeat={true}
+                      muted={true}
+                      paused={index !== currentVideoIndex}
+                      onError={(error) => console.log('Video error:', error)}
+                    />
+                    <View style={styles.videoOverlay}>
+                      <View style={styles.videoTextContainer}>
+                        <Text style={styles.videoTitle} numberOfLines={2}>
+                          {video.title}
+                        </Text>
+                        <Text style={styles.videoDescription} numberOfLines={2}>
+                          {video.description}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            
+            {/* Indicadores de página */}
+            <View style={styles.videoIndicators}>
+              {videos.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.videoIndicator,
+                    index === currentVideoIndex && styles.videoIndicatorActive,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+
+          {/* Modal de Video en Pantalla Completa */}
+          <Modal
+            visible={showFullscreenVideo}
+            animationType="fade"
+            transparent={false}
+            onRequestClose={closeFullscreenVideo}>
+            <StatusBar hidden />
+            <View style={styles.fullscreenContainer} {...panResponder.panHandlers}>
+              <TouchableOpacity
+                style={styles.fullscreenVideoWrapper}
+                onPress={toggleFullscreenPlay}
+                activeOpacity={1}>
+                <Video
+                  source={videos[fullscreenVideoIndex]?.source}
+                  style={styles.fullscreenVideo}
+                  resizeMode="contain"
+                  repeat={true}
+                  muted={fullscreenMuted}
+                  paused={fullscreenPaused}
+                  onError={(error) => console.log('Fullscreen video error:', error)}
+                />
+              </TouchableOpacity>
+
+              {/* Controles superpuestos */}
+              {showControls && (
+                <View style={styles.fullscreenControls}>
+                  {/* Header con botón de cerrar y controles */}
+                  <View style={styles.fullscreenHeader}>
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={closeFullscreenVideo}>
+                      <Ionicons name="close" size={30} color="#FFF" />
+                    </TouchableOpacity>
+                    
+                    {/* Controles de reproducción debajo del botón cerrar */}
+                    <View style={styles.headerControls}>
+                      <TouchableOpacity
+                        style={styles.controlButton}
+                        onPress={toggleFullscreenPlay}>
+                        <Ionicons
+                          name={fullscreenPaused ? "play" : "pause"}
+                          size={24}
+                          color="#FFF"
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.controlButton}
+                        onPress={toggleFullscreenMute}>
+                        <Ionicons
+                          name={fullscreenMuted ? "volume-mute" : "volume-high"}
+                          size={24}
+                          color="#FFF"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Información del video */}
+                  <View style={styles.fullscreenInfo}>
+                    <Text style={styles.fullscreenTitle}>
+                      {videos[fullscreenVideoIndex]?.title}
+                    </Text>
+                    <Text style={styles.fullscreenDescription}>
+                      {videos[fullscreenVideoIndex]?.description}
+                    </Text>
+                  </View>
+
+                  {/* Indicador de navegación */}
+                  <View style={styles.navigationIndicator}>
+                    <Text style={styles.swipeHint}>
+                      ↑ Desliza para siguiente video ↓
+                    </Text>
+                    <Text style={styles.videoCounter}>
+                      {fullscreenVideoIndex + 1} de {videos.length}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </Modal>
+
           {/* Lista original de categorías */}
-          <FlatList
+          {/* <FlatList
             style={{ flex: 1 }}
             data={categories}
             keyExtractor={item => item.id.toString()}
@@ -125,7 +369,7 @@ export default function CategoriesList() {
             )}
             contentContainerStyle={{ paddingBottom: 30 }}
             showsVerticalScrollIndicator={false}
-          />
+          /> */}
         </>
       )}
     </View>
@@ -136,9 +380,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingTop: 20,
-    paddingHorizontal: 16, // escala: 16px
   },
   mainTitle: {
     fontSize: fonts.size.XLLL,
@@ -256,5 +499,196 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     textAlign: 'center',
     lineHeight: 14,
+  },
+  
+  // Estilos del carrusel de videos
+  videoSection: {
+    flex: 1,
+    marginBottom: 24,
+  },
+  videoSectionTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 16,
+    marginLeft: 8,
+  },
+  videoCarousel: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  videoCarouselContent: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  videoCard: {
+    width: Dimensions.get('window').width - 32,
+    marginHorizontal: 8,
+    flex: 1,
+  },
+  videoContainer: {
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    flex: 1,
+  },
+  video: {
+    width: '100%',
+    flex: 1,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  videoTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  videoTitle: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  videoDescription: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  videoIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(139, 94, 60, 0.3)',
+    marginHorizontal: 4,
+  },
+  videoIndicatorActive: {
+    backgroundColor: '#8B5E3C',
+    width: 24,
+  },
+  
+  // Estilos del modal de pantalla completa
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenVideoWrapper: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  fullscreenVideo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  fullscreenControls: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  fullscreenHeader: {
+    alignItems: 'flex-end',
+  },
+  closeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  headerControls: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+  fullscreenInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  fullscreenTitle: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 12,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  fullscreenDescription: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  controlButton: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  navigationIndicator: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  swipeHint: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  videoCounter: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 });

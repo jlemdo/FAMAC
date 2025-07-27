@@ -4,7 +4,9 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet
+  StyleSheet,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 import fonts from '../theme/fonts';
 
@@ -27,29 +29,50 @@ export default function CustomAlert({
 }) {
   const color = ALERT_COLORS[type] || ALERT_COLORS.info;
   return (
-    <Modal transparent visible={visible} animationType="fade">
-      <View style={styles.backdrop}>
-        <View style={[styles.container, { borderColor: color }]}>
-          {title ? <Text style={[styles.title, { color }]}>{title}</Text> : null}
-          <Text style={styles.message}>{message}</Text>
-          <View style={styles.actions}>
-            {cancelText && (
-              <TouchableOpacity
-                style={[styles.button, styles.outlineButton, { borderColor: color }]}
-                onPress={onCancel}
-              >
-                <Text style={[styles.buttonText, { color }]}>{cancelText}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: color }]}
-              onPress={onConfirm}
-            >
-              <Text style={[styles.buttonText, { color: '#fff' }]}>{confirmText}</Text>
-            </TouchableOpacity>
-          </View>
+    <Modal 
+      transparent 
+      visible={visible} 
+      animationType="fade"
+      onRequestClose={() => {
+        Keyboard.dismiss();
+        onConfirm && onConfirm();
+      }}>
+      <TouchableWithoutFeedback 
+        onPress={() => {
+          Keyboard.dismiss();
+          onConfirm && onConfirm();
+        }}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={[styles.container, { borderColor: color }]}>
+              {title ? <Text style={[styles.title, { color }]}>{title}</Text> : null}
+              <Text style={styles.message}>{message}</Text>
+              <View style={styles.actions}>
+                {cancelText && (
+                  <TouchableOpacity
+                    style={[styles.button, styles.outlineButton, { borderColor: color }]}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      onCancel && onCancel();
+                    }}
+                  >
+                    <Text style={[styles.buttonText, { color }]}>{cancelText}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: color }]}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    onConfirm && onConfirm();
+                  }}
+                >
+                  <Text style={[styles.buttonText, { color: '#fff' }]}>{confirmText}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
