@@ -20,14 +20,14 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
+import {OrderContext} from '../context/OrderContext';
 import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
 import {useAlert} from '../context/AlertContext';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
-import DeliverySlotPicker from '../components/DeliverySlotPicker'; // ajusta la ruta si estás en otro directorio
-// import CheckBox from '@react-native-community/checkbox';
+import DeliverySlotPicker from '../components/DeliverySlotPicker';
+import AddressPicker from '../components/AddressPicker';
 import CheckBox from 'react-native-check-box';
-// import { useStripe } from "@stripe/stripe-react-native";
 import axios from 'axios';
 import GetLocation from 'react-native-get-location';
 import Geolocation from 'react-native-geolocation-service';
@@ -44,13 +44,16 @@ export default function Cart() {
     totalPrice,
     clearCart,
   } = useContext(CartContext);
-  const {user} = useContext(AuthContext);
+  const {user, updateUser} = useContext(AuthContext);
+  const {refreshOrders} = useContext(OrderContext);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet} = useStripe();
   const [timers, setTimers] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
+  // DEBUG: Inicializar siempre desbloqueado y luego verificar
+  const [emailLocked, setEmailLocked] = useState(false);
   const [address, setAddress] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [needInvoice, setNeedInvoice] = useState(false);
@@ -64,73 +67,59 @@ export default function Cart() {
   });
   const [pickerVisible, setPickerVisible] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
   
   // Ref para el scroll automático al botón de pagar
   const flatListRef = React.useRef(null);
-  // const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  // const upsellItems = [
-  //     { id: 101, name: "Cheez", price: 49.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
-  //     { id: 102, name: "Cheez", price: 99.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
-  //     { id: 103, name: "Cheez", price: 29.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
-  //     { id: 104, name: "Cheez", price: 49.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
-  //     { id: 105, name: "Cheez", price: 99.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" },
-  //     { id: 106, name: "Cheez", price: 29.99, photo: "https://media.istockphoto.com/id/531048911/photo/portion-of-cheddar.jpg?s=612x612&w=0&k=20&c=mzcYWuuRiPHm-UOIk1GToW7O0qhPEkb-3WDa46M2lbg=" }
-  // ];
+
+  // Función para formatear cantidad como en ProductDetails
+  const formatQuantity = (units) => {
+    const grams = units * 250; // cada unidad = 250g
+    if (grams >= 1000) {
+      const kg = grams / 1000;
+      return `${kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(2)}kg`;
+    }
+    return `${grams}g`;
+  };
 
   const [isEnabled, setIsEnabled] = useState(false);
   const toggleSwitch = () => setIsEnabled(previousState => !previousState);
 
-  const checkInventory = productId => {
-    const inventory = {1: 10, 2: 5, 3: 2};
-    return inventory[productId] || 0;
-  };
   const {showAlert} = useAlert();
 
-  // const handleCheckout = () => {
-  //     if (!user) {
-  //         setModalVisible(true);
-  //     } else {
-  //         console.log("Proceeding with checkout for logged-in user");
-  //         console.log("Need Invoice:", needInvoice, "Tax Details:", taxDetails);
-  //     }
-  // };
+  // Función simplificada - verificar si email debe bloquearse basado en contexto local
+  const shouldLockEmailInput = () => {
+    // Si el guest ya tiene email guardado, significa que ya hizo un pedido
+    return user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
+  };
 
-  // useEffect(() => {
-  //   const checkLocation = async () => {
-  //     if (Platform.OS === 'android') {
-  //       const granted = await PermissionsAndroid.request(
-  //         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-  //       );
-  //       console.log('granted', granted);
-  //       if (PermissionsAndroid.RESULTS.GRANTED === 'granted') {
-  //         GetLocation.getCurrentPosition({
-  //           enableHighAccuracy: true,
-  //           timeout: 60000,
-  //         })
-  //           .then(location => {
-  //             /*
-  //                             const [latlong, setLatlong] = useState({
-  //           driver_lat: "",
-  //           driver_long: ""
-  //       })
-  //                           */
-  //             console.log(location);
-  //             setLatlong({
-  //               ...latlong,
-  //               driver_lat: location.latitude,
-  //               driver_long: location.longitude,
-  //             });
-  //           })
-  //           .catch(error => {
-  //             const {code, message} = error;
-  //             console.warn(code, message);
-  //           });
-  //       }
-  //     }
-  //   };
-  //   checkLocation();
-  // }, [latlong]);
-  // Asegúrate de tener estas importaciones:
+  // Inicializar estados cuando cambia el usuario
+  useEffect(() => {
+    if (user?.usertype === 'Guest') {
+      const hasEmail = user?.email && user?.email?.trim() !== '';
+      setEmail(hasEmail ? user.email : '');
+      setEmailLocked(hasEmail); // Bloquear si ya tiene email (ya hizo pedido)
+      
+      if (hasEmail) {
+        console.log('🔒 Guest con email guardado - bloqueando input:', user.email);
+      } else {
+        console.log('📧 Guest nuevo - permitiendo escribir email');
+      }
+    } else {
+      // Usuario registrado
+      setEmail(user?.email || '');
+      setEmailLocked(false);
+    }
+  }, [user]);
+
+  // Manejo simple del email - solo para guests nuevos
+  const handleEmailChange = (newEmail) => {
+    // Solo permitir cambios si no está bloqueado
+    if (!emailLocked) {
+      setEmail(newEmail);
+    }
+  };
 
   useEffect(() => {
     const checkLocation = async () => {
@@ -185,23 +174,22 @@ export default function Cart() {
     checkLocation();
   }, []);
 
-  // Efecto para limpiar carrito cuando cambia el usuario
+  // Efecto para limpiar timers cuando cambia el usuario (CartContext ya maneja la limpieza del carrito)
   useEffect(() => {
     const userId = user?.id || null;
     
-    // Si hay un usuario previo diferente al actual, limpiar carrito
+    // Si hay un usuario previo diferente al actual, limpiar timers
     if (currentUserId !== null && currentUserId !== userId) {
-      console.log('🛒 Usuario cambió, limpiando carrito:', {
+      console.log('⏲️ Usuario cambió, limpiando timers:', {
         previousUser: currentUserId,
         currentUser: userId
       });
-      clearCart();
       setTimers({});
     }
     
     // Actualizar el ID del usuario actual
     setCurrentUserId(userId);
-  }, [user?.id, currentUserId, clearCart]);
+  }, [user?.id, currentUserId]);
 
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
@@ -225,9 +213,10 @@ export default function Cart() {
     setLoading(true);
     try {
       // 1.1) Crear PaymentIntent en el servidor
+      const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       const {data} = await axios.post(
         'https://food.siliconsoft.pk/api/create-payment-intent',
-        {amount: totalPrice * 100, currency: 'usd', email: user.email},
+        {amount: totalPrice * 100, currency: 'usd', email: orderEmail},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
@@ -278,6 +267,12 @@ export default function Cart() {
       // 1.4) Pago exitoso: enviar la orden
       const orderData = await completeOrderFunc();
       
+      // Si es guest y no tenía email, actualizar el contexto con el email usado
+      if (user?.usertype === 'Guest' && (!user?.email || user?.email?.trim() === '') && email?.trim()) {
+        console.log('📧 Actualizando email de guest en contexto después del pedido:', email);
+        await updateUser({ email: email.trim() });
+      }
+      
       // Crear resumen del pedido
       const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
       const deliveryText = deliveryInfo ? 
@@ -294,7 +289,9 @@ export default function Cart() {
                  `${needInvoice ? '\n🧾 Factura solicitada' : ''}`,
         confirmText: 'Ir al Inicio',
         onConfirm: () => {
-          // Redirigir al inicio para actualizar el estado de órdenes
+          // Actualizar órdenes inmediatamente después del pedido exitoso
+          refreshOrders();
+          // Redirigir al inicio
           navigation.navigate('MainTabs', { 
             screen: 'Inicio',
             params: { screen: 'CategoriesList' }
@@ -315,6 +312,58 @@ export default function Cart() {
     }
   };
 
+  // Función para determinar coordenadas según tipo de usuario y configuración
+  const getOrderCoordinates = () => {
+    const userType = user?.usertype;
+    
+    if (userType === 'driver') {
+      // 2. Driver: siempre ubicación en tiempo real
+      console.log('📍 Driver: usando ubicación en tiempo real para tracking');
+      
+      // Validación simple: si no hay GPS, mostrar alert pero continuar
+      if (!latlong.driver_lat || !latlong.driver_long) {
+        console.warn('⚠️ Driver sin coordenadas GPS');
+      }
+      
+      return {
+        customer_lat: latlong.driver_lat || '',
+        customer_long: latlong.driver_long || '',
+        address_source: 'real_time_location'
+      };
+    } 
+    else if (userType === 'Guest') {
+      // 4. Guest: siempre usa dirección manual (nunca ubicación automática)
+      console.log('📍 Guest: usando dirección manual para entrega');
+      return {
+        customer_lat: '', // No enviar coordenadas para guest
+        customer_long: '',
+        address_source: 'manual_address',
+        delivery_address: address?.trim() || ''
+      };
+    } 
+    else {
+      // Usuario registrado
+      if (user?.address && user?.address?.trim()) {
+        // 1. Usuario registrado con dirección: usar dirección guardada
+        console.log('📍 Usuario registrado: usando dirección guardada para tracking');
+        return {
+          customer_lat: '', // No usar ubicación, usar dirección
+          customer_long: '',
+          address_source: 'saved_address',
+          delivery_address: user.address
+        };
+      } else {
+        // 3. Usuario sin dirección que eligió usar ubicación actual
+        console.log('📍 Usuario sin dirección: usando ubicación en tiempo real para tracking');
+        return {
+          customer_lat: latlong.driver_lat || '',
+          customer_long: latlong.driver_long || '',
+          address_source: 'real_time_location'
+        };
+      }
+    }
+  };
+
   // 2) Envía la orden al backend y maneja fallos
   const completeOrderFunc = async () => {
     try {
@@ -325,17 +374,27 @@ export default function Cart() {
         item_image: it.photo,
       }));
       
+      // Determinar el email correcto para enviar
+      const userEmailForOrder = user?.usertype === 'Guest' 
+        ? (email?.trim() || user?.email || '') 
+        : (user?.email || '');
+
+      // Obtener coordenadas según la lógica de usuario
+      const coordinates = getOrderCoordinates();
+
       const payload = {
-        userid: user.id,
+        userid: user?.id,
         orderno: '1',
+        user_email: userEmailForOrder,
         orderdetails: cartUpdateArr,
-        customer_lat: latlong.driver_lat || '',
-        customer_long: latlong.driver_long || '',
+        customer_lat: coordinates.customer_lat,
+        customer_long: coordinates.customer_long,
+        address_source: coordinates.address_source, // Nuevo campo para el backend
+        delivery_address: coordinates.delivery_address || address?.trim() || '', // Dirección cuando aplique
         need_invoice: needInvoice ? "true" : "false",
         tax_details: needInvoice ? (taxDetails || '') : '',
         delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
         delivery_slot: deliveryInfo?.slot || '',
-        user_email: user.email || '',
       };
       
       console.log('🛒 Enviando orden al backend:', payload);
@@ -365,25 +424,32 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
-    if (user.usertype === 'Guest') {
+    if (user?.usertype === 'Guest') {
       setModalVisible(true);
     } else {
-      completeOrder();
+      // Usuario registrado: verificar si tiene dirección
+      if (!user?.address || user?.address?.trim() === '') {
+        setShowAddressModal(true);
+      } else {
+        completeOrder();
+      }
     }
   };
 
   // Validaciones antes de pago de invitado
   const handleGuestPayment = () => {
-    if (!email.trim() || !address.trim() || !zipCode.trim()) {
+    // Guest SIEMPRE necesita dirección manual - nunca usar ubicación automática
+    if (!email?.trim() || !address?.trim() || !zipCode?.trim()) {
       showAlert({
         type: 'warning',
         title: 'Datos incompletos',
-        message: 'Por favor ingresa correo, dirección y código postal.',
+        message: 'Los invitados deben proporcionar una dirección completa para la entrega.\n\nPor favor ingresa correo, dirección y código postal.',
         confirmText: 'Entendido',
       });
-
       return;
     }
+    
+    console.log('🏠 Guest completando pedido con dirección manual:', address);
     setModalVisible(false);
     completeOrder();
   };
@@ -464,6 +530,8 @@ export default function Cart() {
     return () => clearInterval(interval);
   }, [addNotification, removeFromCart]);
 
+  // Ya no necesitamos limpiar timeouts
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Carrito de Compras</Text>
@@ -506,13 +574,7 @@ export default function Cart() {
                     </Text>
                   </View>
                   <Text style={styles.price}>
-                    ${item.price} x {item.quantity}
-                  </Text>
-                  <Text style={styles.stock}>
-                    Inventario:{' '}
-                    {checkInventory(item.id) > 0
-                      ? checkInventory(item.id)
-                      : 'Agotado'}
+                    ${item.price} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
                   </Text>
                   <View style={styles.actions}>
                     <TouchableOpacity
@@ -587,23 +649,33 @@ export default function Cart() {
                 <Text style={styles.modalTitle}>Compra como invitado</Text>
                 <TextInput
                   placeholder="Correo electrónico"
-                  style={styles.input}
+                  style={[styles.input, emailLocked && styles.disabledInput]}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
                   keyboardType="email-address"
                   placeholderTextColor="rgba(47,47,47,0.6)"
                   onSubmitEditing={() => Keyboard.dismiss()}
                   returnKeyType="next"
+                  editable={!emailLocked}
                 />
-                <TextInput
-                  placeholder="Dirección"
-                  style={styles.input}
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholderTextColor="rgba(47,47,47,0.6)"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                  returnKeyType="next"
-                />
+                {emailLocked && (
+                  <Text style={styles.blockedText}>
+                    🔒 Bloqueado para este dispositivo
+                  </Text>
+                )}
+                
+                {/* Campo de dirección con AddressPicker */}
+                <TouchableOpacity
+                  style={[styles.input, styles.addressInput]}
+                  onPress={() => setShowAddressPicker(true)}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={address ? styles.addressText : styles.addressPlaceholder}>
+                    {address || 'Dirección completa'}
+                  </Text>
+                  <Text style={styles.addressIcon}>📍</Text>
+                </TouchableOpacity>
+                
                 <TextInput
                   placeholder="Código postal"
                   style={styles.input}
@@ -627,7 +699,7 @@ export default function Cart() {
                   <TouchableOpacity
                     style={[
                       styles.modalButtonSave,
-                      (!email.trim() || !address.trim() || !zipCode.trim()) && {
+                      (!email?.trim() || !address?.trim() || !zipCode?.trim()) && {
                         opacity: 0.5,
                       },
                     ]}
@@ -635,8 +707,60 @@ export default function Cart() {
                       Keyboard.dismiss();
                       handleGuestPayment();
                     }}
-                    disabled={!email.trim() || !address.trim() || !zipCode.trim()}>
+                    disabled={!email?.trim() || !address?.trim() || !zipCode?.trim()}>
                     <Text style={styles.modalButtonText}>Pagar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* AddressPicker Modal */}
+      <AddressPicker
+        visible={showAddressPicker}
+        onClose={() => setShowAddressPicker(false)}
+        onConfirm={(addressData) => {
+          console.log('📍 Address selected:', addressData);
+          setAddress(addressData.fullAddress);
+          setShowAddressPicker(false);
+        }}
+        initialAddress={address || ''}
+        title="Dirección de Entrega"
+      />
+
+      {/* Modal para usuario registrado sin dirección */}
+      <Modal
+        visible={showAddressModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddressModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowAddressModal(false)}>
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>📍 Dirección de Entrega</Text>
+                <Text style={styles.modalMessage}>
+                  Para completar tu pedido necesitamos una dirección de entrega.{'\n\n'}
+                  Puedes agregar una dirección en tu perfil o usar tu ubicación actual para esta compra.
+                </Text>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalButtonSecondary}
+                    onPress={() => {
+                      setShowAddressModal(false);
+                      navigation.navigate('MainTabs', { screen: 'Perfil' });
+                    }}>
+                    <Text style={styles.modalButtonSecondaryText}>Configurar Perfil</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButtonPrimary}
+                    onPress={() => {
+                      setShowAddressModal(false);
+                      completeOrder(); // Proceder con ubicación actual
+                    }}>
+                    <Text style={styles.modalButtonPrimaryText}>Usar Mi Ubicación</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -714,12 +838,6 @@ const styles = StyleSheet.create({
     color: '#D27F27', // Dorado Campo
   },
   price: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#2F2F2F',
-    marginBottom: 8,
-  },
-  stock: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
@@ -856,6 +974,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
+  modalMessage: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    marginBottom: 16,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   input: {
     width: '100%',
     padding: 12,
@@ -866,6 +992,42 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
+  },
+  disabledInput: {
+    backgroundColor: '#EEE',
+    color: 'rgba(47,47,47,0.6)',
+  },
+  blockedText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+    marginTop: -12,
+    marginBottom: 8,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  addressInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  addressText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  addressPlaceholder: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.6)',
+    flex: 1,
+  },
+  addressIcon: {
+    fontSize: fonts.size.medium,
+    marginLeft: 8,
   },
   modalActions: {
     flexDirection: 'row',
@@ -892,6 +1054,52 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    marginHorizontal: 8,
+    backgroundColor: '#D27F27', // Dorado Campo - color principal de la app
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    marginHorizontal: 8,
+    backgroundColor: '#8B5E3C', // Marrón Tierra - color secundario
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  modalButtonPrimaryText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtonSecondaryText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   deliveryButton: {
     backgroundColor: '#D27F27',

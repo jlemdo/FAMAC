@@ -110,7 +110,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       });
 
     } catch (error) {
-      console.log('Google Sign-In Error:', error);
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         showAlert({

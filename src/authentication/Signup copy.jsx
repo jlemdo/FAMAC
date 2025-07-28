@@ -40,7 +40,6 @@ export default function SignupBasic({ navigation, route }) {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const res = await GoogleSignin.signIn();
     const { user } = res.data;
-    console.log(user);
 
     // Nombre/apellido
     if (user.givenName)  setFieldValue('first_name', user.givenName);
@@ -53,7 +52,6 @@ export default function SignupBasic({ navigation, route }) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const bd = data.birthdays?.[0]?.date;
-     console.log(bd);
     if (bd) {
       const meses = [
         'Enero','Febrero','Marzo','Abril','Mayo','Junio',

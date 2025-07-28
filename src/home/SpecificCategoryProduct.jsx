@@ -28,7 +28,6 @@ export default function SpecificCategoryProduct() {
         const response = await axios.get(
           `https://food.siliconsoft.pk/api/products/${categoryName}`,
         );
-        console.log('response', response);
         setProducts(response.data.data || []);
       } catch (err) {
         setError('Failed to fetch products. Please try again.');

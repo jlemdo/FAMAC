@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
@@ -87,6 +88,9 @@ export default function ForgotPassword({ onBackToLogin }) {
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
+          
+          {/* Logo */}
+          <Image source={require('../assets/logo.png')} style={styles.logo} />
           
           <Text style={styles.title}>Restablecer contraseña</Text>
           <Text style={styles.subtitle}>
@@ -221,16 +225,20 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#D27F27',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 10,
-    elevation: 2,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
     minHeight: 48,
   },
   buttonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#ffffff',
+    color: '#FFF',
   },
   backLink: {
     marginTop: 16,
@@ -239,5 +247,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
+  },
+  logo: {
+    width: 120,
+    height: 60,
+    resizeMode: 'contain',
+    marginBottom: 30,
+    alignSelf: 'center',
   },
 });

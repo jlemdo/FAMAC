@@ -33,11 +33,15 @@ import fonts from '../theme/fonts';
 
 export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const navigation = useNavigation();
-  const {login} = useContext(AuthContext);
+  const {user, login} = useContext(AuthContext);
   const {showAlert} = useAlert();
   const [showPicker, setShowPicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Verificar si el guest ya tiene email (ya hizo pedidos)
+  const isGuestWithEmail = user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
+  const guestEmail = isGuestWithEmail ? user.email : '';
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -111,7 +115,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       }
 
     } catch (error) {
-      console.log('Google Sign-Up Error:', error);
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         showAlert({
@@ -212,7 +215,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           last_name: '',
           phone: '',
           birthDate: null,
-          email: '',
+          email: guestEmail, // Pre-llenar con email del guest si existe
           password: '',
           confirmPassword: '',
         }}
@@ -293,7 +296,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   touched.birthDate && errors.birthDate && styles.inputError,
                 ]}
                 onPress={() => {
-                  console.log('📅 Opening month/year picker in signup...');
                   setShowMonthYearPicker(true);
                 }}
                 activeOpacity={0.7}>
@@ -395,7 +397,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                             <TouchableOpacity
                               style={styles.pickerConfirmButton}
                               onPress={() => {
-                                console.log('📅 Month/Year selected in signup:', values.birthDate);
                                 setShowMonthYearPicker(false);
                               }}>
                               <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
@@ -415,15 +416,22 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 style={[
                   styles.input,
                   touched.email && errors.email && styles.inputError,
+                  isGuestWithEmail && styles.disabledInput, // Estilo para input bloqueado
                 ]}
                 placeholder="Correo electrónico"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={values.email}
-                onChangeText={handleChange('email')}
+                onChangeText={isGuestWithEmail ? undefined : handleChange('email')} // Bloquear edición
                 onBlur={handleBlur('email')}
+                editable={!isGuestWithEmail} // Desactivar input si es guest con email
               />
+              {isGuestWithEmail && (
+                <Text style={styles.blockedEmailText}>
+                  🔒 Usaremos el email de tus pedidos anteriores
+                </Text>
+              )}
               {touched.email && errors.email && (
                 <Text style={styles.error}>{errors.email}</Text>
               )}
@@ -809,5 +817,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+  disabledInput: {
+    backgroundColor: '#F5F5F5',
+    color: 'rgba(47,47,47,0.6)',
+    borderColor: '#CCC',
+  },
+  blockedEmailText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+    marginTop: 4,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

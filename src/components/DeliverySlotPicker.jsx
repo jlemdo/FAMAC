@@ -35,7 +35,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     setLoading(true);
     try {
       const response = await axios.get(`https://food.siliconsoft.pk/api/fetch_ddates/${dateString}`);
-      console.log('📅 Slots received:', response.data);
       
       // Mapear los slots del backend al formato que esperamos
       if (response.data && Array.isArray(response.data)) {

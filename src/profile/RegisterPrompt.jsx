@@ -132,8 +132,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2EFE4',
   },
   backButton: {
-    marginTop: 16,
-    alignItems: 'center',
+    marginTop: 20,
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(139, 94, 60, 0.03)',
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(139, 94, 60, 0.15)',
   },
   title: {
     fontFamily: fonts.bold,
@@ -175,10 +181,10 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
   },
   link: {
-    marginTop: 16,
     textAlign: 'center',
-    color: '#007AFF',
-    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+    fontSize: fonts.size.xSmall,
+    fontFamily: fonts.regular,
   },
   icon: {
     width: 80,

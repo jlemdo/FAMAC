@@ -1,6 +1,7 @@
 // src/context/AuthContext.js
 
 import React, { createContext, useState, useEffect } from 'react';
+import { migrateGuestOrders } from '../utils/orderMigration';
 
 // 1️⃣ Import dinámico de AsyncStorage con fallback
 let AsyncStorage;
@@ -56,41 +57,140 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+  // Función para limpiar datos de guest después de migración exitosa
+  const clearGuestData = async (guestEmail) => {
+    try {
+      console.log('🧹 Limpiando datos de guest:', guestEmail);
+      
+      // Aquí podrías agregar llamadas API para limpiar datos del guest del servidor si es necesario
+      // Por ejemplo: await axios.delete(`/api/guest-cleanup/${guestEmail}`);
+      
+      console.log('✅ Datos de guest limpiados exitosamente');
+    } catch (error) {
+      console.warn('⚠️ Error limpiando datos de guest:', error);
+    }
+  };
+
   // 4️⃣ Funciones de login/logout con guardas
   const login = async (userData) => {
+    // Verificar si el usuario anterior era Guest para migrar órdenes
+    const previousUser = user;
+    const wasGuest = previousUser?.usertype === 'Guest' && previousUser?.email;
+    
     if (AsyncStorage) {
       try {
-        await AsyncStorage.setItem('userData', JSON.stringify(userData));
+        // Crear objeto limpio para evitar referencias circulares
+        const cleanUserData = {
+          id: userData.id,
+          user: userData.user,
+          usertype: userData.usertype,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          address: userData.address
+        };
+        await AsyncStorage.setItem('userData', JSON.stringify(cleanUserData));
         await AsyncStorage.setItem('persistSession', 'true'); // Activar persistencia permanente
       } catch (err) {
         console.warn('⚠️ AuthContext: fallo al guardar AsyncStorage', err);
       }
     }
+    
     setUser(userData);
     setIsLoggedIn(true);
+    
+    // Migrar órdenes de Guest si es necesario (solo si el Guest tenía email = hizo pedidos)
+    if (wasGuest && userData.usertype !== 'Guest') {
+      console.log('🔄 Detectado cambio de Guest a usuario registrado');
+      
+      // Solo migrar si el Guest tenía email (significa que hizo pedidos)
+      if (previousUser.email && previousUser.email.trim()) {
+        console.log('📦 Guest tenía pedidos (email: ' + previousUser.email + '), iniciando migración...');
+        try {
+          const migrationSuccess = await migrateGuestOrders(previousUser.email);
+          if (migrationSuccess) {
+            console.log('✅ Migración de órdenes completada exitosamente');
+            // Limpiar rastros del guest anterior para futuras sesiones
+            await clearGuestData(previousUser.email);
+          } else {
+            console.log('⚠️ Migración de órdenes falló, pero continuando con login');
+          }
+        } catch (error) {
+          console.error('❌ Error durante migración de órdenes:', error.message);
+          console.error('❌ Detalles del error:', {
+            message: error.message,
+            code: error.code,
+            status: error.response?.status
+          });
+        }
+      } else {
+        console.log('✅ Guest sin pedidos (sin email), no necesita migración');
+      }
+    }
   };
 
-  const loginAsGuest = async () => {
-    const guestUser = { 
+  const loginAsGuest = async (guestEmail = null) => {
+    // Asegurar que guestEmail es string o null
+    const safeEmail = typeof guestEmail === 'string' ? guestEmail : null;
+    
+    console.log('👤 Iniciando sesión como guest:', safeEmail ? 'con email' : 'nuevo');
+    
+    // Crear objeto limpio directamente con tipos primitivos
+    const cleanGuestUser = {
       id: null,
-      user: 'Guest', 
+      user: 'Guest',
       usertype: 'Guest',
-      email: null,
+      email: safeEmail,
       first_name: 'Invitado',
       last_name: ''
     };
     
     if (AsyncStorage) {
       try {
-        await AsyncStorage.setItem('userData', JSON.stringify(guestUser));
-        await AsyncStorage.setItem('persistSession', 'true'); // Persistir también sesión de invitado
+        // Crear objeto aún más simple para JSON
+        const jsonData = {
+          id: null,
+          user: 'Guest',
+          usertype: 'Guest',
+          email: safeEmail,
+          first_name: 'Invitado',
+          last_name: ''
+        };
+        await AsyncStorage.setItem('userData', JSON.stringify(jsonData));
+        await AsyncStorage.setItem('persistSession', 'true');
       } catch (err) {
         console.warn('⚠️ AuthContext: fallo al guardar sesión de invitado', err);
       }
     }
     
-    setUser(guestUser);
+    setUser(cleanGuestUser);
     setIsLoggedIn(true);
+  };
+
+  // Función para actualizar datos del usuario actual (especialmente email de Guest)
+  const updateUser = async (updatedData) => {
+    const updatedUser = { ...user, ...updatedData };
+    
+    if (AsyncStorage) {
+      try {
+        // Crear objeto limpio para evitar referencias circulares
+        const cleanUpdatedUser = {
+          id: updatedUser.id,
+          user: updatedUser.user,
+          usertype: updatedUser.usertype,
+          email: updatedUser.email,
+          first_name: updatedUser.first_name,
+          last_name: updatedUser.last_name,
+          address: updatedUser.address
+        };
+        await AsyncStorage.setItem('userData', JSON.stringify(cleanUpdatedUser));
+      } catch (err) {
+        console.warn('⚠️ AuthContext: fallo al actualizar AsyncStorage', err);
+      }
+    }
+    
+    setUser(updatedUser);
+    console.log('👤 Usuario actualizado:', updatedUser);
   };
 
   const logout = async () => {
@@ -112,6 +212,7 @@ export function AuthProvider({ children }) {
       user,
       login,
       loginAsGuest,
+      updateUser,
       logout
     }}>
       {children}

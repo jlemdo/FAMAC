@@ -19,10 +19,9 @@ import fonts from '../theme/fonts';
 const Order = () => {
   const navigation = useNavigation();
   const {user} = useContext(AuthContext);
-  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const {updateOrders, orderCount} = useContext(OrderContext);
+  const {orders, orderCount, refreshOrders, lastFetch} = useContext(OrderContext);
 
   const handleInvoices = order => {
     const invoiceURL = `https://food.siliconsoft.pk/invoices/${order.invoice}`;
@@ -32,37 +31,15 @@ const Order = () => {
     });
   };
 
-  // 1. No hace falta useCallback aquí, basta con una función normal:
-  const fetchOrders = async () => {
-    setLoading(true);
+  // Función simplificada para refresh manual (pull-to-refresh)
+  const handleRefresh = () => {
     setRefreshing(true);
-    try {
-      const url =
-        user.usertype === 'driver'
-          ? `https://food.siliconsoft.pk/api/orderhistorydriver/${user.id}`
-          : `https://food.siliconsoft.pk/api/orderhistory/${user.id}`;
-
-      const {data} = await axios.get(url);
-
-      // Ordenar los pedidos por fecha descendente (más reciente primero)
-      const sortedOrders = data.orders.sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at),
-      );
-
-      setOrders(sortedOrders);
-      updateOrders(sortedOrders); // actualizar también el contexto ordenado
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
+    refreshOrders();
+    // Siminar pequeño delay para mostrar el spinner
+    setTimeout(() => {
       setRefreshing(false);
-      setLoading(false);
-    }
+    }, 1000);
   };
-
-  // 2. Disparamos solo cuando cambie el usuario:
-  useEffect(() => {
-    fetchOrders();
-  }, [user.id]);
 
   return (
     <View style={styles.container}>
@@ -74,82 +51,136 @@ const Order = () => {
           keyExtractor={item => item.id.toString()}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
-          onRefresh={fetchOrders}
+          onRefresh={handleRefresh}
           // Encabezado siempre arriba
           ListHeaderComponent={
             <Text style={styles.header}>Historial de Pedidos</Text>
           }
           // Mensaje cuando no hay pedidos
           ListEmptyComponent={
-            <Text style={styles.emptyOrders}>No tienes pedidos aún.</Text>
+            (user && user.usertype === 'Guest') ? (
+              <View style={styles.guestMessage}>
+                {(user.email && typeof user.email === 'string' && user.email.trim()) ? (
+                  // Guest que ya hizo pedidos (tiene email)
+                  <>
+                    <Text style={styles.guestTitle}>📦 ¡Tienes pedidos esperándote!</Text>
+                    <Text style={styles.guestText}>
+                      Hemos guardado tus pedidos con el email:{' '}
+                      <Text style={styles.guestEmail}>{String(user.email)}</Text>
+                    </Text>
+                    <Text style={styles.guestHighlight}>
+                      🎉 Regístrate ahora para ver todos tus pedidos y disfrutar de funciones exclusivas
+                    </Text>
+                    <Text style={styles.guestSubtext}>
+                      ✨ Al registrarte, todos tus pedidos aparecerán automáticamente aquí
+                    </Text>
+                  </>
+                ) : (
+                  // Guest que no ha hecho pedidos aún
+                  <>
+                    <Text style={styles.guestTitle}>👋 ¡Hola Invitado!</Text>
+                    <Text style={styles.guestText}>
+                      Para ver tu historial de pedidos, primero haz una compra o regístrate.
+                    </Text>
+                    <Text style={styles.guestSubtext}>
+                      📦 Tus pedidos se guardarán automáticamente cuando te registres
+                    </Text>
+                  </>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.emptyOrders}>No tienes pedidos aún.</Text>
+            )
           }
-          renderItem={({item}) => (
-            <View style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <Text style={styles.orderDate}>
-                  {new Date(item.created_at).toLocaleString('es-MX', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </Text>
-                <Text style={styles.total}>
-                  {new Intl.NumberFormat('es-MX', {
-                    style: 'currency',
-                    currency: 'MXN',
-                  }).format(item.total_price)}
-                </Text>
-              </View>
+          renderItem={({item}) => {
+            // Validar que el item existe y tiene las propiedades necesarias
+            if (!item || typeof item !== 'object') {
+              console.warn('⚠️ Invalid order item:', item);
+              return null;
+            }
 
-              <Text style={styles.itemHeader}>Artículos:</Text>
-              {item.order_details.length > 0 ? (
-                item.order_details.map((product, i) => (
-                  <View key={i} style={styles.itemRow}>
-                    <Image
-                      source={{uri: product.item_image}}
-                      style={styles.itemImage}
-                    />
-                    <View>
-                      <Text style={styles.itemText}>
-                        {product.item_qty}× {product.item_name}
-                      </Text>
-                      <Text style={styles.itemPrice}>
-                        {new Intl.NumberFormat('es-MX', {
-                          style: 'currency',
-                          currency: 'MXN',
-                        }).format(product.item_price)}
-                      </Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noItems}>
-                  No hay artículos en este pedido
-                </Text>
-              )}
+            // Propiedades con valores por defecto
+            const createdAt = item.created_at || new Date().toISOString();
+            const totalPrice = typeof item.total_price === 'number' ? item.total_price : 0;
+            const orderDetails = Array.isArray(item.order_details) ? item.order_details : [];
+            const itemId = item.id || Math.random().toString();
+            const itemStatus = item.status || 'Pendiente';
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.detailsButton,
-                    item.status === 'Entregado' && styles.disabledButton,
-                  ]}
-                  disabled={item.status === 'Entregado'}
-                  onPress={() =>
-                    navigation.navigate('OrderDetails', {orderId: item.id})
-                  }>
-                  <Text style={styles.detailsText}>
-                    {item.status === 'Entregado' ? 'Entregado' : 'Ver detalles'}
+            return (
+              <View style={styles.orderCard}>
+                <View style={styles.orderHeader}>
+                  <Text style={styles.orderDate}>
+                    {new Date(createdAt).toLocaleString('es-MX', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
                   </Text>
-                </TouchableOpacity>
+                  <Text style={styles.total}>
+                    {new Intl.NumberFormat('es-MX', {
+                      style: 'currency',
+                      currency: 'MXN',
+                    }).format(totalPrice)}
+                  </Text>
+                </View>
 
-                <TouchableOpacity
-                  style={styles.invoiceButton}
-                  onPress={() => handleInvoices(item)}>
-                  <Text style={styles.invoiceText}>Ver ticket</Text>
-                </TouchableOpacity>
+                <Text style={styles.itemHeader}>Artículos:</Text>
+                {orderDetails.length > 0 ? (
+                  orderDetails.map((product, i) => {
+                    // Validar cada producto
+                    if (!product || typeof product !== 'object') {
+                      return null;
+                    }
+
+                    return (
+                      <View key={i} style={styles.itemRow}>
+                        <Image
+                          source={{uri: product.item_image || ''}}
+                          style={styles.itemImage}
+                        />
+                        <View>
+                          <Text style={styles.itemText}>
+                            {product.item_qty || 0}× {product.item_name || 'Producto'}
+                          </Text>
+                          <Text style={styles.itemPrice}>
+                            {new Intl.NumberFormat('es-MX', {
+                              style: 'currency',
+                              currency: 'MXN',
+                            }).format(parseFloat(product.item_price) || 0)}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text style={styles.noItems}>
+                    No hay artículos en este pedido
+                  </Text>
+                )}
+
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.detailsButton,
+                      itemStatus === 'Entregado' && styles.disabledButton,
+                    ]}
+                    disabled={itemStatus === 'Entregado'}
+                    onPress={() =>
+                      navigation.navigate('OrderDetails', {orderId: itemId})
+                    }>
+                    <Text style={styles.detailsText}>
+                      {itemStatus === 'Entregado' ? 'Entregado' : 'Ver detalles'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.invoiceButton}
+                    onPress={() => handleInvoices(item)}>
+                    <Text style={styles.invoiceText}>Ver ticket</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
     </View>
@@ -277,6 +308,55 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.6)', // Gris Carbón @60%
     textAlign: 'center',
     marginTop: 50,
+  },
+  guestMessage: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: 32,
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  guestTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  guestText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  guestSubtext: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  guestEmail: {
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
+  guestHighlight: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#33A744',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginVertical: 12,
+    paddingHorizontal: 8,
   },
 });
 

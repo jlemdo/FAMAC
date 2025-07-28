@@ -1,9 +1,12 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { AuthContext } from './AuthContext';
 
 export const CartContext = createContext();
 
 export function CartProvider({ children }) {
     const [cart, setCart] = useState([]);
+    const [currentUserId, setCurrentUserId] = useState(null);
+    const { user } = useContext(AuthContext);
 
     // Add item to cart
     const addToCart = (product, quantityToAdd = 1) => {
@@ -40,6 +43,23 @@ export function CartProvider({ children }) {
             )
         );
     };
+
+    // Efecto para limpiar carrito cuando cambia el usuario
+    useEffect(() => {
+        const userId = user?.id || user?.email || null; // Para guests usar email, para registrados usar id
+        
+        // Si hay un usuario previo diferente al actual, limpiar carrito
+        if (currentUserId !== null && currentUserId !== userId) {
+            console.log('🛒 Usuario cambió, limpiando carrito:', {
+                previousUser: currentUserId,
+                currentUser: userId
+            });
+            setCart([]);
+        }
+        
+        // Actualizar el ID del usuario actual
+        setCurrentUserId(userId);
+    }, [user?.id, user?.email, currentUserId]);
 
     // Calculate total price
     const totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);

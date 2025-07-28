@@ -52,8 +52,15 @@ export default function CustomAlert({
                   <TouchableOpacity
                     style={[styles.button, styles.outlineButton, { borderColor: color }]}
                     onPress={() => {
+                      console.log('🚨 CustomAlert: botón cancelar presionado');
                       Keyboard.dismiss();
-                      onCancel && onCancel();
+                      if (onCancel) {
+                        console.log('🚨 CustomAlert: ejecutando onCancel callback');
+                        onCancel();
+                        console.log('🚨 CustomAlert: onCancel callback ejecutado');
+                      } else {
+                        console.log('🚨 CustomAlert: no hay callback onCancel');
+                      }
                     }}
                   >
                     <Text style={[styles.buttonText, { color }]}>{cancelText}</Text>
@@ -114,6 +121,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    gap: 10,
   },
   button: {
     paddingVertical: 10,
