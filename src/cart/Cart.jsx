@@ -706,9 +706,8 @@ export default function Cart() {
                   style={[styles.input, styles.addressInput]}
                   onPress={() => {
                     setModalVisible(false);  // Cerrar modal Guest primero
-                    setTimeout(() => {
-                      setShowAddressPicker(true);  // Abrir AddressPicker después
-                    }, 300);  // Delay para que iOS procese el cierre
+                    // Sin setTimeout - cerrar inmediatamente y abrir después
+                    setShowAddressPicker(true);  // Abrir AddressPicker inmediatamente
                   }}
                   activeOpacity={0.7}>
                   <Text
@@ -764,19 +763,15 @@ export default function Cart() {
         visible={showAddressPicker}
         onClose={() => {
           setShowAddressPicker(false);
-          // Volver a abrir modal Guest después de cerrar AddressPicker
-          setTimeout(() => {
-            setModalVisible(true);
-          }, 300);
+          // Volver a abrir modal Guest después de cerrar AddressPicker - SIN setTimeout
+          setModalVisible(true);
         }}
         onConfirm={(addressData) => {
           console.log('📍 Address selected:', addressData);
           setAddress(addressData.fullAddress);
           setShowAddressPicker(false);
-          // Volver a abrir modal Guest después de confirmar dirección
-          setTimeout(() => {
-            setModalVisible(true);
-          }, 300);
+          // Volver a abrir modal Guest después de confirmar dirección - SIN setTimeout
+          setModalVisible(true);
         }}
         initialAddress={address || ''}
         title="Dirección de Entrega"

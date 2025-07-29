@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 
 export const CartContext = createContext();
@@ -74,10 +74,10 @@ export function CartProvider({ children }) {
     // Calculate total price
     const totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);
 
-    // Función para registrar callback de limpieza
-    const setCartClearCallback = (callback) => {
-        setOnCartClearCallback(() => callback);
-    };
+    // Función para registrar callback de limpieza - memorizada para evitar bucles infinitos
+    const setCartClearCallback = useCallback((callback) => {
+        setOnCartClearCallback(callback);
+    }, []);
 
     return (
         <CartContext.Provider value={{ 
