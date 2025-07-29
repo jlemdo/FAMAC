@@ -62,7 +62,7 @@ platform :ios do
     end
 
       # ── 3.1 Sobrescribir CFBundleURLSchemes ─────────────────────────────
-    plist_set(
+    set_info_plist_value(
       path:  "ios/MyNewApp/Info.plist",
       key:   "CFBundleURLTypes:0:CFBundleURLSchemes:0",
       value: ENV["REVERSED_CLIENT_ID"]
