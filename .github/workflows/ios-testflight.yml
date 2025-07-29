@@ -14,6 +14,13 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      - name: Derivar reversed client ID para Google Sign‑In
+        shell: bash
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        run: |
+          BASE="${GOOGLE_IOS_CLIENT_ID%.apps.googleusercontent.com}"
+          echo "REVERSED_CLIENT_ID=com.googleusercontent.apps.${BASE}" >> $GITHUB_ENV
       - name: Cache Ruby gems y CocoaPods
         uses: actions/cache@v3
         with:

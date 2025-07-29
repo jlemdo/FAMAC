@@ -61,6 +61,13 @@ platform :ios do
       UI.user_error!("❌ No se generó ios/main.jsbundle — abortando deploy.")
     end
 
+      # ── 3.1 Sobrescribir CFBundleURLSchemes ─────────────────────────────
+    plist_set(
+      path:  "ios/MyNewApp/Info.plist",
+      key:   "CFBundleURLTypes:0:CFBundleURLSchemes:0",
+      value: ENV["REVERSED_CLIENT_ID"]
+    )
+
     # 4️⃣ Compilar con Gym
     begin
       build_app(
