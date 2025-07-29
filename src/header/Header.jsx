@@ -118,7 +118,7 @@ const Header = ({onLogout}) => {
       // Mostrar barra de búsqueda
       Animated.parallel([
         Animated.timing(searchBarHeight, {
-          toValue: 52,
+          toValue: 44, // Reducido de 52 a 44
           duration: 250,
           useNativeDriver: false, // Para height debe ser false
         }),
@@ -324,30 +324,15 @@ const Header = ({onLogout}) => {
   );
 };
 
-// Función para obtener safe area superior
+// Función para obtener safe area superior optimizada
 const getStatusBarHeight = () => {
-  const { height } = Dimensions.get('window');
-  
   if (Platform.OS === 'ios') {
-    // iPhone X y modelos más nuevos
-    if (height >= 812) {
-      return 44;
-    }
-    // iPhone 6/7/8 Plus
-    else if (height >= 736) {
-      return 20;
-    }
-    // iPhone 6/7/8
-    else if (height >= 667) {
-      return 20;
-    }
-    // iPhone SE (1st gen) y más pequeños
-    else {
-      return 20;
-    }
+    const { height } = Dimensions.get('window');
+    // iPhone X y modelos más nuevos tienen notch
+    return height >= 812 ? 44 : 20;
   }
   
-  // Android
+  // Android - usar altura real de status bar
   return StatusBar.currentHeight || 24;
 };
 
@@ -355,7 +340,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFF',
     paddingTop: getStatusBarHeight(),
-    paddingBottom: Platform.OS === 'ios' ? 8 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 4 : 6, // Reducido de 8/12 a 4/6
     paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
@@ -367,9 +352,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: Platform.OS === 'ios' ? 60 : 56, // Más altura en iOS para mejor legibilidad
-    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
-    marginTop: Platform.OS === 'ios' ? 4 : 0, // Espacio adicional en iOS
+    minHeight: Platform.OS === 'ios' ? 44 : 48, // Reducido de 60/56 a 44/48
+    paddingVertical: Platform.OS === 'ios' ? 6 : 4, // Reducido de 12/8 a 6/4
+    marginTop: 0, // Eliminado margen superior
   },
   leftSection: {
     flexDirection: 'row',
@@ -378,7 +363,7 @@ const styles = StyleSheet.create({
     maxWidth: '70%', // Evita overflow en pantallas pequeñas
   },
   logoContainer: {
-    marginRight: 12,
+    marginRight: 10, // Reducido de 12 a 10
     shadowColor: '#D27F27',
     shadowOffset: {
       width: 0,
@@ -389,12 +374,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28, // Reducido de 32 a 28
+    height: 28, // Reducido de 32 a 28
+    borderRadius: 14, // Ajustado para mantener proporción
   },
   appName: {
-    fontSize: Platform.OS === 'ios' ? fonts.size.XL : fonts.size.XL, // Tamaño ajustado por plataforma
+    fontSize: Platform.OS === 'ios' ? fonts.size.title : fonts.size.title, // Reducido de XL a large
     fontFamily: fonts.original,
     color: '#2F2F2F',
     letterSpacing: 0.5,
@@ -405,15 +390,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    minWidth: Platform.OS === 'ios' ? 100 : 90, // Ancho mínimo para íconos
+    minWidth: Platform.OS === 'ios' ? 88 : 80, // Reducido de 100/90 a 88/80
   },
   iconContainer: {
-    width: Platform.OS === 'ios' ? 44 : 40, // Touch target más grande en iOS
-    height: Platform.OS === 'ios' ? 44 : 40,
+    width: Platform.OS === 'ios' ? 38 : 36, // Reducido de 44/40 a 38/36
+    height: Platform.OS === 'ios' ? 38 : 36, // Reducido de 44/40 a 38/36
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: Platform.OS === 'ios' ? 8 : 12,
-    borderRadius: Platform.OS === 'ios' ? 22 : 20,
+    marginLeft: Platform.OS === 'ios' ? 6 : 8, // Reducido de 8/12 a 6/8
+    borderRadius: Platform.OS === 'ios' ? 19 : 18, // Ajustado para mantener proporción
     backgroundColor: 'transparent',
   },
   badge: {
@@ -441,8 +426,8 @@ const styles = StyleSheet.create({
     borderColor: '#8B5E3C',
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginTop: Platform.OS === 'ios' ? 4 : 8,
-    marginBottom: Platform.OS === 'ios' ? 8 : 4,
+    marginTop: Platform.OS === 'ios' ? 2 : 4, // Reducido de 4/8 a 2/4
+    marginBottom: Platform.OS === 'ios' ? 4 : 2, // Reducido de 8/4 a 4/2
     backgroundColor: '#FAFAFA',
   },
   searchIcon: {

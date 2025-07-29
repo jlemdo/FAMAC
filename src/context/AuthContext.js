@@ -201,8 +201,13 @@ export function AuthProvider({ children }) {
         console.warn('⚠️ AuthContext: fallo al eliminar AsyncStorage', err);
       }
     }
+    
+    console.log('🚪 Cerrando sesión y limpiando datos de usuario');
     setUser(null);
     setIsLoggedIn(false);
+    
+    // El CartContext automáticamente limpiará el carrito cuando user cambie a null
+    // gracias al useEffect que detecta cambios de usuario
   };
 
   return (

@@ -6,6 +6,7 @@ export const CartContext = createContext();
 export function CartProvider({ children }) {
     const [cart, setCart] = useState([]);
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [onCartClearCallback, setOnCartClearCallback] = useState(null);
     const { user } = useContext(AuthContext);
 
     // Add item to cart
@@ -30,6 +31,11 @@ export function CartProvider({ children }) {
     // In CartContext.js
     const clearCart = () => {
         setCart([]);
+        // Ejecutar callback si está definido para limpiar información adicional (como deliveryInfo)
+        if (onCartClearCallback) {
+            onCartClearCallback();
+        }
+        console.log('🛒 Carrito limpiado desde CartContext');
     };
 
 
@@ -55,6 +61,10 @@ export function CartProvider({ children }) {
                 currentUser: userId
             });
             setCart([]);
+            // Ejecutar callback para limpiar información adicional cuando cambia usuario
+            if (onCartClearCallback) {
+                onCartClearCallback();
+            }
         }
         
         // Actualizar el ID del usuario actual
@@ -64,8 +74,21 @@ export function CartProvider({ children }) {
     // Calculate total price
     const totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);
 
+    // Función para registrar callback de limpieza
+    const setCartClearCallback = (callback) => {
+        setOnCartClearCallback(() => callback);
+    };
+
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, totalPrice, clearCart }}>
+        <CartContext.Provider value={{ 
+            cart, 
+            addToCart, 
+            removeFromCart, 
+            updateQuantity, 
+            totalPrice, 
+            clearCart,
+            setCartClearCallback 
+        }}>
             {children}
         </CartContext.Provider>
     );

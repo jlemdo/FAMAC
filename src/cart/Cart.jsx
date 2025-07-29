@@ -43,6 +43,7 @@ export default function Cart() {
     updateQuantity,
     totalPrice,
     clearCart,
+    setCartClearCallback,
   } = useContext(CartContext);
   const {user, updateUser} = useContext(AuthContext);
   const {refreshOrders} = useContext(OrderContext);
@@ -93,6 +94,18 @@ export default function Cart() {
     // Si el guest ya tiene email guardado, significa que ya hizo un pedido
     return user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
   };
+
+  // Registrar callback para limpiar deliveryInfo cuando se limpia el carrito
+  useEffect(() => {
+    const clearDeliveryInfo = () => {
+      setDeliveryInfo(null);
+      console.log('📅 Información de entrega limpiada por cambio de usuario/logout');
+    };
+    
+    if (setCartClearCallback) {
+      setCartClearCallback(clearDeliveryInfo);
+    }
+  }, [setCartClearCallback]);
 
   // Inicializar estados cuando cambia el usuario
   useEffect(() => {
@@ -298,7 +311,11 @@ export default function Cart() {
           });
         }
       });
+      
+      // Limpiar carrito y información de entrega después del pedido exitoso
       clearCart();
+      setDeliveryInfo(null);
+      console.log('🛒 Carrito y información de entrega limpiados después del pedido exitoso');
     } catch (err) {
       console.error('Checkout failed:', err);
       showAlert({
