@@ -75,35 +75,50 @@ export default function SpecificCategoryProduct() {
                   tabNavigator?.navigate('ProductDetails', {productData: item});
                 }}>
                 <View style={styles.productCard}>
+                  {/* Banderín de promoción */}
+                  {discountNum > 0 && (
+                    <View style={styles.promotionBanner}>
+                      <Text style={styles.promotionText}>-${discountNum}</Text>
+                    </View>
+                  )}
+                  
                   <Image source={{uri: item.photo}} style={styles.image} />
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.description} numberOfLines={3}>
+                  
+                  <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                  <Text style={styles.description} numberOfLines={2}>
                     {item.description}
                   </Text>
 
-                  {discountNum > 0 ? (
-                    <>
-                      {/* Original tachado solo si hay descuento */}
-                      <Text
-                        style={[
-                          styles.originalPrice,
-                          {textDecorationLine: 'line-through', color: '#999'},
-                        ]}>
-                        ${item.price}
-                      </Text>
-                      {/* Precio descontado */}
-                      <Text style={styles.discountedPrice}>
-                        ${discountedPrice}
-                      </Text>
-                      {/* Etiqueta “Save” */}
-                      <Text style={styles.discountLabel}>
-                        Save ${discountNum}
-                      </Text>
-                    </>
-                  ) : (
-                    /* Si no hay descuento, solo muestro el precio normal */
-                    <Text style={styles.originalPrice}>${item.price}</Text>
-                  )}
+                  {/* Indicador de peso */}
+                  <View style={styles.weightBadge}>
+                    <Text style={styles.weightText}>250g</Text>
+                  </View>
+
+                  {/* Sección de precios */}
+                  <View style={styles.priceSection}>
+                    {discountNum > 0 ? (
+                      <>
+                        {/* Original tachado solo si hay descuento */}
+                        <Text style={styles.originalPriceStriked}>
+                          ${item.price}
+                        </Text>
+                        {/* Precio descontado */}
+                        <Text style={styles.discountedPrice}>
+                          ${discountedPrice.toFixed(2)}
+                        </Text>
+                        {/* Etiqueta "Ahorro" */}
+                        <View style={styles.savingsBadge}>
+                          <Text style={styles.savingsText}>
+                            ¡Ahorras ${discountNum}!
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      /* Si no hay descuento, solo muestro el precio normal */
+                      <Text style={styles.regularPrice}>${parseFloat(item.price).toFixed(2)}</Text>
+                    )}
+                    <Text style={styles.priceSubtext}>por unidad</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -133,7 +148,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   title: {
-    fontSize: fonts.size.XLLL,
+    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     fontFamily: fonts.original,
     textAlign: 'center',
     flex: 1,
@@ -143,51 +158,121 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   productCard: {
-    backgroundColor: 'white',
-    padding: 15,
-    margin: 10,
-    borderRadius: 12,
+    backgroundColor: '#FFF',
+    padding: 16,
+    margin: 8,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
     elevation: 4,
-    width: 170,
+    width: 180,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.1)',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  promotionBanner: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#E63946',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+    transform: [{ rotate: '15deg' }],
+  },
+  promotionText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
   },
   image: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     borderRadius: 12,
+    marginBottom: 12,
   },
   name: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
-    color: '#222',
-    marginTop: 10,
+    color: '#2F2F2F',
     textAlign: 'center',
+    marginBottom: 6,
+    minHeight: 32,
   },
   description: {
     fontSize: fonts.size.small,
-    color: '#666',
+    color: 'rgba(47,47,47,0.7)',
     textAlign: 'center',
-    marginTop: 5,
-    paddingHorizontal: 8,
-    fontStyle: 'italic',
+    marginBottom: 8,
+    paddingHorizontal: 4,
     fontFamily: fonts.regular,
+    minHeight: 28,
   },
-  originalPrice: {
+  weightBadge: {
+    backgroundColor: '#8B5E3C',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  weightText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  priceSection: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  regularPrice: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginBottom: 4,
+  },
+  originalPriceStriked: {
     fontSize: fonts.size.medium,
-    marginTop: 5,
     fontFamily: fonts.regular,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginBottom: 4,
   },
   discountedPrice: {
-    fontSize: fonts.size.medium,
+    fontSize: fonts.size.large,
     fontFamily: fonts.bold,
-    color: '#E44D26',
-    marginTop: 3,
+    color: '#33A744',
+    marginBottom: 6,
   },
-  discountLabel: {
+  savingsBadge: {
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#33A744',
+  },
+  savingsText: {
     fontSize: fonts.size.small,
-    color: 'green',
     fontFamily: fonts.bold,
-    marginTop: 3,
+    color: '#33A744',
+  },
+  priceSubtext: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.6)',
+    fontStyle: 'italic',
   },
   noData: {
     textAlign: 'center',

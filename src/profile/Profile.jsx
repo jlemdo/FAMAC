@@ -1377,7 +1377,7 @@ const styles = StyleSheet.create({
   // Estilos del selector personalizado
   selectorWrapper: {
     position: 'relative',
-    zIndex: 9999,
+    zIndex: 99999,
   },
   customPicker: {
     borderWidth: 1,

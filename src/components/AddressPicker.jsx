@@ -272,7 +272,7 @@ const AddressPicker = ({
                           setSearchQuery(text);
                           searchPlaces(text);
                         }}
-                        autoFocus
+                        autoFocus={Platform.OS !== 'ios'}
                       />
                       {isSearching && (
                         <ActivityIndicator style={styles.searchLoader} color="#D27F27" />
@@ -321,25 +321,17 @@ const AddressPicker = ({
                             latitudeDelta: 0.01,
                             longitudeDelta: 0.01,
                           }}
-                          onPress={handleMapPress}
-                          provider="google" // Forzar Google Maps
-                          showsUserLocation={false}
-                          showsMyLocationButton={false}
-                          onMapReady={() => console.log('🗺️ Map is ready with location:', selectedLocation)}
-                          onError={(error) => console.error('🗺️ Map error:', error)}
-                          loadingEnabled={true}
-                          loadingIndicatorColor="#D27F27"
-                          loadingBackgroundColor="#F2EFE4">
-                        {selectedLocation && (
-                          <Marker
-                            coordinate={{
-                              latitude: selectedLocation.latitude,
-                              longitude: selectedLocation.longitude,
-                            }}
-                            title="Ubicación seleccionada"
-                            pinColor="#D27F27"
-                          />
-                        )}
+                          onPress={handleMapPress}>
+                          {selectedLocation && (
+                            <Marker
+                              coordinate={{
+                                latitude: selectedLocation.latitude,
+                                longitude: selectedLocation.longitude,
+                              }}
+                              title="Ubicación seleccionada"
+                              pinColor="#D27F27"
+                            />
+                          )}
                         </MapView>
                       ) : (
                         <View style={styles.mapPlaceholder}>

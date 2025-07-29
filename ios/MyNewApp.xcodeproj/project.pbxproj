@@ -35,8 +35,11 @@
 		210B730E59FF467D9DACDE6D /* Raleway-ThinItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */; };
 		685BAC9C09F646F280CC7858 /* futur.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C7FA48CDE53947A0B4E539C9 /* futur.ttf */; };
 		01B0A9A2E0E74857B12B9383 /* WendyLPStdMedium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */; };
-		5B6273FD1B1A00C9D38EC74F /* main.m in Sources */ = { isa = PBXBuildFile; fileRef = 55955F5BE4B0768EF59B366A /* main.m */; };
-		3087A938E6F5C21A9669EE81 /* AppDelegate.m in Sources */ = { isa = PBXBuildFile; fileRef = CF2309CC481C82B34E21D865 /* AppDelegate.m */; };
+		5B6273FD1B1A00C9D38EC74F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 55955F5BE4B0768EF59B366A /* main.m */; };
+		3087A938E6F5C21A9669EE81 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = CF2309CC481C82B34E21D865 /* AppDelegate.m */; };
+		4D4FA1B319204375927BA13A /* PlayfairDisplay-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */; };
+		78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */; };
+		6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,8 +88,11 @@
 		3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */ = {isa = PBXFileReference; name = "Raleway-ThinItalic.ttf"; path = "../src/assets/fonts/Raleway/static/Raleway-ThinItalic.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		C7FA48CDE53947A0B4E539C9 /* futur.ttf */ = {isa = PBXFileReference; name = "futur.ttf"; path = "../src/assets/fonts/futura/futur.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */ = {isa = PBXFileReference; name = "WendyLPStdMedium.ttf"; path = "../src/assets/fonts/WendyLPStdMedium/WendyLPStdMedium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		55955F5BE4B0768EF59B366A /* main.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyNewApp/main.m; sourceTree = "<group>"; };
-		CF2309CC481C82B34E21D865 /* AppDelegate.m */ = { isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
+		55955F5BE4B0768EF59B366A /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyNewApp/main.m; sourceTree = "<group>"; };
+		CF2309CC481C82B34E21D865 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = MyNewApp/AppDelegate.m; sourceTree = "<group>"; };
+		6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-Bold.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-ExtraBold.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-ExtraBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-Regular.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -198,6 +204,9 @@
 				3C88452F10CD47DCA5ED3AE6 /* Raleway-ThinItalic.ttf */,
 				C7FA48CDE53947A0B4E539C9 /* futur.ttf */,
 				4E52BFF0EA2940F2A76F6F79 /* WendyLPStdMedium.ttf */,
+				6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */,
+				4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */,
+				6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -297,6 +306,9 @@
 				210B730E59FF467D9DACDE6D /* Raleway-ThinItalic.ttf in Resources */,
 				685BAC9C09F646F280CC7858 /* futur.ttf in Resources */,
 				01B0A9A2E0E74857B12B9383 /* WendyLPStdMedium.ttf in Resources */,
+				4D4FA1B319204375927BA13A /* PlayfairDisplay-Bold.ttf in Resources */,
+				78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */,
+				6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,7 +394,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3087A938E6F5C21A9669EE81 /* AppDelegate.m in Sources */, 
+				3087A938E6F5C21A9669EE81 /* AppDelegate.m in Sources */,
 				5B6273FD1B1A00C9D38EC74F /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -409,7 +421,7 @@
 				INFOPLIST_FILE = MyNewApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;	
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -439,7 +451,7 @@
 				INFOPLIST_FILE = MyNewApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;	
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -529,7 +541,7 @@
 				);
 				SDKROOT = iphoneos;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;	
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 			};
 			name = Debug;
 		};
@@ -597,7 +609,7 @@
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;	
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 			};
 			name = Release;
 		};

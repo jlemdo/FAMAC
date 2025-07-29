@@ -11,6 +11,7 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -38,7 +39,6 @@ export default function ProductDetails() {
   const decreaseQuantity = () => quantity > MIN_QUANTITY && setQuantity(prev => prev - INCREMENT);
   
   // Calcular precios (product.price es por 250g = 1 unidad)
-  const pricePerKg = (product.price * 4).toFixed(2); // 4 unidades = 1kg
   const totalPrice = (product.price * quantity).toFixed(2); // precio por unidad * cantidad de unidades
   
   // Formatear cantidad para mostrar (convertir unidades a gramos)
@@ -120,12 +120,6 @@ export default function ProductDetails() {
         <View style={styles.card}>
           <Image source={{uri: product.photo}} style={styles.image} />
 
-          {/* Precio por unidad */}
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Precio por kg:</Text>
-            <Text style={styles.unitPrice}>${pricePerKg}</Text>
-          </View>
-          
           {/* Precio base (250g) */}
           <View style={styles.basePriceContainer}>
             <Text style={styles.basePriceLabel}>Precio por 250g:</Text>
@@ -138,15 +132,6 @@ export default function ProductDetails() {
             <Text style={styles.totalPrice}>${totalPrice}</Text>
           </View>
 
-          <Text
-            style={[
-              styles.stockText,
-              product.available_qty === 0 ? styles.outOfStock : styles.inStock,
-            ]}>
-            {product.available_qty === 0
-              ? 'Agotado'
-              : `Stock: ${product.available_qty}`}
-          </Text>
 
           <View style={styles.quantitySection}>
             <Text style={styles.quantitySectionTitle}>Cantidad:</Text>
@@ -157,7 +142,7 @@ export default function ProductDetails() {
                   styles.quantityButton,
                   quantity <= MIN_QUANTITY && styles.quantityButtonDisabled
                 ]}
-                disabled={product.available_qty === 0 || quantity <= MIN_QUANTITY}
+                disabled={quantity <= MIN_QUANTITY}
                 accessible
                 accessibilityLabel="Disminuir cantidad">
                 <Ionicons 
@@ -177,7 +162,7 @@ export default function ProductDetails() {
               <TouchableOpacity
                 onPress={increaseQuantity}
                 style={styles.quantityButton}
-                disabled={product.available_qty === 0}
+                disabled={false}
                 accessible
                 accessibilityLabel="Aumentar cantidad">
                 <Ionicons name="add" size={20} color="#FFF" />
@@ -193,19 +178,13 @@ export default function ProductDetails() {
       <TouchableOpacity
         style={styles.cartButton}
         onPress={handleAddToCart}
-        disabled={product.available_qty === 0}
+        disabled={false}
         activeOpacity={0.7}
         accessible
-        accessibilityLabel={
-          product.available_qty === 0 ? 'Agotado' : `Añadir al carrito por $${totalPrice}`
-        }>
+        accessibilityLabel={`Añadir al carrito por $${totalPrice}`}>
         <View style={styles.cartButtonContent}>
-          <Text style={styles.cartText}>
-            {product.available_qty === 0 ? 'Agotado' : 'Añadir al carrito'}
-          </Text>
-          {product.available_qty > 0 && (
-            <Text style={styles.cartPrice}>${totalPrice}</Text>
-          )}
+          <Text style={styles.cartText}>Añadir al carrito</Text>
+          <Text style={styles.cartPrice}>${totalPrice}</Text>
         </View>
       </TouchableOpacity>
 
@@ -285,7 +264,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 120, // espacio extra para CTA sticky
+    paddingBottom: Platform.OS === 'ios' ? (Dimensions.get('window').height >= 812 ? 140 : 120) : 120, // espacio extra para CTA sticky + safe area
   },
   headerContainer: {
     flexDirection: 'row',
@@ -309,7 +288,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontFamily: fonts.original,
-    fontSize: fonts.size.XLLL,
+    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     color: '#2F2F2F',
     textAlign: 'center',
   },
@@ -332,22 +311,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   // Estilos de precios
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  priceLabel: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: '#666',
-    marginRight: 8,
-  },
-  unitPrice: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#8B5E3C',
-  },
   basePriceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,17 +347,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.XL,
     color: '#D27F27',
     textAlign: 'center',
-  },
-  stockText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    marginBottom: 12,
-  },
-  inStock: {
-    color: '#33A744',
-  },
-  outOfStock: {
-    color: '#D27F27',
   },
   // Estilos de cantidad
   quantitySection: {
@@ -468,6 +420,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D27F27',
     paddingVertical: 16,
     paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? (Dimensions.get('window').height >= 812 ? 34 : 16) : 16, // Safe area para iPhone X+
     alignItems: 'center',
     elevation: 4,
   },

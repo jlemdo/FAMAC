@@ -196,6 +196,7 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
@@ -417,6 +418,7 @@ const Header = ({onLogout}) => {
           placeholderTextColor="#666"
           onChangeText={handleSearch}
           returnKeyType="search"                         // muestra "Buscar" en el teclado
+          keyboardShouldPersistTaps="handled"            // Evitar que el teclado interfiera con el tab bar
           onSubmitEditing={() => {
             if (searchText.trim()) {
               setSuggestions([]);                         // limpia sugerencias
@@ -439,6 +441,7 @@ const Header = ({onLogout}) => {
         <FlatList
           data={suggestions}
           keyExtractor={item => item.id.toString()}
+          keyboardShouldPersistTaps="handled" // Evitar interferencia con tab bar
           renderItem={({item}) => (
             <TouchableOpacity
               style={styles.suggestionItem}
@@ -457,42 +460,77 @@ const Header = ({onLogout}) => {
   );
 };
 
+// Función para obtener safe area superior
+const getStatusBarHeight = () => {
+  const { height } = Dimensions.get('window');
+  
+  if (Platform.OS === 'ios') {
+    // iPhone X y modelos más nuevos
+    if (height >= 812) {
+      return 44;
+    }
+    // iPhone 6/7/8 Plus
+    else if (height >= 736) {
+      return 20;
+    }
+    // iPhone 6/7/8
+    else if (height >= 667) {
+      return 20;
+    }
+    // iPhone SE (1st gen) y más pequeños
+    else {
+      return 20;
+    }
+  }
+  
+  // Android
+  return StatusBar.currentHeight || 24;
+};
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFF',
-    paddingTop: Platform.OS === 'ios' ? StatusBar.currentHeight || 44 : StatusBar.currentHeight || 0,
-    paddingBottom: 8,
+    paddingTop: getStatusBarHeight(),
+    paddingBottom: Platform.OS === 'ios' ? 8 : 12,
     paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
     elevation: 3,
+    // Altura mínima para evitar elementos comprimidos
+    minHeight: Platform.OS === 'ios' ? 100 : 80,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 56, // Altura estándar de header
-    paddingVertical: 8,
+    minHeight: Platform.OS === 'ios' ? 60 : 56, // Más altura en iOS para mejor legibilidad
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    marginTop: Platform.OS === 'ios' ? 4 : 0, // Espacio adicional en iOS
   },
   appName: {
-    fontSize: fonts.size.XLL, // Reducido ligeramente para mejor proporción
+    fontSize: Platform.OS === 'ios' ? fonts.size.large : fonts.size.XL, // Tamaño ajustado por plataforma
     fontFamily: fonts.original,
     color: '#2F2F2F',
     letterSpacing: 0.5,
+    textAlign: 'left',
+    flex: 1,
+    maxWidth: '70%', // Evita overflow en pantallas pequeñas
   },
   rightIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    minWidth: Platform.OS === 'ios' ? 100 : 90, // Ancho mínimo para íconos
   },
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: Platform.OS === 'ios' ? 44 : 40, // Touch target más grande en iOS
+    height: Platform.OS === 'ios' ? 44 : 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
-    borderRadius: 20,
+    marginLeft: Platform.OS === 'ios' ? 8 : 12,
+    borderRadius: Platform.OS === 'ios' ? 22 : 20,
     backgroundColor: 'transparent',
   },
   badge: {
@@ -520,9 +558,9 @@ const styles = StyleSheet.create({
     borderColor: '#8B5E3C',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
-    marginTop: 8,
-    marginBottom: 4,
+    height: Platform.OS === 'ios' ? 44 : 40, // Altura estándar iOS
+    marginTop: Platform.OS === 'ios' ? 4 : 8,
+    marginBottom: Platform.OS === 'ios' ? 8 : 4,
     backgroundColor: '#FAFAFA',
   },
   searchIcon: {
@@ -561,7 +599,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-start',
-    paddingTop: Platform.OS === 'ios' ? 100 : 80,
+    paddingTop: Platform.OS === 'ios' ? getStatusBarHeight() + 70 : 80,
   },
   dropdown: {
     backgroundColor: '#FFF',

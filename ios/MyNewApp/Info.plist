@@ -35,10 +35,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Necesitamos tu ubicación mientras usas la app para que puedas ver tu posición en el mapa.</string>
-	 <!-- Propósito de uso de la cámara -->
 	<key>NSCameraUsageDescription</key>
 	<string>Necesitamos acceder a la cámara para escanear códigos de producto y validar tus entregas.</string>
-	<!-- (Opcional) Propósito de ubicación en todo momento -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Necesitamos tu ubicación incluso en segundo plano para rastrear tus entregas y mejorar la precisión del servicio.</string>
 	<key>UIBackgroundModes</key>
@@ -61,29 +59,44 @@
 	<false/>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Necesitamos tu permiso para enviarte notificaciones sobre el estado de tus pedidos y otras actualizaciones importantes.</string>
+	<!-- Google Sign-In Configuration -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>1058559455264-t3g6johnil6ns88vg3qgbu7mc8i11rjk</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
-	<string>WendyLPStdMedium.ttf</string>
-	<string>Raleway-Medium.ttf</string>
-	<string>Ionicons.ttf</string>
-	<string>FontAwesome.ttf</string>
-	<string>FontAwesome5_Brands.ttf</string>
-	<string>FontAwesome5_Regular.ttf</string>
-	<string>FontAwesome5_Solid.ttf</string>
-	<string>FontAwesome6_Brands.ttf</string>
-	<string>FontAwesome6_Regular.ttf</string>
-	<string>FontAwesome6_Solid.ttf</string>
-	<string>MaterialIcons.ttf</string>
-	<string>MaterialCommunityIcons.ttf</string>
-	<string>AntDesign.ttf</string>
-	<string>Feather.ttf</string>
-	<string>Entypo.ttf</string>
-	<string>EvilIcons.ttf</string>
-	<string>Fontisto.ttf</string>
-	<string>Foundation.ttf</string>
-	<string>Octicons.ttf</string>
-	<string>SimpleLineIcons.ttf</string>
-	<string>Zocial.ttf</string>
+		<string>WendyLPStdMedium.ttf</string>
+		<string>Raleway-Medium.ttf</string>
+		<string>Ionicons.ttf</string>
+		<string>FontAwesome.ttf</string>
+		<string>FontAwesome5_Brands.ttf</string>
+		<string>FontAwesome5_Regular.ttf</string>
+		<string>FontAwesome5_Solid.ttf</string>
+		<string>FontAwesome6_Brands.ttf</string>
+		<string>FontAwesome6_Regular.ttf</string>
+		<string>FontAwesome6_Solid.ttf</string>
+		<string>MaterialIcons.ttf</string>
+		<string>MaterialCommunityIcons.ttf</string>
+		<string>AntDesign.ttf</string>
+		<string>Feather.ttf</string>
+		<string>Entypo.ttf</string>
+		<string>EvilIcons.ttf</string>
+		<string>Fontisto.ttf</string>
+		<string>Foundation.ttf</string>
+		<string>Octicons.ttf</string>
+		<string>SimpleLineIcons.ttf</string>
+		<string>Zocial.ttf</string>
+		<string>PlayfairDisplay-Bold.ttf</string>
+		<string>PlayfairDisplay-ExtraBold.ttf</string>
+		<string>PlayfairDisplay-Regular.ttf</string>
 	</array>
 </dict>
 </plist>

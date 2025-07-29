@@ -1,5 +1,5 @@
 import React, {useContext, useCallback, useMemo} from 'react';
-import {View, StyleSheet, ActivityIndicator} from 'react-native';
+import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
@@ -157,19 +157,74 @@ function MainTabs() {
     return activeOrders.length > 99 ? '+99' : activeOrders.length;
   }, [orders]);
 
+  // Función para obtener altura del bottom tab basada en el dispositivo
+  const getTabBarHeight = () => {
+    const { height } = Dimensions.get('window');
+    
+    if (Platform.OS === 'ios') {
+      // iPhone X y modelos más nuevos (con home indicator)
+      if (height >= 812) {
+        return 85; // Altura base + safe area bottom
+      }
+      // Modelos más antiguos
+      else {
+        return 65;
+      }
+    }
+    
+    // Android
+    return 65;
+  };
+
+  // Función para obtener padding bottom del tab bar
+  const getTabBarPaddingBottom = () => {
+    const { height } = Dimensions.get('window');
+    
+    if (Platform.OS === 'ios') {
+      // iPhone X y modelos más nuevos
+      if (height >= 812) {
+        return 25; // Para el home indicator
+      }
+      // Modelos más antiguos
+      else {
+        return 8;
+      }
+    }
+    
+    // Android
+    return 8;
+  };
+
   // Optimized tab bar configuration
   const tabBarOptions = useMemo(() => ({
     tabBarActiveTintColor: '#D27F27', // Usar color del theme
     tabBarInactiveTintColor: '#8B5E3C',
     tabBarStyle: {
       backgroundColor: 'white',
-      paddingBottom: 5,
-      paddingTop: 5,
-      height: 60,
+      paddingBottom: getTabBarPaddingBottom(),
+      paddingTop: Platform.OS === 'ios' ? 8 : 5,
+      height: getTabBarHeight(),
       borderTopWidth: 1,
       borderTopColor: 'rgba(139, 94, 60, 0.1)',
+      // Sombra más suave
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    tabBarLabelStyle: {
+      fontSize: Platform.OS === 'ios' ? 11 : 10,
+      fontFamily: fonts.bold,
+      marginTop: Platform.OS === 'ios' ? 2 : 0,
+      marginBottom: Platform.OS === 'ios' ? 2 : 0,
+    },
+    tabBarIconStyle: {
+      marginBottom: Platform.OS === 'ios' ? 2 : 0,
     },
     headerShown: false,
+    // Mantener tab bar siempre visible
+    tabBarHideOnKeyboard: false,
   }), []);
 
   return (
@@ -179,6 +234,9 @@ function MainTabs() {
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;
+            // Tamaño optimizado para iOS
+            const iconSize = Platform.OS === 'ios' ? 26 : size;
+            
             if (route.name === 'Inicio') {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Carrito') {
@@ -193,7 +251,7 @@ function MainTabs() {
             } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
             }
-            return <Ionicons name={iconName} size={size} color={color} />;
+            return <Ionicons name={iconName} size={iconSize} color={color} />;
           },
           ...tabBarOptions,
         })}>
@@ -277,7 +335,9 @@ function MainTabs() {
 function RootStack() {
   return (
     <View style={{flex: 1}}>
-      <Header />
+      <View style={{zIndex: 1000}}>
+        <Header />
+      </View>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
@@ -325,5 +385,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F2EFE4', // Background consistente
   },
 });

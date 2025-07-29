@@ -29,6 +29,8 @@ export default function CategoriesList() {
   
   // Estados para el carrusel de videos
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [videoCarouselReady, setVideoCarouselReady] = useState(false);
+  const [scrolling, setScrolling] = useState(false);
   
   // Estados para el modal de pantalla completa
   const [showFullscreenVideo, setShowFullscreenVideo] = useState(false);
@@ -37,31 +39,33 @@ export default function CategoriesList() {
   const [fullscreenMuted, setFullscreenMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   
-  // Videos de ejemplo (por ahora usando el mismo video)
+  // Videos locales - listos para reemplazar con tus videos descargados
   const videos = [
     {
       id: 1,
       title: "¡Lácteos frescos todos los días!",
-      description: "Calidad garantizada en cada producto",
-      source: require('../assets/welcome.mp4'),
+      description: "Calidad garantizada en cada producto",  
+      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video1.mp4 cuando tengas el archivo
     },
     {
       id: 2,
       title: "Entrega rápida a domicilio",
       description: "Recibe tus productos favoritos en minutos",
-      source: require('../assets/welcome.mp4'),
+      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video2.mp4 cuando tengas el archivo
     },
     {
       id: 3,
-      title: "Los mejores precios del mercado",
+      title: "Los mejores precios del mercado", 
       description: "Ahorra en cada compra",
-      source: require('../assets/welcome.mp4'),
+      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video3.mp4 cuando tengas el archivo
     },
   ];
 
   // Funciones para el video en pantalla completa
   const openFullscreenVideo = (index) => {
-    setFullscreenVideoIndex(index);
+    // Usar el índice actual del carrusel si no se especifica uno
+    const videoIndex = index !== undefined ? index : currentVideoIndex;
+    setFullscreenVideoIndex(videoIndex);
     setShowFullscreenVideo(true);
     setFullscreenPaused(false);
     setFullscreenMuted(false);
@@ -125,13 +129,48 @@ export default function CategoriesList() {
     onPanResponderTerminationRequest: () => false, // No permitir que otros componentes tomen el control
   });
 
+  // Función para ordenar las categorías según el orden deseado
+  const sortCategoriesByOrder = (categories) => {
+    const desiredOrder = [
+      'Quesos Frescos',
+      'Quesos Maduros', 
+      'Otros Lácteos',
+      'Otros Productos',
+      'Sugerencias'
+    ];
+
+    const sortedCategories = [];
+    
+    // Primero agregar las categorías en el orden deseado
+    desiredOrder.forEach(categoryName => {
+      const category = categories.find(cat => 
+        cat.name.toLowerCase().includes(categoryName.toLowerCase()) ||
+        categoryName.toLowerCase().includes(cat.name.toLowerCase())
+      );
+      if (category) {
+        sortedCategories.push(category);
+      }
+    });
+    
+    // Luego agregar cualquier categoría restante que no esté en el orden deseado
+    categories.forEach(category => {
+      if (!sortedCategories.find(sorted => sorted.id === category.id)) {
+        sortedCategories.push(category);
+      }
+    });
+    
+    return sortedCategories;
+  };
+
   // Fetch categories from the API
   useEffect(() => {
     axios
       .get('https://food.siliconsoft.pk/api/productscats')
       .then(response => {
         console.log('response category', response);
-        setCategories(response.data.data); // Assuming the API returns an array
+        const originalCategories = response.data.data;
+        const sortedCategories = sortCategoriesByOrder(originalCategories);
+        setCategories(sortedCategories);
         setLoading(false);
       })
       .catch(err => {
@@ -197,11 +236,18 @@ export default function CategoriesList() {
               style={styles.videoCarousel}
               contentContainerStyle={styles.videoCarouselContent}
               pagingEnabled
+              decelerationRate="fast"
+              snapToInterval={Dimensions.get('window').width}
+              snapToAlignment="center"
+              onScrollBeginDrag={() => setScrolling(true)}
               onMomentumScrollEnd={(event) => {
                 const newIndex = Math.round(
-                  event.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 32)
+                  event.nativeEvent.contentOffset.x / Dimensions.get('window').width
                 );
-                setCurrentVideoIndex(newIndex);
+                if (newIndex !== currentVideoIndex && newIndex >= 0 && newIndex < videos.length) {
+                  setCurrentVideoIndex(newIndex);
+                }
+                setScrolling(false);
               }}>
               {videos.map((video, index) => (
                 <View key={video.id} style={styles.videoCard}>
@@ -215,8 +261,22 @@ export default function CategoriesList() {
                       resizeMode="cover"
                       repeat={true}
                       muted={true}
-                      paused={index !== currentVideoIndex}
-                      onError={(error) => console.log('Video error:', error)}
+                      paused={!videoCarouselReady || scrolling || index !== currentVideoIndex}
+                      onLoad={() => {
+                        if (index === 0 && !videoCarouselReady) {
+                          setVideoCarouselReady(true);
+                        }
+                      }}
+                      onError={(error) => {
+                        console.log('Video error:', error);
+                      }}
+                      bufferConfig={{
+                        minBufferMs: 1000,
+                        maxBufferMs: 5000,
+                        bufferForPlaybackMs: 500,
+                        bufferForPlaybackAfterRebufferMs: 1000
+                      }}
+                      maxBitRate={1000000}
                     />
                     <View style={styles.videoOverlay}>
                       <View style={styles.videoTextContainer}>
@@ -260,13 +320,19 @@ export default function CategoriesList() {
                 onPress={toggleFullscreenPlay}
                 activeOpacity={1}>
                 <Video
+                  key={`fullscreen-video-${fullscreenVideoIndex}`}
                   source={videos[fullscreenVideoIndex]?.source}
                   style={styles.fullscreenVideo}
                   resizeMode="contain"
                   repeat={true}
                   muted={fullscreenMuted}
                   paused={fullscreenPaused}
-                  onError={(error) => console.log('Fullscreen video error:', error)}
+                  onLoad={() => {
+                    console.log(`Fullscreen video ${fullscreenVideoIndex} loaded`);
+                  }}
+                  onError={(error) => {
+                    console.log('Fullscreen video error:', error);
+                  }}
                 />
               </TouchableOpacity>
 
@@ -327,8 +393,10 @@ export default function CategoriesList() {
               )}
             </View>
           </Modal>
+        </>
+      )}
 
-          {/* Lista original de categorías */}
+      {/* Lista original de categorías */}
           {/* <FlatList
             style={{ flex: 1 }}
             data={categories}
@@ -370,8 +438,7 @@ export default function CategoriesList() {
             contentContainerStyle={{ paddingBottom: 30 }}
             showsVerticalScrollIndicator={false}
           /> */}
-        </>
-      )}
+
     </View>
   );
 }
@@ -384,7 +451,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   mainTitle: {
-    fontSize: fonts.size.XLLL,
+    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     fontFamily: fonts.original,
     textAlign: 'center',
     color: '#2F2F2F',
@@ -518,12 +585,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   videoCarouselContent: {
-    paddingHorizontal: 8,
     alignItems: 'center',
   },
   videoCard: {
-    width: Dimensions.get('window').width - 32,
-    marginHorizontal: 8,
+    width: Dimensions.get('window').width,
+    paddingHorizontal: 16,
     flex: 1,
   },
   videoContainer: {

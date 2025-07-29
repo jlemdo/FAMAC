@@ -6,6 +6,18 @@
       "sha1": "77aab0b78e5f9b3d89df070cfb763fb17606fa7e"
     },
     {
+      "path": "src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Bold.ttf",
+      "sha1": "5c6cecaa3ef24adad8d6f61beabec915edfac986"
+    },
+    {
+      "path": "src/assets/fonts/PlayfairDisplay/PlayfairDisplay-ExtraBold.ttf",
+      "sha1": "1e31527131b2ff9019ccba56ac57e84c2612393a"
+    },
+    {
+      "path": "src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Regular.ttf",
+      "sha1": "3e12c2cf422de852cd0af0227179901b155abf14"
+    },
+    {
       "path": "src/assets/fonts/Quicksand/static/Quicksand-Bold.ttf",
       "sha1": "111e880f4de54ccf0a7fd14f38999b9c066e46bb"
     },

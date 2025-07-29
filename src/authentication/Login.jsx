@@ -38,6 +38,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+      iosClientId: Config.GOOGLE_IOS_CLIENT_ID, // Client ID específico para iOS
       offlineAccess: false,
       scopes: ['profile', 'email'],
       forceCodeForRefreshToken: true,

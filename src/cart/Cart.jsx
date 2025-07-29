@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2EFE4', // Crema Suave
   },
   title: {
-    fontSize: fonts.size.XLLL,
+    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     fontFamily: fonts.original,
     color: '#2F2F2F', // Gris Carbón
     textAlign: 'center',
