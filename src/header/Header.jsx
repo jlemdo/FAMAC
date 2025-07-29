@@ -1,180 +1,3 @@
-// import React, { useState, useContext } from 'react';
-// import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
-// import Ionicons from 'react-native-vector-icons/Ionicons';
-// import { useNavigation } from '@react-navigation/native';
-// import { AuthContext } from '../context/AuthContext';
-// import { useNotification } from '../context/NotificationContext';
-
-// const Header = ({ onSearch, onLogout }) => {
-//   const navigation = useNavigation();
-//   const [searchText, setSearchText] = useState('');
-//   const [suggestions, setSuggestions] = useState([]);
-//   const { logout } = useContext(AuthContext);
-//   const { notifications } = useNotification();
-//   const unreadCount = notifications.filter((n) => !n.read).length;
-
-//   const handleSearch = (text) => {
-//     setSearchText(text);
-//     if (text.length > 0) {
-//       setSuggestions(data.filter((item) => item.toLowerCase().includes(text.toLowerCase())));
-//     } else {
-//       setSuggestions([]);
-//     }
-//     onSearch(text);
-//   };
-
-//   const logoutFunc = () => {
-//     logout();
-//   }
-
-//   return (
-//     <View style={styles.container}>
-//       {/* Top Bar */}
-//       <View style={styles.headerTop}>
-//         <Text style={styles.appName}>Food App</Text>
-
-//         <View style={styles.rightIcons}>
-//           <TouchableOpacity style={styles.iconContainer}
-//            onPress={() => navigation.navigate('Notifications')}
-//           >
-//             <Ionicons name="notifications-outline" size={24} color="black" />
-//             {notifications.length > 0 && (
-//               <View style={styles.badge}>
-//                 <Text style={styles.badgeText}>{notifications.length}</Text>
-//               </View>
-//             )}
-//           </TouchableOpacity>
-//           <TouchableOpacity style={styles.iconContainer}  onPress={logoutFunc} >
-//             <Ionicons name="log-out-outline" size={24} color="black" />
-//           </TouchableOpacity>
-//         </View>
-//       </View>
-
-//       {/* Search Bar */}
-//       <View style={styles.searchContainer}>
-//         <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
-//         <TextInput
-//           style={styles.searchInput}
-//           placeholder="Search products..."
-//           value={searchText}
-//           placeholderTextColor="#666"
-//           onChangeText={handleSearch}
-//         />
-//       </View>
-
-//       {/* Search Suggestions */}
-//       {suggestions.length > 0 && (
-//         <FlatList
-//           data={suggestions}
-//           keyExtractor={(item) => item}
-//           renderItem={({ item }) => (
-//             <TouchableOpacity
-//               style={styles.suggestionItem}
-//               onPress={() => {
-//                 setSearchText(item);
-//                 setSuggestions([]);
-//                 onSearch(item);
-//               }}
-//             >
-//               <Text style={styles.suggestionText}>{item}</Text>
-//             </TouchableOpacity>
-//           )}
-//           style={styles.suggestionsList}
-//         />
-//       )}
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     backgroundColor: '#fff',
-//     paddingVertical: 10,
-//     paddingHorizontal: 15,
-//     elevation: 5,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.2,
-//     shadowRadius: 3,
-//   },
-//   headerTop: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     justifyContent: 'space-between',
-//     marginBottom: 10,
-//   },
-//   appName: {
-//     fontSize: 22,
-//     fontWeight: 'bold',
-//     color: '#333',
-//   },
-//   rightIcons: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-//   iconContainer: {
-//     marginLeft: 15,
-//     position: 'relative',
-//   },
-//   badge: {
-//     position: 'absolute',
-//     top: -3,
-//     right: -3,
-//     backgroundColor: 'red',
-//     borderRadius: 10,
-//     width: 18,
-//     height: 18,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   badgeText: {
-//     color: 'white',
-//     fontSize: 12,
-//     fontWeight: 'bold',
-//   },
-//   searchContainer: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     borderWidth: 1,
-//     borderColor: "#ccc",
-//     // backgroundColor: '#F0F0F0',
-//     borderRadius: 5,
-//     paddingHorizontal: 10,
-//     height: 40,
-//     justifyContent: "center",
-//     marginTop:10,
-//     marginBottom: 15,
-//     // shadowColor: "#000",
-//     // shadowOffset: { width: 0, height: 2 },
-//     // shadowOpacity: 0.1,
-//     // shadowRadius: 5,
-//     // elevation: 3
-//   },
-//   searchIcon: {
-//     marginRight: 10,
-//   },
-//   searchInput: {
-//     flex: 1,
-//     fontSize: 16,
-//     color: '#333',
-//   },
-//   suggestionsList: {
-//     marginTop: 5,
-//     backgroundColor: '#fff',
-//     borderRadius: 8,
-//     elevation: 3,
-//   },
-//   suggestionItem: {
-//     padding: 10,
-//     borderBottomWidth: 1,
-//     borderBottomColor: '#ddd',
-//   },
-//   suggestionText: {
-//     fontSize: 16,
-//     color: '#333',
-//   },
-// });
-
 import React, {
   useState,
   useContext,
@@ -197,6 +20,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Dimensions,
+  Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
@@ -218,9 +42,13 @@ const Header = ({onLogout}) => {
   const allProductsRef = useRef(null);
   const cancelTokenRef = useRef(null);
   
-  // Animación para la barra de búsqueda
+  // Animaciones para la barra de búsqueda (versión estable)
   const searchBarHeight = useRef(new Animated.Value(0)).current;
   const searchBarOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Animaciones para el logo
+  const logoScale = useRef(new Animated.Value(1)).current;
+  const logoOpacity = useRef(new Animated.Value(1)).current;
 
   // Función de búsqueda (client-side)
   const fetchSuggestions = useCallback(async text => {
@@ -255,9 +83,9 @@ const Header = ({onLogout}) => {
     }
   }, []);
 
-  // Debounced wrapper (300ms)
+  // Debounced wrapper optimizado (500ms para reducir calls)
   const debouncedFetch = useMemo(
-    () => debounce(fetchSuggestions, 300),
+    () => debounce(fetchSuggestions, 500),
     [fetchSuggestions],
   );
 
@@ -281,7 +109,7 @@ const Header = ({onLogout}) => {
     navigation.navigate('SearchResults', {query: item.name});
   };
 
-  // Función para toggle de la barra de búsqueda
+  // Función para toggle de la barra de búsqueda (versión estable)
   const toggleSearchBar = () => {
     const newShowState = !showSearchBar;
     setShowSearchBar(newShowState);
@@ -290,14 +118,25 @@ const Header = ({onLogout}) => {
       // Mostrar barra de búsqueda
       Animated.parallel([
         Animated.timing(searchBarHeight, {
-          toValue: 52, // altura optimizada del search container
+          toValue: 52,
           duration: 250,
-          useNativeDriver: false,
+          useNativeDriver: false, // Para height debe ser false
         }),
         Animated.timing(searchBarOpacity, {
           toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
+          duration: 250,
+          useNativeDriver: false, // Mantenemos consistente
+        }),
+        // Logo se hace más pequeño
+        Animated.timing(logoScale, {
+          toValue: 0.85,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 0.6,
+          duration: 250,
+          useNativeDriver: true,
         }),
       ]).start();
     } else {
@@ -310,8 +149,19 @@ const Header = ({onLogout}) => {
         }),
         Animated.timing(searchBarOpacity, {
           toValue: 0,
-          duration: 300,
+          duration: 250,
           useNativeDriver: false,
+        }),
+        // Logo vuelve a normal
+        Animated.timing(logoScale, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
         }),
       ]).start(() => {
         // Limpiar búsqueda al cerrar
@@ -321,12 +171,12 @@ const Header = ({onLogout}) => {
     }
   };
 
-  // Auto-cerrar si el usuario no está buscando y no hay texto
+  // Auto-cerrar si no hay actividad
   useEffect(() => {
     if (showSearchBar && searchText === '' && suggestions.length === 0) {
       const timeout = setTimeout(() => {
         toggleSearchBar();
-      }, 3000); // Se cierra después de 3 segundos de inactividad
+      }, 3000);
       
       return () => clearTimeout(timeout);
     }
@@ -338,7 +188,24 @@ const Header = ({onLogout}) => {
     <View style={styles.container}>
       {/* Top Bar */}
       <View style={styles.headerTop}>
-        <Text style={styles.appName}>Lácteos y más...</Text>
+        {/* Logo + Texto */}
+        <View style={styles.leftSection}>
+          <Animated.View 
+            style={[
+              styles.logoContainer,
+              {
+                transform: [{ scale: logoScale }],
+                opacity: logoOpacity,
+              }
+            ]}>
+            <Image 
+              source={require('../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+          <Text style={styles.appName}>Lácteos y más...</Text>
+        </View>
 
         <View style={styles.rightIcons}>
           <TouchableOpacity
@@ -417,22 +284,19 @@ const Header = ({onLogout}) => {
           value={searchText}
           placeholderTextColor="#666"
           onChangeText={handleSearch}
-          returnKeyType="search"                         // muestra "Buscar" en el teclado
-          keyboardShouldPersistTaps="handled"            // Evitar que el teclado interfiera con el tab bar
+          returnKeyType="search"
+          keyboardShouldPersistTaps="handled"
           onSubmitEditing={() => {
             if (searchText.trim()) {
-              setSuggestions([]);                         // limpia sugerencias
+              setSuggestions([]);
               navigation.navigate('SearchResults', {
                 query: searchText.trim()
               });
               Keyboard.dismiss();
-              toggleSearchBar(); // Cerrar después de buscar
+              toggleSearchBar();
             }
           }}
-          onBlur={() => {
-            // No cerrar automáticamente al perder foco para permitir tocar sugerencias
-          }}
-          autoFocus={showSearchBar} // Auto-focus cuando se abre
+          autoFocus={showSearchBar}
         />
       </Animated.View>
 
@@ -441,14 +305,14 @@ const Header = ({onLogout}) => {
         <FlatList
           data={suggestions}
           keyExtractor={item => item.id.toString()}
-          keyboardShouldPersistTaps="handled" // Evitar interferencia con tab bar
+          keyboardShouldPersistTaps="handled"
           renderItem={({item}) => (
             <TouchableOpacity
               style={styles.suggestionItem}
               onPress={() => {
                 Keyboard.dismiss();
                 handleSelectSuggestion(item);
-                toggleSearchBar(); // Cerrar después de seleccionar
+                toggleSearchBar();
               }}>
               <Text style={styles.suggestionText}>{item.name}</Text>
             </TouchableOpacity>
@@ -498,8 +362,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
     elevation: 3,
-    // Altura mínima para evitar elementos comprimidos
-    minHeight: Platform.OS === 'ios' ? 100 : 80,
   },
   headerTop: {
     flexDirection: 'row',
@@ -509,14 +371,35 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
     marginTop: Platform.OS === 'ios' ? 4 : 0, // Espacio adicional en iOS
   },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    maxWidth: '70%', // Evita overflow en pantallas pequeñas
+  },
+  logoContainer: {
+    marginRight: 12,
+    shadowColor: '#D27F27',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   appName: {
-    fontSize: Platform.OS === 'ios' ? fonts.size.large : fonts.size.XL, // Tamaño ajustado por plataforma
+    fontSize: Platform.OS === 'ios' ? fonts.size.XL : fonts.size.XL, // Tamaño ajustado por plataforma
     fontFamily: fonts.original,
     color: '#2F2F2F',
     letterSpacing: 0.5,
     textAlign: 'left',
     flex: 1,
-    maxWidth: '70%', // Evita overflow en pantallas pequeñas
   },
   rightIcons: {
     flexDirection: 'row',
@@ -558,7 +441,6 @@ const styles = StyleSheet.create({
     borderColor: '#8B5E3C',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: Platform.OS === 'ios' ? 44 : 40, // Altura estándar iOS
     marginTop: Platform.OS === 'ios' ? 4 : 8,
     marginBottom: Platform.OS === 'ios' ? 8 : 4,
     backgroundColor: '#FAFAFA',

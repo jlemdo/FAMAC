@@ -61,7 +61,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         email: values.email,
         password: values.password,
       });
-      login(data.user);
+      await login(data.user);
     } catch (err) {
       showAlert({
         type: 'error',
@@ -101,14 +101,17 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       });
 
       // Login exitoso con datos del backend
-      login(data.user);
+      await login(data.user);
       
-      showAlert({
-        type: 'success',
-        title: 'Bienvenido',
-        message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
-        confirmText: 'Continuar',
-      });
+      // Mostrar alert después de un breve delay para evitar conflictos
+      setTimeout(() => {
+        showAlert({
+          type: 'success',
+          title: 'Bienvenido',
+          message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
+          confirmText: 'Continuar',
+        });
+      }, 500);
 
     } catch (error) {
       
@@ -272,7 +275,18 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                 {showGuest && (
                   <TouchableOpacity
                     style={styles.secondaryBtn}
-                    onPress={loginAsGuest}
+                    onPress={async () => {
+                      await loginAsGuest();
+                      // Mostrar alert de bienvenida para guest
+                      setTimeout(() => {
+                        showAlert({
+                          type: 'success',
+                          title: 'Bienvenido',
+                          message: '¡Hola Invitado! Explora nuestros productos',
+                          confirmText: 'Continuar',
+                        });
+                      }, 500);
+                    }}
                     disabled={isSubmitting}
                     activeOpacity={0.7}
                     accessibilityLabel="Continuar como invitado">

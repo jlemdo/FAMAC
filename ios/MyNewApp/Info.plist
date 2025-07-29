@@ -59,18 +59,16 @@
 	<false/>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Necesitamos tu permiso para enviarte notificaciones sobre el estado de tus pedidos y otras actualizaciones importantes.</string>
-	<!-- Google Sign-In Configuration -->
 	<key>CFBundleURLTypes</key>
 	<array>
-	<dict>
-		<key>CFBundleURLName</key>
-		<string>GoogleSignIn</string>
-		<key>CFBundleURLSchemes</key>
-		<array>
-		<!-- Este es el Reversed Client ID, empieza con letras -->
-		<string>com.googleusercontent.apps.1058559455264-t3g6johnil6ns88vg3qgbu7mc8i11rjk</string>
-		</array>
-	</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1058559455264-t3g6johnil6ns88vg3qgbu7mc8i11rjk</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIAppFonts</key>
 	<array>
@@ -98,6 +96,7 @@
 		<string>PlayfairDisplay-Bold.ttf</string>
 		<string>PlayfairDisplay-ExtraBold.ttf</string>
 		<string>PlayfairDisplay-Regular.ttf</string>
+		<string>GreatVibes-Regular.ttf</string>
 	</array>
 </dict>
 </plist>

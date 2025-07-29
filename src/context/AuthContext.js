@@ -99,30 +99,29 @@ export function AuthProvider({ children }) {
     setUser(userData);
     setIsLoggedIn(true);
     
-    // Migrar órdenes de Guest si es necesario (solo si el Guest tenía email = hizo pedidos)
+    // Migrar órdenes de Guest si es necesario (EN BACKGROUND para no bloquear UI)
     if (wasGuest && userData.usertype !== 'Guest') {
       console.log('🔄 Detectado cambio de Guest a usuario registrado');
       
       // Solo migrar si el Guest tenía email (significa que hizo pedidos)
       if (previousUser.email && previousUser.email.trim()) {
-        console.log('📦 Guest tenía pedidos (email: ' + previousUser.email + '), iniciando migración...');
-        try {
-          const migrationSuccess = await migrateGuestOrders(previousUser.email);
-          if (migrationSuccess) {
-            console.log('✅ Migración de órdenes completada exitosamente');
-            // Limpiar rastros del guest anterior para futuras sesiones
-            await clearGuestData(previousUser.email);
-          } else {
-            console.log('⚠️ Migración de órdenes falló, pero continuando con login');
+        console.log('📦 Guest tenía pedidos (email: ' + previousUser.email + '), iniciando migración en background...');
+        
+        // Ejecutar migración en background sin bloquear UI
+        setTimeout(async () => {
+          try {
+            const migrationSuccess = await migrateGuestOrders(previousUser.email);
+            if (migrationSuccess) {
+              console.log('✅ Migración de órdenes completada exitosamente en background');
+              // Limpiar rastros del guest anterior para futuras sesiones
+              await clearGuestData(previousUser.email);
+            } else {
+              console.log('⚠️ Migración de órdenes falló en background');
+            }
+          } catch (error) {
+            console.error('❌ Error durante migración de órdenes en background:', error.message);
           }
-        } catch (error) {
-          console.error('❌ Error durante migración de órdenes:', error.message);
-          console.error('❌ Detalles del error:', {
-            message: error.message,
-            code: error.code,
-            status: error.response?.status
-          });
-        }
+        }, 1000); // 1 segundo de delay para permitir que la UI se actualice primero
       } else {
         console.log('✅ Guest sin pedidos (sin email), no necesita migración');
       }

@@ -46,6 +46,40 @@ const AddressPicker = ({
     fullAddress: initialAddress,
   });
 
+  // Efecto para geocodificar initialAddress cuando se abre el modal
+  React.useEffect(() => {
+    if (visible && initialAddress && initialAddress.trim() && !selectedLocation) {
+      const geocodeInitialAddress = async () => {
+        try {
+          const response = await axios.get(
+            `https://maps.googleapis.com/maps/api/geocode/json`,
+            {
+              params: {
+                address: `${initialAddress}, México`,
+                key: Config.GOOGLE_DIRECTIONS_API_KEY,
+                language: 'es',
+              },
+            }
+          );
+
+          if (response.data.results[0]) {
+            const result = response.data.results[0];
+            const location = result.geometry.location;
+            setSelectedLocation({
+              latitude: location.lat,
+              longitude: location.lng,
+            });
+            console.log('📍 Geocodificado initialAddress:', initialAddress, '→', location);
+          }
+        } catch (error) {
+          console.error('Error geocodificando initialAddress:', error);
+        }
+      };
+
+      geocodeInitialAddress();
+    }
+  }, [visible, initialAddress]);
+
   // Buscar lugares con Google Places API
   const searchPlaces = async (query) => {
     if (!query.trim()) {
@@ -311,35 +345,25 @@ const AddressPicker = ({
                   // Vista de mapa y formulario
                   <>
                     <View style={styles.mapContainer}>
-                      {selectedLocation ? (
-                        <MapView
-                          ref={mapRef}
-                          style={styles.map}
-                          region={{
-                            latitude: selectedLocation.latitude,
-                            longitude: selectedLocation.longitude,
-                            latitudeDelta: 0.01,
-                            longitudeDelta: 0.01,
+                      <MapView
+                        ref={mapRef}
+                        style={styles.map}
+                        region={{
+                          latitude: selectedLocation?.latitude || 19.4326, // Zócalo CDMX por defecto
+                          longitude: selectedLocation?.longitude || -99.1332, // Zócalo CDMX por defecto
+                          latitudeDelta: selectedLocation ? 0.01 : 0.1, // Zoom más amplio si es ubicación por defecto
+                          longitudeDelta: selectedLocation ? 0.01 : 0.1,
+                        }}
+                        onPress={handleMapPress}>
+                        <Marker
+                          coordinate={{
+                            latitude: selectedLocation?.latitude || 19.4326, // Siempre mostrar marcador
+                            longitude: selectedLocation?.longitude || -99.1332, // Zócalo por defecto
                           }}
-                          onPress={handleMapPress}>
-                          {selectedLocation && (
-                            <Marker
-                              coordinate={{
-                                latitude: selectedLocation.latitude,
-                                longitude: selectedLocation.longitude,
-                              }}
-                              title="Ubicación seleccionada"
-                              pinColor="#D27F27"
-                            />
-                          )}
-                        </MapView>
-                      ) : (
-                        <View style={styles.mapPlaceholder}>
-                          <Text style={styles.mapPlaceholderText}>
-                            Busca una dirección para ver el mapa
-                          </Text>
-                        </View>
-                      )}
+                          title="Ubicación seleccionada"
+                          pinColor="#D27F27"
+                        />
+                      </MapView>
                     </View>
 
                     {/* Formulario de dirección estructurada */}

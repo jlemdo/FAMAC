@@ -537,7 +537,27 @@ export default function Cart() {
       <Text style={styles.title}>Carrito de Compras</Text>
 
       {cart.length === 0 ? (
-        <Text style={styles.emptyCart}>Tu carrito está vacío.</Text>
+        <View style={styles.emptyCartContainer}>
+          <Text style={styles.emptyCartTitle}>🛒 Tu carrito está vacío</Text>
+          <Text style={styles.emptyCartText}>
+            ¡Es el momento perfecto para descubrir nuestros deliciosos lácteos frescos!
+          </Text>
+          <Text style={styles.emptyCartHighlight}>
+            🥛 Productos artesanales • 🧀 Quesos premium • 🫐 Y más...
+          </Text>
+          <Text style={styles.emptyCartSubtext}>
+            Agrega productos desde cualquier categoría y aparecerán aquí listos para pagar
+          </Text>
+          <TouchableOpacity
+            style={styles.shopNowButton}
+            onPress={() => navigation.navigate('MainTabs', { 
+              screen: 'Inicio',
+              params: { screen: 'CategoriesList' }
+            })}
+            activeOpacity={0.8}>
+            <Text style={styles.shopNowButtonText}>🛍️ Explorar Productos</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           {/* Total sticky - siempre visible */}
@@ -644,7 +664,7 @@ export default function Cart() {
             setModalVisible(false);
           }}>
           <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Compra como invitado</Text>
                 <TextInput
@@ -667,7 +687,12 @@ export default function Cart() {
                 {/* Campo de dirección con AddressPicker */}
                 <TouchableOpacity
                   style={[styles.input, styles.addressInput]}
-                  onPress={() => setShowAddressPicker(true)}
+                  onPress={() => {
+                    setModalVisible(false);  // Cerrar modal Guest primero
+                    setTimeout(() => {
+                      setShowAddressPicker(true);  // Abrir AddressPicker después
+                    }, 300);  // Delay para que iOS procese el cierre
+                  }}
                   activeOpacity={0.7}>
                   <Text
                     style={address ? styles.addressText : styles.addressPlaceholder}>
@@ -720,11 +745,21 @@ export default function Cart() {
       {/* AddressPicker Modal */}
       <AddressPicker
         visible={showAddressPicker}
-        onClose={() => setShowAddressPicker(false)}
+        onClose={() => {
+          setShowAddressPicker(false);
+          // Volver a abrir modal Guest después de cerrar AddressPicker
+          setTimeout(() => {
+            setModalVisible(true);
+          }, 300);
+        }}
         onConfirm={(addressData) => {
           console.log('📍 Address selected:', addressData);
           setAddress(addressData.fullAddress);
           setShowAddressPicker(false);
+          // Volver a abrir modal Guest después de confirmar dirección
+          setTimeout(() => {
+            setModalVisible(true);
+          }, 300);
         }}
         initialAddress={address || ''}
         title="Dirección de Entrega"
@@ -738,7 +773,7 @@ export default function Cart() {
         onRequestClose={() => setShowAddressModal(false)}>
         <TouchableWithoutFeedback onPress={() => setShowAddressModal(false)}>
           <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>📍 Dirección de Entrega</Text>
                 <Text style={styles.modalMessage}>
@@ -791,6 +826,70 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.6)', // Gris Carbón @60%
     textAlign: 'center',
     marginTop: 50,
+  },
+  emptyCartContainer: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: 32,
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  emptyCartTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  emptyCartText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  emptyCartHighlight: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#33A744',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  emptyCartSubtext: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontStyle: 'italic',
+    marginBottom: 24,
+  },
+  shopNowButton: {
+    backgroundColor: '#D27F27',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  shopNowButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
   },
   cartItem: {
     flexDirection: 'row',

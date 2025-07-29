@@ -1,6 +1,6 @@
 // 1. Elije la familia de fuentes que desees utilizar en la aplicación.
 // Opciones disponibles: 'Quicksand', 'Raleway', 'futura', 'Wendy LP Std Medium'.
-const fontFamilyHeadings = 'PlayfairDisplay-Regular';
+const fontFamilyHeadings = 'GreatVibes-Regular';
 const fontFamilyParagraph = 'Raleway';
 
 // 2. Exporta los nombres de las fuentes basados en la familia de fuentes seleccionada.
@@ -19,6 +19,7 @@ const fonts = {
     XL: 30,
     XLL: 36,
     XLLL: 48,
+    title: 25,
 
   },
 };

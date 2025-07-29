@@ -101,14 +101,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       });
 
       // Login exitoso con datos del backend
-      login(data.user);
+      await login(data.user);
       
-      showAlert({
-        type: 'success',
-        title: 'Bienvenido',
-        message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
-        confirmText: 'Continuar',
-      });
+      // Mostrar alert después de un breve delay para evitar conflictos
+      setTimeout(() => {
+        showAlert({
+          type: 'success',
+          title: 'Bienvenido',
+          message: `¡Hola ${data.user.first_name || 'Usuario'}!`,
+          confirmText: 'Continuar',
+        });
+      }, 500);
 
       // Después del registro exitoso con Google
       if (onSuccess) {
@@ -172,13 +175,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         payload,
       );
       if (status === 201) {
-        login(data.user);
-        showAlert({
-          type: 'success',
-          title: '¡Bienvenido!',
-          message: 'Registro exitoso',
-          confirmText: 'OK',
-        });
+        await login(data.user);
+        
+        // Mostrar alert después de un breve delay para evitar conflictos
+        setTimeout(() => {
+          showAlert({
+            type: 'success',
+            title: '¡Bienvenido!',
+            message: 'Registro exitoso',
+            confirmText: 'OK',
+          });
+        }, 500);
         
         // Después del registro exitoso, no es necesario navegar
         // El AuthContext automáticamente cambiará el flujo a la app principal

@@ -58,39 +58,66 @@ const Order = () => {
           }
           // Mensaje cuando no hay pedidos
           ListEmptyComponent={
-            (user && user.usertype === 'Guest') ? (
-              <View style={styles.guestMessage}>
-                {(user.email && typeof user.email === 'string' && user.email.trim()) ? (
+            <View style={styles.userMessage}>
+              {user && user.usertype === 'Guest' ? (
+                // Mensajes para Guest
+                (user.email && typeof user.email === 'string' && user.email.trim()) ? (
                   // Guest que ya hizo pedidos (tiene email)
                   <>
-                    <Text style={styles.guestTitle}>📦 ¡Tienes pedidos esperándote!</Text>
-                    <Text style={styles.guestText}>
+                    <Text style={styles.userTitle}>📦 ¡Tienes pedidos esperándote!</Text>
+                    <Text style={styles.userText}>
                       Hemos guardado tus pedidos con el email:{' '}
-                      <Text style={styles.guestEmail}>{String(user.email)}</Text>
+                      <Text style={styles.userEmail}>{String(user.email)}</Text>
                     </Text>
-                    <Text style={styles.guestHighlight}>
+                    <Text style={styles.userHighlight}>
                       🎉 Regístrate ahora para ver todos tus pedidos y disfrutar de funciones exclusivas
                     </Text>
-                    <Text style={styles.guestSubtext}>
+                    <Text style={styles.userSubtext}>
                       ✨ Al registrarte, todos tus pedidos aparecerán automáticamente aquí
                     </Text>
                   </>
                 ) : (
                   // Guest que no ha hecho pedidos aún
                   <>
-                    <Text style={styles.guestTitle}>👋 ¡Hola Invitado!</Text>
-                    <Text style={styles.guestText}>
+                    <Text style={styles.userTitle}>👋 ¡Hola Invitado!</Text>
+                    <Text style={styles.userText}>
                       Para ver tu historial de pedidos, primero haz una compra o regístrate.
                     </Text>
-                    <Text style={styles.guestSubtext}>
+                    <Text style={styles.userSubtext}>
                       📦 Tus pedidos se guardarán automáticamente cuando te registres
                     </Text>
                   </>
-                )}
-              </View>
-            ) : (
-              <Text style={styles.emptyOrders}>No tienes pedidos aún.</Text>
-            )
+                )
+              ) : user && user.usertype === 'driver' ? (
+                // Mensajes para Driver
+                <>
+                  <Text style={styles.userTitle}>🚚 ¡Hola Conductor!</Text>
+                  <Text style={styles.userText}>
+                    Aquí aparecerán todas las órdenes que has entregado.
+                  </Text>
+                  <Text style={styles.userHighlight}>
+                    📊 Tu historial de entregas te ayudará a llevar un control de tu trabajo
+                  </Text>
+                  <Text style={styles.userSubtext}>
+                    🎯 ¡Cada entrega exitosa suma a tu experiencia como conductor!
+                  </Text>
+                </>
+              ) : (
+                // Mensajes para Usuario normal registrado
+                <>
+                  <Text style={styles.userTitle}>🛒 ¡Hola {user?.first_name || 'Usuario'}!</Text>
+                  <Text style={styles.userText}>
+                    Aún no has realizado ningún pedido. ¡Es hora de explorar nuestros deliciosos productos!
+                  </Text>
+                  <Text style={styles.userHighlight}>
+                    🥛 Descubre nuestros lácteos frescos y productos artesanales
+                  </Text>
+                  <Text style={styles.userSubtext}>
+                    📱 Tus pedidos aparecerán aquí automáticamente después de cada compra
+                  </Text>
+                </>
+              )}
+            </View>
           }
           renderItem={({item}) => {
             // Validar que el item existe y tiene las propiedades necesarias
@@ -309,7 +336,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
   },
-  guestMessage: {
+  userMessage: {
     backgroundColor: '#FFF',
     marginHorizontal: 16,
     marginTop: 32,
@@ -322,14 +349,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  guestTitle: {
+  userTitle: {
     fontSize: fonts.size.large,
     fontFamily: fonts.bold,
     color: '#D27F27',
     marginBottom: 16,
     textAlign: 'center',
   },
-  guestText: {
+  userText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
@@ -337,7 +364,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 12,
   },
-  guestSubtext: {
+  userSubtext: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     color: 'rgba(47,47,47,0.7)',
@@ -345,11 +372,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontStyle: 'italic',
   },
-  guestEmail: {
+  userEmail: {
     fontFamily: fonts.bold,
     color: '#D27F27',
   },
-  guestHighlight: {
+  userHighlight: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#33A744',

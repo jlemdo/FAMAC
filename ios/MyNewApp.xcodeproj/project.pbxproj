@@ -40,6 +40,7 @@
 		4D4FA1B319204375927BA13A /* PlayfairDisplay-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */; };
 		78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */; };
 		6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */; };
+		630E71CC03854366BBE81806 /* GreatVibes-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 32A1F667DC394038916895A0 /* GreatVibes-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +94,7 @@
 		6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-Bold.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-ExtraBold.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-ExtraBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-Regular.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		32A1F667DC394038916895A0 /* GreatVibes-Regular.ttf */ = {isa = PBXFileReference; name = "GreatVibes-Regular.ttf"; path = "../src/assets/fonts/Great_Vibes/GreatVibes-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -207,6 +209,7 @@
 				6356C7EE82B741D5B2C024E6 /* PlayfairDisplay-Bold.ttf */,
 				4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */,
 				6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */,
+				32A1F667DC394038916895A0 /* GreatVibes-Regular.ttf */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -309,6 +312,7 @@
 				4D4FA1B319204375927BA13A /* PlayfairDisplay-Bold.ttf in Resources */,
 				78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */,
 				6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */,
+				630E71CC03854366BBE81806 /* GreatVibes-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

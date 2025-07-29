@@ -885,7 +885,7 @@ export default function Profile({ navigation }) {
               setShowOrderPicker(false);
             }}>
             <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={() => {}}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
