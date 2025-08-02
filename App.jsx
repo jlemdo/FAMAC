@@ -19,6 +19,7 @@ import fonts from './src/theme/fonts';
 import Cart from './src/cart/Cart';
 import Route from './src/tracking/Route';
 import Profile from './src/profile/Profile';
+import Suggestions from './src/suggestions/Suggestions';
 import Header from './src/header/Header';
 import SplashScreen from './src/authentication/Splash';
 import WelcomeVideo from './src/authentication/WelcomeVideo';
@@ -248,6 +249,8 @@ function MainTabs() {
               iconName = focused ? 'clipboard' : 'clipboard-outline';
             } else if (route.name === 'Ruta') {
               iconName = focused ? 'navigate' : 'navigate-outline';
+            } else if (route.name === 'Sugerencias') {
+              iconName = focused ? 'bulb' : 'bulb-outline';
             } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
             }
@@ -295,6 +298,10 @@ function MainTabs() {
               options={{
                 tabBarBadge: ordersBadge,
               }}
+            />
+            <Tab.Screen 
+              name="Sugerencias" 
+              component={Suggestions}
             />
             {/* <Tab.Screen name="Route" component={Route} /> */}
           </>

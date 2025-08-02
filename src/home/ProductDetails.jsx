@@ -17,6 +17,7 @@ import {useNavigation, useRoute} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {CartContext} from '../context/CartContext';
 import fonts from '../theme/fonts';
+import {formatPriceWithSymbol} from '../utils/priceFormatter';
 
 export default function ProductDetails() {
   const route = useRoute();
@@ -123,13 +124,13 @@ export default function ProductDetails() {
           {/* Precio base (250g) */}
           <View style={styles.basePriceContainer}>
             <Text style={styles.basePriceLabel}>Precio por 250g:</Text>
-            <Text style={styles.basePrice}>${product.price}</Text>
+            <Text style={styles.basePrice}>{formatPriceWithSymbol(product.price)}</Text>
           </View>
           
           {/* Precio total dinámico */}
           <View style={styles.totalPriceContainer}>
             <Text style={styles.totalLabel}>Total por {formatQuantity(quantity)}:</Text>
-            <Text style={styles.totalPrice}>${totalPrice}</Text>
+            <Text style={styles.totalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
           </View>
 
 
@@ -154,9 +155,9 @@ export default function ProductDetails() {
 
               <View style={styles.quantityDisplay}>
                 <Text style={styles.quantity}>{formatQuantity(quantity)}</Text>
-                <Text style={styles.quantitySubtext}>
+                {/* <Text style={styles.quantitySubtext}>
                   {quantity === 1 ? '1 unidad' : `${quantity} unidades`}
-                </Text>
+                </Text> */}
               </View>
 
               <TouchableOpacity
@@ -181,10 +182,10 @@ export default function ProductDetails() {
         disabled={false}
         activeOpacity={0.7}
         accessible
-        accessibilityLabel={`Añadir al carrito por $${totalPrice}`}>
+        accessibilityLabel={`Añadir al carrito por ${formatPriceWithSymbol(totalPrice)}`}>
         <View style={styles.cartButtonContent}>
           <Text style={styles.cartText}>Añadir al carrito</Text>
-          <Text style={styles.cartPrice}>${totalPrice}</Text>
+          <Text style={styles.cartPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
         </View>
       </TouchableOpacity>
 
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     color: '#2F2F2F',
     textAlign: 'center',
@@ -414,15 +415,22 @@ const styles = StyleSheet.create({
   },
   cartButton: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 16,
+    left: 16,
+    right: 16,
     backgroundColor: '#D27F27',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? (Dimensions.get('window').height >= 812 ? 34 : 16) : 16, // Safe area para iPhone X+
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? (Dimensions.get('window').height >= 812 ? 28 : 18) : 18,
     alignItems: 'center',
-    elevation: 4,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, 
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.8)',
   },
   cartButtonContent: {
     flexDirection: 'row',
@@ -442,10 +450,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.large,
     color: '#FFF',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
     marginLeft: 16,
   },
   

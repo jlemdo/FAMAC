@@ -30,6 +30,8 @@ import fonts from '../theme/fonts';
 import {Formik} from 'formik';
 import * as Yup from 'yup';
 import {useAlert} from '../context/AlertContext';
+import {formatPriceWithSymbol} from '../utils/priceFormatter';
+import {formatOrderId} from '../utils/orderIdFormatter';
 
 const OrderDetails = () => {
   const {user} = useContext(AuthContext);
@@ -129,9 +131,19 @@ const OrderDetails = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.orderInfo}>
           <View style={styles.infoHeader}>
-            <Text style={styles.infoText}>Numero de pedido: #{order?.id}</Text>
-            <Text style={styles.infoText}>Estado: {order?.status}</Text>
+            <View style={styles.orderIdSection}>
+              <Text style={styles.orderIdLabel}>Pedido:</Text>
+              <Text style={styles.orderIdText}>{formatOrderId(order?.created_at)}</Text>
+            </View>
+            <Text style={styles.statusText}>Estado: {order?.status}</Text>
           </View>
+          
+          <Text style={styles.orderDate}>
+            {new Date(order?.created_at).toLocaleString('es-MX', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })}
+          </Text>
 
           <Text style={styles.sectionTitle}>Artículos</Text>
           {order?.order_details?.length > 0 ? (
@@ -161,10 +173,7 @@ const OrderDetails = () => {
           <View style={styles.totalSection}>
             <Text style={styles.totalLabel}>Precio total</Text>
             <Text style={styles.totalValue}>
-              {new Intl.NumberFormat('es-MX', {
-                style: 'currency',
-                currency: 'MXN',
-              }).format(order?.total_price)}
+              {formatPriceWithSymbol(order?.total_price)}
             </Text>
           </View>
         </View>
@@ -244,14 +253,14 @@ const OrderDetails = () => {
                           <Text style={styles.modalLabel}>Orden seleccionada</Text>
                           <View style={styles.orderInfoBox}>
                             <Text style={styles.orderInfoText}>
-                              Orden #{order?.id} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
+                              Pedido {formatOrderId(order?.created_at)} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric'
                               })}
                             </Text>
                             <Text style={styles.orderInfoPrice}>
-                              ${parseFloat(order?.total_price || 0).toFixed(2)}
+                              {formatPriceWithSymbol(order?.total_price || 0)}
                             </Text>
                           </View>
                         </View>
@@ -346,7 +355,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
     color: '#2F2F2F',
     textAlign: 'center',
@@ -369,6 +378,34 @@ const styles = StyleSheet.create({
   infoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderIdSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderIdLabel: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+    marginRight: 6,
+  },
+  orderIdText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    letterSpacing: 0.5,
+  },
+  statusText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+  },
+  orderDate: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
     marginBottom: 12,
   },
   infoText: {

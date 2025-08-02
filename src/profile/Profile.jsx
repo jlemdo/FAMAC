@@ -27,6 +27,7 @@ import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
 import AddressPicker from '../components/AddressPicker';
+import {formatOrderId} from '../utils/orderIdFormatter';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -109,6 +110,9 @@ export default function Profile({ navigation }) {
   // Estados para secciones colapsables
   const [showProfileSection, setShowProfileSection] = useState(true);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
+  
+  // Estado para modo edición
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
@@ -293,8 +297,11 @@ export default function Profile({ navigation }) {
     // Estado
     const status = order.status || order.state || '';
     
-    // Construir texto display (sin caracteres especiales para el Picker)
-    let displayText = `Orden #${orderId}`;
+    // Generar ID formateado visual usando la nueva función
+    const formattedOrderId = formatOrderId(date);
+    
+    // Construir texto display con el nuevo formato
+    let displayText = `Pedido ${formattedOrderId}`;
     if (formattedDate) displayText += ` - ${formattedDate}`;
     if (total && !isNaN(parseFloat(total))) {
       displayText += ` - $${parseFloat(total).toFixed(2)}`;
@@ -302,10 +309,11 @@ export default function Profile({ navigation }) {
     if (status) displayText += ` - ${status}`;
     
     console.log('📋 Texto formateado:', displayText);
+    console.log('📋 ID real (value):', orderId, 'ID formateado (display):', formattedOrderId);
     
     return {
-      value: orderId.toString(),
-      label: displayText.trim()
+      value: orderId.toString(), // ✅ IMPORTANTE: Seguimos enviando el ID real (162) a la API
+      label: displayText.trim()   // ✅ Solo mostramos el formato bonito (250731-100830)
     };
   }, []);
 
@@ -519,15 +527,35 @@ export default function Profile({ navigation }) {
           setFieldValue,
         }) => (
           <View style={styles.section}>
+            {/* Botón Editar/Cancelar */}
+            <View style={styles.editButtonContainer}>
+              {!isEditingProfile ? (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => setIsEditingProfile(true)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.editButtonText}>✏️ Editar información</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.cancelEditButton}
+                  onPress={() => setIsEditingProfile(false)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.cancelEditButtonText}>❌ Cancelar edición</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <TextInput
               style={[
                 styles.input,
-                submitCount > 0 && errors.first_name && styles.inputError
+                submitCount > 0 && errors.first_name && styles.inputError,
+                !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Nombre"
               placeholderTextColor="rgba(47,47,47,0.6)"
               value={values.first_name}
               onChangeText={handleChange('first_name')}
+              editable={isEditingProfile}
             />
             {submitCount > 0 && errors.first_name && (
               <Text style={styles.errorText}>{errors.first_name}</Text>
@@ -536,12 +564,14 @@ export default function Profile({ navigation }) {
             <TextInput
               style={[
                 styles.input,
-                submitCount > 0 && errors.last_name && styles.inputError
+                submitCount > 0 && errors.last_name && styles.inputError,
+                !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Apellido"
               placeholderTextColor="rgba(47,47,47,0.6)"
               value={values.last_name}
               onChangeText={handleChange('last_name')}
+              editable={isEditingProfile}
             />
             {submitCount > 0 && errors.last_name && (
               <Text style={styles.errorText}>{errors.last_name}</Text>
@@ -557,13 +587,15 @@ export default function Profile({ navigation }) {
             <TextInput
               style={[
                 styles.input,
-                submitCount > 0 && errors.phone && styles.inputError
+                submitCount > 0 && errors.phone && styles.inputError,
+                !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Teléfono"
               placeholderTextColor="rgba(47,47,47,0.6)"
               keyboardType="phone-pad"
               value={values.phone}
               onChangeText={handleChange('phone')}
+              editable={isEditingProfile}
             />
             {submitCount > 0 && errors.phone && (
               <Text style={styles.errorText}>{errors.phone}</Text>
@@ -571,9 +603,14 @@ export default function Profile({ navigation }) {
 
             {/* Campo de dirección con AddressPicker */}
             <TouchableOpacity
-              style={[styles.input, styles.dateInput]}
-              onPress={() => setShowAddressPicker(true)}
-              activeOpacity={0.7}>
+              style={[
+                styles.input, 
+                styles.dateInput,
+                !isEditingProfile && styles.disabledInput
+              ]}
+              onPress={() => isEditingProfile && setShowAddressPicker(true)}
+              activeOpacity={isEditingProfile ? 0.7 : 1}
+              disabled={!isEditingProfile}>
               <Text
                 style={values.address ? styles.dateText : styles.datePlaceholder}>
                 {values.address || 'Dirección completa'}
@@ -591,16 +628,16 @@ export default function Profile({ navigation }) {
                 profile.birthDate && !isNaN(profile.birthDate.getTime()) && styles.disabledInput,
               ]}
               onPress={() => {
-                // Solo permitir abrir el picker si no tiene fecha de cumpleaños
-                if (!profile.birthDate || isNaN(profile.birthDate.getTime())) {
+                // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
+                if (isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()))) {
                   console.log('📅 Opening month/year picker...');
                   setShowMonthYearPicker(true);
                 } else {
-                  console.log('📅 Birth date picker disabled - user already has birth date');
+                  console.log('📅 Birth date picker disabled - not editing or user already has birth date');
                 }
               }}
-              activeOpacity={profile.birthDate && !isNaN(profile.birthDate.getTime()) ? 1 : 0.7}
-              disabled={profile.birthDate && !isNaN(profile.birthDate.getTime())}>
+              activeOpacity={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? 1 : 0.7}
+              disabled={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile}>
               <Text
                 style={values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder}>
                 {values.birthDate && !isNaN(values.birthDate.getTime())
@@ -709,17 +746,23 @@ export default function Profile({ navigation }) {
               </Modal>
             )}
 
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleSubmit}
-              disabled={isSubmitting || loading}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.buttonText}>Actualizar perfil</Text>
-              )}
-            </TouchableOpacity>
+            {/* Solo mostrar botón guardar si está editando */}
+            {isEditingProfile && (
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => {
+                  handleSubmit();
+                  setIsEditingProfile(false); // Salir de modo edición después de guardar
+                }}
+                disabled={isSubmitting || loading}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.buttonText}>💾 Guardar cambios</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         )}
         </Formik>
@@ -917,7 +960,10 @@ export default function Profile({ navigation }) {
                           </Text>
                           
                           {/* Selector personalizado con posición relativa */}
-                          <View style={styles.selectorWrapper}>
+                          <View style={[
+                            styles.selectorWrapper,
+                            showOrderPicker && styles.selectorWrapperExpanded
+                          ]}>
                             <TouchableOpacity
                               style={styles.customPicker}
                               onPress={() => setShowOrderPicker(!showOrderPicker)}
@@ -1178,6 +1224,43 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   
+  // Estilos para modo edición
+  editButtonContainer: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  editButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+  },
+  cancelEditButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E63946',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  cancelEditButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#E63946',
+  },
+  
   // Estilos del botón Atención al Cliente
   supportButton: {
     backgroundColor: '#33A744',
@@ -1379,6 +1462,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 99999,
   },
+  selectorWrapperExpanded: {
+    marginBottom: 160, // Espacio para el dropdown cuando está abierto
+  },
   customPicker: {
     borderWidth: 1,
     borderColor: '#8B5E3C',
@@ -1419,12 +1505,12 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0,
     backgroundColor: '#FFF',
     maxHeight: 150,
-    zIndex: 10000,
+    zIndex: 999999, // Incrementar z-index más alto
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 15,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 20, // Incrementar elevation para Android
     marginTop: 1,
   },
   orderScrollView: {

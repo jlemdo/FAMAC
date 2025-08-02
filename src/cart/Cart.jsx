@@ -32,6 +32,7 @@ import axios from 'axios';
 import GetLocation from 'react-native-get-location';
 import Geolocation from 'react-native-geolocation-service';
 import fonts from '../theme/fonts';
+import {formatPriceWithSymbol} from '../utils/priceFormatter';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -581,7 +582,7 @@ export default function Cart() {
           <View style={styles.stickyTotalContainer}>
             <View style={styles.stickyTotalContent}>
               <Text style={styles.stickyTotalLabel}>Total de tu compra:</Text>
-              <Text style={styles.stickyTotalPrice}>${totalPrice}</Text>
+              <Text style={styles.stickyTotalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
             </View>
             <View style={styles.stickyTotalDetails}>
               <Text style={styles.stickyTotalItems}>
@@ -611,7 +612,7 @@ export default function Cart() {
                     </Text>
                   </View>
                   <Text style={styles.price}>
-                    ${item.price} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
+                    {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
                   </Text>
                   <View style={styles.actions}>
                     <TouchableOpacity
@@ -827,7 +828,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     color: '#2F2F2F', // Gris Carbón
     textAlign: 'center',
     marginBottom: 24, // escala: 24px
@@ -1019,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   suggestionsTitle: {
     fontSize: fonts.size.XLL,
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     color: '#2F2F2F',
     marginTop: 24,
     marginBottom: 16,
@@ -1317,7 +1318,7 @@ const CartFooter = ({
           <View style={styles.upsellItem}>
             <Image source={{uri: item.photo}} style={styles.upsellImage} />
             <Text style={styles.upsellName}>{item.name}</Text>
-            <Text style={styles.upsellPrice}>${item.price}</Text>
+            <Text style={styles.upsellPrice}>{formatPriceWithSymbol(item.price)}</Text>
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => addToCart(item)}>
@@ -1360,7 +1361,7 @@ const CartFooter = ({
     {/* Facturación (solo si hay deliveryInfo) */}
     {deliveryInfo && (
       <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total: ${totalPrice}</Text>
+        <Text style={styles.totalText}>Total: {formatPriceWithSymbol(totalPrice)}</Text>
 
         <View style={styles.invoiceRow}>
           <Text style={styles.invoiceLabel}>¿Necesitas factura?</Text>

@@ -13,6 +13,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Config from 'react-native-config';
@@ -26,25 +27,47 @@ const AddressPicker = ({
   initialAddress = '',
   title = 'Seleccionar Dirección' 
 }) => {
-  // Estados para búsqueda
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  
-  // Estados para mapa
+  // Estados simplificados - solo mapa opcional
   const [showMap, setShowMap] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  
   const mapRef = useRef(null);
   
-  // Estados para formulario de dirección estructurada
+  // Estados para formulario simplificado
   const [addressForm, setAddressForm] = useState({
     street: '',
-    number: '',
-    neighborhood: '',
+    exteriorNumber: '',
+    interiorNumber: '',
     postalCode: '',
+    alcaldia: '',
+    city: 'CDMX', // Default
     references: '',
     fullAddress: initialAddress,
   });
+  
+  // Estado para mostrar todas las alcaldías
+  const [showAllAlcaldias, setShowAllAlcaldias] = useState(false);
+
+  // Opciones de Alcaldías y Ciudades
+  const alcaldiasCDMX = [
+    'Álvaro Obregón', 'Azcapotzalco', 'Benito Juárez', 'Coyoacán',
+    'Cuajimalpa', 'Gustavo A. Madero', 'Iztacalco', 'Iztapalapa',
+    'Magdalena Contreras', 'Miguel Hidalgo', 'Milpa Alta', 'Tláhuac',
+    'Tlalpan', 'Venustiano Carranza', 'Xochimilco', 'Cuauhtémoc'
+  ];
+
+  const municipiosEdomex = [
+    'Naucalpan', 'Tlalnepantla', 'Ecatepec', 'Nezahualcóyotl', 
+    'Chimalhuacán', 'Atizapán', 'Tultitlán', 'Coacalco',
+    'Cuautitlán Izcalli', 'Huixquilucan', 'Nicolás Romero', 
+    'Tecámac', 'La Paz', 'Chalco', 'Ixtapaluca'
+  ];
+
+  const cities = ['CDMX', 'Estado de México'];
+  
+  const getCurrentAlcaldias = () => {
+    return addressForm.city === 'CDMX' ? alcaldiasCDMX : municipiosEdomex;
+  };
 
   // Efecto para geocodificar initialAddress cuando se abre el modal
   React.useEffect(() => {
@@ -80,76 +103,26 @@ const AddressPicker = ({
     }
   }, [visible, initialAddress]);
 
-  // Buscar lugares con Google Places API
-  const searchPlaces = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/textsearch/json`,
-        {
-          params: {
-            query: `${query}, México`,
-            key: Config.GOOGLE_DIRECTIONS_API_KEY,
-            language: 'es',
-            region: 'mx',
-          },
-        }
-      );
-
-      if (response.data.results) {
-        setSearchResults(response.data.results.slice(0, 5)); // Solo primeros 5
-      }
-    } catch (error) {
-      console.error('Error searching places:', error);
-      Alert.alert('Error', 'No se pudo buscar la dirección. Intenta de nuevo.');
-    } finally {
-      setIsSearching(false);
+  // Validar Código Postal
+  const validatePostalCode = (cp, city) => {
+    if (city === 'CDMX') {
+      return cp >= '01000' && cp <= '16999';
+    } else {
+      return cp >= '50000' && cp <= '56999';
     }
   };
 
-  // Obtener detalles de un lugar específico
-  const getPlaceDetails = async (placeId, location) => {
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/details/json`,
-        {
-          params: {
-            place_id: placeId,
-            fields: 'address_components,formatted_address,geometry',
-            key: Config.GOOGLE_DIRECTIONS_API_KEY,
-            language: 'es',
-          },
-        }
-      );
 
-      const place = response.data.result;
-      if (place) {
-        parseAddressComponents(place.address_components, place.formatted_address, location);
-      }
-    } catch (error) {
-      console.error('Error getting place details:', error);
-      // Fallback: usar la ubicación básica
-      setSelectedLocation(location);
-      setAddressForm(prev => ({
-        ...prev,
-        fullAddress: location.formatted_address || '',
-      }));
-    }
-  };
-
-  // Parsear componentes de dirección de Google
+  // Parsear componentes de dirección de Google para auto-rellenado
   const parseAddressComponents = (components, fullAddress, location) => {
     const addressData = {
-      street: '',
-      number: '',
-      neighborhood: '',
-      postalCode: '',
-      references: '',
+      street: addressForm.street,
+      exteriorNumber: addressForm.exteriorNumber,
+      interiorNumber: addressForm.interiorNumber,
+      postalCode: addressForm.postalCode,
+      alcaldia: addressForm.alcaldia,
+      city: addressForm.city,
+      references: addressForm.references,
       fullAddress: fullAddress,
     };
 
@@ -157,13 +130,27 @@ const AddressPicker = ({
       const types = component.types;
       
       if (types.includes('street_number')) {
-        addressData.number = component.long_name;
+        addressData.exteriorNumber = component.long_name;
       } else if (types.includes('route')) {
         addressData.street = component.long_name;
       } else if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
-        addressData.neighborhood = component.long_name;
+        // Intentar mapear a alcaldía conocida
+        const foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
+          a.toLowerCase().includes(component.long_name.toLowerCase()) ||
+          component.long_name.toLowerCase().includes(a.toLowerCase())
+        );
+        if (foundAlcaldia) {
+          addressData.alcaldia = foundAlcaldia;
+          addressData.city = alcaldiasCDMX.includes(foundAlcaldia) ? 'CDMX' : 'Estado de México';
+        }
       } else if (types.includes('postal_code')) {
         addressData.postalCode = component.long_name;
+        // Auto-detectar ciudad por CP
+        if (validatePostalCode(component.long_name, 'CDMX')) {
+          addressData.city = 'CDMX';
+        } else if (validatePostalCode(component.long_name, 'Estado de México')) {
+          addressData.city = 'Estado de México';
+        }
       }
     });
 
@@ -173,31 +160,9 @@ const AddressPicker = ({
       latitude: location.lat || location.latitude,
       longitude: location.lng || location.longitude,
     });
-    setShowMap(true);
+    setShowMap(false); // Regresar al formulario
   };
 
-  // Seleccionar lugar de búsqueda
-  const selectPlace = (place) => {
-    const location = {
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng,
-      formatted_address: place.formatted_address,
-    };
-
-    if (place.place_id) {
-      getPlaceDetails(place.place_id, location);
-    } else {
-      setSelectedLocation(location);
-      setAddressForm(prev => ({
-        ...prev,
-        fullAddress: place.formatted_address,
-      }));
-      setShowMap(true);
-    }
-    
-    setSearchQuery('');
-    setSearchResults([]);
-  };
 
   // Manejar pin en mapa
   const handleMapPress = async (event) => {
@@ -234,27 +199,38 @@ const AddressPicker = ({
 
   // Confirmar dirección
   const handleConfirm = () => {
-    if (!selectedLocation) {
-      Alert.alert('Error', 'Por favor selecciona una ubicación en el mapa.');
+    // Validar campos obligatorios
+    if (!addressForm.street || !addressForm.exteriorNumber || !addressForm.postalCode || !addressForm.alcaldia) {
+      Alert.alert('Campos requeridos', 'Por favor completa todos los campos obligatorios: calle, número exterior, código postal y alcaldía.');
+      return;
+    }
+
+    // Validar CP
+    if (!validatePostalCode(addressForm.postalCode, addressForm.city)) {
+      const range = addressForm.city === 'CDMX' ? '01000-16999' : '50000-56999';
+      Alert.alert('Código Postal inválido', `Para ${addressForm.city} debe estar en el rango: ${range}`);
       return;
     }
 
     // Construir dirección completa
-    const fullAddressString = [
+    const addressParts = [
       addressForm.street,
-      addressForm.number,
-      addressForm.neighborhood,
-      addressForm.postalCode,
-      addressForm.references
-    ].filter(Boolean).join(', ');
+      addressForm.exteriorNumber,
+      addressForm.interiorNumber && `Int. ${addressForm.interiorNumber}`,
+      addressForm.alcaldia,
+      addressForm.city,
+      `C.P. ${addressForm.postalCode}`
+    ].filter(Boolean);
+    
+    const fullAddressString = addressParts.join(', ');
 
     const finalAddress = {
       ...addressForm,
-      fullAddress: fullAddressString || addressForm.fullAddress,
-      coordinates: {
+      fullAddress: fullAddressString,
+      coordinates: selectedLocation ? {
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
-      },
+      } : null,
     };
 
     onConfirm(finalAddress);
@@ -263,15 +239,15 @@ const AddressPicker = ({
 
   // Cerrar modal
   const handleClose = () => {
-    setSearchQuery('');
-    setSearchResults([]);
     setShowMap(false);
     setSelectedLocation(null);
     setAddressForm({
       street: '',
-      number: '',
-      neighborhood: '',
+      exteriorNumber: '',
+      interiorNumber: '',
       postalCode: '',
+      alcaldia: '',
+      city: 'CDMX',
       references: '',
       fullAddress: '',
     });
@@ -287,131 +263,218 @@ const AddressPicker = ({
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback 
+          onPress={() => {
+            Keyboard.dismiss();
+            handleClose();
+          }}>
           <View style={styles.overlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={styles.modalContent}>
                 <Text style={styles.title}>{title}</Text>
 
                 {!showMap ? (
-                  // Vista de búsqueda
-                  <>
-                    <View style={styles.searchContainer}>
+                  // Formulario limpio y simple
+                  <ScrollView 
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled">
+                    <View style={styles.formContainer}>
+                    {/* Calle */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Calle *</Text>
                       <TextInput
-                        style={styles.searchInput}
-                        placeholder="Buscar dirección..."
-                        placeholderTextColor="rgba(47,47,47,0.6)"
-                        value={searchQuery}
-                        onChangeText={(text) => {
-                          setSearchQuery(text);
-                          searchPlaces(text);
-                        }}
-                        autoFocus={Platform.OS !== 'ios'}
+                        style={styles.input}
+                        placeholder="Ej: Av. Insurgentes Sur"
+                        placeholderTextColor="#999"
+                        value={addressForm.street}
+                        onChangeText={(text) => setAddressForm(prev => ({ ...prev, street: text }))}
                       />
-                      {isSearching && (
-                        <ActivityIndicator style={styles.searchLoader} color="#D27F27" />
+                    </View>
+
+                    {/* Números */}
+                    <View style={styles.rowContainer}>
+                      <View style={[styles.inputContainer, {flex: 2, marginRight: 8}]}>
+                        <Text style={styles.label}>Número Ext. *</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="123"
+                          placeholderTextColor="#999"
+                          value={addressForm.exteriorNumber}
+                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, exteriorNumber: text }))}
+                        />
+                      </View>
+                      <View style={[styles.inputContainer, {flex: 1}]}>
+                        <Text style={styles.label}>Número Int.</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="A"
+                          placeholderTextColor="#999"
+                          value={addressForm.interiorNumber}
+                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, interiorNumber: text }))}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Código Postal */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Código Postal *</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="01000"
+                        placeholderTextColor="#999"
+                        value={addressForm.postalCode}
+                        onChangeText={(text) => setAddressForm(prev => ({ ...prev, postalCode: text }))}
+                        keyboardType="numeric"
+                        maxLength={5}
+                      />
+                    </View>
+
+                    {/* Ciudad */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Ciudad *</Text>
+                      <View style={styles.cityContainer}>
+                        {cities.map(city => (
+                          <TouchableOpacity
+                            key={city}
+                            style={[
+                              styles.cityButton,
+                              addressForm.city === city && styles.cityButtonSelected
+                            ]}
+                            onPress={() => {
+                              console.log('Cambiando ciudad a:', city);
+                              setAddressForm(prev => ({ 
+                                ...prev, 
+                                city: city,
+                                alcaldia: '' // Reset alcaldía cuando cambia ciudad
+                              }));
+                              setShowAllAlcaldias(false); // Reset vista de alcaldías
+                            }}>
+                            <Text style={[
+                              styles.cityButtonText,
+                              addressForm.city === city && styles.cityButtonTextSelected
+                            ]}>
+                              {city}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <Text style={styles.helperText}>
+                        {addressForm.city === 'CDMX' ? '16 alcaldías disponibles' : '15 municipios principales'}
+                      </Text>
+                    </View>
+
+                    {/* Alcaldía - Dropdown mejorado */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>
+                        {addressForm.city === 'CDMX' ? 'Alcaldía *' : 'Municipio *'}
+                      </Text>
+                      
+                      {/* Mostrar selección actual */}
+                      {addressForm.alcaldia ? (
+                        <View style={styles.selectedContainer}>
+                          <View style={styles.selectedChip}>
+                            <Text style={styles.selectedText}>{addressForm.alcaldia}</Text>
+                            <TouchableOpacity 
+                              style={styles.changeButton}
+                              onPress={() => {
+                                setAddressForm(prev => ({ ...prev, alcaldia: '' }));
+                                setShowAllAlcaldias(false);
+                              }}>
+                              <Text style={styles.changeButtonText}>Cambiar</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        // Mostrar opciones para seleccionar
+                        <View style={styles.dropdownWrapper}>
+                          {(showAllAlcaldias ? getCurrentAlcaldias() : getCurrentAlcaldias().slice(0, 8)).map((item, index) => (
+                            <TouchableOpacity
+                              key={item}
+                              style={styles.alcaldiaChip}
+                              onPress={() => {
+                                setAddressForm(prev => ({ ...prev, alcaldia: item }));
+                                setShowAllAlcaldias(false); // Colapsar después de seleccionar
+                              }}>
+                              <Text style={styles.alcaldiaChipText}>
+                                {item}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                          {getCurrentAlcaldias().length > 8 && !showAllAlcaldias && (
+                            <TouchableOpacity 
+                              style={styles.moreButton}
+                              onPress={() => setShowAllAlcaldias(true)}>
+                              <Text style={styles.moreButtonText}>+{getCurrentAlcaldias().length - 8} más</Text>
+                            </TouchableOpacity>
+                          )}
+                          {showAllAlcaldias && (
+                            <TouchableOpacity 
+                              style={styles.lessButton}
+                              onPress={() => setShowAllAlcaldias(false)}>
+                              <Text style={styles.lessButtonText}>Mostrar menos</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       )}
                     </View>
 
-                    {searchResults.length > 0 && (
-                      <FlatList
-                        data={searchResults}
-                        keyExtractor={(item) => item.place_id}
-                        style={styles.resultsList}
-                        renderItem={({ item }) => (
-                          <TouchableOpacity
-                            style={styles.resultItem}
-                            onPress={() => selectPlace(item)}>
-                            <Text style={styles.resultText}>{item.name}</Text>
-                            <Text style={styles.resultSubtext}>{item.formatted_address}</Text>
-                          </TouchableOpacity>
-                        )}
+                    {/* Referencias */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Referencias</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder="Ej: Entre calles X y Y, edificio azul"
+                        placeholderTextColor="#999"
+                        value={addressForm.references}
+                        onChangeText={(text) => setAddressForm(prev => ({ ...prev, references: text }))}
+                        multiline
+                        numberOfLines={3}
                       />
-                    )}
+                    </View>
 
+                    {/* Botón mapa */}
                     <TouchableOpacity
                       style={styles.mapButton}
                       onPress={() => {
                         setShowMap(true);
-                        setSelectedLocation({
-                          latitude: 19.4326, // CDMX default
-                          longitude: -99.1332,
-                        });
+                        if (!selectedLocation) {
+                          setSelectedLocation({
+                            latitude: 19.4326,
+                            longitude: -99.1332,
+                          });
+                        }
                       }}>
-                      <Text style={styles.mapButtonText}>📍 Seleccionar en mapa</Text>
+                      <Text style={styles.mapButtonText}>📍 Marcar mi dirección en mapa</Text>
                     </TouchableOpacity>
-                  </>
+                    </View>
+                  </ScrollView>
                 ) : (
-                  // Vista de mapa y formulario
+                  // Vista de mapa para selección
                   <>
+                    <Text style={styles.mapInstructions}>Toca en el mapa para seleccionar tu ubicación exacta</Text>
                     <View style={styles.mapContainer}>
                       <MapView
                         ref={mapRef}
                         style={styles.map}
                         region={{
-                          latitude: selectedLocation?.latitude || 19.4326, // Zócalo CDMX por defecto
-                          longitude: selectedLocation?.longitude || -99.1332, // Zócalo CDMX por defecto
-                          latitudeDelta: selectedLocation ? 0.01 : 0.1, // Zoom más amplio si es ubicación por defecto
-                          longitudeDelta: selectedLocation ? 0.01 : 0.1,
+                          latitude: selectedLocation?.latitude || 19.4326,
+                          longitude: selectedLocation?.longitude || -99.1332,
+                          latitudeDelta: 0.01,
+                          longitudeDelta: 0.01,
                         }}
                         onPress={handleMapPress}>
-                        <Marker
-                          coordinate={{
-                            latitude: selectedLocation?.latitude || 19.4326, // Siempre mostrar marcador
-                            longitude: selectedLocation?.longitude || -99.1332, // Zócalo por defecto
-                          }}
-                          title="Ubicación seleccionada"
-                          pinColor="#D27F27"
-                        />
+                        {selectedLocation && (
+                          <Marker
+                            coordinate={{
+                              latitude: selectedLocation.latitude,
+                              longitude: selectedLocation.longitude,
+                            }}
+                            title="Ubicación seleccionada"
+                            pinColor="#D27F27"
+                          />
+                        )}
                       </MapView>
-                    </View>
-
-                    {/* Formulario de dirección estructurada */}
-                    <View style={styles.formContainer}>
-                      <View style={styles.formRow}>
-                        <TextInput
-                          style={[styles.formInput, { flex: 2 }]}
-                          placeholder="Calle"
-                          placeholderTextColor="rgba(47,47,47,0.6)"
-                          value={addressForm.street}
-                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, street: text }))}
-                        />
-                        <TextInput
-                          style={[styles.formInput, { flex: 1, marginLeft: 8 }]}
-                          placeholder="Número"
-                          placeholderTextColor="rgba(47,47,47,0.6)"
-                          value={addressForm.number}
-                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, number: text }))}
-                        />
-                      </View>
-
-                      <View style={styles.formRow}>
-                        <TextInput
-                          style={[styles.formInput, { flex: 2 }]}
-                          placeholder="Colonia"
-                          placeholderTextColor="rgba(47,47,47,0.6)"
-                          value={addressForm.neighborhood}
-                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, neighborhood: text }))}
-                        />
-                        <TextInput
-                          style={[styles.formInput, { flex: 1, marginLeft: 8 }]}
-                          placeholder="C.P."
-                          placeholderTextColor="rgba(47,47,47,0.6)"
-                          value={addressForm.postalCode}
-                          onChangeText={(text) => setAddressForm(prev => ({ ...prev, postalCode: text }))}
-                          keyboardType="numeric"
-                        />
-                      </View>
-
-                      <TextInput
-                        style={styles.formInput}
-                        placeholder="Referencias (opcional)"
-                        placeholderTextColor="rgba(47,47,47,0.6)"
-                        value={addressForm.references}
-                        onChangeText={(text) => setAddressForm(prev => ({ ...prev, references: text }))}
-                        multiline
-                        numberOfLines={2}
-                      />
                     </View>
                   </>
                 )}
@@ -422,17 +485,15 @@ const AddressPicker = ({
                     <Text style={styles.cancelButtonText}>Cancelar</Text>
                   </TouchableOpacity>
 
-                  {showMap && (
-                    <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-                      <Text style={styles.confirmButtonText}>Confirmar</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {!showMap && (
-                    <TouchableOpacity
-                      style={styles.backButton}
+                  {showMap ? (
+                    <TouchableOpacity 
+                      style={styles.confirmButton} 
                       onPress={() => setShowMap(false)}>
-                      <Text style={styles.backButtonText}>Buscar</Text>
+                      <Text style={styles.confirmButtonText}>Volver al formulario</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
+                      <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -454,19 +515,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 16,
+    margin: 20,
     padding: 20,
-    width: '100%',
-    maxHeight: '90%',
+    maxHeight: '80%',
     shadowColor: '#000',
     shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
   },
   title: {
     fontFamily: fonts.bold,
@@ -475,60 +535,199 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  // Estilos completamente nuevos y limpios
+  scrollView: {
+    maxHeight: 400,
+    width: '100%',
   },
-  searchInput: {
-    flex: 1,
+  inputContainer: {
+    marginBottom: 16,
+    width: '100%',
+  },
+  label: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  helperText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  input: {
     height: 44,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
+    borderColor: '#E0E0E0',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
+    backgroundColor: '#FFF',
+    width: '100%',
   },
-  searchLoader: {
-    marginLeft: 12,
-  },
-  resultsList: {
-    maxHeight: 200,
-    marginBottom: 16,
-  },
-  resultItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
-  },
-  resultText: {
-    fontFamily: fonts.bold,
+  inputText: {
+    fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    width: '100%',
+  },
+  // Ciudad - botones simples
+  cityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  cityButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  cityButtonSelected: {
+    borderColor: '#D27F27',
+    backgroundColor: '#D27F27',
+  },
+  cityButtonText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+  },
+  cityButtonTextSelected: {
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  // Alcaldías - chips organizados
+  selectedContainer: {
+    marginTop: 4,
+  },
+  selectedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E8',
+    borderWidth: 1,
+    borderColor: '#33A744',
+  },
+  selectedText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+    flex: 1,
+  },
+  changeButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: '#33A744',
+  },
+  changeButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#FFF',
+  },
+  dropdownWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  alcaldiaChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFF',
     marginBottom: 4,
   },
-  resultSubtext: {
+  alcaldiaChipSelected: {
+    backgroundColor: '#D27F27',
+    borderColor: '#D27F27',
+  },
+  alcaldiaChipText: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.7)',
+    color: '#2F2F2F',
+    textAlign: 'center',
+  },
+  alcaldiaChipTextSelected: {
+    color: '#FFF',
+    fontFamily: fonts.bold,
+  },
+  moreButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    marginBottom: 4,
+  },
+  moreButtonText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    textAlign: 'center',
+  },
+  lessButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#E8E8E8',
+    marginBottom: 4,
+  },
+  lessButtonText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    textAlign: 'center',
   },
   mapButton: {
-    backgroundColor: '#D27F27',
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderWidth: 1,
+    borderColor: '#D27F27',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 10,
   },
   mapButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#FFF',
+    color: '#D27F27',
+  },
+  mapInstructions: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 12,
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    padding: 12,
+    borderRadius: 8,
   },
   mapContainer: {
-    height: 250,
+    height: 300,
     borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 16,
@@ -538,49 +737,30 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-    minHeight: 250,
-  },
-  mapPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F2EFE4',
-    minHeight: 250,
-  },
-  mapPlaceholderText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: 'rgba(47,47,47,0.6)',
-    textAlign: 'center',
+    minHeight: 300,
   },
   formContainer: {
-    marginBottom: 16,
+    width: '100%',
+    paddingBottom: 10,
   },
   formRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-  },
-  formInput: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   cancelButton: {
     flex: 1,
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#8B5E3C',
+    borderColor: '#E0E0E0',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -588,7 +768,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#8B5E3C',
+    color: '#666',
   },
   confirmButton: {
     flex: 1,
@@ -598,18 +778,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
-  backButton: {
-    flex: 1,
-    backgroundColor: '#D27F27',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  backButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',

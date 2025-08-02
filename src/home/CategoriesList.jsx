@@ -135,8 +135,7 @@ export default function CategoriesList() {
       'Quesos Frescos',
       'Quesos Maduros', 
       'Otros Lácteos',
-      'Otros Productos',
-      'Sugerencias'
+      'Otros Productos'
     ];
 
     const sortedCategories = [];
@@ -201,7 +200,9 @@ export default function CategoriesList() {
             showsHorizontalScrollIndicator={false}
             style={styles.carouselContainer}
             contentContainerStyle={styles.carouselContent}>
-            {categories.map((item) => (
+            {categories
+              .filter(item => !item.name.toLowerCase().includes('sugerencias'))
+              .map((item) => (
               <TouchableOpacity
                 key={`carousel-${item.id}`}
                 style={styles.circleCategory}
@@ -229,7 +230,7 @@ export default function CategoriesList() {
 
           {/* Carrusel de Videos */}
           <View style={styles.videoSection}>
-            <Text style={styles.videoSectionTitle}>🎬 Descubre más</Text>
+            <Text style={styles.videoSectionTitle}>Descubre más</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: fonts.size.XL,
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     color: '#2F2F2F',
     textAlign: 'center',
     paddingVertical: 10,
@@ -533,13 +534,13 @@ const styles = StyleSheet.create({
   },
   circleCategory: {
     alignItems: 'center',
-    marginHorizontal: 8,
-    width: 80,
+    marginHorizontal: 6,
+    width: 68,
   },
   circleImageContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -555,9 +556,9 @@ const styles = StyleSheet.create({
     borderColor: '#8B5E3C',
   },
   circleImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     resizeMode: 'cover',
   },
   circleCategoryName: {

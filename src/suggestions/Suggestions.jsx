@@ -1,64 +1,87 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
   FlatList,
   Image,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import axios from 'axios';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 
-export default function SpecificCategoryProduct() {
-  const route = useRoute();
+export default function Suggestions() {
   const navigation = useNavigation();
-  const {categoryName} = route.params;
-
-  const [products, setProducts] = useState([]);
+  
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchSuggestions = async () => {
       try {
-        const response = await axios.get(
-          `https://food.siliconsoft.pk/api/products/${categoryName}`,
+        const response = await fetch(
+          'https://food.siliconsoft.pk/api/products/sugerencias',
         );
-        setProducts(response.data.data || []);
-      } catch (err) {
-        setError('Failed to fetch products. Please try again.');
+        const json = await response.json();
+
+        if (json.status === 'successsugerencias') {
+          setSuggestions(json.data);
+        } else {
+          setError('Error al cargar las sugerencias');
+        }
+      } catch (error) {
+        setError('Error de conexión. Inténtalo de nuevo.');
+        console.error('Error fetching suggestions:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
-  }, [categoryName]);
+    fetchSuggestions();
+  }, []);
+
+
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#8B5E3C" />
+        <Text style={styles.loadingText}>Cargando sugerencias...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Back Button with Category Name */}
+      {/* Header con botón de regreso */}
       <View style={styles.headerContainer}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
-        <Text style={styles.title}>{categoryName}</Text>
+        <Text style={styles.title}>Sugerencias para ti</Text>
       </View>
 
       {loading ? (
         <ActivityIndicator size="large" color="tomato" style={styles.loader} />
       ) : error ? (
         <Text style={styles.error}>{error}</Text>
-      ) : products.length > 0 ? (
+      ) : suggestions.length > 0 ? (
         <FlatList
-          data={products}
+          data={suggestions}
           keyExtractor={item => item.id.toString()}
           numColumns={2}
           contentContainerStyle={styles.listContainer}
@@ -71,9 +94,8 @@ export default function SpecificCategoryProduct() {
             return (
               <TouchableOpacity
                 onPress={() => {
-                  // Navigate to ProductDetails via the Tab Navigator
-                  const tabNavigator = navigation.getParent();
-                  tabNavigator?.navigate('ProductDetails', {productData: item});
+                  // Navigate to ProductDetails directly (it's a hidden tab)
+                  navigation.navigate('ProductDetails', {productData: item});
                 }}>
                 <View style={styles.productCard}>
                   {/* Banderín de promoción */}
@@ -87,7 +109,7 @@ export default function SpecificCategoryProduct() {
                   
                   <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.description} numberOfLines={2}>
-                    {item.description}
+                    {item.description || 'Producto recomendado especialmente para ti'}
                   </Text>
 
                   {/* Indicador de peso */}
@@ -126,7 +148,7 @@ export default function SpecificCategoryProduct() {
           }}
         />
       ) : (
-        <Text style={styles.noData}>No products available</Text>
+        <Text style={styles.noData}>No hay sugerencias disponibles</Text>
       )}
     </View>
   );
@@ -149,7 +171,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   title: {
-    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
+    fontSize: fonts.size.XL,
     fontFamily: fonts.bold,
     textAlign: 'center',
     flex: 1,
@@ -237,9 +259,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   regularPrice: {
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.large,
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
+    color: '#D27F27',
     marginBottom: 4,
   },
   originalPriceStriked: {
@@ -250,9 +272,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   discountedPrice: {
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.large,
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
+    color: '#33A744',
     marginBottom: 6,
   },
   savingsBadge: {

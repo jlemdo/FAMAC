@@ -15,6 +15,8 @@ import axios from 'axios';
 import {useNavigation} from '@react-navigation/native';
 import {OrderContext} from '../context/OrderContext';
 import fonts from '../theme/fonts';
+import {formatPriceWithSymbol} from '../utils/priceFormatter';
+import {formatOrderId} from '../utils/orderIdFormatter';
 
 const Order = () => {
   const navigation = useNavigation();
@@ -132,23 +134,28 @@ const Order = () => {
             const orderDetails = Array.isArray(item.order_details) ? item.order_details : [];
             const itemId = item.id || Math.random().toString();
             const itemStatus = item.status || 'Pendiente';
+            
+            // Generar ID de orden formateado
+            const formattedOrderId = formatOrderId(createdAt);
 
             return (
               <View style={styles.orderCard}>
                 <View style={styles.orderHeader}>
-                  <Text style={styles.orderDate}>
-                    {new Date(createdAt).toLocaleString('es-MX', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </Text>
+                  <View style={styles.orderIdSection}>
+                    <Text style={styles.orderIdLabel}>Pedido:</Text>
+                    <Text style={styles.orderIdText}>{formattedOrderId}</Text>
+                  </View>
                   <Text style={styles.total}>
-                    {new Intl.NumberFormat('es-MX', {
-                      style: 'currency',
-                      currency: 'MXN',
-                    }).format(totalPrice)}
+                    {formatPriceWithSymbol(totalPrice)}
                   </Text>
                 </View>
+                
+                <Text style={styles.orderDate}>
+                  {new Date(createdAt).toLocaleString('es-MX', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </Text>
 
                 <Text style={styles.itemHeader}>Artículos:</Text>
                 {orderDetails.length > 0 ? (
@@ -225,7 +232,7 @@ const styles = StyleSheet.create({
   },
   header: {
     fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold,
     color: '#2F2F2F', // Gris Carbón
     textAlign: 'center',
     marginBottom: 16,
@@ -245,12 +252,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  orderIdSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderIdLabel: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+    marginRight: 6,
+  },
+  orderIdText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    letterSpacing: 0.5,
   },
   orderDate: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
-    color: '#2F2F2F',
+    color: '#666',
+    marginBottom: 8,
   },
   total: {
     fontSize: fonts.size.medium,
