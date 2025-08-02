@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -83,19 +84,22 @@ export default function SpecificCategoryProduct() {
                     </View>
                   )}
                   
-                  <Image source={{uri: item.photo}} style={styles.image} />
-                  
-                  <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.description} numberOfLines={2}>
-                    {item.description}
-                  </Text>
+                  {/* Sección superior: Imagen y contenido */}
+                  <View style={styles.topSection}>
+                    <Image source={{uri: item.photo}} style={styles.image} />
+                    
+                    <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                    <Text style={styles.description} numberOfLines={2}>
+                      {item.description}
+                    </Text>
 
-                  {/* Indicador de peso */}
-                  <View style={styles.weightBadge}>
-                    <Text style={styles.weightText}>250g</Text>
+                    {/* Indicador de peso */}
+                    <View style={styles.weightBadge}>
+                      <Text style={styles.weightText}>250g</Text>
+                    </View>
                   </View>
 
-                  {/* Sección de precios */}
+                  {/* Sección inferior: Precios (siempre al final) */}
                   <View style={styles.priceSection}>
                     {discountNum > 0 ? (
                       <>
@@ -132,11 +136,18 @@ export default function SpecificCategoryProduct() {
   );
 }
 
+// Calcular ancho responsive de tarjetas
+const screenWidth = Dimensions.get('window').width;
+const cardSpacing = 6; // Reducido de 8 a 6 para más espacio
+const containerPadding = 10; // padding del container
+const availableWidth = screenWidth - (containerPadding * 2);
+const cardWidth = (availableWidth - (cardSpacing * 4)) / 2; // 4 espacios: 2 por tarjeta + 2 exteriores
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
-    paddingHorizontal: 10,
+    paddingHorizontal: containerPadding,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -160,8 +171,8 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: '#FFF',
-    padding: 16,
-    margin: 8,
+    padding: 12, // Reducido de 16 a 12
+    margin: cardSpacing,
     borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
@@ -169,11 +180,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
-    width: 180,
+    width: cardWidth, // Ancho responsive calculado
+    minHeight: 300, // Altura mínima fija para uniformidad
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.1)',
     position: 'relative',
     overflow: 'visible',
+    justifyContent: 'space-between', // Distribuir contenido uniformemente
+  },
+  topSection: {
+    alignItems: 'center',
+    flex: 1, // Toma el espacio disponible
   },
   promotionBanner: {
     position: 'absolute',
@@ -198,34 +215,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   image: {
-    width: 120,
-    height: 120,
+    width: cardWidth - 24, // Ancho de tarjeta menos padding
+    height: cardWidth - 24, // Alto igual al ancho para mantener aspecto cuadrado
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8, // Reducido de 12 a 8
   },
   name: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
     textAlign: 'center',
-    marginBottom: 6,
-    minHeight: 32,
+    marginBottom: 4, // Reducido de 6 a 4
+    paddingHorizontal: 4,
+    lineHeight: 18, // Mejor control de altura
   },
   description: {
     fontSize: fonts.size.small,
     color: 'rgba(47,47,47,0.7)',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6, // Reducido de 8 a 6
     paddingHorizontal: 4,
     fontFamily: fonts.regular,
-    minHeight: 28,
+    lineHeight: 16, // Mejor control de altura
   },
   weightBadge: {
     backgroundColor: '#8B5E3C',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10, // Reducido de 12 a 10
+    paddingVertical: 3, // Reducido de 4 a 3
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8, // Reducido de 12 a 8
   },
   weightText: {
     fontSize: fonts.size.small,
@@ -234,33 +252,34 @@ const styles = StyleSheet.create({
   },
   priceSection: {
     alignItems: 'center',
-    marginTop: 8,
+    paddingTop: 8, // Separación del contenido superior
+    marginTop: 'auto', // Empuja hacia abajo
   },
   regularPrice: {
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium, // Aumentado para mejor visibilidad
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
-    marginBottom: 4,
+    color: '#D27F27', // Color primario para destacar
+    marginBottom: 2, // Reducido de 4 a 2
   },
   originalPriceStriked: {
-    fontSize: fonts.size.medium,
+    fontSize: fonts.size.small, // Reducido para ser menos prominente
     fontFamily: fonts.regular,
     color: '#999',
     textDecorationLine: 'line-through',
-    marginBottom: 4,
+    marginBottom: 2, // Reducido de 4 a 2
   },
   discountedPrice: {
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium, // Aumentado para destacar
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
-    marginBottom: 6,
+    color: '#D27F27', // Color primario consistente
+    marginBottom: 4, // Reducido de 6 a 4
   },
   savingsBadge: {
     backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 4,
+    paddingHorizontal: 6, // Reducido de 8 a 6
+    paddingVertical: 2, // Reducido de 3 a 2
+    borderRadius: 6, // Reducido de 8 a 6 para ser más sutil
+    marginBottom: 2, // Reducido de 4 a 2
     borderWidth: 1,
     borderColor: '#33A744',
   },

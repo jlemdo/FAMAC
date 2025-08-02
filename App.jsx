@@ -13,6 +13,7 @@ import {StripeProvider} from '@stripe/stripe-react-native';
 import {AuthContext} from './src/context/AuthContext';
 import {AuthProvider} from './src/context/AuthContext';
 import {AlertProvider} from './src/context/AlertContext';
+import {ProfileProvider, useProfile} from './src/context/ProfileContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
 
@@ -35,45 +36,6 @@ import {OrderContext} from './src/context/OrderContext';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// Helper function para parsear fechas (misma que en Profile.jsx)
-const parseFlexibleDate = (dateValue) => {
-  if (!dateValue) return null;
-  
-  try {
-    let parsedDate = null;
-    
-    if (typeof dateValue === 'string') {
-      if (dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
-        parsedDate = new Date(dateValue);
-      }
-      else if (dateValue.match(/^[A-Za-z]+ \d{4}$/)) {
-        const [monthName, year] = dateValue.split(' ');
-        const monthNames = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        const monthIndex = monthNames.indexOf(monthName);
-        if (monthIndex !== -1) {
-          parsedDate = new Date(parseInt(year), monthIndex, 1);
-        }
-      }
-      else {
-        parsedDate = new Date(dateValue);
-      }
-    } else {
-      parsedDate = new Date(dateValue);
-    }
-    
-    if (parsedDate && !isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900) {
-      // Siempre normalizar al día 1 del mes
-      return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1);
-    }
-  } catch (error) {
-    console.warn('Error parsing date:', error);
-  }
-  
-  return null;
-};
 
 const PUBLISHABLE_KEY =
   'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
@@ -119,21 +81,7 @@ function MainTabs() {
   const {user} = useContext(AuthContext);
   const {orders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
-  
-  // Function to check if profile has missing data
-  const hasIncompleteProfile = useMemo(() => {
-    if (user?.usertype === 'Guest') return false;
-    
-    // Check if essential fields are missing
-    const hasPhone = user?.phone || user?.contact_number;
-    const hasAddress = user?.address;
-    
-    // Check birth date using helper function
-    const dateValue = user?.birthDate || user?.birth_date || user?.dob;
-    const hasBirthDate = !!parseFlexibleDate(dateValue);
-    
-    return !hasPhone || !hasAddress || !hasBirthDate;
-  }, [user]);
+  const {hasIncompleteProfile} = useProfile(); // Usar el nuevo contexto
   
   // Memoized cart badge calculation with real-time updates
   const cartBadge = useMemo(() => {
@@ -377,11 +325,13 @@ export default function App() {
           merchantIdentifier="merchant.com.occr.productos"
           urlScheme="occr-productos-app">
           <AuthProvider>
-            <CartProvider>
-              <OrderProvider>
-                <AuthFlow />
-              </OrderProvider>
-            </CartProvider>
+            <ProfileProvider>
+              <CartProvider>
+                <OrderProvider>
+                  <AuthFlow />
+                </OrderProvider>
+              </CartProvider>
+            </ProfileProvider>
           </AuthProvider>
         </StripeProvider>
       </NotificationProvider>

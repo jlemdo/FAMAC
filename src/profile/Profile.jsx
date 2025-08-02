@@ -24,10 +24,25 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { OrderContext } from '../context/OrderContext';
 import { useAlert } from '../context/AlertContext';
+import { useProfile } from '../context/ProfileContext';
 import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
 import AddressPicker from '../components/AddressPicker';
 import {formatOrderId} from '../utils/orderIdFormatter';
+// Importar sistema de estilos global
+import { 
+  colors,
+  containers, 
+  buttons, 
+  buttonText, 
+  inputs, 
+  inputLabels, 
+  inputContainers,
+  customPickers,
+  dropdowns,
+  typography,
+  shadows 
+} from '../theme/theme';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -95,6 +110,7 @@ export default function Profile({ navigation }) {
   const { user, logout } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
+  const { updateProfile } = useProfile();
   const [loading, setLoading] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);  
   const [supportLoading, setSupportLoading] = useState(false);
@@ -164,14 +180,16 @@ export default function Profile({ navigation }) {
         console.log('🎂 Valid birth date set:', birthDate);
       }
       
-      setProfile({
+      const profileData = {
         first_name: data.first_name || '',
         last_name:  data.last_name  || '',
         email:      data.email      || '',
         phone:      data.phone      || '',
         address:    data.address    || '',
         birthDate:  birthDate,
-      });
+      };
+      setProfile(profileData);
+      updateProfile(profileData); // Notificar al contexto
     } catch {
       showAlert({
         type: 'error',
@@ -493,13 +511,15 @@ export default function Profile({ navigation }) {
               payload
             );
             if (res.status === 200) {
+              const updatedProfile = { ...profile, ...values };
+              setProfile(updatedProfile);
+              updateProfile(updatedProfile); // Notificar al contexto
               showAlert({
                 type: 'success',
                 title: '¡Listo!',
                 message: 'Perfil actualizado.',
                 confirmText: 'OK',
               });
-              setProfile(prev => ({ ...prev, ...values }));
             }
           } catch {
             showAlert({
@@ -547,8 +567,9 @@ export default function Profile({ navigation }) {
             </View>
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.first_name && styles.inputError,
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.first_name) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.first_name && styles.inputErrorNoMargin,
                 !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Nombre"
@@ -563,8 +584,9 @@ export default function Profile({ navigation }) {
 
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.last_name && styles.inputError,
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.last_name) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.last_name && styles.inputErrorNoMargin,
                 !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Apellido"
@@ -586,8 +608,9 @@ export default function Profile({ navigation }) {
 
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.phone && styles.inputError,
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
                 !isEditingProfile && styles.disabledInput
               ]}
               placeholder="Teléfono"
@@ -840,8 +863,9 @@ export default function Profile({ navigation }) {
           <View style={styles.section}>
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.current_password && styles.inputError
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.current_password) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.current_password && styles.inputErrorNoMargin
               ]}
               placeholder="Contraseña actual"
               placeholderTextColor="rgba(47,47,47,0.6)"
@@ -855,8 +879,9 @@ export default function Profile({ navigation }) {
 
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.password && styles.inputError
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.password) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.password && styles.inputErrorNoMargin
               ]}
               placeholder="Nueva contraseña"
               placeholderTextColor="rgba(47,47,47,0.6)"
@@ -870,8 +895,9 @@ export default function Profile({ navigation }) {
 
             <TextInput
               style={[
-                styles.input,
-                submitCount > 0 && errors.password_confirmation && styles.inputError
+                // Use inputNoMargin base if there's an error to avoid double spacing
+                (submitCount > 0 && errors.password_confirmation) ? styles.inputNoMargin : styles.input,
+                submitCount > 0 && errors.password_confirmation && styles.inputErrorNoMargin
               ]}
               placeholder="Confirmar contraseña"
               placeholderTextColor="rgba(47,47,47,0.6)"
@@ -1026,8 +1052,9 @@ export default function Profile({ navigation }) {
                           <Text style={styles.modalLabel}>Mensaje *</Text>
                           <TextInput
                             style={[
-                              styles.modalTextArea,
-                              touched.message && errors.message && styles.modalInputError
+                              // Use textAreaNoMargin if there's an error to avoid double spacing
+                              (touched.message && errors.message) ? styles.modalTextAreaNoMargin : styles.modalTextArea,
+                              touched.message && errors.message && styles.modalInputErrorNoMargin
                             ]}
                             placeholder="Describe tu consulta o problema..."
                             placeholderTextColor="rgba(47,47,47,0.6)"
@@ -1140,204 +1167,84 @@ export default function Profile({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2EFE4',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  // === CONTENEDORES MIGRADOS AL TEMA ===
+  container: containers.screen,
+  scrollContent: containers.scrollContent,
+  // === HEADER - ESTILOS ESPECÍFICOS (se mantienen) ===
+  header: containers.avatarContainer,
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     marginBottom: 12,
   },
+  // === TIPOGRAFÍA MIGRADA AL TEMA ===
   name: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.large,
-    color: '#2F2F2F',
-    marginBottom: 4,
+    ...typography.highlight,
+    marginBottom: 4, // Mantener espaciado original
   },
-  email: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.6)',
-  },
+  email: typography.subtitle,
   loading: {
     marginBottom: 16,
   },
-  section: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    backgroundColor: '#FFF',
-  },
-  inputError: {
-    borderColor: '#E63946',
-  },
-  disabledInput: {
-    backgroundColor: '#EEE',
-  },
-  errorText: {
-    color: '#E63946',
-    fontSize: fonts.size.small,
-    marginBottom: 8,
-  },
+  // === CARDS/SECCIONES MIGRADAS AL TEMA ===
+  section: containers.card,
+  
+  // === INPUTS MIGRADOS AL TEMA ===
+  input: inputs.standard,
+  inputNoMargin: inputs.standardNoMargin, // Para inputs con error
+  inputError: inputs.error,
+  inputErrorNoMargin: inputs.errorNoMargin, // Para inputs con error sin margin
+  disabledInput: inputs.disabled,
+  errorText: inputLabels.error, // Usar el error text del tema
+  
+  // === TÍTULOS MIGRADOS AL TEMA ===
   sectionTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#33A744',
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#D27F27',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
+    ...typography.sectionTitle,
+    marginBottom: 12, // Mantener espaciado original
   },
   
-  // Estilos para modo edición
+  // === BOTONES MIGRADOS AL TEMA ===
+  button: buttons.primary,
+  buttonText: buttonText.primary,
+  
+  // === BOTONES DE EDICIÓN MIGRADOS AL TEMA ===
   editButtonContainer: {
     marginBottom: 16,
     alignItems: 'center',
   },
-  editButton: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  editButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: '#8B5E3C',
-  },
-  cancelEditButton: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E63946',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  cancelEditButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: '#E63946',
-  },
+  editButton: buttons.edit,
+  editButtonText: buttonText.edit,
+  cancelEditButton: buttons.cancelEdit,
+  cancelEditButtonText: buttonText.cancelEdit,
   
-  // Estilos del botón Atención al Cliente
+  // === BOTONES ESPECÍFICOS MIGRADOS AL TEMA ===
   supportButton: {
-    backgroundColor: '#33A744',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    ...buttons.support,
+    marginBottom: 24, // Mantener espaciado original
   },
-  supportButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
-
-  // Estilos del botón Cerrar Sesión
+  supportButtonText: buttonText.secondary,
   logoutButton: {
-    backgroundColor: '#6B4226',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    ...buttons.logout,
+    marginBottom: 24, // Mantener espaciado original
   },
-  logoutButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
+  logoutButtonText: buttonText.secondary,
 
-  // Estilos de secciones colapsables
-  sectionHeader: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: '#D27F27',
-  },
+  // === SECCIONES COLAPSABLES MIGRADAS AL TEMA ===
+  sectionHeader: containers.sectionHeader,
   sectionHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  sectionHeaderTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    flex: 1,
-  },
+  sectionHeaderTitle: typography.body,
   sectionHeaderIcon: {
     fontSize: fonts.size.small,
-    color: '#8B5E3C',
+    color: colors.secondary,
     marginLeft: 8,
   },
-  sectionHeaderSubtitle: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.6)',
-    marginTop: 2,
-  },
+  sectionHeaderSubtitle: typography.subtitle,
   quickActions: {
     marginBottom: 16,
   },
@@ -1348,212 +1255,70 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(139, 94, 60, 0.1)',
   },
 
-  // Estilos del modal
-  modalContainer: {
-    flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
+  // === MODALES MIGRADOS AL TEMA ===
+  modalContainer: containers.modalContainer,
+  modalOverlay: containers.modalOverlay,
+  modalContent: containers.modalContent,
   modalTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.large,
-    color: '#2F2F2F',
-    textAlign: 'center',
-    marginBottom: 24,
+    ...typography.cardTitle,
+    marginBottom: 24, // Mantener espaciado original
   },
-  modalInputGroup: {
-    marginBottom: 16,
-  },
+  modalInputGroup: inputContainers.modal,
   modalLabel: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: '#2F2F2F',
-    marginBottom: 8,
+    ...inputLabels.modal,
+    marginBottom: 8, // Mantener espaciado original
   },
   orderCount: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.small,
-    color: '#8B5E3C',
+    color: colors.secondary,
     fontWeight: 'normal',
   },
-  modalInput: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    backgroundColor: '#FFF',
-  },
-  modalTextArea: {
-    minHeight: 100,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    backgroundColor: '#FFF',
-  },
-  modalInputError: {
-    borderColor: '#E63946',
-  },
-  modalErrorText: {
-    color: '#E63946',
-    fontSize: fonts.size.small,
-    marginTop: 4,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#8B5E3C',
-  },
-  modalSendButton: {
-    flex: 1,
-    backgroundColor: '#33A744',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalSendButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
+  modalInput: inputs.modal,
+  modalTextArea: inputs.textArea,
+  modalTextAreaNoMargin: inputs.textAreaNoMargin, // TextArea sin margin para errores
+  modalInputError: inputs.error,
+  modalInputErrorNoMargin: inputs.errorNoMargin, // Error input sin margin
+  modalErrorText: inputLabels.error, // Error text del tema
+  // === BOTONES DE MODAL MIGRADOS AL TEMA ===
+  modalButtons: containers.modalButtonRow,
+  modalCancelButton: buttons.modalCancel,
+  modalCancelButtonText: buttonText.outline,
+  modalSendButton: buttons.modalSend,
+  modalSendButtonText: buttonText.secondary,
   
-  // Estilos del selector personalizado
-  selectorWrapper: {
-    position: 'relative',
-    zIndex: 99999,
-  },
-  selectorWrapperExpanded: {
-    marginBottom: 160, // Espacio para el dropdown cuando está abierto
-  },
-  customPicker: {
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    minHeight: 44,
-    paddingVertical: 8,
-  },
-  customPickerText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    flex: 1,
-  },
-  customPickerPlaceholder: {
-    color: 'rgba(47,47,47,0.6)',
-  },
-  customPickerArrow: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: '#8B5E3C',
-    marginLeft: 8,
-  },
-  orderDropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderTopWidth: 0,
-    borderRadius: 8,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    backgroundColor: '#FFF',
-    maxHeight: 150,
-    zIndex: 999999, // Incrementar z-index más alto
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 20, // Incrementar elevation para Android
-    marginTop: 1,
-  },
+  // === SELECTOR/PICKER MIGRADO AL TEMA ===
+  selectorWrapper: customPickers.wrapper,
+  selectorWrapperExpanded: customPickers.wrapperExpanded,
+  customPicker: customPickers.standard,
+  customPickerText: customPickers.text,
+  customPickerPlaceholder: customPickers.placeholder,
+  customPickerArrow: customPickers.arrow,
+  // === DROPDOWN MIGRADO AL TEMA ===
+  orderDropdown: dropdowns.standard,
   orderScrollView: {
     flex: 1,
   },
-  orderOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
-  },
-  orderOptionSelected: {
-    backgroundColor: 'rgba(139, 94, 60, 0.1)',
-  },
-  orderOptionText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-  },
-  orderOptionSelectedText: {
-    fontFamily: fonts.bold,
-    color: '#8B5E3C',
-  },
+  orderOption: dropdowns.option,
+  orderOptionSelected: dropdowns.optionSelected,
+  orderOptionText: dropdowns.optionText,
+  orderOptionSelectedText: dropdowns.optionTextSelected,
   
-  // Estilos para datos faltantes
+  // === ESTILOS ESPECÍFICOS OPTIMIZADOS CON TEMA ===
   missingDataAlert: {
-    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    backgroundColor: colors.theme.primaryLight,
     borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.3)',
+    borderColor: colors.theme.primaryMedium,
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
   },
   missingDataTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#D27F27',
+    ...typography.highlight,
     marginBottom: 8,
   },
   missingDataItem: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: '#2F2F2F',
+    ...typography.small,
     marginBottom: 4,
     lineHeight: 18,
   },

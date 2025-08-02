@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -48,17 +49,16 @@ export default function Suggestions() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#8B5E3C" />
-        <Text style={styles.loadingText}>Cargando sugerencias...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorMessage}>{error}</Text>
       </View>
     );
   }
@@ -75,11 +75,7 @@ export default function Suggestions() {
         <Text style={styles.title}>Sugerencias para ti</Text>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="tomato" style={styles.loader} />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : suggestions.length > 0 ? (
+      {suggestions.length > 0 ? (
         <FlatList
           data={suggestions}
           keyExtractor={item => item.id.toString()}
@@ -105,19 +101,22 @@ export default function Suggestions() {
                     </View>
                   )}
                   
-                  <Image source={{uri: item.photo}} style={styles.image} />
-                  
-                  <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-                  <Text style={styles.description} numberOfLines={2}>
-                    {item.description || 'Producto recomendado especialmente para ti'}
-                  </Text>
+                  {/* Sección superior: Imagen y contenido */}
+                  <View style={styles.topSection}>
+                    <Image source={{uri: item.photo}} style={styles.image} />
+                    
+                    <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+                    <Text style={styles.description} numberOfLines={2}>
+                      {item.description || 'Producto recomendado especialmente para ti'}
+                    </Text>
 
-                  {/* Indicador de peso */}
-                  <View style={styles.weightBadge}>
-                    <Text style={styles.weightText}>250g</Text>
+                    {/* Indicador de peso */}
+                    <View style={styles.weightBadge}>
+                      <Text style={styles.weightText}>250g</Text>
+                    </View>
                   </View>
 
-                  {/* Sección de precios */}
+                  {/* Sección inferior: Precios (siempre al final) */}
                   <View style={styles.priceSection}>
                     {discountNum > 0 ? (
                       <>
@@ -148,17 +147,26 @@ export default function Suggestions() {
           }}
         />
       ) : (
-        <Text style={styles.noData}>No hay sugerencias disponibles</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyMessage}>No hay sugerencias disponibles</Text>
+        </View>
       )}
     </View>
   );
 }
 
+// Calcular ancho responsive de tarjetas (igual que SpecificCategoryProduct)
+const screenWidth = Dimensions.get('window').width;
+const cardSpacing = 6; // Reducido de 8 a 6 para más espacio
+const containerPadding = 10; // padding del container
+const availableWidth = screenWidth - (containerPadding * 2);
+const cardWidth = (availableWidth - (cardSpacing * 4)) / 2; // 4 espacios: 2 por tarjeta + 2 exteriores
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
-    paddingHorizontal: 10,
+    paddingHorizontal: containerPadding,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -182,8 +190,8 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: '#FFF',
-    padding: 16,
-    margin: 8,
+    padding: 12, // Reducido de 16 a 12
+    margin: cardSpacing,
     borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
@@ -191,11 +199,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
-    width: 180,
+    width: cardWidth, // Ancho responsive calculado
+    minHeight: 300, // Altura mínima fija para uniformidad
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.1)',
     position: 'relative',
     overflow: 'visible',
+    justifyContent: 'space-between', // Distribuir contenido uniformemente
+  },
+  topSection: {
+    alignItems: 'center',
+    flex: 1, // Toma el espacio disponible
   },
   promotionBanner: {
     position: 'absolute',
@@ -220,34 +234,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   image: {
-    width: 120,
-    height: 120,
+    width: cardWidth - 24, // Ancho de tarjeta menos padding
+    height: cardWidth - 24, // Alto igual al ancho para mantener aspecto cuadrado
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8, // Reducido de 12 a 8
   },
   name: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
     textAlign: 'center',
-    marginBottom: 6,
-    minHeight: 32,
+    marginBottom: 4, // Reducido de 6 a 4
+    paddingHorizontal: 4,
+    lineHeight: 18, // Mejor control de altura
   },
   description: {
     fontSize: fonts.size.small,
     color: 'rgba(47,47,47,0.7)',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6, // Reducido de 8 a 6
     paddingHorizontal: 4,
     fontFamily: fonts.regular,
-    minHeight: 28,
+    lineHeight: 16, // Mejor control de altura
   },
   weightBadge: {
     backgroundColor: '#8B5E3C',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10, // Reducido de 12 a 10
+    paddingVertical: 3, // Reducido de 4 a 3
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8, // Reducido de 12 a 8
   },
   weightText: {
     fontSize: fonts.size.small,
@@ -256,33 +271,34 @@ const styles = StyleSheet.create({
   },
   priceSection: {
     alignItems: 'center',
-    marginTop: 8,
+    paddingTop: 8, // Separación del contenido superior
+    marginTop: 'auto', // Empuja hacia abajo
   },
   regularPrice: {
-    fontSize: fonts.size.large,
+    fontSize: fonts.size.medium, // Aumentado para mejor visibilidad
     fontFamily: fonts.bold,
-    color: '#D27F27',
-    marginBottom: 4,
+    color: '#D27F27', // Color primario para destacar
+    marginBottom: 2, // Reducido de 4 a 2
   },
   originalPriceStriked: {
-    fontSize: fonts.size.medium,
+    fontSize: fonts.size.small, // Reducido para ser menos prominente
     fontFamily: fonts.regular,
     color: '#999',
     textDecorationLine: 'line-through',
-    marginBottom: 4,
+    marginBottom: 2, // Reducido de 4 a 2
   },
   discountedPrice: {
-    fontSize: fonts.size.large,
+    fontSize: fonts.size.medium, // Aumentado para destacar
     fontFamily: fonts.bold,
-    color: '#33A744',
-    marginBottom: 6,
+    color: '#D27F27', // Color primario consistente
+    marginBottom: 4, // Reducido de 6 a 4
   },
   savingsBadge: {
     backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 4,
+    paddingHorizontal: 6, // Reducido de 8 a 6
+    paddingVertical: 2, // Reducido de 3 a 2
+    borderRadius: 6, // Reducido de 8 a 6 para ser más sutil
+    marginBottom: 2, // Reducido de 4 a 2
     borderWidth: 1,
     borderColor: '#33A744',
   },
@@ -297,27 +313,35 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.6)',
     fontStyle: 'italic',
   },
-  noData: {
-    textAlign: 'center',
-    fontSize: fonts.size.medium,
-    color: 'gray',
-    marginTop: 20,
-    fontFamily: fonts.regular,
+  // Estados centrados (como CategoriesList.jsx)
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center', 
+    backgroundColor: '#F2EFE4',
   },
-  loader: {
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2EFE4',
+  },
+  errorMessage: {
+    fontSize: fonts.size.medium,
+    color: 'red',
+    textAlign: 'center',
+    fontFamily: fonts.regular,
+    paddingHorizontal: 20,
+  },
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  error: {
+  emptyMessage: {
     textAlign: 'center',
     fontSize: fonts.size.medium,
-    color: 'white',
-    backgroundColor: 'red',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 20,
-    marginTop: 20,
+    color: 'rgba(47,47,47,0.6)',
     fontFamily: fonts.regular,
   },
 });

@@ -194,18 +194,14 @@ export default function CategoriesList() {
         </View>
       ) : (
         <>
-          {/* Carrusel de categorías en círculos estilo Uber Eats */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.carouselContainer}
-            contentContainerStyle={styles.carouselContent}>
+          {/* Fila de 4 categorías distribuidas uniformemente */}
+          <View style={styles.categoriesRow}>
             {categories
               .filter(item => !item.name.toLowerCase().includes('sugerencias'))
               .map((item) => (
               <TouchableOpacity
-                key={`carousel-${item.id}`}
-                style={styles.circleCategory}
+                key={`row-${item.id}`}
+                style={styles.rowCategory}
                 onPress={() =>
                   navigation.navigate('CategoryProducts', {
                     categoryId: item.id,
@@ -214,19 +210,19 @@ export default function CategoriesList() {
                 }
                 accessibilityRole="button"
                 accessibilityLabel={`Categoría ${item.name}`}>
-                <View style={styles.circleImageContainer}>
+                <View style={styles.rowImageContainer}>
                   <Image
                     source={{ uri: item.photo }}
-                    style={styles.circleImage}
+                    style={styles.rowImage}
                     accessible={false}
                   />
                 </View>
-                <Text style={styles.circleCategoryName} numberOfLines={2}>
+                <Text style={styles.rowCategoryName} numberOfLines={2}>
                   {item.name}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
           {/* Carrusel de Videos */}
           <View style={styles.videoSection}>
@@ -523,24 +519,24 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
   },
   
-  // Estilos del carrusel de círculos
-  carouselContainer: {
+  // Estilos de la fila de 4 categorías (1x4)
+  categoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around', // Distribuye uniformemente
+    alignItems: 'center',
     marginBottom: 24,
-    maxHeight: 120,
+    paddingHorizontal: 12,
+    width: '100%',
   },
-  carouselContent: {
-    paddingHorizontal: 8,
+  rowCategory: {
+    flex: 1, // Cada categoría toma el mismo espacio
     alignItems: 'center',
+    maxWidth: 85, // Limita el ancho máximo para que no se estiren demasiado
   },
-  circleCategory: {
-    alignItems: 'center',
-    marginHorizontal: 6,
-    width: 68,
-  },
-  circleImageContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+  rowImageContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -551,22 +547,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    // Borde opcional para mejor definición
+    // Borde normal
     borderWidth: 2,
     borderColor: '#8B5E3C',
   },
-  circleImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  rowImage: {
+    width: 56,  // Aumenté de 52 a 56 para que ocupe más espacio
+    height: 56, // Aumenté de 52 a 56 para que ocupe más espacio
+    borderRadius: 28, // Actualizado el radius proporcionalmente
     resizeMode: 'cover',
   },
-  circleCategoryName: {
+  rowCategoryName: {
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
     textAlign: 'center',
     lineHeight: 14,
+    paddingHorizontal: 2,
   },
   
   // Estilos del carrusel de videos
