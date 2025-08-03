@@ -564,6 +564,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 14,
     paddingHorizontal: 2,
+    minHeight: 28, // Altura mínima para 2 líneas (14 * 2)
+    textAlignVertical: 'center', // Centra verticalmente el texto
   },
   
   // Estilos del carrusel de videos

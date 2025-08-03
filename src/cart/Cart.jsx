@@ -16,6 +16,7 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
@@ -71,6 +72,9 @@ export default function Cart() {
   const [deliveryInfo, setDeliveryInfo] = useState(null);
   const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh falso
   
   // Ref para el scroll automático al botón de pagar
   const flatListRef = React.useRef(null);
@@ -89,6 +93,28 @@ export default function Cart() {
   const toggleSwitch = () => setIsEnabled(previousState => !previousState);
 
   const {showAlert} = useAlert();
+
+  // Función para obtener el perfil completo del usuario (con dirección actualizada)
+  const fetchUserProfile = async () => {
+    if (!user?.id || user?.usertype === 'Guest') return;
+    
+    setLoadingProfile(true);
+    try {
+      const res = await axios.get(
+        `https://food.siliconsoft.pk/api/userdetails/${user.id}`
+      );
+      const profileData = res.data?.data?.[0] || {};
+      setUserProfile(profileData);
+      console.log('📍 Perfil de usuario cargado en Cart:', {
+        address: profileData.address,
+        hasAddress: !!profileData.address?.trim()
+      });
+    } catch (error) {
+      console.warn('⚠️ Error cargando perfil de usuario:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   // Función simplificada - verificar si email debe bloquearse basado en contexto local
   const shouldLockEmailInput = () => {
@@ -124,6 +150,8 @@ export default function Cart() {
       // Usuario registrado
       setEmail(user?.email || '');
       setEmailLocked(false);
+      // Cargar perfil completo para obtener dirección actualizada
+      fetchUserProfile();
     }
   }, [user]);
 
@@ -385,12 +413,20 @@ export default function Cart() {
   // 2) Envía la orden al backend y maneja fallos
   const completeOrderFunc = async () => {
     try {
-      const cartUpdateArr = cart.map(it => ({
-        item_name: it.name,
-        item_price: it.price.toString(),
-        item_qty: it.quantity.toString(),
-        item_image: it.photo,
-      }));
+      const cartUpdateArr = cart.map(it => {
+        // Calcular precio final con descuento aplicado
+        const itemDiscount = Number(it.discount) || 0;
+        const finalPrice = it.price - itemDiscount;
+        
+        return {
+          item_name: it.name,
+          item_price: finalPrice.toString(), // Precio con descuento aplicado
+          item_original_price: it.price.toString(), // Precio original para referencia
+          item_discount: itemDiscount.toString(), // Descuento aplicado
+          item_qty: it.quantity.toString(),
+          item_image: it.photo,
+        };
+      });
       
       // Determinar el email correcto para enviar
       const userEmailForOrder = user?.usertype === 'Guest' 
@@ -445,11 +481,19 @@ export default function Cart() {
     if (user?.usertype === 'Guest') {
       setModalVisible(true);
     } else {
-      // Usuario registrado: verificar si tiene dirección
-      if (!user?.address || user?.address?.trim() === '') {
+      // Usuario registrado: verificar si tiene dirección REAL del perfil
+      const hasProfileAddress = userProfile?.address && userProfile?.address?.trim() !== '';
+      console.log('🛒 Checkout - verificando dirección:', {
+        userProfileAddress: userProfile?.address,
+        hasProfileAddress,
+        loadingProfile
+      });
+      
+      if (!hasProfileAddress) {
         setShowAddressModal(true);
       } else {
-        completeOrder();
+        // Usuario tiene dirección: mostrar modal de selección
+        setShowAddressModal(true);
       }
     }
   };
@@ -555,7 +599,19 @@ export default function Cart() {
       <Text style={styles.title}>Carrito de Compras</Text>
 
       {cart.length === 0 ? (
-        <View style={styles.emptyCartContainer}>
+        <FlatList
+          data={[]}
+          renderItem={null}
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            // Pull-to-refresh falso - solo efecto visual
+            setTimeout(() => setRefreshing(false), 800);
+          }}
+          contentContainerStyle={styles.emptyCartScrollContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCartContainer}>
           <Text style={styles.emptyCartTitle}>🛒 Tu carrito está vacío</Text>
           <Text style={styles.emptyCartText}>
             ¡Es el momento perfecto para descubrir nuestros deliciosos lácteos frescos!
@@ -575,7 +631,9 @@ export default function Cart() {
             activeOpacity={0.8}>
             <Text style={styles.shopNowButtonText}>🛍️ Explorar Productos</Text>
           </TouchableOpacity>
-        </View>
+            </View>
+          }
+        />
       ) : (
         <>
           {/* Total sticky - siempre visible */}
@@ -597,23 +655,52 @@ export default function Cart() {
             style={{flex: 1}}
             contentContainerStyle={{flexGrow: 1}}
             showsVerticalScrollIndicator={false}
-            renderItem={({item}) => (
-              <View style={styles.cartItem}>
-                <Image source={{uri: item.photo}} style={styles.image} />
-                <View style={styles.info}>
-                  <View style={styles.row}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.timer}>
-                      {timers[item.id] > 0
-                        ? `${Math.floor(timers[item.id] / 60)}:${
-                            timers[item.id] % 60
-                          }`
-                        : 'Expirado'}
-                    </Text>
+            renderItem={({item}) => {
+              const itemDiscount = Number(item.discount) || 0;
+              const discountedPrice = item.price - itemDiscount;
+              const hasDiscount = itemDiscount > 0;
+              
+              return (
+                <View style={styles.cartItem}>
+                  <View style={styles.imageContainer}>
+                    {/* Etiqueta de descuento sobre la imagen */}
+                    {hasDiscount && (
+                      <View style={styles.cartDiscountBadge}>
+                        <Text style={styles.cartDiscountText}>-${itemDiscount}</Text>
+                      </View>
+                    )}
+                    <Image source={{uri: item.photo}} style={styles.image} />
                   </View>
-                  <Text style={styles.price}>
-                    {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
-                  </Text>
+                  <View style={styles.info}>
+                    <View style={styles.row}>
+                      <Text style={styles.name}>{item.name}</Text>
+                      <Text style={styles.timer}>
+                        {timers[item.id] > 0
+                          ? `${Math.floor(timers[item.id] / 60)}:${
+                              timers[item.id] % 60
+                            }`
+                          : 'Expirado'}
+                      </Text>
+                    </View>
+                    
+                    {/* Display de precios corregido */}
+                    {hasDiscount ? (
+                      <View style={styles.priceWithDiscountRow}>
+                        <Text style={styles.originalPriceStrikedCart}>
+                          {formatPriceWithSymbol(item.price)}
+                        </Text>
+                        <Text style={styles.discountedPriceCart}>
+                          {formatPriceWithSymbol(discountedPrice)}
+                        </Text>
+                        <Text style={styles.quantityInfoCart}>
+                          x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.price}>
+                        {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
+                      </Text>
+                    )}
                   <View style={styles.actions}>
                     <TouchableOpacity
                       onPress={() => updateQuantity(item.id, 'decrease')}
@@ -634,7 +721,8 @@ export default function Cart() {
                   </View>
                 </View>
               </View>
-            )}
+            );
+            }}
             ListFooterComponent={
               <CartFooter
                 deliveryInfo={deliveryInfo}
@@ -682,8 +770,15 @@ export default function Cart() {
             setModalVisible(false);
           }}>
           <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContent}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <ScrollView
+                  contentContainerStyle={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>Compra como invitado</Text>
                 <TextInput
                   placeholder="Correo electrónico"
@@ -753,8 +848,9 @@ export default function Cart() {
                     <Text style={styles.modalButtonText}>Pagar</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            </TouchableWithoutFeedback>
+                </ScrollView>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -786,33 +882,76 @@ export default function Cart() {
         onRequestClose={() => setShowAddressModal(false)}>
         <TouchableWithoutFeedback onPress={() => setShowAddressModal(false)}>
           <View style={styles.modalContainer}>
-            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContent}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <ScrollView
+                  contentContainerStyle={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalTitle}>📍 Dirección de Entrega</Text>
-                <Text style={styles.modalMessage}>
-                  Para completar tu pedido necesitamos una dirección de entrega.{'\n\n'}
-                  Puedes agregar una dirección en tu perfil o usar tu ubicación actual para esta compra.
-                </Text>
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalButtonSecondary}
-                    onPress={() => {
-                      setShowAddressModal(false);
-                      navigation.navigate('MainTabs', { screen: 'Perfil' });
-                    }}>
-                    <Text style={styles.modalButtonSecondaryText}>Configurar Perfil</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalButtonPrimary}
-                    onPress={() => {
-                      setShowAddressModal(false);
-                      completeOrder(); // Proceder con ubicación actual
-                    }}>
-                    <Text style={styles.modalButtonPrimaryText}>Usar Mi Ubicación</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
+                
+                {userProfile?.address && userProfile?.address?.trim() !== '' ? (
+                  // Usuario CON dirección guardada
+                  <>
+                    <Text style={styles.modalMessage}>
+                      Tienes una dirección guardada en tu perfil:{'\n\n'}
+                      <Text style={styles.savedAddressText}>📍 {userProfile.address}</Text>
+                      {'\n\n'}¿Cómo quieres recibir tu pedido?
+                    </Text>
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={styles.modalButtonSecondary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          completeOrder(); // Usar ubicación actual
+                        }}>
+                        <Text style={styles.modalButtonSecondaryText}>🗺️ Usar Mi Ubicación</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.modalButtonPrimary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          // Actualizar dirección en memoria para este pedido
+                          setAddress(userProfile.address);
+                          completeOrder(); // Usar dirección guardada
+                        }}>
+                        <Text style={styles.modalButtonPrimaryText}>📋 Usar Dirección Guardada</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  // Usuario SIN dirección guardada
+                  <>
+                    <Text style={styles.modalMessage}>
+                      Para completar tu pedido necesitamos una dirección de entrega.{'\n\n'}
+                      Puedes agregar una dirección en tu perfil o usar tu ubicación actual para esta compra.
+                    </Text>
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={styles.modalButtonSecondary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          navigation.navigate('MainTabs', { screen: 'Perfil' });
+                        }}>
+                        <Text style={styles.modalButtonSecondaryText}>⚙️ Configurar Perfil</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.modalButtonPrimary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          completeOrder(); // Proceder con ubicación actual
+                        }}>
+                        <Text style={styles.modalButtonPrimaryText}>🗺️ Usar Mi Ubicación</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+                </ScrollView>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -839,6 +978,10 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.6)', // Gris Carbón @60%
     textAlign: 'center',
     marginTop: 50,
+  },
+  emptyCartScrollContainer: {
+    flexGrow: 1,
+    paddingVertical: 20,
   },
   emptyCartContainer: {
     backgroundColor: '#FFF',
@@ -916,11 +1059,14 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     elevation: 2,
   },
+  imageContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
   image: {
     width: 80,
     height: 80,
     borderRadius: 8,
-    marginRight: 16,
   },
   info: {
     flex: 1,
@@ -1073,11 +1219,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalContent: {
+  keyboardAvoidingView: {
     width: '80%',
+    maxHeight: '80%',
+  },
+  modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 24,
+    flexGrow: 1,
   },
   modalTitle: {
     fontSize: fonts.size.large,
@@ -1286,6 +1436,65 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: 'rgba(47,47,47,0.7)',
     textAlign: 'center',
+  },
+  savedAddressText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+    fontStyle: 'italic',
+    backgroundColor: 'rgba(139, 94, 60, 0.1)',
+    padding: 8,
+    borderRadius: 6,
+    textAlign: 'center',
+  },
+  
+  // Estilos para descuentos en items del carrito
+  cartDiscountBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    backgroundColor: '#E63946',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 4,
+    transform: [{ rotate: '8deg' }],
+  },
+  cartDiscountText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  priceWithDiscountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: 4,
+  },
+  originalPriceStrikedCart: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginRight: 8,
+  },
+  discountedPriceCart: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginRight: 8,
+  },
+  quantityInfoCart: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    flexShrink: 1,
   },
 });
 

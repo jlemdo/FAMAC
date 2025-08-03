@@ -14,7 +14,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
-  FlatList
+  FlatList,
+  Animated
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -121,14 +122,23 @@ export default function Profile({ navigation }) {
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [showFounderTooltip, setShowFounderTooltip] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const formikRef = useRef(null);
   
+  // Referencias para animaciones de toast
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTranslateY = useRef(new Animated.Value(-50)).current;
+  
   // Estados para secciones colapsables
-  const [showProfileSection, setShowProfileSection] = useState(true);
+  const [showProfileSection, setShowProfileSection] = useState(false); // Colapsada por defecto
   const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showAddressSection, setShowAddressSection] = useState(false); // Nueva sección de direcciones
   
   // Estado para modo edición
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
@@ -164,7 +174,9 @@ export default function Profile({ navigation }) {
         birth_date: data.birth_date,
         dob: data.dob,
         phone: data.phone,
-        address: data.address
+        address: data.address,
+        promotion_id: data.promotion_id,
+        promotional_discount: data.promotional_discount
       });
       
       const dateValue = data.birthDate || data.birth_date || data.dob;
@@ -187,6 +199,8 @@ export default function Profile({ navigation }) {
         phone:      data.phone      || '',
         address:    data.address    || '',
         birthDate:  birthDate,
+        promotion_id: data.promotion_id, // Agregar promotion_id
+        promotional_discount: data.promotional_discount // Agregar promotional_discount
       };
       setProfile(profileData);
       updateProfile(profileData); // Notificar al contexto
@@ -239,13 +253,50 @@ export default function Profile({ navigation }) {
 
   const missingData = getMissingData();
 
+  // Función para mostrar toast de éxito (similar a ProductDetails)
+  const showSuccessMessage = (message) => {
+    setToastMessage(message);
+    setShowSuccessToast(true);
+    
+    // Animación de entrada
+    Animated.parallel([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(toastTranslateY, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Auto-ocultar después de 2.5 segundos
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toastTranslateY, {
+          toValue: -50,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSuccessToast(false);
+      });
+    }, 2500);
+  };
+
   const ProfileSchema = Yup.object().shape({
     first_name: Yup.string().required('Nombre es obligatorio'),
     last_name:  Yup.string().required('Apellido es obligatorio'),
     phone:      Yup.string()
       .matches(/^[0-9+]+$/, 'Teléfono inválido')
       .required('Teléfono es obligatorio'),
-    address:    Yup.string(), // opcional
     birthDate:  Yup.date().nullable(), // opcional
   });
 
@@ -400,14 +451,28 @@ export default function Profile({ navigation }) {
     <Fragment key={`profile-wrapper-${user?.id || 'registered'}`}>
       <ScrollView 
         style={styles.container} 
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Image
-          source={{
-            uri: profile.avatar || 'https://www.w3schools.com/howto/img_avatar.png'
-          }}
-          style={styles.avatar}
-        />
+        <View style={styles.avatarContainer}>
+          <Image
+            source={{
+              uri: profile.avatar || 'https://www.w3schools.com/howto/img_avatar.png'
+            }}
+            style={styles.avatar}
+          />
+          {/* Banderín Usuario Fundador - overlay en esquina del avatar */}
+          {(profile?.promotion_id === "3" || profile?.promotion_id === 3) && (
+            <TouchableOpacity 
+              style={styles.founderBadge}
+              onPress={() => setShowFounderTooltip(true)}
+              activeOpacity={0.8}>
+              <Text style={styles.founderBadgeIcon}>👑</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.name}>
           {profile.first_name} {profile.last_name}
         </Text>
@@ -463,7 +528,6 @@ export default function Profile({ navigation }) {
           first_name: profile.first_name,
           last_name:  profile.last_name,
           phone:      profile.phone,
-          address:    profile.address,
           birthDate:  profile.birthDate,
         }}
         enableReinitialize
@@ -498,7 +562,6 @@ export default function Profile({ navigation }) {
               first_name:  values.first_name,
               last_name:   values.last_name,
               phone:       values.phone,
-              address:     values.address,
             };
             
             // Solo agregar dob si debe actualizarse
@@ -511,14 +574,19 @@ export default function Profile({ navigation }) {
               payload
             );
             if (res.status === 200) {
-              const updatedProfile = { ...profile, ...values };
+              // Solo actualizar los campos del formulario, manteniendo address intacto
+              const updatedProfile = { 
+                ...profile, 
+                ...values,
+                address: profile.address // Preservar la dirección existente
+              };
               setProfile(updatedProfile);
               updateProfile(updatedProfile); // Notificar al contexto
               showAlert({
                 type: 'success',
-                title: '¡Listo!',
-                message: 'Perfil actualizado.',
-                confirmText: 'OK',
+                title: '✅ ¡Datos personales actualizados!',
+                message: 'Tu información personal se guardó correctamente.',
+                confirmText: 'Perfecto',
               });
             }
           } catch {
@@ -624,22 +692,6 @@ export default function Profile({ navigation }) {
               <Text style={styles.errorText}>{errors.phone}</Text>
             )}
 
-            {/* Campo de dirección con AddressPicker */}
-            <TouchableOpacity
-              style={[
-                styles.input, 
-                styles.dateInput,
-                !isEditingProfile && styles.disabledInput
-              ]}
-              onPress={() => isEditingProfile && setShowAddressPicker(true)}
-              activeOpacity={isEditingProfile ? 0.7 : 1}
-              disabled={!isEditingProfile}>
-              <Text
-                style={values.address ? styles.dateText : styles.datePlaceholder}>
-                {values.address || 'Dirección completa'}
-              </Text>
-              <Text style={styles.dateIcon}>📍</Text>
-            </TouchableOpacity>
 
             {/* Fecha de cumpleaños */}
             <TouchableOpacity
@@ -662,7 +714,11 @@ export default function Profile({ navigation }) {
               activeOpacity={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? 1 : 0.7}
               disabled={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile}>
               <Text
-                style={values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder}>
+                style={[
+                  values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder,
+                  // Si no es editable o ya tiene fecha, usar estilo deshabilitado
+                  ((profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile) && styles.dateTextDisabled
+                ]}>
                 {values.birthDate && !isNaN(values.birthDate.getTime())
                   ? values.birthDate.toLocaleDateString('es-ES', {
                       month: 'long',
@@ -693,7 +749,11 @@ export default function Profile({ navigation }) {
                           {/* Selector de Mes */}
                           <View style={styles.pickerColumn}>
                             <Text style={styles.pickerColumnTitle}>Mes</Text>
-                            <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                            <ScrollView 
+                              style={styles.pickerScrollView} 
+                              showsVerticalScrollIndicator={false}
+                              nestedScrollEnabled={true}
+                              keyboardShouldPersistTaps="handled">
                               {[
                                 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -722,7 +782,11 @@ export default function Profile({ navigation }) {
                           {/* Selector de Año */}
                           <View style={styles.pickerColumn}>
                             <Text style={styles.pickerColumnTitle}>Año</Text>
-                            <ScrollView style={styles.pickerScrollView} showsVerticalScrollIndicator={false}>
+                            <ScrollView 
+                              style={styles.pickerScrollView} 
+                              showsVerticalScrollIndicator={false}
+                              nestedScrollEnabled={true}
+                              keyboardShouldPersistTaps="handled">
                               {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => {
                                 const currentYear = values.birthDate ? values.birthDate.getFullYear() : -1;
                                 const isSelected = currentYear === year;
@@ -789,6 +853,159 @@ export default function Profile({ navigation }) {
           </View>
         )}
         </Formik>
+      )}
+
+      {/* Sección de Direcciones */}
+      <TouchableOpacity 
+        style={styles.sectionHeader}
+        onPress={() => setShowAddressSection(!showAddressSection)}
+        activeOpacity={0.8}>
+        <View style={styles.sectionHeaderContent}>
+          <Text style={styles.sectionHeaderTitle}>📍 Direcciones</Text>
+          <Text style={styles.sectionHeaderIcon}>
+            {showAddressSection ? '▲' : '▼'}
+          </Text>
+        </View>
+        <Text style={styles.sectionHeaderSubtitle}>
+          Gestiona tus direcciones de entrega
+        </Text>
+      </TouchableOpacity>
+
+      {showAddressSection && (
+        <View style={styles.section}>
+          {/* Información de la dirección actual */}
+          <View style={styles.addressInfoContainer}>
+            <View style={styles.addressInfo}>
+              <Text style={styles.addressLabel}>📍 Dirección actual:</Text>
+              {profile.address ? (
+                <Text style={[styles.addressText, !isEditingAddress && styles.addressTextDisabled]}>
+                  {profile.address}
+                </Text>
+              ) : (
+                <Text style={styles.addressPlaceholder}>
+                  No tienes una dirección registrada
+                </Text>
+              )}
+            </View>
+            
+            {/* Botón Editar/Cancelar dirección */}
+            <View style={styles.editButtonContainer}>
+              {!isEditingAddress ? (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => setIsEditingAddress(true)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.editButtonText}>✏️ {profile.address ? 'Cambiar dirección' : 'Agregar dirección'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.cancelEditButton}
+                  onPress={() => setIsEditingAddress(false)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.cancelEditButtonText}>❌ Cancelar edición</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Formulario de edición de dirección */}
+          {isEditingAddress && (
+            <Formik
+              initialValues={{
+                address: profile.address || '',
+              }}
+              enableReinitialize
+              onSubmit={async (values, { setSubmitting }) => {
+                setLoading(true);
+                try {
+                  const payload = {
+                    userid: user.id,
+                    address: values.address,
+                  };
+                  
+                  const res = await axios.post(
+                    'https://food.siliconsoft.pk/api/updateuserprofile',
+                    payload
+                  );
+                  
+                  if (res.status === 200) {
+                    const updatedProfile = { ...profile, address: values.address };
+                    setProfile(updatedProfile);
+                    updateProfile(updatedProfile); // Notificar al contexto
+                    
+                    // Salir del modo edición
+                    setIsEditingAddress(false);
+                    
+                    // Mostrar toast de éxito (tipo carrito)
+                    showSuccessMessage('¡Dirección de entrega actualizada!');
+                  }
+                } catch {
+                  showAlert({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'No se pudo actualizar la dirección. Inténtalo de nuevo.',
+                    confirmText: 'Cerrar',
+                  });
+                } finally {
+                  setLoading(false);
+                  setSubmitting(false);
+                }
+              }}
+              validateOnChange={false}
+              validateOnBlur={false}
+            >
+              {({
+                handleSubmit,
+                values,
+                isSubmitting,
+                setFieldValue,
+              }) => (
+                <View style={styles.editSection}>
+                  {/* Campo de dirección con AddressPicker */}
+                  <TouchableOpacity
+                    style={[styles.input, styles.dateInput]}
+                    onPress={() => setShowAddressPicker(true)}
+                    activeOpacity={0.7}>
+                    <Text
+                      style={[
+                        values.address ? styles.dateText : styles.datePlaceholder
+                      ]}>
+                      {values.address || 'Seleccionar dirección de entrega'}
+                    </Text>
+                    <Text style={styles.dateIcon}>📍</Text>
+                  </TouchableOpacity>
+
+                  {/* Botón para guardar cambios de dirección */}
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleSubmit}
+                    disabled={isSubmitting || loading || !values.address}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="#FFF" />
+                    ) : (
+                      <Text style={styles.buttonText}>💾 Guardar dirección</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  {/* AddressPicker Modal para esta sección */}
+                  <AddressPicker
+                    visible={showAddressPicker}
+                    onClose={() => setShowAddressPicker(false)}
+                    onConfirm={(addressData) => {
+                      console.log('📍 Address selected:', addressData);
+                      // Actualizar el campo de dirección
+                      setFieldValue('address', addressData.fullAddress);
+                      setShowAddressPicker(false);
+                    }}
+                    initialAddress={values.address || ''}
+                    title="Dirección de Entrega"
+                  />
+                </View>
+              )}
+            </Formik>
+          )}
+        </View>
       )}
 
       {/* Sección de Contraseña */}
@@ -1008,7 +1225,11 @@ export default function Profile({ navigation }) {
                             {/* Dropdown de opciones */}
                             {showOrderPicker && formattedOrders.length > 0 && (
                               <View style={styles.orderDropdown}>
-                                <ScrollView style={styles.orderScrollView} nestedScrollEnabled>
+                                <ScrollView 
+                                  style={styles.orderScrollView} 
+                                  nestedScrollEnabled={true}
+                                  keyboardShouldPersistTaps="handled"
+                                  showsVerticalScrollIndicator={false}>
                                   {/* Opción por defecto */}
                                   <TouchableOpacity
                                     style={[styles.orderOption, !values.orderno && styles.orderOptionSelected]}
@@ -1146,21 +1367,63 @@ export default function Profile({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* AddressPicker Modal */}
-      <AddressPicker
-        visible={showAddressPicker}
-        onClose={() => setShowAddressPicker(false)}
-        onConfirm={(addressData) => {
-          console.log('📍 Address selected:', addressData);
-          // Actualizar el campo de dirección en Formik
-          if (formikRef.current) {
-            formikRef.current.setFieldValue('address', addressData.fullAddress);
-          }
-          setShowAddressPicker(false);
-        }}
-        initialAddress={profile.address || ''}
-        title="Dirección de Entrega"
-      />
+
+      {/* Modal de Tooltip Usuario Fundador */}
+      <Modal
+        visible={showFounderTooltip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFounderTooltip(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowFounderTooltip(false)}>
+          <View style={styles.tooltipModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.tooltipModalContent}>
+                <View style={styles.tooltipHeader}>
+                  <Text style={styles.tooltipIcon}>👑</Text>
+                  <Text style={styles.tooltipTitle}>Usuario Fundador</Text>
+                </View>
+                <Text style={styles.tooltipMessage}>
+                  ¡Felicidades! Eres parte de nuestros usuarios fundadores. 
+                  Tienes acceso a descuentos exclusivos y beneficios especiales.
+                </Text>
+                <View style={styles.tooltipBenefits}>
+                  <Text style={styles.tooltipBenefitItem}>✨ Descuento promocional del {profile?.promotional_discount || 10}%</Text>
+                  <Text style={styles.tooltipBenefitItem}>🎯 Acceso prioritario a nuevas funciones</Text>
+                  <Text style={styles.tooltipBenefitItem}>💎 Estatus premium vitalicio</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.tooltipCloseButton}
+                  onPress={() => setShowFounderTooltip(false)}
+                  activeOpacity={0.8}>
+                  <Text style={styles.tooltipCloseButtonText}>¡Genial!</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Toast de éxito para direcciones (tipo carrito) */}
+      {showSuccessToast && (
+        <Animated.View
+          style={[
+            styles.successToast,
+            {
+              opacity: toastOpacity,
+              transform: [{translateY: toastTranslateY}],
+            },
+          ]}>
+          <View style={styles.successToastContent}>
+            <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+            <View style={styles.successToastTextContainer}>
+              <Text style={styles.successToastText}>
+                {toastMessage}
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+      
       </ScrollView>
     </Fragment>
   );
@@ -1172,11 +1435,36 @@ const styles = StyleSheet.create({
   scrollContent: containers.scrollContent,
   // === HEADER - ESTILOS ESPECÍFICOS (se mantienen) ===
   header: containers.avatarContainer,
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 12,
+  },
+  founderBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FFD700', // Dorado
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  founderBadgeIcon: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   // === TIPOGRAFÍA MIGRADA AL TEMA ===
   name: {
@@ -1336,6 +1624,10 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
     flex: 1,
+  },
+  dateTextDisabled: {
+    color: 'rgba(47,47,47,0.5)', // Gris para fechas no editables
+    fontFamily: fonts.regular, // Quitar bold
   },
   datePlaceholder: {
     fontFamily: fonts.regular,
@@ -1518,5 +1810,172 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+  
+  // === ESTILOS DEL TOOLTIP USUARIO FUNDADOR ===
+  tooltipModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  tooltipModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  tooltipIcon: {
+    fontSize: 28,
+    marginRight: 8,
+  },
+  tooltipTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#8B5E3C',
+    textAlign: 'center',
+  },
+  tooltipMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  tooltipBenefits: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  tooltipBenefitItem: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  tooltipCloseButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  tooltipCloseButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  
+  // === ESTILOS PARA SECCIÓN DE DIRECCIONES ===
+  addressInfoContainer: {
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.15)',
+  },
+  addressInfo: {
+    marginBottom: 12,
+  },
+  addressLabel: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#8B5E3C',
+    marginBottom: 8,
+  },
+  addressText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    lineHeight: 20,
+    backgroundColor: '#FFF',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+  },
+  addressTextDisabled: {
+    color: 'rgba(47,47,47,0.7)',
+    backgroundColor: '#F9F9F9',
+  },
+  addressPlaceholder: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: 'rgba(47,47,47,0.5)',
+    fontStyle: 'italic',
+    backgroundColor: '#F9F9F9',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.1)',
+    borderStyle: 'dashed',
+  },
+  editSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  
+  // === ESTILOS DEL TOAST DE ÉXITO (tipo carrito) ===
+  successToast: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 80, // Misma altura que ProductDetails
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+  },
+  successToastContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#33A744',
+  },
+  successToastTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  successToastText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#33A744',
+    textAlign: 'left',
+    lineHeight: 18,
   },
 });

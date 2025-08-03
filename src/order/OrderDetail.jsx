@@ -222,13 +222,16 @@ const OrderDetails = () => {
             Keyboard.dismiss();
             setShowSupportModal(false);
           }}>
-          <KeyboardAvoidingView
-            style={styles.modalContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.modalOverlay}>
-                <TouchableWithoutFeedback onPress={() => {}}>
-                <View style={styles.modalContent}>
+          <View style={styles.modalContainer}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <ScrollView
+                  contentContainerStyle={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
                   <Formik
@@ -317,11 +320,10 @@ const OrderDetails = () => {
                       </>
                     )}
                   </Formik>
-                </View>
+                </ScrollView>
               </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
         </TouchableWithoutFeedback>
       </Modal>
     </View>
@@ -510,25 +512,24 @@ const styles = StyleSheet.create({
   // Estilos del modal
   modalContainer: {
     flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  keyboardAvoidingView: {
+    width: '90%',
+    maxHeight: '80%',
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 16,
     padding: 24,
-    width: '100%',
-    maxWidth: 400,
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
+    flexGrow: 1,
   },
   modalTitle: {
     fontFamily: fonts.bold,

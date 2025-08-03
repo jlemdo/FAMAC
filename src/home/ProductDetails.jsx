@@ -39,8 +39,12 @@ export default function ProductDetails() {
   const increaseQuantity = () => setQuantity(prev => prev + INCREMENT);
   const decreaseQuantity = () => quantity > MIN_QUANTITY && setQuantity(prev => prev - INCREMENT);
   
-  // Calcular precios (product.price es por 250g = 1 unidad)
-  const totalPrice = (product.price * quantity).toFixed(2); // precio por unidad * cantidad de unidades
+  // Calcular precios con descuentos aplicados
+  const discountNum = Number(product.discount) || 0;
+  const discountedPrice = product.price - discountNum;
+  const totalPrice = (discountedPrice * quantity).toFixed(2); // precio con descuento * cantidad
+  const totalSavings = (discountNum * quantity).toFixed(2); // ahorros totales
+  const originalTotalPrice = (product.price * quantity).toFixed(2); // precio original total
   
   // Formatear cantidad para mostrar (convertir unidades a gramos)
   const formatQuantity = (units) => {
@@ -119,18 +123,27 @@ export default function ProductDetails() {
         </View>
 
         <View style={styles.card}>
+          {/* Etiqueta de descuento sutil en esquina superior derecha */}
+          {discountNum > 0 && (
+            <View style={styles.discountCornerBadge}>
+              <Text style={styles.discountCornerText}>-${discountNum}</Text>
+            </View>
+          )}
+          
           <Image source={{uri: product.photo}} style={styles.image} />
-
-          {/* Precio base (250g) */}
-          <View style={styles.basePriceContainer}>
-            <Text style={styles.basePriceLabel}>Precio por 250g:</Text>
-            <Text style={styles.basePrice}>{formatPriceWithSymbol(product.price)}</Text>
-          </View>
           
           {/* Precio total dinámico */}
           <View style={styles.totalPriceContainer}>
             <Text style={styles.totalLabel}>Total por {formatQuantity(quantity)}:</Text>
-            <Text style={styles.totalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
+            {discountNum > 0 ? (
+              <View style={styles.totalPriceWithDiscount}>
+                <Text style={styles.originalTotalStriked}>{formatPriceWithSymbol(originalTotalPrice)}</Text>
+                <Text style={styles.totalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
+                <Text style={styles.savingsText}>¡Ahorras ${totalSavings}!</Text>
+              </View>
+            ) : (
+              <Text style={styles.totalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
+            )}
           </View>
 
 
@@ -304,6 +317,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 3,
+    position: 'relative',
+    overflow: 'visible',
   },
   image: {
     width: '100%',
@@ -311,22 +326,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  // Estilos de precios
-  basePriceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+  // Etiqueta de descuento en esquina (similar a Suggestions.jsx)
+  discountCornerBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#E63946',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+    transform: [{ rotate: '12deg' }],
   },
-  basePriceLabel: {
-    fontFamily: fonts.regular,
+  discountCornerText: {
     fontSize: fonts.size.small,
-    color: '#666',
-    marginRight: 8,
-  },
-  basePrice: {
     fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#D27F27',
+    color: '#FFF',
+    textAlign: 'center',
   },
   totalPriceContainer: {
     backgroundColor: '#F0F8FF',
@@ -348,6 +369,22 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.XL,
     color: '#D27F27',
     textAlign: 'center',
+  },
+  totalPriceWithDiscount: {
+    alignItems: 'center',
+  },
+  originalTotalStriked: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginBottom: 4,
+  },
+  savingsText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#33A744',
+    marginTop: 4,
   },
   // Estilos de cantidad
   quantitySection: {

@@ -8,6 +8,10 @@ export function CartProvider({ children }) {
     const [currentUserId, setCurrentUserId] = useState(null);
     const [onCartClearCallback, setOnCartClearCallback] = useState(null);
     const { user } = useContext(AuthContext);
+    
+    // Obtener descuento promocional del usuario (del login API)
+    const userPromotionalDiscount = user?.promotional_discount ? Number(user.promotional_discount) : 0;
+    const hasUserDiscount = userPromotionalDiscount > 0 && user?.promotion_id;
 
     // Add item to cart
     const addToCart = (product, quantityToAdd = 1) => {
@@ -18,7 +22,15 @@ export function CartProvider({ children }) {
                     item.id === product.id ? { ...item, quantity: item.quantity + quantityToAdd } : item
                 );
             } else {
-                return [...prevCart, { ...product, quantity: quantityToAdd }];
+                // Preservar información de descuento del producto
+                const discountNum = Number(product.discount) || 0;
+                return [...prevCart, { 
+                    ...product, 
+                    quantity: quantityToAdd,
+                    discount: discountNum, // Asegurar que el descuento se preserve
+                    originalPrice: product.price, // Guardar precio original para referencia
+                    discountedPrice: product.price - discountNum // Precio con descuento aplicado
+                }];
             }
         });
     };
@@ -71,8 +83,38 @@ export function CartProvider({ children }) {
         setCurrentUserId(userId);
     }, [user?.id, user?.email, currentUserId]);
 
-    // Calculate total price
-    const totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2);
+    // Calculate subtotal before any discounts (original prices)
+    const subtotalBeforeDiscounts = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+    // Calculate subtotal after product discounts but before user discount
+    const subtotalAfterProductDiscounts = cart.reduce((acc, item) => {
+        const itemDiscount = Number(item.discount) || 0;
+        const discountedPrice = item.price - itemDiscount;
+        return acc + discountedPrice * item.quantity;
+    }, 0);
+
+    // Calculate user promotional discount amount (percentage based)
+    const userDiscountAmount = hasUserDiscount 
+        ? subtotalAfterProductDiscounts * (userPromotionalDiscount / 100)
+        : 0;
+
+    // Calculate final total price (with all discounts applied)
+    const totalPrice = Math.max(0, subtotalAfterProductDiscounts - userDiscountAmount).toFixed(2);
+
+    // Calculate total savings from product discounts
+    const productDiscountSavings = cart.reduce((acc, item) => {
+        const itemDiscount = Number(item.discount) || 0;
+        return acc + itemDiscount * item.quantity;
+    }, 0);
+
+    // Calculate total savings (product discounts + user promotional discount)
+    const totalSavings = (productDiscountSavings + userDiscountAmount).toFixed(2);
+
+    // Format all values to 2 decimal places
+    const formattedSubtotalBeforeDiscounts = subtotalBeforeDiscounts.toFixed(2);
+    const formattedSubtotalAfterProductDiscounts = subtotalAfterProductDiscounts.toFixed(2);
+    const formattedUserDiscountAmount = userDiscountAmount.toFixed(2);
+    const formattedProductDiscountSavings = productDiscountSavings.toFixed(2);
 
     // Función para registrar callback de limpieza - memorizada para evitar bucles infinitos
     const setCartClearCallback = useCallback((callback) => {
@@ -86,6 +128,13 @@ export function CartProvider({ children }) {
             removeFromCart, 
             updateQuantity, 
             totalPrice, 
+            totalSavings,
+            subtotalBeforeDiscounts: formattedSubtotalBeforeDiscounts,
+            subtotalAfterProductDiscounts: formattedSubtotalAfterProductDiscounts,
+            userPromotionalDiscount,
+            userDiscountAmount: formattedUserDiscountAmount,
+            productDiscountSavings: formattedProductDiscountSavings,
+            hasUserDiscount,
             clearCart,
             setCartClearCallback 
         }}>
