@@ -18,7 +18,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
 import {OrderContext} from '../context/OrderContext';
@@ -105,12 +105,8 @@ export default function Cart() {
       );
       const profileData = res.data?.data?.[0] || {};
       setUserProfile(profileData);
-      console.log('📍 Perfil de usuario cargado en Cart:', {
-        address: profileData.address,
-        hasAddress: !!profileData.address?.trim()
-      });
     } catch (error) {
-      console.warn('⚠️ Error cargando perfil de usuario:', error);
+      // Error cargando perfil de usuario
     } finally {
       setLoadingProfile(false);
     }
@@ -126,7 +122,6 @@ export default function Cart() {
   useEffect(() => {
     const clearDeliveryInfo = () => {
       setDeliveryInfo(null);
-      console.log('📅 Información de entrega limpiada por cambio de usuario/logout');
     };
     
     if (setCartClearCallback) {
@@ -140,12 +135,6 @@ export default function Cart() {
       const hasEmail = user?.email && user?.email?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
       setEmailLocked(hasEmail); // Bloquear si ya tiene email (ya hizo pedido)
-      
-      if (hasEmail) {
-        console.log('🔒 Guest con email guardado - bloqueando input:', user.email);
-      } else {
-        console.log('📧 Guest nuevo - permitiendo escribir email');
-      }
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
@@ -154,6 +143,15 @@ export default function Cart() {
       fetchUserProfile();
     }
   }, [user]);
+
+  // Actualizar perfil cuando la pantalla gana foco (para refrescar dirección actualizada)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user?.usertype !== 'Guest' && user?.id) {
+        fetchUserProfile();
+      }
+    }, [user?.id, user?.usertype])
+  );
 
   // Manejo simple del email - solo para guests nuevos
   const handleEmailChange = (newEmail) => {
@@ -182,12 +180,10 @@ export default function Cart() {
           // iOS: abrimos el diálogo nativo y luego comprobamos el permiso
           Geolocation.requestAuthorization('whenInUse');
           const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-          console.log('Permiso iOS location status:', status);
           granted = status === RESULTS.GRANTED;
         }
 
         if (!granted) {
-          console.warn('Permiso de ubicación no otorgado');
           return;
         }
 
@@ -197,7 +193,6 @@ export default function Cart() {
           timeout: 60000,
         })
           .then(location => {
-            console.log('Location:', location);
             setLatlong({
               ...latlong,
               driver_lat: location.latitude,
@@ -206,10 +201,9 @@ export default function Cart() {
           })
           .catch(error => {
             const {code, message} = error;
-            console.warn('Location error:', code, message);
           });
       } catch (error) {
-        console.warn('Error al solicitar permiso:', error);
+        // Error al solicitar permiso
       }
     };
 
@@ -222,10 +216,6 @@ export default function Cart() {
     
     // Si hay un usuario previo diferente al actual, limpiar timers
     if (currentUserId !== null && currentUserId !== userId) {
-      console.log('⏲️ Usuario cambió, limpiando timers:', {
-        previousUser: currentUserId,
-        currentUser: userId
-      });
       setTimers({});
     }
     
@@ -282,7 +272,6 @@ export default function Cart() {
         },
       });
       if (initError) {
-        console.error('❌ Error inicializando Stripe:', initError);
         throw initError;
       }
 
@@ -311,7 +300,6 @@ export default function Cart() {
       
       // Si es guest y no tenía email, actualizar el contexto con el email usado
       if (user?.usertype === 'Guest' && (!user?.email || user?.email?.trim() === '') && email?.trim()) {
-        console.log('📧 Actualizando email de guest en contexto después del pedido:', email);
         await updateUser({ email: email.trim() });
       }
       
@@ -359,9 +347,7 @@ export default function Cart() {
       // Limpiar carrito y información de entrega después del pedido exitoso
       clearCart();
       setDeliveryInfo(null);
-      console.log('🛒 Carrito y información de entrega limpiados después del pedido exitoso');
     } catch (err) {
-      console.error('Checkout failed:', err);
       showAlert({
         type: 'error',
         title: 'Error',
@@ -379,12 +365,6 @@ export default function Cart() {
     
     if (userType === 'driver') {
       // 2. Driver: siempre ubicación en tiempo real
-      console.log('📍 Driver: usando ubicación en tiempo real para tracking');
-      
-      // Validación simple: si no hay GPS, mostrar alert pero continuar
-      if (!latlong.driver_lat || !latlong.driver_long) {
-        console.warn('⚠️ Driver sin coordenadas GPS');
-      }
       
       return {
         customer_lat: latlong.driver_lat || '',
@@ -394,7 +374,6 @@ export default function Cart() {
     } 
     else if (userType === 'Guest') {
       // 4. Guest: siempre usa dirección manual (nunca ubicación automática)
-      console.log('📍 Guest: usando dirección manual para entrega');
       return {
         customer_lat: '', // No enviar coordenadas para guest
         customer_long: '',
@@ -404,18 +383,17 @@ export default function Cart() {
     } 
     else {
       // Usuario registrado
-      if (user?.address && user?.address?.trim()) {
-        // 1. Usuario registrado con dirección: usar dirección guardada
-        console.log('📍 Usuario registrado: usando dirección guardada para tracking');
+      const savedAddress = userProfile?.address || user?.address;
+      if (savedAddress && savedAddress.trim()) {
+        // 1. Usuario registrado con dirección: usar dirección guardada actualizada
         return {
           customer_lat: '', // No usar ubicación, usar dirección
           customer_long: '',
           address_source: 'saved_address',
-          delivery_address: user.address
+          delivery_address: savedAddress
         };
       } else {
         // 3. Usuario sin dirección que eligió usar ubicación actual
-        console.log('📍 Usuario sin dirección: usando ubicación en tiempo real para tracking');
         return {
           customer_lat: latlong.driver_lat || '',
           customer_long: latlong.driver_long || '',
@@ -466,19 +444,9 @@ export default function Cart() {
         delivery_slot: deliveryInfo?.slot || '',
       };
       
-      console.log('🛒 Enviando orden al backend:', payload);
-      
       const response = await axios.post('https://food.siliconsoft.pk/api/ordersubmit', payload);
-      
-      console.log('✅ Orden enviada exitosamente:', response.data);
       return response.data;
     } catch (err) {
-      console.error('❌ Order submit failed:', {
-        error: err,
-        response: err.response?.data,
-        status: err.response?.status,
-        config: err.config
-      });
       
       showAlert({
         type: 'error',
@@ -498,17 +466,13 @@ export default function Cart() {
     } else {
       // Usuario registrado: verificar si tiene dirección REAL del perfil
       const hasProfileAddress = userProfile?.address && userProfile?.address?.trim() !== '';
-      console.log('🛒 Checkout - verificando dirección:', {
-        userProfileAddress: userProfile?.address,
-        hasProfileAddress,
-        loadingProfile
-      });
       
       if (!hasProfileAddress) {
+        // No tiene dirección: mostrar modal para seleccionar/agregar
         setShowAddressModal(true);
       } else {
-        // Usuario tiene dirección: mostrar modal de selección
-        setShowAddressModal(true);
+        // Usuario tiene dirección: proceder directo al pago
+        completeOrder();
       }
     }
   };
@@ -525,8 +489,6 @@ export default function Cart() {
       });
       return;
     }
-    
-    console.log('🏠 Guest completando pedido con dirección manual:', address);
     setModalVisible(false);
     completeOrder();
   };
@@ -541,11 +503,9 @@ export default function Cart() {
 
         if (json.status === 'successsugerencias') {
           setUpsellItems(json.data);
-        } else {
-          console.error('Error fetching upsell items:', json);
         }
       } catch (error) {
-        console.error('Error fetching upsell items:', error);
+        // Error fetching upsell items
       } finally {
         setLoadingUpsell(false);
       }
@@ -879,7 +839,6 @@ export default function Cart() {
           setModalVisible(true);
         }}
         onConfirm={(addressData) => {
-          console.log('📍 Address selected:', addressData);
           setAddress(addressData.fullAddress);
           setShowAddressPicker(false);
           // Volver a abrir modal Guest después de confirmar dirección - SIN setTimeout

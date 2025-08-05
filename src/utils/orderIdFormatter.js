@@ -14,7 +14,6 @@ export const formatOrderId = (dateTime) => {
     
     // Verificar que la fecha es válida
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ Invalid date for order ID:', dateTime);
       return 'INVALID-ID';
     }
 
@@ -29,7 +28,6 @@ export const formatOrderId = (dateTime) => {
     // Formato final: AA-MM-DD-HH-MM-SS
     return `${year}${month}${day}-${hours}${minutes}${seconds}`;
   } catch (error) {
-    console.error('Error formatting order ID:', error);
     return 'ERROR-ID';
   }
 };
@@ -65,7 +63,6 @@ export const parseOrderId = (orderId) => {
       timeStyle: 'short',
     });
   } catch (error) {
-    console.error('Error parsing order ID:', error);
     return 'Error al parsear';
   }
 };
@@ -75,8 +72,6 @@ export const parseOrderId = (orderId) => {
  * 
  * const orderDateTime = '2025-07-31T10:08:30.000Z';
  * const orderId = formatOrderId(orderDateTime);
- * console.log(orderId); // "250731-100830"
  * 
  * const readable = parseOrderId(orderId);
- * console.log(readable); // "31 jul 2025 10:08"
  */

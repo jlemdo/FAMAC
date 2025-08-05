@@ -25,7 +25,6 @@ export function AlertProvider({ children }) {
     onConfirm = () => {},
     onCancel = null,
   }) => {
-    console.log('🚨 AlertContext: showAlert called with onCancel:', !!onCancel);
     setAlertConfig({ type, title, message, cancelText, confirmText, onConfirm, onCancel });
     setAlertVisible(true);
   };
@@ -43,11 +42,9 @@ export function AlertProvider({ children }) {
         cancelText={alertConfig.cancelText}
         confirmText={alertConfig.confirmText}
         onCancel={alertConfig.onCancel ? () => {
-          console.log('🚨 AlertContext: ejecutando onCancel personalizado');
           hideAlert();
           alertConfig.onCancel();
         } : () => {
-          console.log('🚨 AlertContext: ejecutando hideAlert por defecto');
           hideAlert();
         }}
         onConfirm={() => {

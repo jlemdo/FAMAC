@@ -96,12 +96,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       const idToken = tokens.idToken;
       const { user } = userInfo.data; // Acceso correcto - es userInfo.data.user
       
-      console.log('🔍 Google Sign In - Datos del usuario:', {
-        givenName: user.givenName,
-        familyName: user.familyName,
-        name: user.name,
-        email: user.email
-      });
 
       // Enviar el ID token CON los datos del usuario para el backend
       const {data} = await axios.post('https://food.siliconsoft.pk/api/auth/google', {
@@ -118,16 +112,13 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       
       // Si el usuario no tiene nombre/apellido, actualizarlos con datos de Google
       if (data.user && (!data.user.first_name || !data.user.last_name)) {
-        console.log('🔄 Usuario sin nombre/apellido, actualizando con datos de Google...');
         try {
           await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
             userid: data.user.id,
             first_name: user.givenName,
             last_name: user.familyName,
           });
-          console.log('✅ Perfil actualizado con datos de Google');
         } catch (updateError) {
-          console.warn('⚠️ No se pudo actualizar el perfil:', updateError);
         }
       }
       

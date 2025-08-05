@@ -17,7 +17,6 @@
 //         const response = await axios.get(`https://food.siliconsoft.pk/api/searchproducts?cat=&product=${query}`);
 //         setResults(response.data?.products || []); // adjust according to your API response shape
 //       } catch (err) {
-//         console.error(err);
 //       } finally {
 //         setLoading(false);
 //       }
@@ -88,7 +87,7 @@ useEffect(() => {
 
       setResults(filtered);
     } catch (err) {
-      console.error('Error en SearchResults:', err);
+      // Error en SearchResults
     } finally {
       setLoading(false);
     }

@@ -58,7 +58,7 @@ const parseFlexibleDate = (dateValue) => {
       return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1);
     }
   } catch (error) {
-    console.warn('Error parsing date:', error);
+    // Error parsing date
   }
   
   return null;
@@ -131,9 +131,8 @@ export const ProfileProvider = ({ children }) => {
       const missing = getMissingData(profileData);
       setMissingData(missing);
       
-      console.log('📊 Profile context - Missing data:', missing.map(m => m.field));
     } catch (error) {
-      console.warn('Error fetching profile data:', error);
+      // Error fetching profile data
       setMissingData([]);
     } finally {
       setLoading(false);

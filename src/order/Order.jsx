@@ -28,7 +28,6 @@ const Order = () => {
   const handleInvoices = order => {
     const invoiceURL = `https://food.siliconsoft.pk/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
-      console.error('Failed to open URL:', err);
       alert('Unable to open invoice. Please try again.');
     });
   };
@@ -124,7 +123,6 @@ const Order = () => {
           renderItem={({item}) => {
             // Validar que el item existe y tiene las propiedades necesarias
             if (!item || typeof item !== 'object') {
-              console.warn('⚠️ Invalid order item:', item);
               return null;
             }
 

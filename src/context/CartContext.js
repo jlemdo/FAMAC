@@ -47,7 +47,6 @@ export function CartProvider({ children }) {
         if (onCartClearCallback) {
             onCartClearCallback();
         }
-        console.log('🛒 Carrito limpiado desde CartContext');
     };
 
 
@@ -68,10 +67,6 @@ export function CartProvider({ children }) {
         
         // Si hay un usuario previo diferente al actual, limpiar carrito
         if (currentUserId !== null && currentUserId !== userId) {
-            console.log('🛒 Usuario cambió, limpiando carrito:', {
-                previousUser: currentUserId,
-                currentUser: userId
-            });
             setCart([]);
             // Ejecutar callback para limpiar información adicional cuando cambia usuario
             if (onCartClearCallback) {

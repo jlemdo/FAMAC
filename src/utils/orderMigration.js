@@ -8,7 +8,6 @@ import axios from 'axios';
  */
 export const migrateGuestOrders = async (guestEmail) => {
   try {
-    console.log('🔄 Iniciando migración de órdenes Guest:', guestEmail);
     
     const response = await axios.post('https://food.siliconsoft.pk/api/migrateorders', {
       user_email: guestEmail,
@@ -16,19 +15,9 @@ export const migrateGuestOrders = async (guestEmail) => {
       tax_details: "" // Campo requerido, vacío para migración
     });
     
-    console.log('✅ Migración de órdenes exitosa:', response.data);
     return true;
     
   } catch (error) {
-    console.error('❌ Error en migración de órdenes:', error.message);
-    console.error('❌ Error details:', {
-      guestEmail,
-      errorMessage: error.message,
-      errorCode: error.code,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      responseData: error.response?.data ? JSON.stringify(error.response.data) : 'No response data'
-    });
     return false;
   }
 };

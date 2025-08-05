@@ -92,10 +92,9 @@ const AddressPicker = ({
               latitude: location.lat,
               longitude: location.lng,
             });
-            console.log('📍 Geocodificado initialAddress:', initialAddress, '→', location);
           }
         } catch (error) {
-          console.error('Error geocodificando initialAddress:', error);
+          // Error geocodificando initialAddress
         }
       };
 
@@ -133,12 +132,41 @@ const AddressPicker = ({
         addressData.exteriorNumber = component.long_name;
       } else if (types.includes('route')) {
         addressData.street = component.long_name;
-      } else if (types.includes('sublocality') || types.includes('sublocality_level_1')) {
-        // Intentar mapear a alcaldía conocida
-        const foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
-          a.toLowerCase().includes(component.long_name.toLowerCase()) ||
-          component.long_name.toLowerCase().includes(a.toLowerCase())
+      } else if (types.includes('sublocality') || types.includes('sublocality_level_1') || 
+                 types.includes('political') || types.includes('locality') || 
+                 types.includes('administrative_area_level_2') || types.includes('administrative_area_level_1')) {
+        // Intentar mapear a alcaldía conocida con múltiples estrategias
+        const componentName = component.long_name.toLowerCase();
+        
+        // Estrategia 1: Coincidencia exacta
+        let foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
+          a.toLowerCase() === componentName
         );
+        
+        // Estrategia 2: Coincidencia parcial
+        if (!foundAlcaldia) {
+          foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
+            a.toLowerCase().includes(componentName) ||
+            componentName.includes(a.toLowerCase())
+          );
+        }
+        
+        // Estrategia 3: Coincidencias especiales para nombres comunes
+        if (!foundAlcaldia) {
+          const specialMappings = {
+            'benito juarez': 'Benito Juárez',
+            'gustavo a madero': 'Gustavo A. Madero',
+            'cuauhtemoc': 'Cuauhtémoc',
+            'miguel hidalgo': 'Miguel Hidalgo',
+            'venustiano carranza': 'Venustiano Carranza',
+            'neza': 'Nezahualcóyotl',
+            'nezahualcoyotl': 'Nezahualcóyotl',
+            'atizapan': 'Atizapán',
+            'cuautitlan': 'Cuautitlán Izcalli'
+          };
+          foundAlcaldia = specialMappings[componentName];
+        }
+        
         if (foundAlcaldia) {
           addressData.alcaldia = foundAlcaldia;
           addressData.city = alcaldiasCDMX.includes(foundAlcaldia) ? 'CDMX' : 'Estado de México';
@@ -192,7 +220,7 @@ const AddressPicker = ({
         setSelectedLocation({ latitude, longitude });
       }
     } catch (error) {
-      console.error('Error with reverse geocoding:', error);
+      // Error with reverse geocoding
       setSelectedLocation({ latitude, longitude });
     }
   };
@@ -350,7 +378,6 @@ const AddressPicker = ({
                               addressForm.city === city && styles.cityButtonSelected
                             ]}
                             onPress={() => {
-                              console.log('Cambiando ciudad a:', city);
                               setAddressForm(prev => ({ 
                                 ...prev, 
                                 city: city,

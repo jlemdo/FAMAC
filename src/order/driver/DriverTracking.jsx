@@ -40,7 +40,6 @@ const DriverTracking = ({order}) => {
   const [eta, setEta] = useState({distance: 0, duration: 0});
   const mapRef = useRef(null);
 
-  // console.log('order', order);
 
   const handleDriverLocation = async () => {
     submitDriverLocation();
@@ -62,7 +61,6 @@ const DriverTracking = ({order}) => {
         fetchOrder();
       }
     } catch (error) {
-      // console.log(error);
     }
   }, [order.id, latlong, fetchOrder]);
 
@@ -72,12 +70,10 @@ const DriverTracking = ({order}) => {
         `https://food.siliconsoft.pk/api/orderdetails/${order.id}`,
       );
       setCurrentStatus(res?.data?.order?.status);
-      // console.log("res?.data?.order?.status", res?.data?.order?.status)
       // if (res?.data?.order?.status == "On the Way") {
       //     completeOrderFromDriver()
       // }
     } catch (err) {
-      // console.log('Order fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -92,9 +88,7 @@ const DriverTracking = ({order}) => {
         },
       );
       fetchOrder();
-      // console.log('response', response);
     } catch (error) {
-      // console.log(error);
     }
   };
 
@@ -117,12 +111,10 @@ const DriverTracking = ({order}) => {
   //                     });
   //                 }
   //             } else {
-  //                 console.warn('Location permission not granted.');
   //             }
   //         }
   //     } catch (error) {
   //         const { code, message } = error;
-  //         console.warn('Location error:', code, message);
   //     } finally {
   //     }
   // };
@@ -130,14 +122,13 @@ const DriverTracking = ({order}) => {
   const getCurrentLocation = () => {
     Geolocation.getCurrentPosition(
       pos => {
-        console.log('Ubicación GPS actual:', pos.coords);
         setLatlong({
           driver_lat: pos.coords.latitude,
           driver_long: pos.coords.longitude,
         });
       },
       error => {
-        console.warn('Error obteniendo ubicación:', error);
+        // Error obteniendo ubicación
       },
       {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
     );
@@ -157,7 +148,6 @@ const DriverTracking = ({order}) => {
         driver_long: parseFloat(lastLocation.driver_long),
       });
     } catch (error) {
-      // console.log('Driver location fetch error:', error);
     }
   }, [order.id]);
 
@@ -173,14 +163,14 @@ const DriverTracking = ({order}) => {
         Geolocation.requestAuthorization('whenInUse');
         const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
         if (status !== RESULTS.GRANTED) {
-          console.warn('Permiso de ubicación iOS no otorgado');
+          // Permiso de ubicación iOS no otorgado
         }
       } else {
         const result = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         );
         if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-          console.warn('Permiso de ubicación Android no otorgado');
+          // Permiso de ubicación Android no otorgado
         }
       }
     }
@@ -271,7 +261,7 @@ const DriverTracking = ({order}) => {
                     animated: true,
                   });
                 }}
-                onError={err => console.error('Directions error', err)}
+                onError={err => {/* Directions error */}}
               />
 
               {/* 2) Marcadores */}

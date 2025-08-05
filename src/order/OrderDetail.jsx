@@ -50,10 +50,9 @@ const OrderDetails = () => {
       const res = await axios.get(
         `https://food.siliconsoft.pk/api/orderdetails/${orderId}`,
       );
-      console.log('res 😁', res);
       setOrder(res.data.order); // adjust according to your response shape
     } catch (err) {
-      console.log('Order fetch error:', err);
+      // Order fetch error
     } finally {
       setLoading(false);
     }

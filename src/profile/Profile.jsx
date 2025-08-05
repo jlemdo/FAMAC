@@ -102,7 +102,7 @@ const parseFlexibleDate = (dateValue) => {
       return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1);
     }
   } catch (error) {
-    console.warn('Error parsing date:', error);
+    // Error parsing date
   }
   
   return null;
@@ -170,28 +170,11 @@ export default function Profile({ navigation }) {
         `https://food.siliconsoft.pk/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
-      console.log('🎂 API data received:', {
-        birthDate: data.birthDate,
-        birth_date: data.birth_date,
-        dob: data.dob,
-        phone: data.phone,
-        address: data.address,
-        promotion_id: data.promotion_id,
-        promotional_discount: data.promotional_discount
-      });
       
       const dateValue = data.birthDate || data.birth_date || data.dob;
       const birthDate = parseFlexibleDate(dateValue);
       
-      console.log('🎂 Parsing date:', dateValue, 'Result:', birthDate, 'Valid:', !!birthDate);
       
-      if (!birthDate && dateValue) {
-        console.warn('Failed to parse birth date:', dateValue);
-      } else if (!dateValue) {
-        console.log('🎂 No birth date found in API response');
-      } else {
-        console.log('🎂 Valid birth date set:', birthDate);
-      }
       
       const profileData = {
         first_name: data.first_name || '',
@@ -225,13 +208,6 @@ export default function Profile({ navigation }) {
   const getMissingData = useCallback(() => {
     const missing = [];
     
-    console.log('🔍 Checking missing data for profile:', {
-      phone: profile.phone,
-      address: profile.address,
-      birthDate: profile.birthDate,
-      birthDateType: typeof profile.birthDate,
-      birthDateValid: profile.birthDate instanceof Date ? !isNaN(profile.birthDate.getTime()) : false
-    });
     
     if (!profile.phone || profile.phone.trim() === '') {
       missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
@@ -248,7 +224,6 @@ export default function Profile({ navigation }) {
       missing.push({ field: 'birthDate', label: 'Fecha de cumpleaños', reason: 'para beneficios especiales en tu día' });
     }
     
-    console.log('📝 Missing data detected:', missing.map(m => m.field));
     return missing;
   }, [profile]);
 
@@ -317,8 +292,6 @@ export default function Profile({ navigation }) {
   // Función para получить las órdenes ordenadas
   const getSortedOrders = useCallback(() => {
     if (orders && orders.length > 0) {
-      // Debug: ver estructura de las órdenes (remover después)
-      console.log('📦 Órdenes del contexto:', orders[0]);
       
       // Ordenar por fecha de creación (más reciente primero)
       return [...orders].sort((a, b) => {
@@ -334,15 +307,6 @@ export default function Profile({ navigation }) {
   const formatOrderDisplay = useCallback((order) => {
     if (!order) return { value: '', label: 'Orden no válida' };
     
-    // Debug: ver qué propiedades tiene cada orden (remover después)
-    console.log('🔍 Orden individual:', {
-      id: order?.id,
-      created_at: order?.created_at,
-      total_price: order?.total_price,
-      status: order?.status,
-      allKeys: Object.keys(order || {})
-    });
-    
     // Obtener ID con múltiples fallbacks
     const orderId = order.id || order.order_id || order.orderId || 'N/A';
     
@@ -357,7 +321,7 @@ export default function Profile({ navigation }) {
           year: 'numeric'
         });
       } catch (e) {
-        console.warn('Error formateando fecha:', e);
+        // Error formateando fecha
       }
     }
     
@@ -378,8 +342,6 @@ export default function Profile({ navigation }) {
     }
     if (status) displayText += ` - ${status}`;
     
-    console.log('📋 Texto formateado:', displayText);
-    console.log('📋 ID real (value):', orderId, 'ID formateado (display):', formattedOrderId);
     
     return {
       value: orderId.toString(), // ✅ IMPORTANTE: Seguimos enviando el ID real (162) a la API
@@ -551,11 +513,6 @@ export default function Profile({ navigation }) {
               dobFormatted = `${monthName} ${year}`;
             }
             
-            console.log('💾 Submitting profile update:', {
-              ...values,
-              birthDate: values.birthDate,
-              dobFormatted
-            });
             
             // Preparar payload - solo incluir dob si debe actualizarse
             const payload = {
@@ -706,10 +663,7 @@ export default function Profile({ navigation }) {
               onPress={() => {
                 // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
                 if (isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()))) {
-                  console.log('📅 Opening month/year picker...');
                   setShowMonthYearPicker(true);
-                } else {
-                  console.log('📅 Birth date picker disabled - not editing or user already has birth date');
                 }
               }}
               activeOpacity={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? 1 : 0.7}
@@ -821,7 +775,6 @@ export default function Profile({ navigation }) {
                           <TouchableOpacity
                             style={styles.pickerConfirmButton}
                             onPress={() => {
-                              console.log('📅 Month/Year selected:', values.birthDate);
                               setShowMonthYearPicker(false);
                             }}>
                             <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
@@ -937,8 +890,13 @@ export default function Profile({ navigation }) {
                     // Salir del modo edición
                     setIsEditingAddress(false);
                     
-                    // Mostrar toast de éxito (tipo carrito)
-                    showSuccessMessage('¡Dirección de entrega actualizada!');
+                    // Mostrar alerta de éxito más visible
+                    showAlert({
+                      type: 'success',
+                      title: '✅ ¡Dirección actualizada!',
+                      message: 'Tu dirección de entrega se guardó correctamente.',
+                      confirmText: 'Perfecto',
+                    });
                   }
                 } catch {
                   showAlert({
@@ -994,7 +952,6 @@ export default function Profile({ navigation }) {
                     visible={showAddressPicker}
                     onClose={() => setShowAddressPicker(false)}
                     onConfirm={(addressData) => {
-                      console.log('📍 Address selected:', addressData);
                       // Actualizar el campo de dirección
                       setFieldValue('address', addressData.fullAddress);
                       setShowAddressPicker(false);
@@ -1389,8 +1346,8 @@ export default function Profile({ navigation }) {
                 </Text>
                 <View style={styles.tooltipBenefits}>
                   <Text style={styles.tooltipBenefitItem}>✨ Descuento promocional del {profile?.promotional_discount || 10}%</Text>
-                  <Text style={styles.tooltipBenefitItem}>🎯 Acceso prioritario a nuevas funciones</Text>
-                  <Text style={styles.tooltipBenefitItem}>💎 Estatus premium vitalicio</Text>
+                  {/* <Text style={styles.tooltipBenefitItem}>🎯 Acceso prioritario a nuevas funciones</Text>
+                  <Text style={styles.tooltipBenefitItem}>💎 Estatus premium vitalicio</Text> */}
                 </View>
                 <TouchableOpacity
                   style={styles.tooltipCloseButton}

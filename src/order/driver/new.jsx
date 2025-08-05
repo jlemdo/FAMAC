@@ -25,7 +25,6 @@ const OrderDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const orderId = route.params?.order;
-  console.log('order', orderId);
   const {user} = useContext(AuthContext);
   const {addToOrder} = useContext(OrderContext);
   const [chatMessages, setChatMessages] = useState([]);
@@ -63,12 +62,10 @@ const OrderDetails = () => {
   //                 }
 
   //             } else {
-  //                 console.warn('Location permission not granted.');
   //             }
   //         }
   //     } catch (error) {
   //         const { code, message } = error;
-  //         console.warn('Location error:', code, message);
   //     } finally {
   //         setLoadingLocation(false);
   //     }
@@ -102,7 +99,6 @@ const OrderDetails = () => {
       }
 
       if (!granted) {
-        console.warn('Permiso de ubicación no otorgado');
         return;
       }
 
@@ -123,7 +119,7 @@ const OrderDetails = () => {
       }
     } catch (error) {
       const {code, message} = error;
-      console.warn('Location error:', code, message);
+      // Location error
     } finally {
       // Siempre quitas el loading al final
       setLoadingLocation(false);
@@ -132,9 +128,7 @@ const OrderDetails = () => {
 
   // Post driver location
   const handleDriverLocation = async () => {
-    console.log('order.status', order.status);
     if (order.status == 'Open') {
-      console.log('order.status', order.status);
       order.status = 'On the Way';
       submitDriverLocation();
     } else if (order.status == 'On the Way') {
@@ -155,9 +149,8 @@ const OrderDetails = () => {
         'https://food.siliconsoft.pk/api/driverlocsubmit',
         payload,
       );
-      console.log('driver location submit res', response);
     } catch (error) {
-      console.log(error);
+      // Error submitting driver location
     }
   }, [order.id, latlong]);
 
@@ -169,9 +162,8 @@ const OrderDetails = () => {
           orderid: order.id,
         },
       );
-      console.log('response', response);
     } catch (error) {
-      console.log(error);
+      // Error completing order
     }
   };
 
@@ -191,7 +183,7 @@ const OrderDetails = () => {
       );
       setOrder(res.data.data); // adjust according to your response shape
     } catch (err) {
-      console.log('Order fetch error:', err);
+      // Order fetch error
     } finally {
     }
   }, [order.id]);
@@ -202,7 +194,6 @@ const OrderDetails = () => {
     let msgInterval = null;
 
     if (order.status === 'Open') {
-      console.log('check12');
       getCurrentLocation();
     }
 
@@ -247,7 +238,6 @@ const OrderDetails = () => {
       const response = await axios.get(
         `https://food.siliconsoft.pk/api/msgfetch/${order.id}`,
       );
-      console.log('response', response);
       if (response.data) {
         const formattedMessages = response.data.data.reverse().map(msg => ({
           sender: msg.sender,
@@ -257,7 +247,7 @@ const OrderDetails = () => {
         setChatMessages(formattedMessages);
       }
     } catch (err) {
-      console.log('Chat fetch error:', err);
+      // Chat fetch error
     }
   }, [order.id]);
 
@@ -270,7 +260,6 @@ const OrderDetails = () => {
       // if (response?.data?.data?.length) {
       const locations = response.data.data;
       const lastLocation = locations[locations.length - 1];
-      console.log('lastLocation', lastLocation);
       // if (lastLocation?.driver_lat && lastLocation?.driver_long) {
       setLatlong(null);
       setLatlong({
@@ -280,7 +269,7 @@ const OrderDetails = () => {
       // }
       // }
     } catch (error) {
-      console.log('Driver location fetch error:', error);
+      // Driver location fetch error
     } finally {
       setLoadingLocation(false);
     }
@@ -306,7 +295,7 @@ const OrderDetails = () => {
         setNewMessage('');
       }
     } catch (error) {
-      console.log('Send message error:', error);
+      // Send message error
     }
   };
 

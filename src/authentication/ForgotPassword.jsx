@@ -71,7 +71,6 @@ export default function ForgotPassword({ onBackToLogin }) {
           message: 'Intenta de nuevo más tarde.',
           confirmText: 'Cerrar',
         });
-        console.error(e);
       }
     } finally {
       setSubmitting(false);

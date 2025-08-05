@@ -52,14 +52,9 @@ export default function CustomAlert({
                   <TouchableOpacity
                     style={[styles.button, styles.outlineButton, { borderColor: color }]}
                     onPress={() => {
-                      console.log('🚨 CustomAlert: botón cancelar presionado');
                       Keyboard.dismiss();
                       if (onCancel) {
-                        console.log('🚨 CustomAlert: ejecutando onCancel callback');
                         onCancel();
-                        console.log('🚨 CustomAlert: onCancel callback ejecutado');
-                      } else {
-                        console.log('🚨 CustomAlert: no hay callback onCancel');
                       }
                     }}
                   >

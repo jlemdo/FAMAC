@@ -64,7 +64,7 @@ export default function SignupBasic({ navigation, route }) {
 
   } catch (err) {
     if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
-    console.warn('Google fill error', err);
+    // Google fill error
   }
 };
 

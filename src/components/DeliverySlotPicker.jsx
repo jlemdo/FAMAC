@@ -52,7 +52,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ]);
       }
     } catch (error) {
-      console.error('Error fetching delivery slots:', error);
+      // Error fetching delivery slots
       // Fallback slots en caso de error
       setAvailableSlots([
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },

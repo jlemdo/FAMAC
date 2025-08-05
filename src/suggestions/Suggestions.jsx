@@ -36,7 +36,7 @@ export default function Suggestions() {
         }
       } catch (error) {
         setError('Error de conexión. Inténtalo de nuevo.');
-        console.error('Error fetching suggestions:', error);
+        // Error fetching suggestions
       } finally {
         setLoading(false);
       }

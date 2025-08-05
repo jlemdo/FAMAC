@@ -78,7 +78,7 @@ const Header = ({onLogout}) => {
       setSuggestions(filtered);
     } catch (err) {
       if (!axios.isCancel(err)) {
-        console.error('Search API error:', err);
+        // Search API error
       }
     }
   }, []);

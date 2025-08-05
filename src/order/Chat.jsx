@@ -25,14 +25,13 @@ export default function Chat({ orderId }) {
                 setNewMessage('');
             }
         } catch (error) {
-            console.log('Send message error:', error);
+            // Send message error
         }
     };
 
     const fetchMessages = useCallback(async () => {
         try {
             const response = await axios.get(`https://food.siliconsoft.pk/api/msgfetch/${orderId}`);
-            console.log('response', response);
             if (response.data) {
                 const formattedMessages = response.data.data.reverse().map(msg => ({
                     sender: msg.sender,
@@ -42,7 +41,7 @@ export default function Chat({ orderId }) {
                 setChatMessages(formattedMessages);
             }
         } catch (err) {
-            console.log('Chat fetch error:', err);
+            // Chat fetch error
         }
     }, [orderId]);
 

@@ -166,7 +166,6 @@ export default function CategoriesList() {
     axios
       .get('https://food.siliconsoft.pk/api/productscats')
       .then(response => {
-        console.log('response category', response);
         const originalCategories = response.data.data;
         const sortedCategories = sortCategoriesByOrder(originalCategories);
         setCategories(sortedCategories);
@@ -265,7 +264,7 @@ export default function CategoriesList() {
                         }
                       }}
                       onError={(error) => {
-                        console.log('Video error:', error);
+                        // Video error
                       }}
                       bufferConfig={{
                         minBufferMs: 1000,
@@ -325,10 +324,10 @@ export default function CategoriesList() {
                   muted={fullscreenMuted}
                   paused={fullscreenPaused}
                   onLoad={() => {
-                    console.log(`Fullscreen video ${fullscreenVideoIndex} loaded`);
+                    // Fullscreen video loaded
                   }}
                   onError={(error) => {
-                    console.log('Fullscreen video error:', error);
+                    // Fullscreen video error
                   }}
                 />
               </TouchableOpacity>

@@ -8,7 +8,6 @@ let AsyncStorage;
 try {
   AsyncStorage = require('@react-native-async-storage/async-storage').default;
 } catch (e) {
-  console.warn('⚠️ AsyncStorage no disponible:', e);
   AsyncStorage = null;
 }
 
@@ -49,7 +48,6 @@ export function AuthProvider({ children }) {
           setIsLoggedIn(false);
         }
       } catch (err) {
-        console.warn('⚠️ AuthContext: fallo al leer AsyncStorage', err);
         // En caso de error, mostrar login
         setUser(null);
         setIsLoggedIn(false);
@@ -60,14 +58,11 @@ export function AuthProvider({ children }) {
   // Función para limpiar datos de guest después de migración exitosa
   const clearGuestData = async (guestEmail) => {
     try {
-      console.log('🧹 Limpiando datos de guest:', guestEmail);
       
       // Aquí podrías agregar llamadas API para limpiar datos del guest del servidor si es necesario
       // Por ejemplo: await axios.delete(`/api/guest-cleanup/${guestEmail}`);
       
-      console.log('✅ Datos de guest limpiados exitosamente');
     } catch (error) {
-      console.warn('⚠️ Error limpiando datos de guest:', error);
     }
   };
 
@@ -92,7 +87,6 @@ export function AuthProvider({ children }) {
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUserData));
         await AsyncStorage.setItem('persistSession', 'true'); // Activar persistencia permanente
       } catch (err) {
-        console.warn('⚠️ AuthContext: fallo al guardar AsyncStorage', err);
       }
     }
     
@@ -101,29 +95,23 @@ export function AuthProvider({ children }) {
     
     // Migrar órdenes de Guest si es necesario (EN BACKGROUND para no bloquear UI)
     if (wasGuest && userData.usertype !== 'Guest') {
-      console.log('🔄 Detectado cambio de Guest a usuario registrado');
       
       // Solo migrar si el Guest tenía email (significa que hizo pedidos)
       if (previousUser.email && previousUser.email.trim()) {
-        console.log('📦 Guest tenía pedidos (email: ' + previousUser.email + '), iniciando migración en background...');
         
         // Ejecutar migración en background sin bloquear UI
         setTimeout(async () => {
           try {
             const migrationSuccess = await migrateGuestOrders(previousUser.email);
             if (migrationSuccess) {
-              console.log('✅ Migración de órdenes completada exitosamente en background');
               // Limpiar rastros del guest anterior para futuras sesiones
               await clearGuestData(previousUser.email);
             } else {
-              console.log('⚠️ Migración de órdenes falló en background');
             }
           } catch (error) {
-            console.error('❌ Error durante migración de órdenes en background:', error.message);
           }
         }, 1000); // 1 segundo de delay para permitir que la UI se actualice primero
       } else {
-        console.log('✅ Guest sin pedidos (sin email), no necesita migración');
       }
     }
   };
@@ -132,7 +120,6 @@ export function AuthProvider({ children }) {
     // Asegurar que guestEmail es string o null
     const safeEmail = typeof guestEmail === 'string' ? guestEmail : null;
     
-    console.log('👤 Iniciando sesión como guest:', safeEmail ? 'con email' : 'nuevo');
     
     // Crear objeto limpio directamente con tipos primitivos
     const cleanGuestUser = {
@@ -158,7 +145,6 @@ export function AuthProvider({ children }) {
         await AsyncStorage.setItem('userData', JSON.stringify(jsonData));
         await AsyncStorage.setItem('persistSession', 'true');
       } catch (err) {
-        console.warn('⚠️ AuthContext: fallo al guardar sesión de invitado', err);
       }
     }
     
@@ -184,12 +170,10 @@ export function AuthProvider({ children }) {
         };
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUpdatedUser));
       } catch (err) {
-        console.warn('⚠️ AuthContext: fallo al actualizar AsyncStorage', err);
       }
     }
     
     setUser(updatedUser);
-    console.log('👤 Usuario actualizado:', updatedUser);
   };
 
   const logout = async () => {
@@ -198,11 +182,9 @@ export function AuthProvider({ children }) {
         await AsyncStorage.removeItem('userData');
         await AsyncStorage.removeItem('persistSession'); // Eliminar también bandera de persistencia
       } catch (err) {
-        console.warn('⚠️ AuthContext: fallo al eliminar AsyncStorage', err);
       }
     }
     
-    console.log('🚪 Cerrando sesión y limpiando datos de usuario');
     setUser(null);
     setIsLoggedIn(false);
     

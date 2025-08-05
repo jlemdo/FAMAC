@@ -34,7 +34,7 @@ const CustomerTracking = ({order}) => {
         });
       }
     } catch (err) {
-      console.log('Driver location fetch failed:', err);
+      // Driver location fetch failed
     }
   }, [order.id]);
 
@@ -88,7 +88,6 @@ const CustomerTracking = ({order}) => {
               strokeWidth={4}
               strokeColor="#8B5E3C"
               onReady={result => {
-                console.log('🗺️ Directions result:', result);
                 setEta({distance: result.distance, duration: result.duration});
                 setRouteCoords(result.coordinates); // ← Guardamos coords
                 mapRef.current.fitToCoordinates(result.coordinates, {
@@ -97,7 +96,7 @@ const CustomerTracking = ({order}) => {
                 });
               }}
               onError={errorMessage => {
-                console.error('❌ Directions error:', errorMessage);
+                // Directions error
               }}
             />
 

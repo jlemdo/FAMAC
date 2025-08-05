@@ -45,9 +45,7 @@ export function OrderProvider({ children }) {
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());
             
-            console.log(`🔄 Auto-refresh: ${sortedOrders.length} órdenes obtenidas para ${user.usertype}`);
         } catch (error) {
-            console.error('❌ Error en auto-refresh de órdenes:', error);
         }
     }, [user]);
 
@@ -63,7 +61,6 @@ export function OrderProvider({ children }) {
 
     // Función para forzar refresh manual
     const refreshOrders = () => {
-        console.log('🔄 Refresh manual de órdenes solicitado');
         fetchOrdersFromServer();
     };
 
@@ -79,11 +76,9 @@ export function OrderProvider({ children }) {
             }, 30000); // 30 segundos
             
             setAutoRefreshInterval(interval);
-            console.log('⏰ Auto-refresh de órdenes activado (cada 30s)');
             
             return () => {
                 clearInterval(interval);
-                console.log('⏰ Auto-refresh de órdenes desactivado');
             };
         } else {
             // Limpiar para guests
