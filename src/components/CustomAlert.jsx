@@ -105,14 +105,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.script,
-    fontSize: 20,
+    fontSize: fonts.size.large,
     fontWeight: '600',
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
     fontFamily: fonts.regular,
-    fontSize: 16,
+    fontSize: fonts.size.medium,
     color: '#333',
     marginBottom: 20,
     textAlign: 'center',
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: fonts.medium,
-    fontSize: 16,
+    fontSize: fonts.size.medium,
     textAlign: 'center',
   },
 });

@@ -321,19 +321,34 @@ export default function Cart() {
         `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}` : 
         'Horario pendiente';
       
+      // Obtener número de orden de la respuesta
+      const orderNumber = orderData?.order_id || orderData?.id || 'N/A';
+      
       showAlert({
         type: 'success',
-        title: '¡Pedido Realizado!',
-        message: `Tu pedido ha sido procesado exitosamente.\n\n` +
+        title: '¡Pedido Realizado Exitosamente!',
+        message: `Tu pedido ha sido procesado correctamente.\n\n` +
+                 `📋 Número de pedido: #${orderNumber}\n` +
                  `💰 Total: $${totalPrice}\n` +
                  `📦 ${itemCount} producto${itemCount !== 1 ? 's' : ''}\n` +
                  `🚚 ${deliveryText}` +
                  `${needInvoice ? '\n🧾 Factura solicitada' : ''}`,
-        confirmText: 'Ir al Inicio',
+        confirmText: 'Ver mi pedido',
+        cancelText: 'Ir al Inicio',
         onConfirm: () => {
-          // Actualizar órdenes inmediatamente después del pedido exitoso
+          // Actualizar órdenes y navegar a detalles del pedido
           refreshOrders();
-          // Redirigir al inicio
+          navigation.navigate('MainTabs', { 
+            screen: 'Pedidos',
+            params: { 
+              screen: 'OrderDetail',
+              params: { orderId: orderNumber }
+            }
+          });
+        },
+        onCancel: () => {
+          // Actualizar órdenes y ir al inicio
+          refreshOrders();
           navigation.navigate('MainTabs', { 
             screen: 'Inicio',
             params: { screen: 'CategoriesList' }

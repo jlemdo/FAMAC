@@ -201,14 +201,22 @@ const AddressPicker = ({
   const handleConfirm = () => {
     // Validar campos obligatorios
     if (!addressForm.street || !addressForm.exteriorNumber || !addressForm.postalCode || !addressForm.alcaldia) {
-      Alert.alert('Campos requeridos', 'Por favor completa todos los campos obligatorios: calle, número exterior, código postal y alcaldía.');
+      Alert.alert(
+        'Campos incompletos', 
+        '📝 Por favor completa todos los campos marcados con (*) para continuar:\n\n• Calle\n• Número exterior\n• Código postal\n• Alcaldía/Municipio',
+        [{ text: 'Entendido', style: 'default' }]
+      );
       return;
     }
 
     // Validar CP
     if (!validatePostalCode(addressForm.postalCode, addressForm.city)) {
       const range = addressForm.city === 'CDMX' ? '01000-16999' : '50000-56999';
-      Alert.alert('Código Postal inválido', `Para ${addressForm.city} debe estar en el rango: ${range}`);
+      Alert.alert(
+        'Código Postal incorrecto', 
+        `📍 El código postal ${addressForm.postalCode} no es válido para ${addressForm.city}.\n\nRango válido: ${range}`,
+        [{ text: 'Entendido', style: 'default' }]
+      );
       return;
     }
 

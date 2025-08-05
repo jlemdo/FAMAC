@@ -44,6 +44,7 @@ import {
   typography,
   shadows 
 } from '../theme/theme';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -699,8 +700,8 @@ export default function Profile({ navigation }) {
                 styles.input,
                 styles.dateInput,
                 submitCount > 0 && errors.birthDate && styles.inputError,
-                // Bloquear si ya tiene fecha de cumpleaños (solo permitir cambio si no tiene fecha)
-                profile.birthDate && !isNaN(profile.birthDate.getTime()) && styles.disabledInput,
+                // Bloquear si ya tiene fecha de cumpleaños O si no está en modo edición
+                (profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? styles.disabledInput : null,
               ]}
               onPress={() => {
                 // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
@@ -716,8 +717,8 @@ export default function Profile({ navigation }) {
               <Text
                 style={[
                   values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder,
-                  // Si no es editable o ya tiene fecha, usar estilo deshabilitado
-                  ((profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile) && styles.dateTextDisabled
+                  // Si no es editable (no en modo edición O ya tiene fecha), usar estilo deshabilitado
+                  !isEditingProfile || (profile.birthDate && !isNaN(profile.birthDate.getTime())) ? styles.dateTextDisabled : null
                 ]}>
                 {values.birthDate && !isNaN(values.birthDate.getTime())
                   ? values.birthDate.toLocaleDateString('es-ES', {
@@ -1463,7 +1464,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   founderBadgeIcon: {
-    fontSize: 16,
+    fontSize: fonts.size.medium,
     textAlign: 'center',
   },
   // === TIPOGRAFÍA MIGRADA AL TEMA ===
@@ -1841,7 +1842,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tooltipIcon: {
-    fontSize: 28,
+    fontSize: fonts.size.XL,
     marginRight: 8,
   },
   tooltipTitle: {

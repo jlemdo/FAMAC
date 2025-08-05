@@ -1,10 +1,12 @@
 /**
- * Sistema de Espaciado Centralizado FAMAC
- * Valores extraídos del análisis de componentes existentes
+ * Sistema de Espaciado Responsivo FAMAC
+ * Auto-scaling basado en tamaño de pantalla - Valores extraídos del análisis
  */
 
-const spacing = {
-  // === ESPACIADO BÁSICO (basado en análisis real) ===
+import { scaleSpacing } from '../utils/responsiveUtils';
+
+// Valores base que se escalarán automáticamente
+const baseSpacing = {
   xs: 4,      // Espacios muy pequeños
   sm: 8,      // Usado 20+ veces en la app
   md: 12,     // Usado 25+ veces en la app  
@@ -12,52 +14,66 @@ const spacing = {
   xl: 24,     // Usado 15+ veces en la app
   xxl: 32,    // Espacios grandes
   xxxl: 40,   // Espacios muy grandes
+};
+
+const spacing = {
+  // === ESPACIADO BÁSICO RESPONSIVO ===
+  xs: scaleSpacing(baseSpacing.xs),
+  sm: scaleSpacing(baseSpacing.sm),
+  md: scaleSpacing(baseSpacing.md),
+  lg: scaleSpacing(baseSpacing.lg),
+  xl: scaleSpacing(baseSpacing.xl),
+  xxl: scaleSpacing(baseSpacing.xxl),
+  xxxl: scaleSpacing(baseSpacing.xxxl),
   
-  // === ESPACIADO ESPECÍFICO (valores exactos encontrados) ===
+  // === ESPACIADO ESPECÍFICO RESPONSIVO ===
   padding: {
-    small: 8,
-    medium: 12,
-    large: 16,
-    xlarge: 20,
-    xxlarge: 24,
+    small: scaleSpacing(8),
+    medium: scaleSpacing(12),
+    large: scaleSpacing(16),
+    xlarge: scaleSpacing(20),
+    xxlarge: scaleSpacing(24),
   },
   
   margin: {
-    small: 8,
-    medium: 12, 
-    large: 16,
-    xlarge: 20,
-    xxlarge: 24,
+    small: scaleSpacing(8),
+    medium: scaleSpacing(12), 
+    large: scaleSpacing(16),
+    xlarge: scaleSpacing(20),
+    xxlarge: scaleSpacing(24),
   },
   
-  // === BORDER RADIUS (valores más usados) ===
+  // === BORDER RADIUS RESPONSIVO ===
   borderRadius: {
-    small: 8,     // Usado 22+ veces
-    medium: 12,   // Usado 18+ veces
-    large: 16,    // Usado 8+ veces
-    round: 50,    // Para elementos circulares
+    small: scaleSpacing(8),     // Usado 22+ veces
+    medium: scaleSpacing(12),   // Usado 18+ veces
+    large: scaleSpacing(16),    // Usado 8+ veces
+    round: 50,                  // Para elementos circulares - no escalar
   },
   
-  // === ELEMENTOS ESPECÍFICOS ===
+  // === ELEMENTOS ESPECÍFICOS RESPONSIVOS ===
   button: {
-    paddingVertical: 12,    // Estándar para botones
-    paddingHorizontal: 16,  // Estándar para botones
+    paddingVertical: scaleSpacing(12),    // Estándar para botones
+    paddingHorizontal: scaleSpacing(16),  // Estándar para botones
   },
   
   input: {
-    paddingVertical: 12,    // Estándar para inputs
-    paddingHorizontal: 12,  // Estándar para inputs
+    paddingVertical: scaleSpacing(12),    // Estándar para inputs
+    paddingHorizontal: scaleSpacing(12),  // Estándar para inputs
   },
   
   card: {
-    padding: 16,            // Estándar para cards
-    margin: 16,             // Estándar para cards
+    padding: scaleSpacing(16),            // Estándar para cards
+    margin: scaleSpacing(16),             // Estándar para cards
   },
   
   modal: {
-    padding: 24,            // Estándar para modales
-    margin: 20,             // Estándar para modales
-  }
+    padding: scaleSpacing(24),            // Estándar para modales
+    margin: scaleSpacing(20),             // Estándar para modales
+  },
+  
+  // === VALORES BASE PARA REFERENCIA ===
+  base: baseSpacing,
 };
 
 export default spacing;

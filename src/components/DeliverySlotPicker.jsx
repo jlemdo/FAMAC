@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import axios from 'axios';
+import fonts from '../theme/fonts';
 
 const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    fontSize: 18,
+    fontSize: fonts.size.large,
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
@@ -214,7 +215,7 @@ const styles = StyleSheet.create({
     borderColor: '#D27F27',
   },
   dayLabel: {
-    fontSize: 14,
+    fontSize: fonts.size.small,
     textAlign: 'center',
   },
   dayLabelSelected: {
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: fonts.size.medium,
     marginBottom: 8,
   },
   slotsContainer: {
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   },
   slotLabel: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: fonts.size.small,
   },
   slotLabelSelected: {
     color: '#fff',
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: fonts.size.small,
     fontWeight: 'bold',
   },
   loadingContainer: {
@@ -283,12 +284,12 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
-    fontSize: 14,
+    fontSize: fonts.size.small,
     color: '#666',
   },
   noSlotsText: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: fonts.size.small,
     color: '#666',
     fontStyle: 'italic',
     paddingVertical: 20,
