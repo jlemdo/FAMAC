@@ -58,7 +58,6 @@ export default function Cart() {
   // DEBUG: Inicializar siempre desbloqueado y luego verificar
   const [emailLocked, setEmailLocked] = useState(false);
   const [address, setAddress] = useState('');
-  const [zipCode, setZipCode] = useState('');
   const [needInvoice, setNeedInvoice] = useState(false);
   const [taxDetails, setTaxDetails] = useState('');
   const [toggleCheckBox, setToggleCheckBox] = useState(false);
@@ -480,11 +479,11 @@ export default function Cart() {
   // Validaciones antes de pago de invitado
   const handleGuestPayment = () => {
     // Guest SIEMPRE necesita dirección manual - nunca usar ubicación automática
-    if (!email?.trim() || !address?.trim() || !zipCode?.trim()) {
+    if (!email?.trim() || !address?.trim()) {
       showAlert({
         type: 'warning',
         title: 'Datos incompletos',
-        message: 'Los invitados deben proporcionar una dirección completa para la entrega.\n\nPor favor ingresa correo, dirección y código postal.',
+        message: 'Los invitados deben proporcionar una dirección completa para la entrega.\n\nPor favor ingresa correo y dirección.',
         confirmText: 'Entendido',
       });
       return;
@@ -787,17 +786,6 @@ export default function Cart() {
                   </Text>
                   <Text style={styles.addressIcon}>📍</Text>
                 </TouchableOpacity>
-                
-                <TextInput
-                  placeholder="Código postal"
-                  style={styles.input}
-                  value={zipCode}
-                  onChangeText={setZipCode}
-                  keyboardType="numeric"
-                  placeholderTextColor="rgba(47,47,47,0.6)"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                  returnKeyType="done"
-                />
                 <View style={styles.modalActions}>
                   <TouchableOpacity
                     style={styles.modalButton}
@@ -811,7 +799,7 @@ export default function Cart() {
                   <TouchableOpacity
                     style={[
                       styles.modalButtonSave,
-                      (!email?.trim() || !address?.trim() || !zipCode?.trim()) && {
+                      (!email?.trim() || !address?.trim()) && {
                         opacity: 0.5,
                       },
                     ]}
@@ -819,7 +807,7 @@ export default function Cart() {
                       Keyboard.dismiss();
                       handleGuestPayment();
                     }}
-                    disabled={!email?.trim() || !address?.trim() || !zipCode?.trim()}>
+                    disabled={!email?.trim() || !address?.trim()}>
                     <Text style={styles.modalButtonText}>Pagar</Text>
                   </TouchableOpacity>
                 </View>
@@ -1157,6 +1145,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: {width: 0, height: 2},
     elevation: 2,
+    position: 'relative',
+    overflow: 'visible',
+    width: 140, // Ancho fijo para consistencia
   },
   upsellImage: {
     width: 80,
@@ -1470,6 +1461,46 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     flexShrink: 1,
   },
+  
+  // Estilos para descuentos en productos recomendados (upsell)
+  upsellDiscountBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#E63946',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 4,
+    transform: [{ rotate: '12deg' }],
+  },
+  upsellDiscountText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  upsellPriceContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  upsellOriginalPrice: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginBottom: 2,
+  },
+  upsellDiscountedPrice: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#000',
+  },
 });
 
 // <-- justo después de StyleSheet.create({...})
@@ -1497,18 +1528,46 @@ const CartFooter = ({
         keyExtractor={item => item.id.toString()}
         horizontal
         showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <View style={styles.upsellItem}>
-            <Image source={{uri: item.photo}} style={styles.upsellImage} />
-            <Text style={styles.upsellName}>{item.name}</Text>
-            <Text style={styles.upsellPrice}>{formatPriceWithSymbol(item.price)}</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => addToCart(item)}>
-              <Text style={styles.addButtonText}>Agregar al carrito</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        renderItem={({item}) => {
+          // Aplicar misma lógica de descuentos que otras pantallas
+          const discountNum = Number(item.discount) || 0;
+          const discountedPrice = item.price - discountNum;
+          const hasDiscount = discountNum > 0;
+          
+          return (
+            <View style={styles.upsellItem}>
+              {/* Badge de descuento */}
+              {hasDiscount && (
+                <View style={styles.upsellDiscountBadge}>
+                  <Text style={styles.upsellDiscountText}>-${discountNum}</Text>
+                </View>
+              )}
+              
+              <Image source={{uri: item.photo}} style={styles.upsellImage} />
+              <Text style={styles.upsellName}>{item.name}</Text>
+              
+              {/* Mostrar precios con/sin descuento */}
+              {hasDiscount ? (
+                <View style={styles.upsellPriceContainer}>
+                  <Text style={styles.upsellOriginalPrice}>
+                    {formatPriceWithSymbol(item.price)}
+                  </Text>
+                  <Text style={styles.upsellDiscountedPrice}>
+                    {formatPriceWithSymbol(discountedPrice)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.upsellPrice}>{formatPriceWithSymbol(item.price)}</Text>
+              )}
+              
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => addToCart(item)}>
+                <Text style={styles.addButtonText}>Agregar al carrito</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        }}
       />
     )}
     {/* Selector de horario */}

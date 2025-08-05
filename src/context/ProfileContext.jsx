@@ -146,10 +146,17 @@ export const ProfileProvider = ({ children }) => {
 
   // Función para actualizar los datos (llamada desde Profile.jsx)
   const updateProfile = useCallback((newProfileData) => {
-    setProfile(newProfileData);
-    const missing = getMissingData(newProfileData);
+    // Hacer merge con los datos existentes para preservar campos no enviados
+    setProfile(prevProfile => ({
+      ...prevProfile, // Mantener datos previos
+      ...newProfileData // Sobrescribir solo los campos enviados
+    }));
+    
+    // Calcular missing data con el perfil combinado
+    const mergedProfile = { ...profile, ...newProfileData };
+    const missing = getMissingData(mergedProfile);
     setMissingData(missing);
-  }, [getMissingData]);
+  }, [getMissingData, profile]);
 
   const value = {
     profile,

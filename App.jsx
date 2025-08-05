@@ -30,6 +30,8 @@ import ForgotPassword from './src/authentication/ForgotPassword';
 import Order from './src/order/Order';
 import OrderDetails from './src/order/OrderDetail';
 import SearchResults from './src/home/SearchResults';
+import AddressForm from './src/address/AddressForm';
+import AddressMap from './src/address/AddressMap';
 
 import {OrderContext} from './src/context/OrderContext';
 
@@ -296,6 +298,8 @@ function RootStack() {
       <Stack.Navigator screenOptions={{headerShown: false}}>
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
+        <Stack.Screen name="AddressForm" component={AddressForm} />
+        <Stack.Screen name="AddressMap" component={AddressMap} />
         {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>
     </View>

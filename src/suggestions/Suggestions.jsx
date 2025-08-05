@@ -106,18 +106,9 @@ export default function Suggestions() {
                     <Image source={{uri: item.photo}} style={styles.image} />
                     
                     <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-                    <Text style={styles.description} numberOfLines={2}>
-                      {item.description || 'Producto recomendado especialmente para ti'}
-                    </Text>
-
-                    {/* Indicador de peso */}
-                    <View style={styles.weightBadge}>
-                      <Text style={styles.weightText}>250g</Text>
-                    </View>
-                  </View>
-
-                  {/* Sección inferior: Precios (siempre al final) */}
-                  <View style={styles.priceSection}>
+                    
+                    {/* Sección de precios - posición prominente */}
+                    <View style={styles.priceSection}>
                     {discountNum > 0 ? (
                       <>
                         {/* Original tachado solo si hay descuento */}
@@ -139,7 +130,17 @@ export default function Suggestions() {
                       /* Si no hay descuento, solo muestro el precio normal */
                       <Text style={styles.regularPrice}>{formatPriceWithSymbol(item.price)}</Text>
                     )}
-                    {/* <Text style={styles.priceSubtext}>por unidad</Text> */}
+                    </View>
+                    
+                    {/* Metadatos: peso y descripción */}
+                    <View style={styles.metadataSection}>
+                      <View style={styles.weightBadge}>
+                        <Text style={styles.weightText}>250g</Text>
+                      </View>
+                      <Text style={styles.description} numberOfLines={2}>
+                        {item.description || 'Producto recomendado especialmente para ti'}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -250,48 +251,58 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.7)',
+    color: 'rgba(47,47,47,0.5)',
     textAlign: 'center',
-    marginBottom: 6, // Reducido de 8 a 6
     paddingHorizontal: 4,
     fontFamily: fonts.regular,
-    lineHeight: 16, // Mejor control de altura
+    lineHeight: 14,
+    marginTop: 4,
   },
   weightBadge: {
-    backgroundColor: '#8B5E3C',
-    paddingHorizontal: 10, // Reducido de 12 a 10
-    paddingVertical: 3, // Reducido de 4 a 3
-    borderRadius: 12,
-    marginBottom: 8, // Reducido de 12 a 8
+    backgroundColor: 'rgba(139, 94, 60, 0.15)',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginBottom: 6,
   },
   weightText: {
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
-    color: '#FFF',
+    color: '#8B5E3C',
   },
   priceSection: {
     alignItems: 'center',
-    paddingTop: 8, // Separación del contenido superior
-    marginTop: 'auto', // Empuja hacia abajo
+    marginVertical: 6,
+    paddingVertical: 4,
+  },
+  metadataSection: {
+    alignItems: 'center',
+    marginTop: 'auto',
+    paddingTop: 8,
   },
   regularPrice: {
-    fontSize: fonts.size.medium, // Aumentado para mejor visibilidad
-    fontFamily: fonts.bold,
-    color: '#D27F27', // Color primario para destacar
-    marginBottom: 2, // Reducido de 4 a 2
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 4,
   },
   originalPriceStriked: {
-    fontSize: fonts.size.small, // Reducido para ser menos prominente
+    fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     color: '#999',
     textDecorationLine: 'line-through',
-    marginBottom: 2, // Reducido de 4 a 2
+    textAlign: 'center',
+    marginBottom: 2,
   },
   discountedPrice: {
-    fontSize: fonts.size.medium, // Aumentado para destacar
-    fontFamily: fonts.bold,
-    color: '#D27F27', // Color primario consistente
-    marginBottom: 4, // Reducido de 6 a 4
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 4,
   },
   savingsBadge: {
     backgroundColor: 'rgba(51, 167, 68, 0.1)',

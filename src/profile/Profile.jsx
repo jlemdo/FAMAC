@@ -187,6 +187,8 @@ export default function Profile({ navigation }) {
         promotional_discount: data.promotional_discount // Agregar promotional_discount
       };
       setProfile(profileData);
+      
+      // En la carga inicial está bien pasar todo porque son datos frescos del servidor
       updateProfile(profileData); // Notificar al contexto
     } catch {
       showAlert({
@@ -539,7 +541,19 @@ export default function Profile({ navigation }) {
                 address: profile.address // Preservar la dirección existente
               };
               setProfile(updatedProfile);
-              updateProfile(updatedProfile); // Notificar al contexto
+              // Solo actualizar los campos específicos en el contexto
+              updateProfile({
+                ...profile, 
+                first_name: values.first_name,
+                last_name: values.last_name,
+                phone: values.phone,
+                birthDate: values.birthDate,
+                // Mantener todos los otros campos sin cambios
+                address: profile.address,
+                email: profile.email,
+                promotion_id: profile.promotion_id,
+                promotional_discount: profile.promotional_discount
+              });
               showAlert({
                 type: 'success',
                 title: '✅ ¡Datos personales actualizados!',
@@ -885,7 +899,12 @@ export default function Profile({ navigation }) {
                   if (res.status === 200) {
                     const updatedProfile = { ...profile, address: values.address };
                     setProfile(updatedProfile);
-                    updateProfile(updatedProfile); // Notificar al contexto
+                    // Solo actualizar la dirección específicamente en el contexto
+                    updateProfile({
+                      ...profile,
+                      address: values.address
+                      // Mantener todos los otros campos exactamente como están
+                    });
                     
                     // Salir del modo edición
                     setIsEditingAddress(false);

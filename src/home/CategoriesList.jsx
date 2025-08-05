@@ -43,20 +43,20 @@ export default function CategoriesList() {
   const videos = [
     {
       id: 1,
-      title: "¡Lácteos frescos todos los días!",
-      description: "Calidad garantizada en cada producto",  
+      title: "100% Productos Naturales",
+      description: "Sin conservadores artificiales, directo del campo a tu mesa",  
       source: require('../assets/welcome.mp4'), // Temporal: cambiar por video1.mp4 cuando tengas el archivo
     },
     {
       id: 2,
-      title: "Entrega rápida a domicilio",
-      description: "Recibe tus productos favoritos en minutos",
+      title: "Trato Ético con Animales",
+      description: "Cuidamos el bienestar animal en cada paso del proceso",
       source: require('../assets/welcome.mp4'), // Temporal: cambiar por video2.mp4 cuando tengas el archivo
     },
     {
       id: 3,
-      title: "Los mejores precios del mercado", 
-      description: "Ahorra en cada compra",
+      title: "Amor en Cada Producto", 
+      description: "Elaborados con dedicación y respeto por la naturaleza",
       source: require('../assets/welcome.mp4'), // Temporal: cambiar por video3.mp4 cuando tengas el archivo
     },
   ];
