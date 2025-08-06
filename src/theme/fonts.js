@@ -1,9 +1,11 @@
 // Sistema de fuentes FAMAC con auto-scaling responsivo
 import { scaleFontSize } from '../utils/responsiveUtils';
+import { Platform } from 'react-native';
 
 // 1. Familias de fuentes disponibles
 const fontFamilyHeadings = 'GreatVibes-Regular';
 const fontFamilyParagraph = 'Raleway';
+const fontFamilyPrices = Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto'; // ✅ Fuente optimizada para precios
 
 // 2. Tamaños base (se escalan automáticamente según pantalla)
 const baseSizes = {
@@ -24,6 +26,14 @@ const fonts = {
   regular: `${fontFamilyParagraph}-Medium`,
   bold: `${fontFamilyParagraph}-Medium`,
   headingBold: 'PlayfairDisplay-Bold',
+  
+  // ✅ NUEVA: Fuentes especializadas para números (perfectos y consistentes)
+  price: fontFamilyPrices,
+  priceBold: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
+  
+  // ✅ Para TODOS los números (cantidades, teléfonos, fechas, IDs, etc.)
+  numeric: fontFamilyPrices, // Misma fuente que precios para consistencia
+  numericBold: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
   
   // Tamaños responsivos - se calculan dinámicamente
   size: {

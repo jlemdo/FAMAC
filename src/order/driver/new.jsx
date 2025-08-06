@@ -7,7 +7,6 @@ import {
   Image,
   ScrollView,
   Linking,
-  PermissionsAndroid,
   TextInput,
   ActivityIndicator,
   Platform,
@@ -16,10 +15,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import MapView, {Marker} from 'react-native-maps';
 import {AuthContext} from '../../context/AuthContext';
-import GetLocation from 'react-native-get-location';
 import axios from 'axios';
 import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
+import { getCurrentLocation as getCurrentLocationUtil } from '../../utils/locationUtils';
 
 const OrderDetails = () => {
   const navigation = useNavigation();
@@ -71,57 +70,29 @@ const OrderDetails = () => {
   //     }
   // };
   const getCurrentLocation = async () => {
-    // Inicias el loading
+    // ✅ Usar sistema optimizado para drivers
     setLoadingLocation(true);
 
     try {
-      let granted = false;
-
-      if (Platform.OS === 'android') {
-        // Android: solicitud con PermissionsAndroid
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Permiso de ubicación',
-            message: 'Necesitamos tu ubicación para mostrar dónde estás',
-          },
-        );
-        granted = result === PermissionsAndroid.RESULTS.GRANTED;
-      } else {
-        // iOS: solicitud con react-native-permissions + geolocation-service
-        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-        granted = status === RESULTS.GRANTED;
-
-        if (granted) {
-          // Esto dispara el diálogo nativo de iOS
-          await Geolocation.requestAuthorization('whenInUse');
+      await getCurrentLocationUtil(
+        'driver',
+        (coordinates) => {
+          // Limpiar estado anterior y guardar nueva ubicación
+          setLatlong(null);
+          setLatlong({
+            driver_lat: coordinates.latitude,
+            driver_long: coordinates.longitude,
+          });
+          setGetLocation(true);
+        },
+        (error) => {
+          // Error crítico para drivers
+          console.warn('Driver location error:', error);
         }
-      }
-
-      if (!granted) {
-        return;
-      }
-
-      // Una vez autorizado en ambas plataformas, obtenemos la ubicación
-      const location = await GetLocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 60000,
-      });
-
-      if (location) {
-        // Limpias el estado anterior y guardas la nueva ubicación
-        setLatlong(null);
-        setLatlong({
-          driver_lat: location.latitude,
-          driver_long: location.longitude,
-        });
-        setGetLocation(true);
-      }
+      );
     } catch (error) {
-      const {code, message} = error;
-      // Location error
+      console.warn('Failed to get driver location:', error);
     } finally {
-      // Siempre quitas el loading al final
       setLoadingLocation(false);
     }
   };

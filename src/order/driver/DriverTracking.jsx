@@ -26,10 +26,10 @@ import MapViewDirections from 'react-native-maps-directions';
 import Config from 'react-native-config';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AuthContext} from '../../context/AuthContext';
-import GetLocation from 'react-native-get-location';
 import axios from 'axios';
 import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
+import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
@@ -42,6 +42,8 @@ const DriverTracking = ({order}) => {
 
 
   const handleDriverLocation = async () => {
+    // ✅ JUST-IN-TIME: Pedir ubicación solo cuando acepta la orden
+    await getCurrentLocation();
     submitDriverLocation();
   };
 
@@ -119,19 +121,25 @@ const DriverTracking = ({order}) => {
   //     }
   // };
 
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      pos => {
-        setLatlong({
-          driver_lat: pos.coords.latitude,
-          driver_long: pos.coords.longitude,
-        });
-      },
-      error => {
-        // Error obteniendo ubicación
-      },
-      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
-    );
+  const getCurrentLocation = async () => {
+    // ✅ Usar sistema optimizado para drivers - ubicación de alta precisión requerida
+    try {
+      await getCurrentLocationUtil(
+        'driver',
+        (coordinates) => {
+          setLatlong({
+            driver_lat: coordinates.latitude,
+            driver_long: coordinates.longitude,
+          });
+        },
+        (error) => {
+          // Error crítico para drivers
+          console.warn('Driver location error:', error);
+        }
+      );
+    } catch (error) {
+      console.warn('Failed to get driver location:', error);
+    }
   };
 
   const getDriverLocaton = useCallback(async () => {
@@ -157,29 +165,8 @@ const DriverTracking = ({order}) => {
     longitude: parseFloat(order.customer_long),
   };
 
-  useEffect(() => {
-    async function askLocationPermission() {
-      if (Platform.OS === 'ios') {
-        Geolocation.requestAuthorization('whenInUse');
-        const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-        if (status !== RESULTS.GRANTED) {
-          // Permiso de ubicación iOS no otorgado
-        }
-      } else {
-        const result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        );
-        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-          // Permiso de ubicación Android no otorgado
-        }
-      }
-    }
-    askLocationPermission();
-  }, []);
-
-  useEffect(() => {
-    getCurrentLocation(); // for initial map display
-  }, []);
+  // ✅ OPTIMIZACIÓN: Ya no pedimos permisos al cargar
+  // Los permisos se piden just-in-time cuando el driver acepta la orden
 
   useEffect(() => {
     if (currentStatus == 'On the Way') {

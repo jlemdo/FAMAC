@@ -40,7 +40,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       webClientId: Config.GOOGLE_WEB_CLIENT_ID,
       iosClientId: Config.GOOGLE_IOS_CLIENT_ID, // Client ID específico para iOS
       offlineAccess: false,
-      scopes: ['profile', 'email'],
+      scopes: ['profile', 'email'], // birthday scope temporalmente deshabilitado - usuario lo agrega manualmente
       forceCodeForRefreshToken: true,
       accountName: '', // Esto fuerza el selector de cuenta
     });
@@ -113,12 +113,19 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       // Si el usuario no tiene nombre/apellido, actualizarlos con datos de Google
       if (data.user && (!data.user.first_name || !data.user.last_name)) {
         try {
-          await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
+          // ENVIAR TODOS LOS CAMPOS para evitar borrado por el backend
+          const updatePayload = {
             userid: data.user.id,
-            first_name: user.givenName,
-            last_name: user.familyName,
-          });
+            first_name: user.givenName || data.user.first_name || '',
+            last_name: user.familyName || data.user.last_name || '',
+            email: data.user.email || user.email || '',
+            phone: data.user.phone || '',
+            address: data.user.address || '',
+          };
+          
+          await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', updatePayload);
         } catch (updateError) {
+          // Error actualizando datos de Google
         }
       }
       

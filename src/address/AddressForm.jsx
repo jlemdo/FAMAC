@@ -47,6 +47,11 @@ const AddressForm = () => {
     fullAddress: initialAddress,
   });
   
+  // Estados para alertas bonitas y validación
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({});
+  const [isValidating, setIsValidating] = useState(false);
+  
   // Estado para mostrar todas las alcaldías
   const [showAllAlcaldias, setShowAllAlcaldias] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -105,39 +110,104 @@ const AddressForm = () => {
     }
   }, [initialAddress]);
 
-  // Validar Código Postal
-  const validatePostalCode = (cp, city) => {
-    if (city === 'CDMX') {
-      return cp >= '01000' && cp <= '16999';
-    } else {
-      return cp >= '50000' && cp <= '56999';
+  // Función para mostrar alertas bonitas
+  const showCustomAlert = (type, title, message, onConfirm) => {
+    setAlertConfig({
+      type, // 'error', 'success', 'warning'
+      title,
+      message,
+      onConfirm: onConfirm || (() => setShowAlert(false))
+    });
+    setShowAlert(true);
+  };
+
+  // Validar dirección con Google Geocoding
+  const validateAddressWithGoogle = async (fullAddressString) => {
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddressString)}, México&key=${Config.GOOGLE_DIRECTIONS_API_KEY}`
+      );
+
+      if (response.data.status !== 'OK' || !response.data.results.length) {
+        return { valid: false, error: 'Dirección no encontrada en Google Maps' };
+      }
+
+      const result = response.data.results[0];
+      const location = result.geometry.location;
+      const components = result.address_components;
+
+      // Verificar que esté en CDMX o Estado de México
+      const isInCDMX = components.some(comp => 
+        comp.types.includes('administrative_area_level_1') && 
+        (comp.long_name.includes('Ciudad de México') || comp.long_name.includes('Mexico City'))
+      );
+      
+      const isInEstadoMexico = components.some(comp => 
+        comp.types.includes('administrative_area_level_1') && 
+        comp.long_name.includes('México') && !comp.long_name.includes('Ciudad de México')
+      );
+
+      if (!isInCDMX && !isInEstadoMexico) {
+        return { 
+          valid: false, 
+          error: 'Solo entregamos en Ciudad de México y Estado de México' 
+        };
+      }
+
+      return {
+        valid: true,
+        coordinates: location,
+        formattedAddress: result.formatted_address
+      };
+    } catch (error) {
+      return { 
+        valid: false, 
+        error: 'Error al verificar dirección. Intenta de nuevo.' 
+      };
     }
   };
 
-  // Confirmar dirección
-  const handleConfirm = () => {
-    // Validar campos obligatorios
+  // Validar Código Postal - RANGOS CORRECTOS
+  const validatePostalCode = (cp, city) => {
+    const cpNum = parseInt(cp);
+    if (city === 'CDMX') {
+      return cpNum >= 1000 && cpNum <= 16999;
+    } else if (city === 'Estado de México') {
+      // Estado de México tiene múltiples rangos
+      return (cpNum >= 50000 && cpNum <= 56999) || 
+             (cpNum >= 52000 && cpNum <= 54999);
+    }
+    return false;
+  };
+
+  // 🚀 NUEVA: Validación inteligente con Google
+  const handleConfirm = async () => {
+    // 1. Validar campos obligatorios
     if (!addressForm.street || !addressForm.exteriorNumber || !addressForm.postalCode || !addressForm.alcaldia) {
-      Alert.alert(
-        'Campos incompletos', 
-        '📝 Por favor completa todos los campos marcados con (*) para continuar:\\n\\n• Calle\\n• Número exterior\\n• Código postal\\n• Alcaldía/Municipio',
-        [{ text: 'Entendido', style: 'default' }]
+      showCustomAlert(
+        'error',
+        'Campos incompletos',
+        '📝 Completa todos los campos obligatorios:\n\n• Calle\n• Número exterior\n• Código postal\n• Alcaldía'
       );
       return;
     }
 
-    // Validar CP
+    // 2. Validar CP básico
     if (!validatePostalCode(addressForm.postalCode, addressForm.city)) {
-      const range = addressForm.city === 'CDMX' ? '01000-16999' : '50000-56999';
-      Alert.alert(
-        'Código Postal incorrecto', 
-        `📍 El código postal ${addressForm.postalCode} no es válido para ${addressForm.city}.\\n\\nRango válido: ${range}`,
-        [{ text: 'Entendido', style: 'default' }]
+      const range = addressForm.city === 'CDMX' 
+        ? '01000-16999' 
+        : '50000-56999 ó 52000-54999';
+      showCustomAlert(
+        'error',
+        'Código Postal incorrecto',
+        `El CP ${addressForm.postalCode} no es válido para ${addressForm.city}.\n\nRangos válidos: ${range}`
       );
       return;
     }
 
-    // Construir dirección completa
+    // 3. 🔥 VALIDACIÓN INTELIGENTE CON GOOGLE
+    setIsValidating(true);
+    
     const addressParts = [
       addressForm.street,
       addressForm.exteriorNumber,
@@ -149,36 +219,106 @@ const AddressForm = () => {
     
     const fullAddressString = addressParts.join(', ');
 
+    // Validar con Google
+    const validation = await validateAddressWithGoogle(fullAddressString);
+    setIsValidating(false);
+
+    if (!validation.valid) {
+      showCustomAlert(
+        'error',
+        'Dirección no encontrada',
+        `❌ ${validation.error}\n\nRevisar los datos o ir al mapa para ubicar manualmente.`
+      );
+      return;
+    }
+
+    // 4. ✅ TODO PERFECTO - Guardar con coordenadas
     const finalAddress = {
       ...addressForm,
-      fullAddress: fullAddressString,
-      coordinates: selectedLocation ? {
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
-      } : null,
+      fullAddress: validation.formattedAddress, // Formato de Google
+      coordinates: validation.coordinates, // Coordenadas automáticas
+      verified: true // Marcada como verificada
     };
 
-    // Llamar callback y navegar de vuelta
-    if (callbacks?.onConfirm) {
-      callbacks.onConfirm(finalAddress);
-    }
-    
-    // Limpiar callbacks del store
-    if (pickerId) {
-      cleanupAddressPickerCallbacks(pickerId);
-    }
-    
-    navigation.goBack();
+    showCustomAlert(
+      'success',
+      '✅ Dirección verificada',
+      `Google Maps confirmó tu dirección:\n\n${validation.formattedAddress}`,
+      () => {
+        // Ejecutar callback
+        if (callbacks?.onConfirm) {
+          callbacks.onConfirm(finalAddress);
+        }
+        
+        // Limpiar y salir
+        if (pickerId) {
+          cleanupAddressPickerCallbacks(pickerId);
+        }
+        navigation.goBack();
+      }
+    );
   };
 
-  // Navegar al mapa
-  const handleNavigateToMap = () => {
-    navigation.navigate('AddressMap', {
-      addressForm,
-      selectedLocation: selectedLocation || {
+  // Geocodificar dirección manual antes de ir al mapa
+  const geocodeManualAddress = async () => {
+    // Construir dirección de los campos completados
+    const addressParts = [
+      addressForm.street,
+      addressForm.exteriorNumber,
+      addressForm.alcaldia,
+      addressForm.city,
+      addressForm.postalCode && `C.P. ${addressForm.postalCode}`
+    ].filter(Boolean);
+    
+    if (addressParts.length < 2) {
+      // Si hay muy pocos datos, usar centro de CDMX
+      return {
         latitude: 19.4326,
         longitude: -99.1332,
-      },
+      };
+    }
+    
+    const addressString = addressParts.join(', ') + ', México';
+    
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json`,
+        {
+          params: {
+            address: addressString,
+            key: Config.GOOGLE_DIRECTIONS_API_KEY,
+            language: 'es',
+            region: 'mx',
+          },
+        }
+      );
+
+      if (response.data.results[0]) {
+        const location = response.data.results[0].geometry.location;
+        return {
+          latitude: location.lat,
+          longitude: location.lng,
+        };
+      }
+    } catch (error) {
+      // Error geocoding, usar fallback
+    }
+    
+    // Fallback: Centro de CDMX
+    return {
+      latitude: 19.4326,
+      longitude: -99.1332,
+    };
+  };
+
+  // Navegar al mapa con geocoding inteligente
+  const handleNavigateToMap = async () => {
+    // Mostrar loading mientras geocodifica
+    const targetLocation = await geocodeManualAddress();
+    
+    navigation.navigate('AddressMap', {
+      addressForm,
+      selectedLocation: targetLocation,
       // Pasamos el pickerId para que el mapa pueda actualizar el form
       pickerId,
       onLocationReturn: (location, updatedForm) => {
@@ -378,10 +518,46 @@ const AddressForm = () => {
 
       {/* Botón de confirmación fijo */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
+        <TouchableOpacity 
+          style={[styles.confirmButton, isValidating && styles.confirmButtonDisabled]} 
+          onPress={handleConfirm}
+          disabled={isValidating}>
+          {isValidating ? (
+            <View style={styles.validatingContainer}>
+              <Text style={styles.confirmButtonText}>🔍 Verificando con Google...</Text>
+            </View>
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* 🎨 MODAL DE ALERTAS BONITAS */}
+      {showAlert && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.alertContainer}>
+            <View style={styles.alertHeader}>
+              <Text style={styles.alertTitle}>{alertConfig.title}</Text>
+              {alertConfig.type === 'error' && <Text style={styles.alertIcon}>❌</Text>}
+              {alertConfig.type === 'success' && <Text style={styles.alertIcon}>✅</Text>}
+              {alertConfig.type === 'warning' && <Text style={styles.alertIcon}>⚠️</Text>}
+            </View>
+            
+            <Text style={styles.alertMessage}>{alertConfig.message}</Text>
+            
+            <TouchableOpacity 
+              style={[styles.alertButton, 
+                alertConfig.type === 'error' && styles.alertButtonError,
+                alertConfig.type === 'success' && styles.alertButtonSuccess
+              ]}
+              onPress={alertConfig.onConfirm}>
+              <Text style={styles.alertButtonText}>
+                {alertConfig.type === 'success' ? 'Continuar' : 'Entendido'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -587,6 +763,81 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   confirmButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: scaleFontSize(fonts.size.medium),
+    color: '#FFF',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#CCC',
+    opacity: 0.7,
+  },
+  validatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // 🎨 Estilos del Modal de Alertas Bonitas
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  alertContainer: {
+    backgroundColor: '#FFF',
+    margin: scaleSpacing(20),
+    borderRadius: scaleSpacing(16),
+    padding: scaleSpacing(20),
+    minWidth: '80%',
+    maxWidth: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scaleSpacing(12),
+  },
+  alertTitle: {
+    fontFamily: fonts.bold,
+    fontSize: scaleFontSize(fonts.size.large),
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  alertIcon: {
+    fontSize: scaleFontSize(fonts.size.large),
+    marginLeft: scaleSpacing(8),
+  },
+  alertMessage: {
+    fontFamily: fonts.regular,
+    fontSize: scaleFontSize(fonts.size.medium),
+    color: '#555',
+    lineHeight: 22,
+    marginBottom: scaleSpacing(20),
+  },
+  alertButton: {
+    backgroundColor: '#8B5E3C',
+    paddingVertical: scaleSpacing(12),
+    paddingHorizontal: scaleSpacing(20),
+    borderRadius: scaleSpacing(8),
+    alignItems: 'center',
+  },
+  alertButtonError: {
+    backgroundColor: '#E63946',
+  },
+  alertButtonSuccess: {
+    backgroundColor: '#33A744',
+  },
+  alertButtonText: {
     fontFamily: fonts.bold,
     fontSize: scaleFontSize(fonts.size.medium),
     color: '#FFF',

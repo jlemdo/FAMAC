@@ -140,7 +140,7 @@ const typography = {
   // Nombre de app en header
   appName: {
     fontSize: fonts.size.title,
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold, // ✅ Cambio a Raleway Bold para uso general
     color: colors.text,
     letterSpacing: 0.5,
     textAlign: 'left',

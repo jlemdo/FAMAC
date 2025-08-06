@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
-    fontFamily: fonts.original,
+    fontFamily: fonts.bold, // ✅ Cambio a Raleway Bold (aunque está comentado, por consistencia)
     textAlign: 'center',
     color: '#2F2F2F',
     marginBottom: 20,

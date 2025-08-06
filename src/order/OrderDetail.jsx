@@ -554,14 +554,14 @@ const styles = StyleSheet.create({
     borderColor: '#8B5E3C',
   },
   orderInfoText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para números (fechas, IDs)
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
     color: '#2F2F2F',
     marginBottom: 4,
   },
   orderInfoPrice: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
     color: '#33A744',
   },
   modalTextArea: {

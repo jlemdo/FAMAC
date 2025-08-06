@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   },
   weightText: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para pesos numéricos (250g)
     color: '#8B5E3C',
   },
   priceSection: {
@@ -283,8 +283,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   regularPrice: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
+    fontFamily: fonts.price, // ✅ Nueva fuente optimizada para precios
     color: '#000',
     textAlign: 'center',
     marginBottom: 4,
@@ -298,8 +298,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   discountedPrice: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
+    fontFamily: fonts.price, // ✅ Nueva fuente optimizada para precios
     color: '#000',
     textAlign: 'center',
     marginBottom: 4,

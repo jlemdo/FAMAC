@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
   discountCornerText: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para descuentos numéricos
     color: '#FFF',
     textAlign: 'center',
   },
@@ -365,8 +365,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   totalPrice: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.XL,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
+    fontSize: fonts.size.XL, // ✅ Mantiene autoscaling
     color: '#D27F27',
     textAlign: 'center',
   },
@@ -374,15 +374,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   originalTotalStriked: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
+    fontFamily: fonts.price, // ✅ Fuente optimizada para precios
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
     color: '#999',
     textDecorationLine: 'line-through',
     marginBottom: 4,
   },
   savingsText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para ahorros numéricos
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
     color: '#33A744',
     marginTop: 4,
   },
@@ -430,8 +430,8 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   quantity: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.large,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para números
+    fontSize: fonts.size.large, // ✅ Mantiene autoscaling
     color: '#2F2F2F',
     textAlign: 'center',
   },
@@ -484,8 +484,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cartPrice: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.large,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios en botón
+    fontSize: fonts.size.large, // ✅ Mantiene autoscaling
     color: '#FFF',
     marginLeft: 16,
   },

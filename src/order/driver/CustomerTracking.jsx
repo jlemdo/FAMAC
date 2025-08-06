@@ -19,30 +19,88 @@ const CustomerTracking = ({order}) => {
   const mapRef = useRef(null);
   const [eta, setEta] = useState({distance: 0, duration: 0});
   const [routeCoords, setRouteCoords] = useState([]);
+  const [isConnected, setIsConnected] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchDriverLocation = useCallback(async () => {
+  const fetchDriverLocation = useCallback(async (attempt = 0) => {
     try {
       const res = await axios.get(
         `https://food.siliconsoft.pk/api/driverlocationsagainstorder/${order.id}`,
+        { timeout: 8000 } // 8s timeout
       );
       const lastLoc = res.data.data;
       const lastLocation = lastLoc[lastLoc.length - 1];
+      
       if (lastLocation?.driver_lat && lastLocation?.driver_long) {
         setDriverLocation({
           driver_lat: parseFloat(lastLocation.driver_lat),
           driver_long: parseFloat(lastLocation.driver_long),
         });
+        
+        // Éxito: resetear contadores de error
+        setIsConnected(true);
+        setRetryCount(0);
       }
     } catch (err) {
-      // Driver location fetch failed
+      // Manejo inteligente de errores con retry
+      const maxRetries = 3;
+      const isNetworkError = !err.response; // No response = network issue
+      
+      if (isNetworkError && attempt < maxRetries) {
+        // Retry con exponential backoff: 2s, 4s, 8s
+        const backoffDelay = Math.pow(2, attempt + 1) * 1000;
+        setIsConnected(false);
+        setRetryCount(attempt + 1);
+        
+        setTimeout(() => {
+          fetchDriverLocation(attempt + 1);
+        }, backoffDelay);
+      } else {
+        // Max retries alcanzado o error del servidor
+        setIsConnected(false);
+        setRetryCount(maxRetries);
+      }
     }
   }, [order.id]);
 
   useEffect(() => {
     fetchDriverLocation();
-    const intervalId = setInterval(fetchDriverLocation, 5000);
-    return () => clearInterval(intervalId);
-  }, [fetchDriverLocation]);
+    
+    // Polling inteligente basado en distancia/ETA
+    const setupSmartPolling = () => {
+      let interval;
+      const updateInterval = () => {
+        // Determinar frecuencia basada en ETA
+        let pollRate = 8000; // Default: 8 segundos
+        
+        if (eta.duration <= 5) {
+          pollRate = 3000; // Muy cerca: cada 3s
+        } else if (eta.duration <= 15) {
+          pollRate = 5000; // Cerca: cada 5s
+        } else if (eta.duration <= 30) {
+          pollRate = 8000; // Medio: cada 8s
+        } else {
+          pollRate = 12000; // Lejos: cada 12s
+        }
+        
+        clearInterval(interval);
+        interval = setInterval(fetchDriverLocation, pollRate);
+      };
+      
+      updateInterval();
+      
+      // Reajustar cada vez que cambie el ETA
+      const metaInterval = setInterval(updateInterval, 30000); // cada 30s
+      
+      return () => {
+        clearInterval(interval);
+        clearInterval(metaInterval);
+      };
+    };
+    
+    const cleanup = setupSmartPolling();
+    return cleanup;
+  }, [fetchDriverLocation, eta.duration]);
 
   // Define customer coords antes del return
   const customer = {
@@ -55,6 +113,27 @@ const CustomerTracking = ({order}) => {
     <View style={styles.container}>
       <View style={styles.deliveryInfo}>
         <Text style={styles.sectionTitle}>Información del conductor</Text>
+        
+        {/* Connection Status Indicator */}
+        {!isConnected && (
+          <View style={styles.connectionStatus}>
+            <Ionicons name="wifi-outline" size={16} color="#E63946" />
+            <Text style={styles.connectionText}>
+              {retryCount < 3 
+                ? `Reintentando conexión... (${retryCount}/3)` 
+                : 'Sin conexión - Tocca para reintentar'
+              }
+            </Text>
+            {retryCount >= 3 && (
+              <TouchableOpacity 
+                onPress={() => fetchDriverLocation(0)} 
+                style={styles.retryButton}>
+                <Ionicons name="refresh" size={16} color="#2196F3" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        
         <Text style={styles.infoText}>
           Nombre: {order?.driver?.first_name} {order?.driver?.last_name}
         </Text>
@@ -218,6 +297,30 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 24,
     elevation: 4,
+  },
+  
+  // Connection Status Styles
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDE8E8',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E63946',
+  },
+  connectionText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#E63946',
+    marginLeft: 8,
+    flex: 1,
+  },
+  retryButton: {
+    marginLeft: 8,
+    padding: 4,
   },
 });
 

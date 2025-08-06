@@ -25,6 +25,20 @@ const Order = () => {
   const [refreshing, setRefreshing] = useState(false);
   const {orders, orderCount, refreshOrders, lastFetch} = useContext(OrderContext);
 
+  // Helper function para obtener estilo de status badge
+  const getStatusStyle = (status) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (['delivered', 'entregado', 'completed', 'finalizado'].includes(statusLower)) {
+      return { badge: styles.statusDelivered, text: styles.statusDeliveredText };
+    } else if (['cancelled', 'cancelado'].includes(statusLower)) {
+      return { badge: styles.statusCancelled, text: styles.statusCancelledText };
+    } else if (['on the way', 'en camino'].includes(statusLower)) {
+      return { badge: styles.statusInTransit, text: styles.statusInTransitText };
+    } else {
+      return { badge: styles.statusPending, text: styles.statusPendingText };
+    }
+  };
+
   const handleInvoices = order => {
     const invoiceURL = `https://food.siliconsoft.pk/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
@@ -155,6 +169,13 @@ const Order = () => {
                   })}
                 </Text>
 
+                {/* Status Badge */}
+                <View style={[styles.statusBadge, getStatusStyle(itemStatus).badge]}>
+                  <Text style={[styles.statusText, getStatusStyle(itemStatus).text]}>
+                    {itemStatus || 'Pendiente'}
+                  </Text>
+                </View>
+
                 <Text style={styles.itemHeader}>Artículos:</Text>
                 {orderDetails.length > 0 ? (
                   orderDetails.map((product, i) => {
@@ -264,19 +285,19 @@ const styles = StyleSheet.create({
   },
   orderIdText: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para IDs de órdenes
     color: '#D27F27',
     letterSpacing: 0.5,
   },
   orderDate: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para fechas
     color: '#666',
     marginBottom: 8,
   },
   total: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
     color: '#8B5E3C', // Marrón Tierra
   },
   itemHeader: {
@@ -303,7 +324,7 @@ const styles = StyleSheet.create({
   },
   itemPrice: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.price, // ✅ Fuente optimizada para precios de items
     color: '#D27F27', // Dorado Campo
   },
   noItems: {
@@ -406,6 +427,52 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginVertical: 12,
     paddingHorizontal: 8,
+  },
+  
+  // Status Badge Styles
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginVertical: 8,
+  },
+  statusText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para estados
+    textTransform: 'capitalize',
+  },
+  statusDelivered: {
+    backgroundColor: '#E8F5E8',
+    borderColor: '#33A744',
+    borderWidth: 1,
+  },
+  statusDeliveredText: {
+    color: '#33A744',
+  },
+  statusCancelled: {
+    backgroundColor: '#FDE8E8',
+    borderColor: '#E63946',
+    borderWidth: 1,
+  },
+  statusCancelledText: {
+    color: '#E63946',
+  },
+  statusInTransit: {
+    backgroundColor: '#E8F4FD',
+    borderColor: '#2196F3',
+    borderWidth: 1,
+  },
+  statusInTransitText: {
+    color: '#2196F3',
+  },
+  statusPending: {
+    backgroundColor: '#FFF4E6',
+    borderColor: '#D27F27',
+    borderWidth: 1,
+  },
+  statusPendingText: {
+    color: '#D27F27',
   },
 });
 

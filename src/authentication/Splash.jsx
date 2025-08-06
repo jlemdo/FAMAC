@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: fonts.size.XL || 28,
-    fontFamily: fonts.original || fonts.bold,
+    fontFamily: fonts.bold, // ✅ Cambio a Raleway Bold
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: fonts.size.XLLL || 36,
-    fontFamily: fonts.original || fonts.bold,
+    fontFamily: fonts.bold, // ✅ Cambio a Raleway Bold
     color: '#D27F27',
     textAlign: 'center',
     marginBottom: 12,

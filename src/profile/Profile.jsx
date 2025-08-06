@@ -429,7 +429,7 @@ export default function Profile({ navigation }) {
             style={styles.avatar}
           />
           {/* Banderín Usuario Fundador - overlay en esquina del avatar */}
-          {(profile?.promotion_id === "3" || profile?.promotion_id === 3) && (
+          {(profile?.promotion_id === "5" || profile?.promotion_id === 5) && (
             <TouchableOpacity 
               style={styles.founderBadge}
               onPress={() => setShowFounderTooltip(true)}
@@ -516,17 +516,28 @@ export default function Profile({ navigation }) {
             }
             
             
-            // Preparar payload - solo incluir dob si debe actualizarse
+            // SIEMPRE enviar todos los campos para evitar que el backend borre datos
             const payload = {
               userid:      user.id,
               first_name:  values.first_name,
               last_name:   values.last_name,
               phone:       values.phone,
+              email:       profile.email,        // Preservar email
+              address:     profile.address,      // Preservar dirección actual
             };
             
-            // Solo agregar dob si debe actualizarse
+            // Solo agregar/actualizar dob si debe actualizarse O si ya existe
             if (shouldUpdateBirthDate && dobFormatted) {
               payload.dob = dobFormatted;
+            } else if (profile.birthDate && !isNaN(profile.birthDate.getTime())) {
+              // Preservar fecha existente en formato backend
+              const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+              ];
+              const monthName = monthNames[profile.birthDate.getMonth()];
+              const year = profile.birthDate.getFullYear();
+              payload.dob = `${monthName} ${year}`;
             }
             
             const res = await axios.post(
@@ -886,10 +897,26 @@ export default function Profile({ navigation }) {
               onSubmit={async (values, { setSubmitting }) => {
                 setLoading(true);
                 try {
+                  // SIEMPRE enviar todos los campos para evitar que el backend borre datos
                   const payload = {
                     userid: user.id,
-                    address: values.address,
+                    first_name: profile.first_name,   // Preservar nombre
+                    last_name: profile.last_name,     // Preservar apellido  
+                    phone: profile.phone,             // Preservar teléfono
+                    email: profile.email,             // Preservar email
+                    address: values.address,          // Nueva dirección
                   };
+                  
+                  // Preservar fecha de nacimiento si existe
+                  if (profile.birthDate && !isNaN(profile.birthDate.getTime())) {
+                    const monthNames = [
+                      'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'
+                    ];
+                    const monthName = monthNames[profile.birthDate.getMonth()];
+                    const year = profile.birthDate.getFullYear();
+                    payload.dob = `${monthName} ${year}`;
+                  }
                   
                   const res = await axios.post(
                     'https://food.siliconsoft.pk/api/updateuserprofile',
@@ -1597,18 +1624,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dateText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para fechas
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
     color: '#2F2F2F',
     flex: 1,
   },
   dateTextDisabled: {
     color: 'rgba(47,47,47,0.5)', // Gris para fechas no editables
-    fontFamily: fonts.regular, // Quitar bold
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para fechas
   },
   datePlaceholder: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para fechas
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
     color: 'rgba(47,47,47,0.6)',
     flex: 1,
   },

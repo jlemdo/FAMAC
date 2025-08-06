@@ -30,9 +30,8 @@ import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import AddressPicker from '../components/AddressPicker';
 import CheckBox from 'react-native-check-box';
 import axios from 'axios';
-import GetLocation from 'react-native-get-location';
-import Geolocation from 'react-native-geolocation-service';
 import fonts from '../theme/fonts';
+import { getCurrentLocation } from '../utils/locationUtils';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 
 export default function Cart() {
@@ -160,54 +159,8 @@ export default function Cart() {
     }
   };
 
-  useEffect(() => {
-    const checkLocation = async () => {
-      try {
-        let granted = false;
-
-        if (Platform.OS === 'android') {
-          // Android: solicitamos permiso
-          const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Permiso de ubicación',
-              message: 'Necesitamos tu ubicación para mostrar dónde estás',
-            },
-          );
-          granted = result === PermissionsAndroid.RESULTS.GRANTED;
-        } else {
-          // iOS: abrimos el diálogo nativo y luego comprobamos el permiso
-          Geolocation.requestAuthorization('whenInUse');
-          const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-          granted = status === RESULTS.GRANTED;
-        }
-
-        if (!granted) {
-          return;
-        }
-
-        // Ya con permiso, obtenemos la posición en ambas plataformas
-        GetLocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 60000,
-        })
-          .then(location => {
-            setLatlong({
-              ...latlong,
-              driver_lat: location.latitude,
-              driver_long: location.longitude,
-            });
-          })
-          .catch(error => {
-            const {code, message} = error;
-          });
-      } catch (error) {
-        // Error al solicitar permiso
-      }
-    };
-
-    checkLocation();
-  }, []);
+  // ✅ OPTIMIZACIÓN: Ya no pedimos ubicación al cargar Cart
+  // La ubicación se obtiene justo antes del checkout en completeOrder()
 
   // Efecto para limpiar timers cuando cambia el usuario (CartContext ya maneja la limpieza del carrito)
   useEffect(() => {
@@ -243,6 +196,16 @@ export default function Cart() {
 
     setLoading(true);
     try {
+      // ✅ JUST-IN-TIME: Obtener ubicación solo cuando se va a hacer el pedido
+      const userType = user?.usertype === 'Guest' ? 'guest' : 'user';
+      const location = await getCurrentLocation(userType);
+      if (location) {
+        setLatlong({
+          driver_lat: location.latitude,
+          driver_long: location.longitude,
+        });
+      }
+      // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       const {data} = await axios.post(
@@ -1058,8 +1021,8 @@ const styles = StyleSheet.create({
     color: '#D27F27', // Dorado Campo
   },
   price: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
+    fontFamily: fonts.price, // ✅ Nueva fuente optimizada para precios
     color: '#2F2F2F',
     marginBottom: 8,
   },
@@ -1083,8 +1046,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   quantity: {
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
+    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para números
     color: '#2F2F2F',
     marginHorizontal: 8,
   },
@@ -1109,8 +1072,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   totalText: {
-    fontSize: fonts.size.large,
-    fontFamily: fonts.bold,
+    fontSize: fonts.size.large, // ✅ Mantiene autoscaling
+    fontFamily: fonts.priceBold, // ✅ Nueva fuente bold optimizada para precios totales
     color: '#2F2F2F',
     textAlign: 'center',
     marginBottom: 16,
@@ -1450,14 +1413,14 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   discountedPriceCart: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
+    fontFamily: fonts.priceBold, // ✅ Nueva fuente bold optimizada para precios
     color: '#D27F27',
     marginRight: 8,
   },
   quantityInfoCart: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para números (contiene cantidades)
     color: '#2F2F2F',
     flexShrink: 1,
   },

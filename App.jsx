@@ -18,7 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
 
 import Cart from './src/cart/Cart';
-import Route from './src/tracking/Route';
+// Removed unused Route import - component was dead code
 import Profile from './src/profile/Profile';
 import Suggestions from './src/suggestions/Suggestions';
 import Header from './src/header/Header';
