@@ -493,26 +493,38 @@ export default function Profile({ navigation }) {
           first_name: profile.first_name,
           last_name:  profile.last_name,
           phone:      profile.phone,
-          birthDate:  profile.birthDate,
+          birthDate:  profile.birthDate || null,
         }}
         enableReinitialize
         validationSchema={ProfileSchema}
         onSubmit={async (values, { setSubmitting }) => {
+          console.log('🐛 FORMIK DEBUG - Values recibidos:', values);
+          console.log('🐛 FORMIK DEBUG - Profile actual:', profile);
           setLoading(true);
           try {
             // Preparar la fecha para envío - formato "Month YYYY"
             // Solo enviar fecha si el usuario no tenía fecha previamente establecida
             let dobFormatted = null;
             const shouldUpdateBirthDate = !profile.birthDate || isNaN(profile.birthDate.getTime());
+            console.log('🐛 DOB VALIDATION DEBUG:', {
+              profile_birthDate: profile.birthDate,
+              profile_birthDate_type: typeof profile.birthDate,
+              shouldUpdateBirthDate,
+              values_birthDate: values.birthDate,
+              canUpdateDOB: shouldUpdateBirthDate
+            });
             
-            if (shouldUpdateBirthDate && values.birthDate && values.birthDate instanceof Date && !isNaN(values.birthDate.getTime())) {
-              const monthNames = [
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'
-              ];
-              const monthName = monthNames[values.birthDate.getMonth()];
-              const year = values.birthDate.getFullYear();
-              dobFormatted = `${monthName} ${year}`;
+            if (shouldUpdateBirthDate && values.birthDate) {
+              console.log('🐛 DATE FORMATTING DEBUG:', {
+                birthDate_toString: values.birthDate.toString(),
+                birthDate_getTime: values.birthDate.getTime(),
+                birthDate_isValid: !isNaN(values.birthDate.getTime()),
+                birthDate_getFullYear: values.birthDate.getFullYear(),
+                birthDate_getMonth: values.birthDate.getMonth()
+              });
+              const opts = {month: 'long', year: 'numeric'};
+              dobFormatted = values.birthDate.toLocaleDateString('en-US', opts);
+              console.log('🐛 FORMATTED DOB:', dobFormatted);
             }
             
             
@@ -540,6 +552,7 @@ export default function Profile({ navigation }) {
               payload.dob = `${monthName} ${year}`;
             }
             
+            console.log('🐛 PAYLOAD FINAL enviado al backend:', payload);
             const res = await axios.post(
               'https://food.siliconsoft.pk/api/updateuserprofile',
               payload
@@ -687,7 +700,13 @@ export default function Profile({ navigation }) {
               ]}
               onPress={() => {
                 // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
-                if (isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()))) {
+                const canOpenPicker = isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()));
+                console.log('🐛 PICKER DEBUG - Can open?:', {
+                  isEditingProfile,
+                  profile_birthDate: profile.birthDate,
+                  canOpenPicker
+                });
+                if (canOpenPicker) {
                   setShowMonthYearPicker(true);
                 }
               }}
@@ -695,11 +714,11 @@ export default function Profile({ navigation }) {
               disabled={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile}>
               <Text
                 style={[
-                  values.birthDate && !isNaN(values.birthDate.getTime()) ? styles.dateText : styles.datePlaceholder,
+                  values.birthDate ? styles.dateText : styles.datePlaceholder,
                   // Si no es editable (no en modo edición O ya tiene fecha), usar estilo deshabilitado
                   !isEditingProfile || (profile.birthDate && !isNaN(profile.birthDate.getTime())) ? styles.dateTextDisabled : null
                 ]}>
-                {values.birthDate && !isNaN(values.birthDate.getTime())
+                {values.birthDate
                   ? values.birthDate.toLocaleDateString('es-ES', {
                       month: 'long',
                       year: 'numeric',
@@ -748,6 +767,7 @@ export default function Profile({ navigation }) {
                                     onPress={() => {
                                       const currentYear = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 25;
                                       const newDate = new Date(currentYear, index, 1);
+                                      console.log('🐛 PICKER DEBUG - Estableciendo mes:', {month, index, newDate});
                                       setFieldValue('birthDate', newDate);
                                     }}>
                                     <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
@@ -778,6 +798,7 @@ export default function Profile({ navigation }) {
                                     onPress={() => {
                                       const currentMonth = values.birthDate ? values.birthDate.getMonth() : 0;
                                       const newDate = new Date(year, currentMonth, 1);
+                                      console.log('🐛 PICKER DEBUG - Estableciendo año:', {year, currentMonth, newDate});
                                       setFieldValue('birthDate', newDate);
                                     }}>
                                     <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>

@@ -1126,7 +1126,7 @@ const styles = StyleSheet.create({
   },
   upsellPrice: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.price, // ✅ Fuente optimizada para precios
     color: '#2F2F2F',
     marginBottom: 8,
   },
@@ -1353,7 +1353,7 @@ const styles = StyleSheet.create({
   },
   stickyTotalPrice: {
     fontSize: fonts.size.XL,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
     color: '#D27F27',
   },
   stickyTotalDetails: {
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
   },
   upsellDiscountedPrice: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios con descuento
     color: '#000',
   },
 });
