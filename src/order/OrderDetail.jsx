@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   },
   orderIdText: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.numeric, // ✅ Fuente optimizada para IDs de orden
     color: '#D27F27',
     letterSpacing: 0.5,
   },
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   itemPrice: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios
     fontSize: fonts.size.small,
     color: '#D27F27',
   },
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
   },
   totalValue: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precio total
     fontSize: fonts.size.medium,
     color: '#33A744',
   },

@@ -38,9 +38,12 @@ import {OrderContext} from './src/context/OrderContext';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-
+// LIVE
 const PUBLISHABLE_KEY =
-  'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
+  'pk_live_51RUatHIhBUbZl3CrIf9BW6LjracnlDnVMnpeRkhIk2Th6ULOdgZiSL3oGnEkGR8h42aLnzyrHy80gGIjv6pzmTp800PbiPa4Pe';
+  // SANDBOX
+// const PUBLISHABLE_KEY =
+//   'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
 // const PUBLISHABLE_KEY =
 //   'pk_test_51OMmaHISCA0h3oYpdsnzpNlsLGm3WLtP7zb5mFyeEAKJqPZZXuP3J1ph7ShDzBUWiSJ64UHtfII8xmpbFkXbM4Bg00K0F4gAR9';
 

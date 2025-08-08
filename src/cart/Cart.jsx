@@ -33,6 +33,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { getCurrentLocation } from '../utils/locationUtils';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
+import {formatOrderId} from '../utils/orderIdFormatter';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -208,9 +209,10 @@ export default function Cart() {
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
+      
       const {data} = await axios.post(
         'https://food.siliconsoft.pk/api/create-payment-intent',
-        {amount: totalPrice * 100, currency: 'usd', email: orderEmail},
+        {amount: parseFloat(totalPrice), currency: 'mxn', email: orderEmail},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
@@ -230,7 +232,7 @@ export default function Cart() {
         googlePay: {
           // sólo Android
           merchantCountryCode: 'MX',
-          testEnv: true, // sandbox
+          testEnv: false, // producción (live)
         },
       });
       if (initError) {
@@ -278,7 +280,7 @@ export default function Cart() {
         type: 'success',
         title: '¡Pedido Realizado Exitosamente!',
         message: `Tu pedido ha sido procesado correctamente.\n\n` +
-                 `📋 Número de pedido: #${orderNumber}\n` +
+                 `📋 Número de pedido: ${formatOrderId(orderData?.created_at || new Date().toISOString())}\n` +
                  `💰 Total: $${totalPrice}\n` +
                  `📦 ${itemCount} producto${itemCount !== 1 ? 's' : ''}\n` +
                  `🚚 ${deliveryText}` +

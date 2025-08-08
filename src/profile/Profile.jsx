@@ -502,29 +502,26 @@ export default function Profile({ navigation }) {
           console.log('🐛 FORMIK DEBUG - Profile actual:', profile);
           setLoading(true);
           try {
-            // Preparar la fecha para envío - formato "Month YYYY"
-            // Solo enviar fecha si el usuario no tenía fecha previamente establecida
+            // DOB Logic: Solo establecer UNA VEZ, nunca actualizar
+            // Verificar si el usuario YA tiene DOB establecido desde el backend
             let dobFormatted = null;
             const shouldUpdateBirthDate = !profile.birthDate || isNaN(profile.birthDate.getTime());
-            console.log('🐛 DOB VALIDATION DEBUG:', {
-              profile_birthDate: profile.birthDate,
-              profile_birthDate_type: typeof profile.birthDate,
-              shouldUpdateBirthDate,
-              values_birthDate: values.birthDate,
-              canUpdateDOB: shouldUpdateBirthDate
-            });
+            
+            if (!shouldUpdateBirthDate) {
+              // Usuario ya tiene DOB establecido - mostrar mensaje
+              showAlert({
+                type: 'info',
+                title: 'Fecha de nacimiento',
+                message: 'Tu fecha de nacimiento ya está establecida y no puede modificarse por seguridad.',
+                confirmText: 'Entendido',
+              });
+              return; // Salir sin hacer el update
+            }
             
             if (shouldUpdateBirthDate && values.birthDate) {
-              console.log('🐛 DATE FORMATTING DEBUG:', {
-                birthDate_toString: values.birthDate.toString(),
-                birthDate_getTime: values.birthDate.getTime(),
-                birthDate_isValid: !isNaN(values.birthDate.getTime()),
-                birthDate_getFullYear: values.birthDate.getFullYear(),
-                birthDate_getMonth: values.birthDate.getMonth()
-              });
               const opts = {month: 'long', year: 'numeric'};
-              dobFormatted = values.birthDate.toLocaleDateString('en-US', opts);
-              console.log('🐛 FORMATTED DOB:', dobFormatted);
+              dobFormatted = values.birthDate.toLocaleDateString('es-ES', opts);
+              console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
             }
             
             
@@ -553,10 +550,30 @@ export default function Profile({ navigation }) {
             }
             
             console.log('🐛 PAYLOAD FINAL enviado al backend:', payload);
+            
+            // Si hay DOB, intentar con endpoint diferente primero
+            if (dobFormatted) {
+              console.log('🐛 Intentando actualizar DOB con endpoint específico...');
+              try {
+                const dobPayload = {
+                  userid: user.id,
+                  dob: dobFormatted
+                };
+                const dobRes = await axios.post(
+                  'https://food.siliconsoft.pk/api/updatedob', // Intentar endpoint específico para DOB
+                  dobPayload
+                );
+                console.log('🐛 DOB UPDATE RESPONSE:', dobRes.data);
+              } catch (dobError) {
+                console.log('🐛 DOB endpoint falló, intentando con updateuserprofile...', dobError.response?.data);
+              }
+            }
+            
             const res = await axios.post(
               'https://food.siliconsoft.pk/api/updateuserprofile',
               payload
             );
+            console.log('🐛 BACKEND RESPONSE:', res.data);
             if (res.status === 200) {
               // Solo actualizar los campos del formulario, manteniendo address intacto
               const updatedProfile = { 
