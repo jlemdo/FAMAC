@@ -208,14 +208,28 @@ const AddressFormUberStyle = () => {
       // Asegurar que tenemos una dirección válida para enviar
       const addressToSend = finalAddress.fullAddress || selectedAddress?.description || 'Dirección seleccionada';
       
-      // Preservar TODOS los parámetros originales de GuestCheckout y solo agregar los nuevos
+      console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
+      console.log('route.params completos:', route.params);
+      console.log('Preservando deliveryInfo:', route.params?.preservedDeliveryInfo);
+      console.log('Preservando needInvoice:', route.params?.preservedNeedInvoice);
+      console.log('Preservando taxDetails:', route.params?.preservedTaxDetails);
+      
+      // Preservar TODOS los parámetros originales de GuestCheckout explícitamente
       navigation.navigate('GuestCheckout', {
-        // Preservar parámetros originales (precio, cantidad, email, etc.)
-        ...(route.params || {}),
-        // Agregar/actualizar solo los parámetros específicos
+        // Parámetros básicos
+        totalPrice: route.params?.totalPrice,
+        itemCount: route.params?.itemCount,
+        returnToCart: route.params?.returnToCart,
+        // CRITICAL: Datos preservados del Cart (estos se estaban perdiendo)
+        preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
+        preservedNeedInvoice: route.params?.preservedNeedInvoice,
+        preservedTaxDetails: route.params?.preservedTaxDetails,
+        // Email actuales
+        currentEmail: route.params?.currentEmail,
+        currentAddress: route.params?.currentAddress,
+        // Parámetros específicos de regreso
         selectedAddress: addressToSend,
         shouldGoToStep2: true, // Indicar que debe ir al paso 2
-        fromGuestCheckout: undefined, // Limpiar este flag
         // Preservar el email del usuario
         preservedEmail: route.params?.currentEmail,
       });

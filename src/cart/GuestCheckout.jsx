@@ -285,6 +285,11 @@ export default function GuestCheckout() {
       <TouchableOpacity
         style={styles.addressButton}
         onPress={() => {
+          console.log('=== GUEST CHECKOUT NAVEGANDO A ADDRESS FORM ===');
+          console.log('Enviando preservedDeliveryInfo:', preservedDeliveryInfo);
+          console.log('Enviando preservedNeedInvoice:', preservedNeedInvoice);
+          console.log('Enviando preservedTaxDetails:', preservedTaxDetails);
+          
           // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats)
           navigation.navigate('AddressFormUberStyle', {
             initialAddress: address,
@@ -297,8 +302,13 @@ export default function GuestCheckout() {
             totalPrice: totalPrice,
             itemCount: itemCount,
             returnToCart: returnToCart,
-            // CRÍTICO: También preservar el email que ya ingresó el usuario
+            // CRITICAL: Pasar TODOS los datos preservados del Cart
+            preservedDeliveryInfo: preservedDeliveryInfo,
+            preservedNeedInvoice: preservedNeedInvoice,
+            preservedTaxDetails: preservedTaxDetails,
+            // Email y dirección actuales
             currentEmail: email,
+            currentAddress: address,
           });
         }}
         activeOpacity={0.7}>
