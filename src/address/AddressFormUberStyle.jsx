@@ -220,8 +220,13 @@ const AddressFormUberStyle = () => {
         totalPrice: route.params?.totalPrice,
         itemCount: route.params?.itemCount,
         returnToCart: route.params?.returnToCart,
-        // CRITICAL: Datos preservados del Cart (estos se estaban perdiendo)
-        preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
+        // CRITICAL: Datos preservados del Cart - convertir Date a string si es necesario
+        preservedDeliveryInfo: route.params?.preservedDeliveryInfo ? {
+          ...route.params.preservedDeliveryInfo,
+          date: typeof route.params.preservedDeliveryInfo.date === 'string' 
+            ? route.params.preservedDeliveryInfo.date 
+            : route.params.preservedDeliveryInfo.date.toISOString(),
+        } : route.params?.preservedDeliveryInfo,
         preservedNeedInvoice: route.params?.preservedNeedInvoice,
         preservedTaxDetails: route.params?.preservedTaxDetails,
         // Email actuales

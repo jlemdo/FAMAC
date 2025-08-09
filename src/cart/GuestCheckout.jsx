@@ -188,8 +188,13 @@ export default function GuestCheckout() {
             guestData: {
               email: email.trim(),
               address: address.trim(),
-              // CRITICAL: Preservar TODOS los datos del formulario de Cart
-              preservedDeliveryInfo,
+              // CRITICAL: Preservar TODOS los datos del formulario de Cart - convertir Date a string
+              preservedDeliveryInfo: preservedDeliveryInfo ? {
+                ...preservedDeliveryInfo,
+                date: typeof preservedDeliveryInfo.date === 'string' 
+                  ? preservedDeliveryInfo.date 
+                  : preservedDeliveryInfo.date.toISOString(), // Convertir Date a string si es necesario
+              } : preservedDeliveryInfo,
               preservedNeedInvoice,
               preservedTaxDetails,
             }
@@ -302,8 +307,13 @@ export default function GuestCheckout() {
             totalPrice: totalPrice,
             itemCount: itemCount,
             returnToCart: returnToCart,
-            // CRITICAL: Pasar TODOS los datos preservados del Cart
-            preservedDeliveryInfo: preservedDeliveryInfo,
+            // CRITICAL: Pasar TODOS los datos preservados del Cart - convertir Date a string
+            preservedDeliveryInfo: preservedDeliveryInfo ? {
+              ...preservedDeliveryInfo,
+              date: typeof preservedDeliveryInfo.date === 'string' 
+                ? preservedDeliveryInfo.date 
+                : preservedDeliveryInfo.date.toISOString(),
+            } : preservedDeliveryInfo,
             preservedNeedInvoice: preservedNeedInvoice,
             preservedTaxDetails: preservedTaxDetails,
             // Email y dirección actuales

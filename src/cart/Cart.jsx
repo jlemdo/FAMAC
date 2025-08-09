@@ -161,7 +161,12 @@ export default function Cart() {
         
         // CRITICAL: Restaurar también los datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
-          setDeliveryInfo(params.guestData.preservedDeliveryInfo);
+          // Convertir el string de fecha de vuelta a Date object
+          const deliveryInfoToRestore = {
+            ...params.guestData.preservedDeliveryInfo,
+            date: new Date(params.guestData.preservedDeliveryInfo.date), // Convertir string a Date
+          };
+          setDeliveryInfo(deliveryInfoToRestore);
         }
         if (params.guestData.preservedNeedInvoice !== undefined) {
           setNeedInvoice(params.guestData.preservedNeedInvoice);
@@ -495,8 +500,11 @@ export default function Cart() {
           totalPrice: totalPrice,
           itemCount: itemCount,
           returnToCart: true,
-          // CRITICAL: Preservar TODOS los datos del formulario
-          preservedDeliveryInfo: deliveryInfo,
+          // CRITICAL: Preservar TODOS los datos del formulario - convertir Date a string
+          preservedDeliveryInfo: deliveryInfo ? {
+            ...deliveryInfo,
+            date: deliveryInfo.date.toISOString(), // Convertir Date a string serializable
+          } : null,
           preservedNeedInvoice: needInvoice,
           preservedTaxDetails: taxDetails,
           // También preservar email/address actuales si existen
