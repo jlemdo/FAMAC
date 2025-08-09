@@ -177,12 +177,21 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa
   const goToMap = () => {
+    console.log('=== NAVEGANDO AL MAPA ===');
+    console.log('Preservando params para el mapa:', {
+      preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
+      preservedNeedInvoice: route.params?.preservedNeedInvoice,
+      preservedTaxDetails: route.params?.preservedTaxDetails,
+    });
+    
     navigation.navigate('AddressMap', {
       addressForm: {},
       selectedLocation: selectedAddress?.coordinates || { latitude: 19.4326, longitude: -99.1332 },
       pickerId,
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
       preselectedAddress: selectedAddress,
+      // CRITICAL: Preservar TODOS los parámetros para que no se pierdan en el mapa
+      ...route.params, // Pasar todos los parámetros originales
     });
   };
 
