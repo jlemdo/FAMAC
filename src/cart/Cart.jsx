@@ -180,10 +180,16 @@ export default function Cart() {
         // Limpiar los parámetros para evitar reutilización
         navigation.setParams({ guestData: null });
         
-        // Scroll automático al final donde está el botón de checkout
+        // Scroll automático - si tiene deliveryInfo, ir al botón de pago, si no al de horario
         setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 300);
+          if (params.guestData.preservedDeliveryInfo) {
+            // Tiene horario seleccionado - ir directo al botón "Proceder al Pago"
+            flatListRef.current?.scrollToEnd({ animated: true });
+          } else {
+            // No tiene horario - ir al botón "Seleccionar Horario"
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }
+        }, 500); // Delay más largo para que se rendericen los datos primero
       }
     }, [user?.id, user?.usertype, navigation])
   );
