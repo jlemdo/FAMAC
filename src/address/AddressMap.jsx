@@ -25,7 +25,8 @@ const AddressMap = () => {
     addressForm = {},
     selectedLocation = { latitude: 19.4326, longitude: -99.1332 },
     pickerId,
-    onLocationReturn
+    onLocationReturn,
+    fromGuestCheckout = false
   } = route.params || {};
 
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
@@ -162,7 +163,7 @@ const AddressMap = () => {
   };
 
   // Confirmar ubicación y regresar
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     // Asegurarse de que hay una ubicación seleccionada
     if (!currentLocation) {
       Alert.alert(
@@ -173,12 +174,59 @@ const AddressMap = () => {
       return;
     }
 
-    // Callback final y navegación de vuelta
-    if (onLocationReturn) {
-      onLocationReturn(currentLocation, addressForm);
+    // Si viene de GuestCheckout, navegar de vuelta con la ubicación
+    if (fromGuestCheckout) {
+      // Intentar obtener dirección legible con reverse geocoding
+      let formattedAddress = 'Ubicación seleccionada en el mapa';
+      
+      try {
+        const response = await axios.get(
+          `https://maps.googleapis.com/maps/api/geocode/json`,
+          {
+            params: {
+              latlng: `${currentLocation.latitude},${currentLocation.longitude}`,
+              key: Config.GOOGLE_DIRECTIONS_API_KEY,
+              language: 'es',
+              region: 'mx',
+            },
+          }
+        );
+
+        if (response.data.results && response.data.results.length > 0) {
+          // Buscar una dirección que tenga sentido (evitar códigos raros)
+          for (const result of response.data.results) {
+            const address = result.formatted_address;
+            // Verificar que la dirección contenga elementos normales de una dirección
+            if (address && 
+                address.length > 15 && 
+                !address.includes('+') && // Evitar plus codes
+                (address.includes('Calle') || address.includes('Av') || address.includes('Boulevard') || 
+                 address.includes('Calz') || address.includes(',') || address.includes('México'))) {
+              formattedAddress = address;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Reverse geocoding failed:', error);
+      }
+      
+      // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats)
+      navigation.navigate('AddressFormUberStyle', {
+        selectedLocationFromMap: currentLocation,
+        mapSelectedAddress: formattedAddress,
+        fromGuestCheckout: true
+      });
     }
-    
-    navigation.goBack();
+    // Sistema de callbacks original
+    else if (onLocationReturn) {
+      onLocationReturn(currentLocation, addressForm);
+      navigation.goBack();
+    }
+    // Fallback
+    else {
+      navigation.goBack();
+    }
   };
 
   return (

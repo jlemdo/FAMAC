@@ -18,7 +18,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
 } from 'react-native';
-import {useNavigation, useFocusEffect} from '@react-navigation/native';
+import {useNavigation, useFocusEffect, useRoute} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
 import {OrderContext} from '../context/OrderContext';
@@ -37,6 +37,7 @@ import {formatOrderId} from '../utils/orderIdFormatter';
 
 export default function Cart() {
   const navigation = useNavigation();
+  const route = useRoute();
   const {addNotification} = useNotification();
   const {
     cart,
@@ -53,10 +54,7 @@ export default function Cart() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet} = useStripe();
   const [timers, setTimers] = useState({});
-  const [modalVisible, setModalVisible] = useState(false);
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
-  // DEBUG: Inicializar siempre desbloqueado y luego verificar
-  const [emailLocked, setEmailLocked] = useState(false);
   const [address, setAddress] = useState('');
   const [needInvoice, setNeedInvoice] = useState(false);
   const [taxDetails, setTaxDetails] = useState('');
@@ -69,7 +67,6 @@ export default function Cart() {
   });
   const [pickerVisible, setPickerVisible] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
-  const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -111,12 +108,6 @@ export default function Cart() {
     }
   };
 
-  // Función simplificada - verificar si email debe bloquearse basado en contexto local
-  const shouldLockEmailInput = () => {
-    // Si el guest ya tiene email guardado, significa que ya hizo un pedido
-    return user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
-  };
-
   // Registrar callback para limpiar deliveryInfo cuando se limpia el carrito
   useEffect(() => {
     const clearDeliveryInfo = () => {
@@ -133,11 +124,9 @@ export default function Cart() {
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
-      setEmailLocked(hasEmail); // Bloquear si ya tiene email (ya hizo pedido)
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
-      setEmailLocked(false);
       // Cargar perfil completo para obtener dirección actualizada
       fetchUserProfile();
     }
@@ -149,16 +138,56 @@ export default function Cart() {
       if (user?.usertype !== 'Guest' && user?.id) {
         fetchUserProfile();
       }
-    }, [user?.id, user?.usertype])
+      
+      // Revisar si hay datos de guest en los parámetros de navegación
+      console.log('=== VERIFICANDO GUEST DATA EN CART ===');
+      console.log('User type:', user?.usertype);
+      
+      // Intentar múltiples formas de obtener los parámetros
+      const params1 = navigation.getState()?.routes?.find(route => route.name === 'MainTabs')?.params;
+      const params2 = route?.params;
+      
+      console.log('Params método 1 (MainTabs):', params1);
+      console.log('Params método 2 (route):', params2);
+      
+      const params = params1 || params2;
+      console.log('Params finales:', params);
+      console.log('GuestData encontrado:', params?.guestData);
+      
+      if (params?.guestData && user?.usertype === 'Guest') {
+        // Usar los datos del guest checkout
+        setEmail(params.guestData.email);
+        setAddress(params.guestData.address);
+        
+        // CRITICAL: Restaurar también los datos del formulario si existen
+        if (params.guestData.preservedDeliveryInfo) {
+          setDeliveryInfo(params.guestData.preservedDeliveryInfo);
+        }
+        if (params.guestData.preservedNeedInvoice !== undefined) {
+          setNeedInvoice(params.guestData.preservedNeedInvoice);
+        }
+        if (params.guestData.preservedTaxDetails !== undefined) {
+          setTaxDetails(params.guestData.preservedTaxDetails);
+        }
+        
+        console.log('=== GUEST CHECKOUT COMPLETADO ===');
+        console.log('Email configurado:', params.guestData.email);
+        console.log('Dirección configurada:', params.guestData.address);
+        console.log('DeliveryInfo restaurado:', params.guestData.preservedDeliveryInfo);
+        console.log('NeedInvoice restaurado:', params.guestData.preservedNeedInvoice);
+        console.log('TaxDetails restaurado:', params.guestData.preservedTaxDetails);
+        
+        // Limpiar los parámetros para evitar reutilización
+        navigation.setParams({ guestData: null });
+        
+        // Scroll automático al final donde está el botón de checkout
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+      }
+    }, [user?.id, user?.usertype, navigation])
   );
 
-  // Manejo simple del email - solo para guests nuevos
-  const handleEmailChange = (newEmail) => {
-    // Solo permitir cambios si no está bloqueado
-    if (!emailLocked) {
-      setEmail(newEmail);
-    }
-  };
 
   // ✅ OPTIMIZACIÓN: Ya no pedimos ubicación al cargar Cart
   // La ubicación se obtiene justo antes del checkout en completeOrder()
@@ -183,8 +212,16 @@ export default function Cart() {
 
   // 1) Flujo único y robusto de pago
   const completeOrder = async () => {
+    console.log('=== COMPLETE ORDER INICIADO ===');
+    console.log('Loading:', loading);
+    console.log('TotalPrice:', totalPrice);
+    console.log('Email actual:', email);
+    console.log('Address actual:', address);
+    console.log('User type:', user?.usertype);
+    
     if (loading) return;
     if (totalPrice <= 0) {
+      console.log('ERROR: No hay productos en carrito');
       showAlert({
         type: 'error',
         title: 'Error',
@@ -240,7 +277,10 @@ export default function Cart() {
       }
 
       // 1.3) Presentar la UI de pago
+      console.log('=== PRESENTANDO PAYMENT SHEET ===');
+      console.log('ClientSecret obtenido:', clientSecret);
       const {error: paymentError} = await presentPaymentSheet();
+      console.log('PaymentSheet resultado:', paymentError ? 'ERROR' : 'SUCCESS');
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
           showAlert({
@@ -426,7 +466,38 @@ export default function Cart() {
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
     if (user?.usertype === 'Guest') {
-      setModalVisible(true);
+      console.log('=== GUEST CHECKOUT DECISION ===');
+      console.log('Email actual:', email);
+      console.log('Address actual:', address);
+      console.log('Email válido:', !!email?.trim());
+      console.log('Address válido:', !!address?.trim());
+      
+      // Verificar si el guest ya tiene email y dirección
+      const hasEmail = email?.trim() && email.trim() !== '';
+      const hasAddress = address?.trim() && address.trim() !== '';
+      
+      if (hasEmail && hasAddress) {
+        // Guest ya completó sus datos: proceder directamente al pago
+        console.log('=== GUEST CON DATOS COMPLETOS - PROCEDIENDO AL PAGO ===');
+        completeOrder();
+      } else {
+        // Guest necesita completar datos: ir a GuestCheckout
+        console.log('=== GUEST SIN DATOS - ENVIANDO A GUEST CHECKOUT ===');
+        const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
+        
+        navigation.navigate('GuestCheckout', {
+          totalPrice: totalPrice,
+          itemCount: itemCount,
+          returnToCart: true,
+          // CRITICAL: Preservar TODOS los datos del formulario
+          preservedDeliveryInfo: deliveryInfo,
+          preservedNeedInvoice: needInvoice,
+          preservedTaxDetails: taxDetails,
+          // También preservar email/address actuales si existen
+          currentEmail: email,
+          currentAddress: address,
+        });
+      }
     } else {
       // Usuario registrado: verificar si tiene dirección REAL del perfil
       const hasProfileAddress = userProfile?.address && userProfile?.address?.trim() !== '';
@@ -441,21 +512,7 @@ export default function Cart() {
     }
   };
 
-  // Validaciones antes de pago de invitado
-  const handleGuestPayment = () => {
-    // Guest SIEMPRE necesita dirección manual - nunca usar ubicación automática
-    if (!email?.trim() || !address?.trim()) {
-      showAlert({
-        type: 'warning',
-        title: 'Datos incompletos',
-        message: 'Los invitados deben proporcionar una dirección completa para la entrega.\n\nPor favor ingresa correo y dirección.',
-        confirmText: 'Entendido',
-      });
-      return;
-    }
-    setModalVisible(false);
-    completeOrder();
-  };
+
 
   useEffect(() => {
     const fetchUpsellItems = async () => {
@@ -675,6 +732,9 @@ export default function Cart() {
                 loadingUpsell={loadingUpsell}
                 upsellItems={upsellItems}
                 addToCart={addToCart}
+                user={user}
+                email={email}
+                address={address}
               />
             }
             ListFooterComponentStyle={{paddingTop: 16}}
@@ -694,111 +754,6 @@ export default function Cart() {
             flatListRef.current?.scrollToEnd({ animated: true });
           }, 300); // Pequeño delay para que se actualice el estado primero
         }}
-      />
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          Keyboard.dismiss();
-          setModalVisible(false);
-        }}>
-        <TouchableWithoutFeedback 
-          onPress={() => {
-            Keyboard.dismiss();
-            setModalVisible(false);
-          }}>
-          <View style={styles.modalContainer}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.keyboardAvoidingView}>
-              <TouchableWithoutFeedback onPress={() => {}}>
-                <ScrollView
-                  contentContainerStyle={styles.modalContent}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>Compra como invitado</Text>
-                <TextInput
-                  placeholder="Correo electrónico"
-                  style={[styles.input, emailLocked && styles.disabledInput]}
-                  value={email}
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
-                  placeholderTextColor="rgba(47,47,47,0.6)"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                  returnKeyType="next"
-                  editable={!emailLocked}
-                />
-                {emailLocked && (
-                  <Text style={styles.blockedText}>
-                    🔒 Bloqueado para este dispositivo
-                  </Text>
-                )}
-                
-                {/* Campo de dirección con AddressPicker */}
-                <TouchableOpacity
-                  style={[styles.input, styles.addressInput]}
-                  onPress={() => {
-                    setModalVisible(false);  // Cerrar modal Guest primero
-                    // Sin setTimeout - cerrar inmediatamente y abrir después
-                    setShowAddressPicker(true);  // Abrir AddressPicker inmediatamente
-                  }}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={address ? styles.addressText : styles.addressPlaceholder}>
-                    {address || 'Dirección completa'}
-                  </Text>
-                  <Text style={styles.addressIcon}>📍</Text>
-                </TouchableOpacity>
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalButton}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setModalVisible(false);
-                    }}>
-                    <Text style={styles.modalButtonText}>Cerrar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.modalButtonSave,
-                      (!email?.trim() || !address?.trim()) && {
-                        opacity: 0.5,
-                      },
-                    ]}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      handleGuestPayment();
-                    }}
-                    disabled={!email?.trim() || !address?.trim()}>
-                    <Text style={styles.modalButtonText}>Pagar</Text>
-                  </TouchableOpacity>
-                </View>
-                </ScrollView>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* AddressPicker Modal */}
-      <AddressPicker
-        visible={showAddressPicker}
-        onClose={() => {
-          setShowAddressPicker(false);
-          // Volver a abrir modal Guest después de cerrar AddressPicker - SIN setTimeout
-          setModalVisible(true);
-        }}
-        onConfirm={(addressData) => {
-          setAddress(addressData.fullAddress);
-          setShowAddressPicker(false);
-          // Volver a abrir modal Guest después de confirmar dirección - SIN setTimeout
-          setModalVisible(true);
-        }}
-        initialAddress={address || ''}
-        title="Dirección de Entrega"
       />
 
       {/* Modal para usuario registrado sin dirección */}
@@ -1074,7 +1029,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   totalText: {
-    fontSize: fonts.size.large, // ✅ Mantiene autoscaling
+    fontSize: fonts.size.medium, // ✅ Reducido de large a medium
     fontFamily: fonts.priceBold, // ✅ Nueva fuente bold optimizada para precios totales
     color: '#2F2F2F',
     textAlign: 'center',
@@ -1092,7 +1047,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   suggestionsTitle: {
-    fontSize: fonts.size.XLL,
+    fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
     marginTop: 24,
@@ -1354,7 +1309,7 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
   },
   stickyTotalPrice: {
-    fontSize: fonts.size.XL,
+    fontSize: fonts.size.large, // ✅ Reducido de XL a large
     fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
     color: '#D27F27',
   },
@@ -1466,6 +1421,43 @@ const styles = StyleSheet.create({
     fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios con descuento
     color: '#000',
   },
+  
+  // Estilos para indicadores de guest
+  guestIndicators: {
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderWidth: 1,
+    borderColor: '#D27F27',
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 12,
+  },
+  guestIndicatorsTitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginBottom: 8,
+  },
+  guestIndicatorItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  guestIndicatorIcon: {
+    fontSize: fonts.size.medium,
+    marginRight: 8,
+    marginTop: 1,
+  },
+  guestIndicatorText: {
+    flex: 1,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    lineHeight: 18,
+  },
+  guestIndicatorValue: {
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
 });
 
 // <-- justo después de StyleSheet.create({...})
@@ -1481,6 +1473,9 @@ const CartFooter = ({
   loadingUpsell,
   upsellItems,
   addToCart,
+  user,
+  email,
+  address,
 }) => (
   <View>
     {/* Upsell */}
@@ -1588,6 +1583,31 @@ const CartFooter = ({
             value={taxDetails || ''}
             onChangeText={setTaxDetails}
           />
+        )}
+
+        {/* Indicadores para guests */}
+        {user && user.usertype === 'Guest' && (email || address) && (
+          <View style={styles.guestIndicators}>
+            <Text style={styles.guestIndicatorsTitle}>📋 Información de entrega guardada:</Text>
+            
+            {email && (
+              <View style={styles.guestIndicatorItem}>
+                <Text style={styles.guestIndicatorIcon}>📧</Text>
+                <Text style={styles.guestIndicatorText}>
+                  Email: <Text style={styles.guestIndicatorValue}>{email}</Text>
+                </Text>
+              </View>
+            )}
+            
+            {address && (
+              <View style={styles.guestIndicatorItem}>
+                <Text style={styles.guestIndicatorIcon}>📍</Text>
+                <Text style={styles.guestIndicatorText}>
+                  Dirección: <Text style={styles.guestIndicatorValue}>{address.length > 50 ? address.substring(0, 50) + '...' : address}</Text>
+                </Text>
+              </View>
+            )}
+          </View>
         )}
 
         <TouchableOpacity

@@ -29,7 +29,9 @@ const AddressForm = () => {
     pickerId, // ID para obtener callbacks
     initialAddress = '',
     title = 'Seleccionar Dirección',
-    returnScreen = null // Para saber a dónde regresar
+    returnScreen = null, // Para saber a dónde regresar
+    mapSelectedAddress = null, // Dirección seleccionada del mapa
+    selectedLocationFromMap = null // Coordenadas del mapa
   } = route.params || {};
 
   // Obtener callbacks usando el ID
@@ -77,9 +79,20 @@ const AddressForm = () => {
     return addressForm.city === 'CDMX' ? alcaldiasCDMX : municipiosEdomex;
   };
 
+  // Efecto para manejar dirección seleccionada del mapa
+  useEffect(() => {
+    if (mapSelectedAddress && selectedLocationFromMap) {
+      setAddressForm(prev => ({
+        ...prev,
+        fullAddress: mapSelectedAddress
+      }));
+      setSelectedLocation(selectedLocationFromMap);
+    }
+  }, [mapSelectedAddress, selectedLocationFromMap]);
+
   // Efecto para geocodificar initialAddress cuando se carga la pantalla
   useEffect(() => {
-    if (initialAddress && initialAddress.trim() && !selectedLocation) {
+    if (initialAddress && initialAddress.trim() && !selectedLocation && !mapSelectedAddress) {
       const geocodeInitialAddress = async () => {
         try {
           const response = await axios.get(
@@ -89,6 +102,8 @@ const AddressForm = () => {
                 address: `${initialAddress}, México`,
                 key: Config.GOOGLE_DIRECTIONS_API_KEY,
                 language: 'es',
+                region: 'mx',
+                bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
               },
             }
           );
@@ -125,7 +140,16 @@ const AddressForm = () => {
   const validateAddressWithGoogle = async (fullAddressString) => {
     try {
       const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(fullAddressString)}, México&key=${Config.GOOGLE_DIRECTIONS_API_KEY}`
+        `https://maps.googleapis.com/maps/api/geocode/json`,
+        {
+          params: {
+            address: `${fullAddressString}, México`,
+            key: Config.GOOGLE_DIRECTIONS_API_KEY,
+            language: 'es',
+            region: 'mx',
+            bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
+          },
+        }
       );
 
       if (response.data.status !== 'OK' || !response.data.results.length) {
@@ -205,7 +229,45 @@ const AddressForm = () => {
       return;
     }
 
-    // 3. 🔥 VALIDACIÓN INTELIGENTE CON GOOGLE
+    // Si hay una dirección del mapa, no validar con Google
+    if (mapSelectedAddress) {
+      const finalAddress = {
+        ...addressForm,
+        fullAddress: mapSelectedAddress,
+        coordinates: selectedLocationFromMap,
+        verified: true
+      };
+
+      showCustomAlert(
+        'success',
+        '✅ Dirección confirmada',
+        `Dirección seleccionada en mapa:\n\n${mapSelectedAddress}`,
+        () => {
+          // Ejecutar callback si existe (sistema antiguo)
+          if (callbacks?.onConfirm) {
+            callbacks.onConfirm(finalAddress);
+            // Limpiar y salir
+            if (pickerId) {
+              cleanupAddressPickerCallbacks(pickerId);
+            }
+            navigation.goBack();
+          }
+          // Si viene de GuestCheckout, usar navegación con parámetros
+          else if (route.params?.fromGuestCheckout) {
+            navigation.navigate('GuestCheckout', {
+              selectedAddress: mapSelectedAddress
+            });
+          }
+          // Fallback: regresar normalmente
+          else {
+            navigation.goBack();
+          }
+        }
+      );
+      return;
+    }
+
+    // 3. 🔥 VALIDACIÓN INTELIGENTE CON GOOGLE (solo si no hay dirección del mapa)
     setIsValidating(true);
     
     const addressParts = [
@@ -245,16 +307,25 @@ const AddressForm = () => {
       '✅ Dirección verificada',
       `Google Maps confirmó tu dirección:\n\n${validation.formattedAddress}`,
       () => {
-        // Ejecutar callback
+        // Ejecutar callback si existe (sistema antiguo)
         if (callbacks?.onConfirm) {
           callbacks.onConfirm(finalAddress);
+          // Limpiar y salir
+          if (pickerId) {
+            cleanupAddressPickerCallbacks(pickerId);
+          }
+          navigation.goBack();
         }
-        
-        // Limpiar y salir
-        if (pickerId) {
-          cleanupAddressPickerCallbacks(pickerId);
+        // Si viene de GuestCheckout, usar navegación con parámetros
+        else if (route.params?.fromGuestCheckout) {
+          navigation.navigate('GuestCheckout', {
+            selectedAddress: validation.formattedAddress
+          });
         }
-        navigation.goBack();
+        // Fallback: regresar normalmente
+        else {
+          navigation.goBack();
+        }
       }
     );
   };
@@ -289,6 +360,7 @@ const AddressForm = () => {
             key: Config.GOOGLE_DIRECTIONS_API_KEY,
             language: 'es',
             region: 'mx',
+            bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
           },
         }
       );
@@ -319,8 +391,9 @@ const AddressForm = () => {
     navigation.navigate('AddressMap', {
       addressForm,
       selectedLocation: targetLocation,
-      // Pasamos el pickerId para que el mapa pueda actualizar el form
-      pickerId,
+      // Pasar información sobre de dónde viene
+      pickerId: pickerId || null,
+      fromGuestCheckout: route.params?.fromGuestCheckout || false,
       onLocationReturn: (location, updatedForm) => {
         setSelectedLocation(location);
         setAddressForm(updatedForm);

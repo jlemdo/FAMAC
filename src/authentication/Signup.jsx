@@ -68,7 +68,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
-      .min(6, 'Mínimo 6 caracteres')
+      .min(8, 'Mínimo 8 caracteres')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -222,12 +222,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         }
       }
     } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message;
+      
+      // Si el error contiene información de validación, no borrar el formulario
       showAlert({
         type: 'error',
-        title: 'Error',
-        message: error.response?.data?.message || error.message,
+        title: 'Error en el registro',
+        message: errorMessage || 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.',
         confirmText: 'Cerrar',
       });
+      
+      // No resetear el formulario, mantener los datos del usuario
     } finally {
       setSubmitting(false);
     }
@@ -256,7 +261,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           confirmPassword: '',
         }}
         validationSchema={SignupSchema}
-        onSubmit={onSubmit}>
+        onSubmit={onSubmit}
+        enableReinitialize={false}
+        validateOnChange={true}
+        validateOnBlur={true}>
         {({
           handleChange,
           handleBlur,
@@ -480,13 +488,24 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña"
+                placeholder="Contraseña (mínimo 8 caracteres)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
                 onChangeText={handleChange('password')}
                 onBlur={handleBlur('password')}
               />
+              {/* Mostrar requisitos de password */}
+              {values.password && values.password.length > 0 && (
+                <View style={styles.passwordRequirements}>
+                  <Text style={[
+                    styles.passwordRequirement,
+                    values.password.length >= 8 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                  ]}>
+                    {values.password.length >= 8 ? '✓' : '×'} Mínimo 8 caracteres
+                  </Text>
+                </View>
+              )}
               {touched.password && errors.password && (
                 <Text style={styles.error}>{errors.password}</Text>
               )}
@@ -866,5 +885,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  passwordRequirements: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  passwordRequirement: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    marginBottom: 2,
+  },
+  passwordRequirementMet: {
+    color: '#33A744',
+  },
+  passwordRequirementUnmet: {
+    color: '#E63946',
   },
 });

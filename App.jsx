@@ -18,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
 
 import Cart from './src/cart/Cart';
+import GuestCheckout from './src/cart/GuestCheckout';
 // Removed unused Route import - component was dead code
 import Profile from './src/profile/Profile';
 import Suggestions from './src/suggestions/Suggestions';
@@ -31,6 +32,7 @@ import Order from './src/order/Order';
 import OrderDetails from './src/order/OrderDetail';
 import SearchResults from './src/home/SearchResults';
 import AddressForm from './src/address/AddressForm';
+import AddressFormUberStyle from './src/address/AddressFormUberStyle';
 import AddressMap from './src/address/AddressMap';
 
 import {OrderContext} from './src/context/OrderContext';
@@ -302,7 +304,9 @@ function RootStack() {
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
         <Stack.Screen name="AddressForm" component={AddressForm} />
+        <Stack.Screen name="AddressFormUberStyle" component={AddressFormUberStyle} />
         <Stack.Screen name="AddressMap" component={AddressMap} />
+        <Stack.Screen name="GuestCheckout" component={GuestCheckout} />
         {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>
     </View>
