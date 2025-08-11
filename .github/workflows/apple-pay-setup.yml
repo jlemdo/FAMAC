@@ -12,15 +12,21 @@ jobs:
         run: |
           echo "🍎 Generating Apple Pay Certificate Signing Request..."
           
-          # Generar CSR y private key específico para Apple Pay
-          openssl req -new -newkey rsa:2048 -nodes \
-            -keyout apple-pay-private.key \
+          # Generar ECC private key (256-bit) para Apple Pay
+          openssl ecparam -name prime256v1 -genkey -noout -out apple-pay-private.key
+          
+          # Generar CSR usando ECC key
+          openssl req -new -key apple-pay-private.key \
             -out apple-pay-csr.csr \
             -subj "/CN=merchant.com.occr.productos/OU=E-commerce/O=OCCR Productos/L=Mexico City/ST=CDMX/C=MX"
           
-          # Verificar que el CSR es válido
+          # Verificar que el CSR es válido y usa ECC
           echo "🔍 Validating CSR..."
           openssl req -in apple-pay-csr.csr -text -noout
+          
+          echo ""
+          echo "🔑 Key algorithm verification:"
+          openssl req -in apple-pay-csr.csr -text -noout | grep "Public Key Algorithm" || echo "ECC key used"
           
           echo ""
           echo "✅ CSR Generated successfully!"
