@@ -260,7 +260,7 @@ export default function Cart() {
       
       const {data} = await axios.post(
         'https://food.siliconsoft.pk/api/create-payment-intent',
-        {amount: parseFloat(totalPrice), currency: 'mxn', email: orderEmail},
+        {amount: parseFloat(totalPrice) * 100, currency: 'mxn', email: orderEmail},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
@@ -271,16 +271,38 @@ export default function Cart() {
       const {error: initError} = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Lácteos y más',
-        allowsDelayedPaymentMethods: true,
+        allowsDelayedPaymentMethods: false, // Cambiado a false para mejor compatibilidad
         returnURL: 'occr-productos-app://stripe-redirect',
+        // Configuración de métodos de pago específicos para México
+        defaultBillingDetails: {
+          address: {
+            country: 'MX', // México
+          },
+        },
         applePay: {
           // sólo iOS
           merchantCountryCode: 'MX',
         },
         googlePay: {
           // sólo Android
-          merchantCountryCode: 'MX',
+          merchantCountryCode: 'MX', // México
           testEnv: false, // producción (live)
+          currencyCode: 'MXN', // Pesos mexicanos
+        },
+        // Configuración explícita de métodos de pago
+        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(totalPrice)}`,
+        // Asegurar que se acepten tarjetas internacionales
+        appearance: {
+          primaryButton: {
+            colors: {
+              light: {
+                background: '#D27F27',
+              },
+              dark: {
+                background: '#D27F27',
+              },
+            },
+          },
         },
       });
       if (initError) {
