@@ -36,14 +36,14 @@ jobs:
           echo "🔐 Private key saved as: apple-pay-private.key (keep secure!)"
 
       - name: Upload CSR file as downloadable artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: apple-pay-csr-file
           path: apple-pay-csr.csr
           retention-days: 7
 
       - name: Upload Private Key as downloadable artifact  
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: apple-pay-private-key
           path: apple-pay-private.key
