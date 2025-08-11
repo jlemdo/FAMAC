@@ -1,0 +1,36 @@
+name: 🍎 Apple Pay Certificate Setup (One-time)
+
+on:
+  workflow_dispatch:  # Solo trigger manual
+
+jobs:
+  generate-csr:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Generate Apple Pay CSR
+        run: |
+          echo "🍎 Generating Apple Pay Certificate Signing Request..."
+          
+          # Generar CSR y private key
+          openssl req -new -newkey rsa:2048 -nodes \
+            -keyout apple-pay-private.key \
+            -out apple-pay-csr.csr \
+            -subj "/C=MX/ST=Mexico/L=Mexico City/O=OCCR Productos/OU=Mobile App/CN=merchant.com.occr.productos"
+          
+          echo ""
+          echo "✅ CSR Generated successfully!"
+          echo ""
+          echo "📋 COPY THE FOLLOWING CSR CONTENT TO APPLE DEVELOPER CONSOLE:"
+          echo "================================================================="
+          cat apple-pay-csr.csr
+          echo "================================================================="
+          echo ""
+          echo "📝 Instructions:"
+          echo "1. Copy the CSR content above (including BEGIN/END lines)"
+          echo "2. Go to Apple Developer Console → Your Merchant ID"
+          echo "3. Create Certificate → Upload this CSR"
+          echo "4. Download the .cer file from Apple"
+          echo "5. Upload the .cer file to Stripe Dashboard"
+          echo ""
+          echo "🔐 Private key saved as: apple-pay-private.key (keep secure!)"
