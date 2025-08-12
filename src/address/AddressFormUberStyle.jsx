@@ -41,19 +41,23 @@ const AddressFormUberStyle = () => {
     initialAddress = '',
     title = 'Seleccionar Dirección',
     mapSelectedAddress = null,
-    selectedLocationFromMap = null
+    selectedLocationFromMap = null,
+    fromProfile = false, // NUEVO: Flag para identificar Profile
+    userId = null // NUEVO: ID del usuario para actualización directa
   } = route.params || {};
 
   // Obtener callbacks
   const callbacks = pickerId ? getAddressPickerCallbacks(pickerId) : null;
 
   // Estados principales
-  const [currentStep, setCurrentStep] = useState(1); // 1: Búsqueda, 2: Confirmación, 3: Referencias
+  const [currentStep, setCurrentStep] = useState(1); // 1: Búsqueda, 2: Dirección Manual, 3: Referencias, 4: Mapa
   const [searchQuery, setSearchQuery] = useState(initialAddress);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
+  const [userWrittenAddress, setUserWrittenAddress] = useState(''); // NUEVA: Dirección escrita por el usuario
   const [references, setReferences] = useState('');
+  const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Función para obtener ubicación actual usando locationUtils
@@ -82,7 +86,7 @@ const AddressFormUberStyle = () => {
               }
             );
 
-            if (response.data.results[0]) {
+            if (response.data.results && response.data.results[0]) {
               const address = {
                 description: response.data.results[0].formatted_address,
                 place_id: response.data.results[0].place_id,
@@ -90,16 +94,62 @@ const AddressFormUberStyle = () => {
               };
               
               setSelectedAddress(address);
-              setCurrentStep(2); // Ir a confirmación
+              setMapCoordinates({ latitude, longitude }); // Guardar coordenadas para el mapa
+              // Pre-llenar dirección manual con ubicación actual
+              setUserWrittenAddress(address.description);
+              setCurrentStep(2); // Ir a dirección manual
+            } else {
+              // Si no hay resultados de geocoding, usar coordenadas básicas
+              const basicAddress = {
+                description: `Ubicación actual (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+                place_id: null,
+                coordinates: { latitude, longitude },
+              };
+              
+              setSelectedAddress(basicAddress);
+              setMapCoordinates({ latitude, longitude });
+              setUserWrittenAddress(basicAddress.description);
+              setCurrentStep(2);
             }
-          } catch (error) {
-            Alert.alert('Error', 'No se pudo obtener la dirección de tu ubicación');
+          } catch (geocodingError) {
+            console.warn('Geocoding error:', geocodingError);
+            // Continuar con coordenadas básicas si falla el geocoding
+            const basicAddress = {
+              description: `Ubicación actual (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+              place_id: null,
+              coordinates: { latitude, longitude },
+            };
+            
+            setSelectedAddress(basicAddress);
+            setMapCoordinates({ latitude, longitude });
+            setUserWrittenAddress('Mi ubicación actual');
+            setCurrentStep(2);
+            
+            Alert.alert(
+              'Ubicación obtenida',
+              'Se obtuvo tu ubicación. Por favor confirma o edita la dirección en el siguiente paso.'
+            );
           }
         },
-        // onError callback
+        // onError callback mejorado
         (error) => {
-          console.warn('Error getting location:', error);
-          Alert.alert('Error', 'No se pudo obtener tu ubicación actual');
+          console.warn('Location error:', error);
+          
+          // Mensajes específicos según el tipo de error
+          let message = 'No se pudo obtener tu ubicación actual.';
+          if (error.message?.includes('permission') || error.message?.includes('Permission')) {
+            message = 'Necesitas activar los permisos de ubicación en tu dispositivo.';
+          } else if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+            message = 'La búsqueda de ubicación tardó demasiado. Inténtalo de nuevo.';
+          } else if (error.message?.includes('network') || error.message?.includes('Network')) {
+            message = 'Problema de conexión. Verifica tu internet e inténtalo de nuevo.';
+          }
+          
+          Alert.alert(
+            'Ubicación no disponible',
+            `${message}\n\nPuedes buscar manualmente tu dirección abajo.`,
+            [{ text: 'Entendido', style: 'default' }]
+          );
         }
       );
       
@@ -107,12 +157,17 @@ const AddressFormUberStyle = () => {
       if (!location) {
         Alert.alert(
           'Ubicación no disponible', 
-          'No se pudo acceder a tu ubicación. Puedes buscar manualmente tu dirección.'
+          'No se pudo acceder a tu ubicación. Puedes buscar manualmente tu dirección abajo.',
+          [{ text: 'Entendido', style: 'default' }]
         );
       }
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert('Error', 'Hubo un problema al obtener tu ubicación');
+      Alert.alert(
+        'Error', 
+        'Hubo un problema al obtener tu ubicación. Puedes buscar manualmente tu dirección.',
+        [{ text: 'Entendido', style: 'default' }]
+      );
     } finally {
       setIsLoadingLocation(false);
     }
@@ -179,7 +234,9 @@ const AddressFormUberStyle = () => {
 
         setSelectedAddress(address);
         setSearchResults([]);
-        setCurrentStep(2); // Ir a confirmación
+        // Pre-llenar dirección manual con lo seleccionado
+        setUserWrittenAddress(address.description);
+        setCurrentStep(2); // Ir a dirección manual
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo obtener los detalles de la dirección');
@@ -197,24 +254,46 @@ const AddressFormUberStyle = () => {
       preservedTaxDetails: route.params?.preservedTaxDetails,
     });
     
+    // Usar coordenadas existentes o centro de CDMX
+    const mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
+    
     navigation.navigate('AddressMap', {
       addressForm: {},
-      selectedLocation: selectedAddress?.coordinates || { latitude: 19.4326, longitude: -99.1332 },
+      selectedLocation: mapCoordinates || mapCenter,
       pickerId,
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
-      preselectedAddress: selectedAddress,
+      userWrittenAddress: userWrittenAddress, // Pasar dirección escrita para contexto
       // CRITICAL: Preservar TODOS los parámetros para que no se pierdan en el mapa
       ...route.params, // Pasar todos los parámetros originales
     });
   };
 
-  // Función para finalizar
-  const handleConfirm = () => {
+  // Función para finalizar con validaciones mejoradas
+  const handleConfirm = async () => {
+    // Validaciones básicas antes de proceder
+    if (!userWrittenAddress?.trim()) {
+      Alert.alert('Error', 'Por favor escribe una dirección válida.');
+      return;
+    }
+    
+    if (!mapCoordinates) {
+      Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
+      return;
+    }
+    
+    if (!references?.trim() || references.trim().length < 10) {
+      Alert.alert('Error', 'Por favor agrega referencias de al menos 10 caracteres.');
+      return;
+    }
+    
     const finalAddress = {
-      fullAddress: selectedAddress?.description || '',
-      coordinates: selectedAddress?.coordinates,
-      references: references,
+      userWrittenAddress: userWrittenAddress.trim(), // Lo que escribió el usuario
+      fullAddress: userWrittenAddress.trim(), // Para compatibilidad
+      coordinates: mapCoordinates, // Coordenadas del mapa
+      references: references.trim(),
       verified: true,
+      hasUserWrittenAddress: true, // Flag para identificar el nuevo formato
+      timestamp: new Date().toISOString(), // Timestamp de creación
     };
 
     // Ejecutar callback si existe (sistema antiguo)
@@ -225,41 +304,171 @@ const AddressFormUberStyle = () => {
       }
       navigation.goBack();
     }
+    // Si viene de Profile (NUEVO CASO)
+    else if (route.params?.fromProfile && userId) {
+      try {
+        console.log('🚀 Iniciando actualización de dirección para usuario:', userId);
+        
+        // Primero obtener datos actuales del usuario para no sobrescribir nada
+        const userDetailsResponse = await axios.get(
+          `https://food.siliconsoft.pk/api/userdetails/${userId}`,
+          { timeout: 10000 } // Timeout de 10 segundos
+        );
+        
+        if (!userDetailsResponse.data?.data?.[0]) {
+          throw new Error('No se pudieron obtener los datos del usuario');
+        }
+        
+        const currentData = userDetailsResponse.data.data[0];
+        
+        // Preparar payload completo preservando todos los campos existentes
+        const payload = {
+          userid: userId,
+          first_name: currentData.first_name || '',
+          last_name: currentData.last_name || '',
+          phone: currentData.phone || '',
+          email: currentData.email || '',
+          address: finalAddress.userWrittenAddress, // Nueva dirección completa
+        };
+        
+        // Preservar fecha de nacimiento si existe
+        if (currentData.birthDate || currentData.birth_date || currentData.dob) {
+          const dateValue = currentData.birthDate || currentData.birth_date || currentData.dob;
+          if (dateValue) {
+            payload.dob = dateValue;
+          }
+        }
+        
+        console.log('🚀 Payload para actualización:', {
+          ...payload,
+          address: payload.address.substring(0, 50) + '...' // Solo mostrar inicio de dirección
+        });
+        
+        const response = await axios.post(
+          'https://food.siliconsoft.pk/api/updateuserprofile',
+          payload,
+          { timeout: 15000 } // Timeout de 15 segundos para actualización
+        );
+        
+        if (response.status === 200) {
+          console.log('✓ Dirección actualizada exitosamente');
+          
+          // Mostrar confirmación al usuario
+          Alert.alert(
+            '✓ Dirección actualizada',
+            'Tu dirección se ha actualizado correctamente.',
+            [{ 
+              text: 'Continuar', 
+              onPress: () => {
+                // Navegar de vuelta a Profile con un flag de éxito
+                navigation.navigate('Profile', {
+                  addressUpdated: true,
+                  newAddress: finalAddress.userWrittenAddress,
+                  coordinates: finalAddress.coordinates,
+                  references: finalAddress.references,
+                });
+              }
+            }]
+          );
+        } else {
+          throw new Error(`Error del servidor: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Error actualizando dirección:', error);
+        
+        let errorMessage = 'No se pudo actualizar la dirección.';
+        
+        if (error.message?.includes('timeout') || error.code === 'ECONNABORTED') {
+          errorMessage = 'La conexión tardó demasiado. Verifica tu internet e inténtalo de nuevo.';
+        } else if (error.message?.includes('Network Error')) {
+          errorMessage = 'Sin conexión a internet. Verifica tu conexión e inténtalo de nuevo.';
+        } else if (error.response?.status === 500) {
+          errorMessage = 'Error en el servidor. Inténtalo de nuevo en unos momentos.';
+        } else if (error.response?.status === 400) {
+          errorMessage = 'Datos inválidos. Verifica la información e inténtalo de nuevo.';
+        }
+        
+        Alert.alert(
+          'Error al actualizar',
+          errorMessage,
+          [
+            { text: 'Reintentar', onPress: () => handleConfirm() },
+            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
+          ]
+        );
+      }
+    }
     // Si viene de GuestCheckout
     else if (route.params?.fromGuestCheckout) {
-      // Asegurar que tenemos una dirección válida para enviar
-      const addressToSend = finalAddress.fullAddress || selectedAddress?.description || 'Dirección seleccionada';
-      
-      console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
-      console.log('route.params completos:', route.params);
-      console.log('Preservando deliveryInfo:', route.params?.preservedDeliveryInfo);
-      console.log('Preservando needInvoice:', route.params?.preservedNeedInvoice);
-      console.log('Preservando taxDetails:', route.params?.preservedTaxDetails);
-      
-      // Preservar TODOS los parámetros originales de GuestCheckout explícitamente
-      navigation.navigate('GuestCheckout', {
-        // Parámetros básicos
-        totalPrice: route.params?.totalPrice,
-        itemCount: route.params?.itemCount,
-        returnToCart: route.params?.returnToCart,
-        // CRITICAL: Datos preservados del Cart - convertir Date a string si es necesario
-        preservedDeliveryInfo: route.params?.preservedDeliveryInfo ? {
-          ...route.params.preservedDeliveryInfo,
-          date: typeof route.params.preservedDeliveryInfo.date === 'string' 
-            ? route.params.preservedDeliveryInfo.date 
-            : route.params.preservedDeliveryInfo.date.toISOString(),
-        } : route.params?.preservedDeliveryInfo,
-        preservedNeedInvoice: route.params?.preservedNeedInvoice,
-        preservedTaxDetails: route.params?.preservedTaxDetails,
-        // Email actuales
-        currentEmail: route.params?.currentEmail,
-        currentAddress: route.params?.currentAddress,
-        // Parámetros específicos de regreso
-        selectedAddress: addressToSend,
-        shouldGoToStep2: true, // Indicar que debe ir al paso 2
-        // Preservar el email del usuario
-        preservedEmail: route.params?.currentEmail,
-      });
+      try {
+        // Asegurar que tenemos una dirección válida para enviar
+        const addressToSend = finalAddress.userWrittenAddress;
+        
+        console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
+        console.log('Dirección final:', addressToSend.substring(0, 50) + '...');
+        console.log('Coordenadas:', finalAddress.coordinates);
+        console.log('Referencias:', finalAddress.references.substring(0, 30) + '...');
+        
+        // Validar parámetros críticos antes de navegar
+        if (!route.params?.totalPrice || !route.params?.itemCount) {
+          throw new Error('Faltan parámetros del carrito');
+        }
+        
+        // Preservar información de entrega con validación
+        let preservedDeliveryInfo = route.params?.preservedDeliveryInfo;
+        if (preservedDeliveryInfo && preservedDeliveryInfo.date) {
+          // Asegurar que la fecha esté en formato string
+          if (typeof preservedDeliveryInfo.date !== 'string') {
+            preservedDeliveryInfo = {
+              ...preservedDeliveryInfo,
+              date: preservedDeliveryInfo.date.toISOString()
+            };
+          }
+        }
+        
+        // Preservar TODOS los parámetros originales de GuestCheckout explícitamente
+        navigation.navigate('GuestCheckout', {
+          // Parámetros básicos validados
+          totalPrice: route.params.totalPrice,
+          itemCount: route.params.itemCount,
+          returnToCart: route.params?.returnToCart || false,
+          
+          // Datos preservados del Cart
+          preservedDeliveryInfo,
+          preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
+          preservedTaxDetails: route.params?.preservedTaxDetails || null,
+          
+          // Email actuales
+          currentEmail: route.params?.currentEmail || '',
+          currentAddress: route.params?.currentAddress || '',
+          
+          // Parámetros específicos de regreso - NUEVOS DATOS
+          selectedAddress: addressToSend,
+          selectedCoordinates: finalAddress.coordinates,
+          selectedReferences: finalAddress.references,
+          shouldGoToStep2: true, // Indicar que debe ir al paso 2
+          
+          // Preservar el email del usuario
+          preservedEmail: route.params?.currentEmail || '',
+          
+          // Flag de éxito
+          addressCompleted: true,
+        });
+        
+        console.log('✓ Navegación a GuestCheckout completada exitosamente');
+        
+      } catch (error) {
+        console.error('❌ Error navegando de vuelta a GuestCheckout:', error);
+        Alert.alert(
+          'Error',
+          'Hubo un problema al regresar al checkout. Inténtalo de nuevo.',
+          [
+            { text: 'Reintentar', onPress: () => handleConfirm() },
+            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
+          ]
+        );
+        return;
+      }
     }
     // Fallback
     else {
@@ -267,17 +476,16 @@ const AddressFormUberStyle = () => {
     }
   };
 
-  // Manejar dirección seleccionada del mapa
+  // Manejar coordenadas seleccionadas del mapa (sin cambiar dirección escrita)
   useEffect(() => {
-    if (mapSelectedAddress && selectedLocationFromMap) {
-      setSelectedAddress({
-        description: mapSelectedAddress,
-        coordinates: selectedLocationFromMap,
-        place_id: null,
-      });
-      setCurrentStep(2); // Ir a confirmación
+    if (selectedLocationFromMap) {
+      setMapCoordinates(selectedLocationFromMap);
+      // Si venimos del mapa y estamos en el paso 4, las coordenadas ya están listas
+      console.log('=== COORDENADAS RECIBIDAS DEL MAPA ===');
+      console.log('Coordenadas:', selectedLocationFromMap);
+      console.log('Dirección escrita preservada:', userWrittenAddress);
     }
-  }, [mapSelectedAddress, selectedLocationFromMap]);
+  }, [selectedLocationFromMap]);
 
   // Efecto para buscar cuando cambia la query
   useEffect(() => {
@@ -379,85 +587,191 @@ const AddressFormUberStyle = () => {
     </View>
   );
 
-  // Renderizar paso 2: Confirmación
-  const renderConfirmationStep = () => (
+  // Renderizar paso 2: Dirección Manual (COHERENTE)
+  const renderManualAddressStep = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>¿Es correcta esta dirección?</Text>
+      <Text style={styles.stepTitle}>Escribe tu dirección exacta</Text>
+      <Text style={styles.stepSubtitle}>
+        Esta será la dirección que verá el repartidor. Escríbela exactamente como la conoces.
+      </Text>
       
+      {/* Campo de dirección manual - MISMO ESTILO QUE PASO 1 */}
       <View style={styles.selectedAddressCard}>
-        <Ionicons name="location" size={24} color="#33A744" />
+        <Ionicons name="create" size={24} color="#D27F27" />
         <View style={styles.selectedAddressContent}>
-          <Text style={styles.selectedAddressText} numberOfLines={3}>
-            {selectedAddress?.description}
-          </Text>
+          <TextInput
+            ref={(ref) => registerInput('userAddress', ref)}
+            style={styles.manualAddressInput}
+            placeholder="Ej: Av. Insurgentes Sur 123, Col. Roma Norte, CDMX"
+            value={userWrittenAddress}
+            onChangeText={setUserWrittenAddress}
+            onFocus={createFocusHandler('userAddress')}
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
         </View>
       </View>
+      
+      {/* Mensaje informativo - MISMO ESTILO */}
+      <View style={styles.loadingContainer}>
+        <Ionicons name="information-circle" size={20} color="#D27F27" />
+        <Text style={styles.loadingText}>
+          Esta dirección NO la cambiará Google
+        </Text>
+      </View>
 
-      {/* Botón para ver en mapa */}
+      {/* Botón continuar - MISMO ESTILO QUE CONFIRMACIÓN */}
       <TouchableOpacity
-        style={styles.mapButton}
-        onPress={goToMap}>
-        <Ionicons name="map" size={24} color="#FFF" />
-        <Text style={styles.mapButtonText}>Ver y ajustar en mapa</Text>
-      </TouchableOpacity>
-
-      {/* Botón confirmar */}
-      <TouchableOpacity
-        style={styles.confirmButton}
-        onPress={() => setCurrentStep(3)}>
-        <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-        <Text style={styles.confirmButtonText}>Sí, es correcta</Text>
+        style={[
+          styles.confirmButton, 
+          !userWrittenAddress.trim() && styles.confirmButtonDisabled
+        ]}
+        onPress={() => setCurrentStep(3)}
+        disabled={!userWrittenAddress.trim()}>
+        <Ionicons name="arrow-forward" size={24} color="#FFF" />
+        <Text style={styles.confirmButtonText}>Continuar a referencias</Text>
       </TouchableOpacity>
 
       {/* Botón regresar */}
       <TouchableOpacity
         style={styles.backStepButton}
         onPress={() => setCurrentStep(1)}>
-        <Text style={styles.backStepButtonText}>← Buscar otra dirección</Text>
+        <Text style={styles.backStepButtonText}>← Regresar a búsqueda</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // Renderizar paso 3: Referencias
+  // Renderizar paso 3: Referencias (COHERENTE)
   const renderReferencesStep = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>¿Alguna referencia adicional?</Text>
+      <Text style={styles.stepTitle}>Agrega referencias importantes</Text>
       <Text style={styles.stepSubtitle}>
-        Ayúdanos a encontrar tu dirección más fácil (opcional)
+        Ayúdanos a encontrar tu dirección más fácil con referencias útiles
       </Text>
 
-      <TextInput
-        ref={(ref) => registerInput('references', ref)}
-        style={styles.referencesInput}
-        placeholder="Ej: Casa azul, junto al Oxxo, edificio Towers..."
-        value={references}
-        onChangeText={setReferences}
-        onFocus={createFocusHandler('references', 30)}
-        multiline
-        numberOfLines={3}
-        placeholderTextColor="#999"
-        maxLength={200}
-        returnKeyType="done"
-        textAlignVertical="top"
-      />
+      {/* Campo de referencias - MISMO ESTILO QUE OTROS PASOS */}
+      <View style={styles.selectedAddressCard}>
+        <Ionicons name="information-circle" size={24} color="#33A744" />
+        <View style={styles.selectedAddressContent}>
+          <TextInput
+            ref={(ref) => registerInput('references', ref)}
+            style={styles.manualAddressInput}
+            placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
+            value={references}
+            onChangeText={setReferences}
+            onFocus={createFocusHandler('references', 30)}
+            multiline
+            numberOfLines={3}
+            placeholderTextColor="#999"
+            maxLength={300}
+            returnKeyType="done"
+            textAlignVertical="top"
+          />
+        </View>
+      </View>
 
       <Text style={styles.characterCount}>
-        {references.length}/200 caracteres
+        {references.length}/300 caracteres
       </Text>
+      
+      {/* Mensaje informativo consistente */}
+      <View style={styles.loadingContainer}>
+        <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+        <Text style={styles.loadingText}>
+          Referencias mejoran la entrega exitosa
+        </Text>
+      </View>
 
-      {/* Botón finalizar */}
+      {/* Botón continuar - MISMO ESTILO */}
       <TouchableOpacity
-        style={styles.finalButton}
-        onPress={handleConfirm}>
-        <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-        <Text style={styles.finalButtonText}>Confirmar dirección</Text>
+        style={[
+          styles.confirmButton,
+          references.trim().length < 10 && styles.confirmButtonDisabled
+        ]}
+        onPress={() => setCurrentStep(4)}
+        disabled={references.trim().length < 10}>
+        <Ionicons name="map" size={24} color="#FFF" />
+        <Text style={styles.confirmButtonText}>Ir al mapa</Text>
       </TouchableOpacity>
 
-      {/* Botón omitir */}
+      {/* Botón regresar */}
       <TouchableOpacity
-        style={styles.skipButton}
-        onPress={handleConfirm}>
-        <Text style={styles.skipButtonText}>Omitir referencias</Text>
+        style={styles.backStepButton}
+        onPress={() => setCurrentStep(2)}>
+        <Text style={styles.backStepButtonText}>← Editar dirección</Text>
+      </TouchableOpacity>
+    </View>
+  );
+  
+  // Renderizar paso 4: Mapa (COHERENTE)
+  const renderMapStep = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>Confirma tu ubicación exacta</Text>
+      <Text style={styles.stepSubtitle}>
+        Selecciona tu ubicación en el mapa para entregas precisas
+      </Text>
+      
+      {/* Resumen - MISMO ESTILO QUE CONFIRMACIÓN */}
+      <View style={styles.selectedAddressCard}>
+        <Ionicons name="location" size={24} color="#33A744" />
+        <View style={styles.selectedAddressContent}>
+          <Text style={styles.selectedAddressText} numberOfLines={2}>
+            {userWrittenAddress}
+          </Text>
+          {references.trim() && (
+            <Text style={styles.referencesText} numberOfLines={1}>
+              {references}
+            </Text>
+          )}
+        </View>
+      </View>
+      
+      {/* Estado de mapa - COHERENTE CON LOADING */}
+      {mapCoordinates ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+          <Text style={styles.loadingText}>
+            Ubicación confirmada en el mapa
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="location-outline" size={20} color="#D27F27" />
+          <Text style={styles.loadingText}>
+            Selecciona tu ubicación en el mapa
+          </Text>
+        </View>
+      )}
+
+      {/* Botón ir al mapa - MISMO ESTILO QUE MAPA ORIGINAL */}
+      <TouchableOpacity
+        style={styles.mapButton}
+        onPress={goToMap}>
+        <Ionicons name="map" size={24} color="#FFF" />
+        <Text style={styles.mapButtonText}>
+          {mapCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Botón finalizar - MISMO ESTILO QUE CONFIRMACIÓN */}
+      <TouchableOpacity
+        style={[
+          styles.confirmButton,
+          !mapCoordinates && styles.confirmButtonDisabled
+        ]}
+        onPress={handleConfirm}
+        disabled={!mapCoordinates}>
+        <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+        <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
+      </TouchableOpacity>
+
+      {/* Botón regresar */}
+      <TouchableOpacity
+        style={styles.backStepButton}
+        onPress={() => setCurrentStep(3)}>
+        <Text style={styles.backStepButtonText}>← Editar referencias</Text>
       </TouchableOpacity>
     </View>
   );
@@ -487,7 +801,7 @@ const AddressFormUberStyle = () => {
 
           {/* Indicador de pasos */}
           <View style={styles.stepsIndicator}>
-            {[1, 2, 3].map((step) => (
+            {[1, 2, 3, 4].map((step) => (
               <View key={step} style={styles.stepIndicatorContainer}>
                 <View
                   style={[
@@ -500,7 +814,7 @@ const AddressFormUberStyle = () => {
                     <Ionicons name="checkmark" size={12} color="#FFF" />
                   )}
                 </View>
-                {step < 3 && <View style={styles.stepLine} />}
+                {step < 4 && <View style={styles.stepLine} />}
               </View>
             ))}
           </View>
@@ -510,8 +824,9 @@ const AddressFormUberStyle = () => {
             {...scrollViewProps}
             style={styles.content}>
             {currentStep === 1 && renderSearchStep()}
-            {currentStep === 2 && renderConfirmationStep()}
+            {currentStep === 2 && renderManualAddressStep()}
             {currentStep === 3 && renderReferencesStep()}
+            {currentStep === 4 && renderMapStep()}
           </ScrollView>
         </View>
       </TouchableWithoutFeedback>
@@ -864,6 +1179,32 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: '#8B5E3C',
     textDecorationLine: 'underline',
+  },
+  
+  manualAddressInput: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    textAlignVertical: 'top',
+    minHeight: 60,
+    maxHeight: 120,
+    borderWidth: 0,
+    padding: 0,
+    margin: 0,
+  },
+  finalButtonDisabled: {
+    backgroundColor: '#CCC',
+    opacity: 0.6,
+  },
+  referencesText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+    marginTop: 4,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#CCC',
+    opacity: 0.6,
   },
 });
 

@@ -26,7 +26,8 @@ const AddressMap = () => {
     selectedLocation = { latitude: 19.4326, longitude: -99.1332 },
     pickerId,
     onLocationReturn,
-    fromGuestCheckout = false
+    fromGuestCheckout = false,
+    userWrittenAddress = '' // NUEVO: Dirección escrita por usuario para mostrar contexto
   } = route.params || {};
 
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
@@ -226,10 +227,10 @@ const AddressMap = () => {
         preservedTaxDetails: route.params?.preservedTaxDetails,
       });
       
-      // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats)
+      // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats) con solo coordenadas
       navigation.navigate('AddressFormUberStyle', {
         selectedLocationFromMap: currentLocation,
-        mapSelectedAddress: formattedAddress,
+        mapSelectedAddress: null, // NO enviar dirección formateada para no sobrescribir
         fromGuestCheckout: true,
         // CRITICAL: Preservar TODOS los parámetros originales que llegaron al mapa
         ...route.params, // Devolver todos los parámetros preservados
@@ -263,6 +264,17 @@ const AddressMap = () => {
         <Text style={styles.instructionsText}>
           📍 Toca en el mapa para seleccionar tu ubicación exacta
         </Text>
+        {userWrittenAddress && (
+          <View style={styles.addressContextContainer}>
+            <Text style={styles.addressContextLabel}>Tu dirección:</Text>
+            <Text style={styles.addressContextText} numberOfLines={2}>
+              {userWrittenAddress}
+            </Text>
+            <Text style={styles.addressContextNote}>
+              ℹ️ Esta dirección NO cambiará, solo selecciona la ubicación en el mapa
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Mapa */}
@@ -395,6 +407,35 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: scaleFontSize(fonts.size.medium),
     color: '#FFF',
+  },
+  
+  // NUEVOS ESTILOS PARA CONTEXTO DE DIRECCIÓN
+  addressContextContainer: {
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    padding: scaleSpacing(12),
+    borderRadius: scaleSpacing(8),
+    marginTop: scaleSpacing(12),
+    borderWidth: 1,
+    borderColor: 'rgba(51, 167, 68, 0.3)',
+  },
+  addressContextLabel: {
+    fontFamily: fonts.bold,
+    fontSize: scaleFontSize(fonts.size.small),
+    color: '#33A744',
+    marginBottom: scaleSpacing(4),
+  },
+  addressContextText: {
+    fontFamily: fonts.regular,
+    fontSize: scaleFontSize(fonts.size.medium),
+    color: '#2F2F2F',
+    marginBottom: scaleSpacing(8),
+    lineHeight: 20,
+  },
+  addressContextNote: {
+    fontFamily: fonts.regular,
+    fontSize: scaleFontSize(fonts.size.small),
+    color: 'rgba(47,47,47,0.7)',
+    fontStyle: 'italic',
   },
 });
 

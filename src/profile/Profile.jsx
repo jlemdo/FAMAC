@@ -28,7 +28,6 @@ import { useAlert } from '../context/AlertContext';
 import { useProfile } from '../context/ProfileContext';
 import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
-import AddressPicker from '../components/AddressPicker';
 import {formatOrderId} from '../utils/orderIdFormatter';
 // Importar sistema de estilos global
 import { 
@@ -109,7 +108,7 @@ const parseFlexibleDate = (dateValue) => {
   return null;
 };
 
-export default function Profile({ navigation }) {
+export default function Profile({ navigation, route }) {
   const { user, logout } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
@@ -137,7 +136,6 @@ export default function Profile({ navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showAddressPicker, setShowAddressPicker] = useState(false);
   const [showFounderTooltip, setShowFounderTooltip] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -154,7 +152,6 @@ export default function Profile({ navigation }) {
   
   // Estado para modo edición
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
@@ -220,6 +217,34 @@ export default function Profile({ navigation }) {
   useEffect(() => {
     if (user?.id) fetchUserDetails();
   }, [user?.id, fetchUserDetails]);
+  
+  // NUEVO: Manejar regreso de AddressFormUberStyle
+  useEffect(() => {
+    if (route?.params?.addressUpdated && route?.params?.newAddress) {
+      // Actualizar el perfil local con la nueva dirección
+      setProfile(prev => ({
+        ...prev,
+        address: route.params.newAddress
+      }));
+      
+      // Actualizar contexto
+      updateProfile({
+        ...profile,
+        address: route.params.newAddress
+      });
+      
+      // Mostrar alerta de éxito
+      showAlert({
+        type: 'success',
+        title: '✓ ¡Dirección actualizada!',
+        message: 'Tu dirección completa con referencias y coordenadas se guardó correctamente.',
+        confirmText: 'Perfecto',
+      });
+      
+      // Limpiar parámetros para evitar loops
+      navigation.setParams({ addressUpdated: null, newAddress: null });
+    }
+  }, [route?.params?.addressUpdated, route?.params?.newAddress]);
 
   // Función para verificar datos faltantes
   const getMissingData = useCallback(() => {
@@ -943,7 +968,7 @@ export default function Profile({ navigation }) {
           </Text>
         </View>
         <Text style={styles.sectionHeaderSubtitle}>
-          Gestiona tus direcciones de entrega
+          Dirección completa con referencias y ubicación exacta
         </Text>
       </TouchableOpacity>
 
@@ -954,7 +979,7 @@ export default function Profile({ navigation }) {
             <View style={styles.addressInfo}>
               <Text style={styles.addressLabel}>📍 Dirección actual:</Text>
               {profile.address ? (
-                <Text style={[styles.addressText, !isEditingAddress && styles.addressTextDisabled]}>
+                <Text style={styles.addressText}>
                   {profile.address}
                 </Text>
               ) : (
@@ -964,28 +989,34 @@ export default function Profile({ navigation }) {
               )}
             </View>
             
-            {/* Botón Editar/Cancelar dirección */}
+            {/* Botón para sistema híbrido unificado */}
             <View style={styles.editButtonContainer}>
-              {!isEditingAddress ? (
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => setIsEditingAddress(true)}
-                  activeOpacity={0.8}>
-                  <Text style={styles.editButtonText}>✏️ {profile.address ? 'Cambiar dirección' : 'Agregar dirección'}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.cancelEditButton}
-                  onPress={() => setIsEditingAddress(false)}
-                  activeOpacity={0.8}>
-                  <Text style={styles.cancelEditButtonText}>❌ Cancelar edición</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.addressButton}
+                onPress={() => {
+                  // Navegar al nuevo AddressFormUberStyle para Profile
+                  navigation.navigate('AddressFormUberStyle', {
+                    pickerId: 'profile-address',
+                    initialAddress: profile.address || '',
+                    title: 'Mi Dirección de Entrega',
+                    fromProfile: true, // Flag para identificar que viene de Profile
+                    userId: user.id, // Para actualización directa en Profile
+                  });
+                }}
+                activeOpacity={0.8}>
+                <Text style={styles.addressButtonText}>
+                  📍 {profile.address ? 'Actualizar dirección completa' : 'Agregar dirección completa'}
+                </Text>
+                <Text style={styles.addressButtonSubtext}>
+                  Incluye: Dirección manual + Referencias + Ubicación en mapa
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Formulario de edición de dirección */}
-          {isEditingAddress && (
+          {/* ELIMINADO: Formulario viejo de dirección ya no se necesita */}
+          {false && (
             <Formik
               initialValues={{
                 address: profile.address || '',
@@ -1063,16 +1094,25 @@ export default function Profile({ navigation }) {
                 setFieldValue,
               }) => (
                 <View style={styles.editSection}>
-                  {/* Campo de dirección con AddressPicker */}
+                  {/* Campo de dirección con nuevo sistema híbrido */}
                   <TouchableOpacity
                     style={[styles.input, styles.dateInput]}
-                    onPress={() => setShowAddressPicker(true)}
+                    onPress={() => {
+                      // Navegar al nuevo AddressFormUberStyle para Profile
+                      navigation.navigate('AddressFormUberStyle', {
+                        pickerId: 'profile-address',
+                        initialAddress: values.address || '',
+                        title: 'Dirección de Entrega',
+                        fromProfile: true, // Flag para identificar que viene de Profile
+                        userId: user.id, // Para actualización directa en Profile
+                      });
+                    }}
                     activeOpacity={0.7}>
                     <Text
                       style={[
                         values.address ? styles.dateText : styles.datePlaceholder
                       ]}>
-                      {values.address || 'Seleccionar dirección de entrega'}
+                      {values.address || 'Seleccionar dirección + referencias + mapa'}
                     </Text>
                     <Text style={styles.dateIcon}>📍</Text>
                   </TouchableOpacity>
@@ -1090,18 +1130,8 @@ export default function Profile({ navigation }) {
                     )}
                   </TouchableOpacity>
                   
-                  {/* AddressPicker Modal para esta sección */}
-                  <AddressPicker
-                    visible={showAddressPicker}
-                    onClose={() => setShowAddressPicker(false)}
-                    onConfirm={(addressData) => {
-                      // Actualizar el campo de dirección
-                      setFieldValue('address', addressData.fullAddress);
-                      setShowAddressPicker(false);
-                    }}
-                    initialAddress={values.address || ''}
-                    title="Dirección de Entrega"
-                  />
+                  {/* Ya no necesitamos el AddressPicker modal aquí */}
+                  {/* El nuevo sistema híbrido maneja todo en AddressFormUberStyle */}
                 </View>
               )}
             </Formik>
@@ -2061,10 +2091,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.2)',
   },
-  addressTextDisabled: {
-    color: 'rgba(47,47,47,0.7)',
-    backgroundColor: '#F9F9F9',
-  },
   addressPlaceholder: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
@@ -2076,12 +2102,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.1)',
     borderStyle: 'dashed',
-  },
-  editSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 94, 60, 0.1)',
   },
   
   // === ESTILOS DEL TOAST DE ÉXITO (tipo carrito) ===
@@ -2127,5 +2147,33 @@ const styles = StyleSheet.create({
   },
   pickerConfirmButtonTextDisabled: {
     color: '#999999',
+  },
+  
+  // === ESTILOS PARA BOTÓN DE DIRECCIÓN HÍBRIDA ===
+  addressButton: {
+    backgroundColor: '#D27F27',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addressButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  addressButtonSubtext: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
