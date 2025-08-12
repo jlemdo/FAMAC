@@ -34,6 +34,7 @@ import SearchResults from './src/home/SearchResults';
 import AddressForm from './src/address/AddressForm';
 import AddressFormUberStyle from './src/address/AddressFormUberStyle';
 import AddressMap from './src/address/AddressMap';
+import MapSelector from './src/address/MapSelector';
 
 import {OrderContext} from './src/context/OrderContext';
 
@@ -306,6 +307,7 @@ function RootStack() {
         <Stack.Screen name="AddressForm" component={AddressForm} />
         <Stack.Screen name="AddressFormUberStyle" component={AddressFormUberStyle} />
         <Stack.Screen name="AddressMap" component={AddressMap} />
+        <Stack.Screen name="MapSelector" component={MapSelector} />
         <Stack.Screen name="GuestCheckout" component={GuestCheckout} />
         {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>

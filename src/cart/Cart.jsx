@@ -196,6 +196,26 @@ export default function Cart() {
           }
         }, 500); // Delay más largo para que se rendericen los datos primero
       }
+      
+      // NUEVO: Manejar coordenadas regresadas de MapSelector
+      if (params?.mapCoordinates && user?.usertype !== 'Guest') {
+        console.log('=== COORDENADAS RECIBIDAS DE MAP SELECTOR ===');
+        console.log('Coordenadas:', params.mapCoordinates);
+        
+        // Guardar coordenadas en el estado
+        setLatlong({
+          driver_lat: params.mapCoordinates.latitude,
+          driver_long: params.mapCoordinates.longitude,
+        });
+        
+        // Limpiar parámetros
+        navigation.setParams({ mapCoordinates: null });
+        
+        // Proceder directamente al pago con coordenadas frescas
+        setTimeout(() => {
+          completeOrder();
+        }, 300);
+      }
     }, [user?.id, user?.usertype, navigation])
   );
 
@@ -422,11 +442,11 @@ export default function Cart() {
       // Usuario registrado
       const savedAddress = userProfile?.address || user?.address;
       if (savedAddress && savedAddress.trim()) {
-        // 1. Usuario registrado con dirección: usar dirección guardada actualizada
+        // 1. Usuario registrado con dirección: usar dirección guardada + coordenadas de MapSelector
         return {
-          customer_lat: '', // No usar ubicación, usar dirección
-          customer_long: '',
-          address_source: 'saved_address',
+          customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
+          customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
+          address_source: 'saved_address_with_coordinates',
           delivery_address: savedAddress
         };
       } else {
@@ -542,8 +562,15 @@ export default function Cart() {
         // No tiene dirección: mostrar modal para seleccionar/agregar
         setShowAddressModal(true);
       } else {
-        // Usuario tiene dirección: proceder directo al pago
-        completeOrder();
+        // Usuario tiene dirección: ir a MapSelector para obtener coordenadas
+        console.log('=== USUARIO REGISTRADO CON DIRECCION - ENVIANDO A MAP SELECTOR ===');
+        console.log('Dirección guardada:', userProfile.address);
+        
+        navigation.navigate('MapSelector', {
+          userAddress: userProfile.address,
+          title: 'Confirmar ubicación para entrega',
+          // No pasamos onConfirm como callback, MapSelector regresará aquí con coordenadas
+        });
       }
     }
   };

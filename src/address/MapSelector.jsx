@@ -6,9 +6,12 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import axios from 'axios';
+import Config from 'react-native-config';
 import fonts from '../theme/fonts';
 
 const MapSelector = () => {
@@ -24,15 +27,77 @@ const MapSelector = () => {
   
   // Estado para coordenadas seleccionadas
   const [selectedCoordinates, setSelectedCoordinates] = useState(null);
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  
+  // Función para obtener coordenadas de la dirección del usuario
+  const geocodeUserAddress = async (address) => {
+    if (!address || address.trim() === '') {
+      console.log('No hay dirección para geocodificar, usando centro de CDMX');
+      return { latitude: 19.4326, longitude: -99.1332 };
+    }
+
+    try {
+      console.log('=== GEOCODING DIRECCIÓN USUARIO ===');
+      console.log('Dirección a geocodificar:', address);
+
+      const response = await axios.get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        {
+          params: {
+            address: address,
+            key: Config.GOOGLE_DIRECTIONS_API_KEY,
+            language: 'es',
+            region: 'mx', // Priorizar resultados de México
+            components: 'country:MX', // Limitar a México
+          },
+        }
+      );
+
+      if (response.data.status === 'OK' && response.data.results.length > 0) {
+        const location = response.data.results[0].geometry.location;
+        const coordinates = {
+          latitude: location.lat,
+          longitude: location.lng,
+        };
+        
+        console.log('✅ Geocoding exitoso:', coordinates);
+        console.log('Dirección encontrada:', response.data.results[0].formatted_address);
+        
+        return coordinates;
+      } else {
+        console.log('❌ Geocoding no encontró resultados, usando fallback');
+        return { latitude: 19.4326, longitude: -99.1332 };
+      }
+    } catch (error) {
+      console.log('❌ Error en geocoding, usando fallback:', error);
+      return { latitude: 19.4326, longitude: -99.1332 };
+    }
+  };
   
   // Función para ir al mapa
-  const handleGoToMap = () => {
-    navigation.navigate('AddressMap', {
-      addressForm: { address: userAddress },
-      selectedLocation: null, // Centro de CDMX por defecto
-      userWrittenAddress: userAddress,
-      fromMapSelector: true, // Flag para identificar que viene de MapSelector
-    });
+  const handleGoToMap = async () => {
+    setIsGeocodingAddress(true);
+    
+    try {
+      // Obtener coordenadas de la dirección del usuario
+      const userCoordinates = await geocodeUserAddress(userAddress);
+      
+      console.log('=== NAVEGANDO A ADDRESS MAP ===');
+      console.log('Coordenadas calculadas:', userCoordinates);
+      console.log('Dirección usuario:', userAddress);
+      
+      navigation.navigate('AddressMap', {
+        addressForm: { address: userAddress },
+        selectedLocation: userCoordinates, // Coordenadas basadas en la dirección del usuario
+        userWrittenAddress: userAddress,
+        fromMapSelector: true, // Flag para identificar que viene de MapSelector
+      });
+    } catch (error) {
+      console.error('Error preparando mapa:', error);
+      Alert.alert('Error', 'No se pudo preparar el mapa. Inténtalo de nuevo.');
+    } finally {
+      setIsGeocodingAddress(false);
+    }
   };
   
   // Función para confirmar coordenadas
@@ -42,12 +107,22 @@ const MapSelector = () => {
       return;
     }
     
-    // Ejecutar callback con las coordenadas
+    console.log('=== MAP SELECTOR CONFIRMANDO COORDENADAS ===');
+    console.log('Coordenadas seleccionadas:', selectedCoordinates);
+    
+    // Si hay callback (uso directo), ejecutarlo
     if (onConfirm) {
       onConfirm(selectedCoordinates);
+      navigation.goBack();
+    } else {
+      // Si no hay callback (viene de Cart), regresar con parámetros
+      navigation.navigate('MainTabs', {
+        screen: 'Carrito',
+        params: {
+          mapCoordinates: selectedCoordinates
+        }
+      });
     }
-    
-    navigation.goBack();
   };
   
   // Manejar coordenadas recibidas del mapa
@@ -107,12 +182,22 @@ const MapSelector = () => {
         
         {/* Botón ir al mapa */}
         <TouchableOpacity
-          style={styles.mapButton}
-          onPress={handleGoToMap}>
-          <Ionicons name="map" size={24} color="#FFF" />
-          <Text style={styles.mapButtonText}>
-            {selectedCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
-          </Text>
+          style={[styles.mapButton, isGeocodingAddress && styles.mapButtonDisabled]}
+          onPress={handleGoToMap}
+          disabled={isGeocodingAddress}>
+          {isGeocodingAddress ? (
+            <>
+              <ActivityIndicator size="small" color="#FFF" />
+              <Text style={styles.mapButtonText}>Localizando dirección...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="map" size={24} color="#FFF" />
+              <Text style={styles.mapButtonText}>
+                {selectedCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
         
         {/* Botón confirmar */}
@@ -248,6 +333,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     marginLeft: 8,
+  },
+  mapButtonDisabled: {
+    backgroundColor: '#999',
+    opacity: 0.7,
   },
   confirmButton: {
     flexDirection: 'row',
