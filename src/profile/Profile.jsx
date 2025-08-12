@@ -45,6 +45,7 @@ import {
 } from '../theme/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -217,6 +218,15 @@ export default function Profile({ navigation, route }) {
   useEffect(() => {
     if (user?.id) fetchUserDetails();
   }, [user?.id, fetchUserDetails]);
+  
+  // NUEVO: Refrescar datos cuando la pantalla se enfoca (para capturar cambios de dirección)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        fetchUserDetails();
+      }
+    }, [user?.id, fetchUserDetails])
+  );
   
   // NUEVO: Manejar regreso de AddressFormUberStyle
   useEffect(() => {

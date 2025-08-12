@@ -331,7 +331,7 @@ const AddressFormUberStyle = () => {
           last_name: currentData.last_name || '',
           phone: currentData.phone || '',
           email: currentData.email || '',
-          address: finalAddress.userWrittenAddress, // Nueva dirección completa
+          address: `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`, // Dirección completa con referencias
         };
         
         // Preservar fecha de nacimiento si existe
@@ -363,13 +363,8 @@ const AddressFormUberStyle = () => {
             [{ 
               text: 'Continuar', 
               onPress: () => {
-                // Navegar de vuelta a Profile con un flag de éxito
-                navigation.navigate('Profile', {
-                  addressUpdated: true,
-                  newAddress: finalAddress.userWrittenAddress,
-                  coordinates: finalAddress.coordinates,
-                  references: finalAddress.references,
-                });
+                // Regresar a Profile (no necesitamos pasar parámetros ya que el Profile se actualizará automáticamente)
+                navigation.goBack();
               }
             }]
           );
