@@ -43,7 +43,8 @@ const AddressFormUberStyle = () => {
     mapSelectedAddress = null,
     selectedLocationFromMap = null,
     fromProfile = false, // NUEVO: Flag para identificar Profile
-    userId = null // NUEVO: ID del usuario para actualización directa
+    userId = null, // NUEVO: ID del usuario para actualización directa
+    skipMapStep = false // NUEVO: Flag para saltar paso 4 (mapa) en Profile
   } = route.params || {};
 
   // Obtener callbacks
@@ -276,7 +277,8 @@ const AddressFormUberStyle = () => {
       return;
     }
     
-    if (!mapCoordinates) {
+    // Solo validar coordenadas si NO es Profile (Profile no usa mapa)
+    if (!skipMapStep && !mapCoordinates) {
       Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
       return;
     }
@@ -289,11 +291,12 @@ const AddressFormUberStyle = () => {
     const finalAddress = {
       userWrittenAddress: userWrittenAddress.trim(), // Lo que escribió el usuario
       fullAddress: userWrittenAddress.trim(), // Para compatibilidad
-      coordinates: mapCoordinates, // Coordenadas del mapa
+      coordinates: skipMapStep ? null : mapCoordinates, // Coordenadas solo si no es Profile
       references: references.trim(),
-      verified: true,
+      verified: skipMapStep ? false : true, // Profile no está verificado con mapa
       hasUserWrittenAddress: true, // Flag para identificar el nuevo formato
       timestamp: new Date().toISOString(), // Timestamp de creación
+      isProfileAddress: skipMapStep, // Flag para indicar que viene de Profile
     };
 
     // Ejecutar callback si existe (sistema antiguo)
@@ -684,17 +687,32 @@ const AddressFormUberStyle = () => {
         </Text>
       </View>
 
-      {/* Botón continuar - MISMO ESTILO */}
-      <TouchableOpacity
-        style={[
-          styles.confirmButton,
-          references.trim().length < 10 && styles.confirmButtonDisabled
-        ]}
-        onPress={() => setCurrentStep(4)}
-        disabled={references.trim().length < 10}>
-        <Ionicons name="map" size={24} color="#FFF" />
-        <Text style={styles.confirmButtonText}>Ir al mapa</Text>
-      </TouchableOpacity>
+      {/* Botón continuar - Condicional según si es Profile o no */}
+      {skipMapStep ? (
+        // Si es Profile, finalizar aquí (sin mapa)
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            references.trim().length < 10 && styles.confirmButtonDisabled
+          ]}
+          onPress={handleConfirm}
+          disabled={references.trim().length < 10}>
+          <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+          <Text style={styles.confirmButtonText}>Guardar dirección</Text>
+        </TouchableOpacity>
+      ) : (
+        // Si no es Profile, continuar al mapa
+        <TouchableOpacity
+          style={[
+            styles.confirmButton,
+            references.trim().length < 10 && styles.confirmButtonDisabled
+          ]}
+          onPress={() => setCurrentStep(4)}
+          disabled={references.trim().length < 10}>
+          <Ionicons name="map" size={24} color="#FFF" />
+          <Text style={styles.confirmButtonText}>Ir al mapa</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Botón regresar */}
       <TouchableOpacity
@@ -799,9 +817,9 @@ const AddressFormUberStyle = () => {
             <View style={styles.headerSpacer} />
           </View>
 
-          {/* Indicador de pasos */}
+          {/* Indicador de pasos - Condicional según si incluye mapa */}
           <View style={styles.stepsIndicator}>
-            {[1, 2, 3, 4].map((step) => (
+            {(skipMapStep ? [1, 2, 3] : [1, 2, 3, 4]).map((step) => (
               <View key={step} style={styles.stepIndicatorContainer}>
                 <View
                   style={[
@@ -814,7 +832,7 @@ const AddressFormUberStyle = () => {
                     <Ionicons name="checkmark" size={12} color="#FFF" />
                   )}
                 </View>
-                {step < 4 && <View style={styles.stepLine} />}
+                {step < (skipMapStep ? 3 : 4) && <View style={styles.stepLine} />}
               </View>
             ))}
           </View>
@@ -826,7 +844,7 @@ const AddressFormUberStyle = () => {
             {currentStep === 1 && renderSearchStep()}
             {currentStep === 2 && renderManualAddressStep()}
             {currentStep === 3 && renderReferencesStep()}
-            {currentStep === 4 && renderMapStep()}
+            {currentStep === 4 && !skipMapStep && renderMapStep()}
           </ScrollView>
         </View>
       </TouchableWithoutFeedback>

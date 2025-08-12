@@ -994,13 +994,14 @@ export default function Profile({ navigation, route }) {
               <TouchableOpacity
                 style={styles.addressButton}
                 onPress={() => {
-                  // Navegar al nuevo AddressFormUberStyle para Profile
+                  // Navegar al nuevo AddressFormUberStyle para Profile (SIN MAPA)
                   navigation.navigate('AddressFormUberStyle', {
                     pickerId: 'profile-address',
                     initialAddress: profile.address || '',
                     title: 'Mi Dirección de Entrega',
                     fromProfile: true, // Flag para identificar que viene de Profile
                     userId: user.id, // Para actualización directa en Profile
+                    skipMapStep: true, // NUEVO: Saltar paso 4 (mapa) en Profile
                   });
                 }}
                 activeOpacity={0.8}>
@@ -1098,13 +1099,14 @@ export default function Profile({ navigation, route }) {
                   <TouchableOpacity
                     style={[styles.input, styles.dateInput]}
                     onPress={() => {
-                      // Navegar al nuevo AddressFormUberStyle para Profile
+                      // Navegar al nuevo AddressFormUberStyle para Profile (SIN MAPA)
                       navigation.navigate('AddressFormUberStyle', {
                         pickerId: 'profile-address',
                         initialAddress: values.address || '',
                         title: 'Dirección de Entrega',
                         fromProfile: true, // Flag para identificar que viene de Profile
                         userId: user.id, // Para actualización directa en Profile
+                        skipMapStep: true, // NUEVO: Saltar paso 4 (mapa) en Profile
                       });
                     }}
                     activeOpacity={0.7}>

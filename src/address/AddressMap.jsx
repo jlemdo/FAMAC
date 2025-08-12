@@ -27,7 +27,8 @@ const AddressMap = () => {
     pickerId,
     onLocationReturn,
     fromGuestCheckout = false,
-    userWrittenAddress = '' // NUEVO: Dirección escrita por usuario para mostrar contexto
+    userWrittenAddress = '', // NUEVO: Dirección escrita por usuario para mostrar contexto
+    fromMapSelector = false // NUEVO: Flag para identificar que viene de MapSelector
   } = route.params || {};
 
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
@@ -226,6 +227,16 @@ const AddressMap = () => {
         preservedNeedInvoice: route.params?.preservedNeedInvoice,
         preservedTaxDetails: route.params?.preservedTaxDetails,
       });
+      
+      // Si viene de MapSelector, regresar con coordenadas
+      if (fromMapSelector) {
+        console.log('=== ADDRESS MAP REGRESANDO A MAP SELECTOR ===');
+        navigation.navigate('MapSelector', {
+          ...route.params,
+          selectedLocationFromMap: currentLocation,
+        });
+        return;
+      }
       
       // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats) con solo coordenadas
       navigation.navigate('AddressFormUberStyle', {
