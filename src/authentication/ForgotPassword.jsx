@@ -20,10 +20,20 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 export default function ForgotPassword({ onBackToLogin }) {
   const navigation = useNavigation();
   const { showAlert } = useAlert();
+  
+  // 🔧 Hook para manejo profesional del teclado
+  const { 
+    scrollViewRef, 
+    registerInput, 
+    createFocusHandler, 
+    keyboardAvoidingViewProps, 
+    scrollViewProps 
+  } = useKeyboardBehavior();
 
   // 1️⃣ Schema de validación con Yup
   const ForgotSchema = Yup.object().shape({
@@ -80,13 +90,11 @@ export default function ForgotPassword({ onBackToLogin }) {
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      {...keyboardAvoidingViewProps}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          {...scrollViewProps}
+          contentContainerStyle={styles.scrollContainer}>
           
           {/* Logo */}
           <Image source={require('../assets/logo.png')} style={styles.logo} />
@@ -113,6 +121,7 @@ export default function ForgotPassword({ onBackToLogin }) {
               <>
                 {/* Email */}
                 <TextInput
+                  ref={(ref) => registerInput('email', ref)}
                   style={[
                     styles.input,
                     touched.email && errors.email && styles.inputError,
@@ -124,6 +133,7 @@ export default function ForgotPassword({ onBackToLogin }) {
                   returnKeyType="done"
                   value={values.email}
                   onChangeText={handleChange('email')}
+                  onFocus={createFocusHandler('email')}
                   onBlur={handleBlur('email')}
                   onSubmitEditing={handleSubmit}
                   accessible

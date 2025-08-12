@@ -30,6 +30,7 @@ import {useNavigation} from '@react-navigation/native';
 import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const navigation = useNavigation();
@@ -38,6 +39,15 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  
+  // 🔧 Hook para manejo profesional del teclado
+  const { 
+    scrollViewRef, 
+    registerInput, 
+    createFocusHandler, 
+    keyboardAvoidingViewProps, 
+    scrollViewProps 
+  } = useKeyboardBehavior();
 
   // Verificar si el guest ya tiene email (ya hizo pedidos)
   const isGuestWithEmail = user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
@@ -63,12 +73,42 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .trim()
       .matches(/^[0-9+]+$/, 'Teléfono inválido')
       .required('Teléfono es obligatorio'),
-    birthDate: Yup.date().nullable().required('Nacimiento es obligatorio'),
+    birthDate: Yup.date()
+      .nullable()
+      .required('Fecha de cumpleaños es obligatoria')
+      .test(
+        'age',
+        'Debes tener al menos 13 años para registrarte',
+        function(value) {
+          if (!value) return false;
+          const today = new Date();
+          const birthDate = new Date(value);
+          const age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          
+          // Ajustar edad si el cumpleaños aún no ha ocurrido este año
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            return age - 1 >= 13;
+          }
+          return age >= 13;
+        }
+      )
+      .test(
+        'reasonable-year',
+        'Por favor verifica el año de nacimiento',
+        function(value) {
+          if (!value) return false;
+          const currentYear = new Date().getFullYear();
+          const birthYear = value.getFullYear();
+          return birthYear >= 1900 && birthYear <= currentYear;
+        }
+      ),
     email: Yup.string()
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
       .min(8, 'Mínimo 8 caracteres')
+      .matches(/^[a-zA-Z0-9]+$/, 'Solo letras y números, sin caracteres especiales')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -241,13 +281,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   return (
     <KeyboardAvoidingView 
       style={styles.keyboardContainer} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      {...keyboardAvoidingViewProps}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          {...scrollViewProps}
+          contentContainerStyle={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
 
       <Formik
@@ -255,7 +293,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           first_name: '',
           last_name: '',
           phone: '',
-          birthDate: null,
+          birthDate: new Date(), // Mes y año actual por defecto
           email: guestEmail, // Pre-llenar con email del guest si existe
           password: '',
           confirmPassword: '',
@@ -274,11 +312,13 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           touched,
           isSubmitting,
           setFieldValue,
+          setFieldTouched,
         }) => (
           <>
             {/* Nombre */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('first_name', ref)}
                 style={[
                   styles.input,
                   touched.first_name && errors.first_name && styles.inputError,
@@ -288,6 +328,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.first_name}
                 onChangeText={handleChange('first_name')}
                 onBlur={handleBlur('first_name')}
+                onFocus={createFocusHandler('first_name')}
+                returnKeyType="next"
               />
               {touched.first_name && errors.first_name && (
                 <Text style={styles.error}>{errors.first_name}</Text>
@@ -297,6 +339,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             {/* Apellido */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('last_name', ref)}
                 style={[
                   styles.input,
                   touched.last_name && errors.last_name && styles.inputError,
@@ -306,6 +349,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.last_name}
                 onChangeText={handleChange('last_name')}
                 onBlur={handleBlur('last_name')}
+                onFocus={createFocusHandler('last_name')}
+                returnKeyType="next"
               />
               {touched.last_name && errors.last_name && (
                 <Text style={styles.error}>{errors.last_name}</Text>
@@ -315,6 +360,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             {/* Teléfono */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('phone', ref)}
                 style={[
                   styles.input,
                   touched.phone && errors.phone && styles.inputError,
@@ -325,6 +371,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.phone}
                 onChangeText={handleChange('phone')}
                 onBlur={handleBlur('phone')}
+                onFocus={createFocusHandler('phone')}
+                returnKeyType="next"
               />
               {touched.phone && errors.phone && (
                 <Text style={styles.error}>{errors.phone}</Text>
@@ -372,7 +420,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                     <View style={styles.pickerModalOverlay}>
                       <TouchableWithoutFeedback onPress={() => {}}>
                         <View style={styles.pickerModalContent}>
-                          <Text style={styles.pickerModalTitle}>Seleccionar mes y año de nacimiento</Text>
+                          <Text style={styles.pickerModalTitle}>🎂 Mi fecha de cumpleaños</Text>
+                          <Text style={styles.pickerModalSubtitle}>
+                            Selecciona el mes y año para recibir promociones especiales
+                          </Text>
                           
                           <View style={styles.pickerContainer}>
                             {/* Selector de Mes */}
@@ -439,11 +490,30 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                             </TouchableOpacity>
                             
                             <TouchableOpacity
-                              style={styles.pickerConfirmButton}
+                              style={[
+                                styles.pickerConfirmButton,
+                                !values.birthDate && styles.pickerConfirmButtonDisabled
+                              ]}
+                              disabled={!values.birthDate}
                               onPress={() => {
-                                setShowMonthYearPicker(false);
+                                if (values.birthDate) {
+                                  setShowMonthYearPicker(false);
+                                  setFieldTouched('birthDate', true);
+                                } else {
+                                  showAlert({
+                                    type: 'info',
+                                    title: 'Selección incompleta',
+                                    message: 'Por favor selecciona tanto el mes como el año de tu cumpleaños.',
+                                    confirmText: 'OK',
+                                  });
+                                }
                               }}>
-                              <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
+                              <Text style={[
+                                styles.pickerConfirmButtonText,
+                                !values.birthDate && styles.pickerConfirmButtonTextDisabled
+                              ]}>
+                                {values.birthDate ? '✓ Confirmar' : 'Selecciona fecha'}
+                              </Text>
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -457,6 +527,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             {/* Correo electrónico */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('email', ref)}
                 style={[
                   styles.input,
                   touched.email && errors.email && styles.inputError,
@@ -469,7 +540,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.email}
                 onChangeText={isGuestWithEmail ? undefined : handleChange('email')} // Bloquear edición
                 onBlur={handleBlur('email')}
+                onFocus={!isGuestWithEmail ? createFocusHandler('email') : undefined}
                 editable={!isGuestWithEmail} // Desactivar input si es guest con email
+                returnKeyType="next"
               />
               {isGuestWithEmail && (
                 <Text style={styles.blockedEmailText}>
@@ -484,6 +557,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             {/* Contraseña */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('password', ref)}
                 style={[
                   styles.input,
                   touched.password && errors.password && styles.inputError,
@@ -494,6 +568,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.password}
                 onChangeText={handleChange('password')}
                 onBlur={handleBlur('password')}
+                onFocus={createFocusHandler('password', 30)}
+                returnKeyType="next"
               />
               {/* Mostrar requisitos de password */}
               {values.password && values.password.length > 0 && (
@@ -503,6 +579,12 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                     values.password.length >= 8 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
                     {values.password.length >= 8 ? '✓' : '×'} Mínimo 8 caracteres
+                  </Text>
+                  <Text style={[
+                    styles.passwordRequirement,
+                    /^[a-zA-Z0-9]+$/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                  ]}>
+                    {/^[a-zA-Z0-9]+$/.test(values.password) ? '✓' : '×'} Solo letras y números
                   </Text>
                 </View>
               )}
@@ -514,6 +596,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             {/* Verificar contraseña */}
             <View style={styles.inputGroup}>
               <TextInput
+                ref={(ref) => registerInput('confirmPassword', ref)}
                 style={[
                   styles.input,
                   touched.confirmPassword &&
@@ -526,6 +609,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 value={values.confirmPassword}
                 onChangeText={handleChange('confirmPassword')}
                 onBlur={handleBlur('confirmPassword')}
+                onFocus={createFocusHandler('confirmPassword', 40)}
+                returnKeyType="done"
               />
               {touched.confirmPassword && errors.confirmPassword && (
                 <Text style={styles.error}>{errors.confirmPassword}</Text>
@@ -899,6 +984,68 @@ const styles = StyleSheet.create({
     color: '#33A744',
   },
   passwordRequirementUnmet: {
+    color: '#E63946',
+  },
+  
+  // 🎂 Estilos para selector de fecha mejorado
+  birthdateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  birthdateLabel: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  infoIcon: {
+    padding: 2,
+  },
+  birthdateHelper: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  dateIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pickerModalSubtitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  pickerConfirmButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
+  },
+  pickerConfirmButtonTextDisabled: {
+    color: '#999999',
+  },
+  agePreview: {
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  agePreviewText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
+    textAlign: 'center',
+  },
+  agePreviewValid: {
+    color: '#33A744',
+  },
+  agePreviewInvalid: {
     color: '#E63946',
   },
 });

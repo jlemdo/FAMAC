@@ -45,6 +45,7 @@ import {
   shadows 
 } from '../theme/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -114,6 +115,20 @@ export default function Profile({ navigation }) {
   const { showAlert } = useAlert();
   const { updateProfile } = useProfile();
   const [loading, setLoading] = useState(false);
+  
+  // 🔧 Hook para manejo profesional del teclado (pantalla principal)
+  const { 
+    scrollViewRef: mainScrollRef, 
+    registerInput: registerMainInput, 
+    createFocusHandler: createMainFocusHandler 
+  } = useKeyboardBehavior();
+  
+  // 🔧 Hook separado para el modal de soporte
+  const { 
+    scrollViewRef: modalScrollRef, 
+    registerInput: registerModalInput, 
+    createFocusHandler: createModalFocusHandler 
+  } = useKeyboardBehavior();
   const [showSupportModal, setShowSupportModal] = useState(false);  
   const [supportLoading, setSupportLoading] = useState(false);
   const [showOrderPicker, setShowOrderPicker] = useState(false);
@@ -280,7 +295,10 @@ export default function Profile({ navigation }) {
 
   const PasswordSchema = Yup.object().shape({
     current_password:      Yup.string().required('Requerido'),
-    password:              Yup.string().min(6, 'Mínimo 6 caracteres').required('Obligatorio'),
+    password:              Yup.string()
+                            .min(8, 'Mínimo 8 caracteres')
+                            .matches(/^[a-zA-Z0-9]+$/, 'Solo letras y números, sin caracteres especiales')
+                            .required('Obligatorio'),
     password_confirmation: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
       .required('Obligatorio'),
@@ -415,20 +433,22 @@ export default function Profile({ navigation }) {
   return (
     <Fragment key={`profile-wrapper-${user?.id || 'registered'}`}>
       <ScrollView 
+        ref={mainScrollRef}
         style={styles.container} 
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={true}
         showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={{
-              uri: profile.avatar || 'https://www.w3schools.com/howto/img_avatar.png'
-            }}
-            style={styles.avatar}
-          />
-          {/* Banderín Usuario Fundador - overlay en esquina del avatar */}
+        <View style={styles.userProfileContainer}>
+          {/* Círculo con iniciales */}
+          <View style={styles.initialsCircle}>
+            <Text style={styles.initialsText}>
+              {`${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase()}
+            </Text>
+          </View>
+          
+          {/* Banderín Usuario Fundador */}
           {(profile?.promotion_id === "5" || profile?.promotion_id === 5) && (
             <TouchableOpacity 
               style={styles.founderBadge}
@@ -437,11 +457,21 @@ export default function Profile({ navigation }) {
               <Text style={styles.founderBadgeIcon}>👑</Text>
             </TouchableOpacity>
           )}
+          
+          {/* Información del usuario */}
+          <View style={styles.userInfo}>
+            <Text style={styles.name}>
+              {profile.first_name} {profile.last_name}
+            </Text>
+            <Text style={styles.email}>{profile.email}</Text>
+            
+            {/* Indicador de estado */}
+            <View style={styles.statusContainer}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Activo</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.name}>
-          {profile.first_name} {profile.last_name}
-        </Text>
-        <Text style={styles.email}>{profile.email}</Text>
       </View>
 
       {/* Alerta sutil para datos faltantes */}
@@ -493,7 +523,7 @@ export default function Profile({ navigation }) {
           first_name: profile.first_name,
           last_name:  profile.last_name,
           phone:      profile.phone,
-          birthDate:  profile.birthDate || null,
+          birthDate:  profile.birthDate || new Date(), // Mes y año actual por defecto
         }}
         enableReinitialize
         validationSchema={ProfileSchema}
@@ -626,6 +656,7 @@ export default function Profile({ navigation }) {
           isSubmitting,
           submitCount,
           setFieldValue,
+          setFieldTouched,
         }) => (
           <View style={styles.section}>
             {/* Botón Editar/Cancelar */}
@@ -647,6 +678,7 @@ export default function Profile({ navigation }) {
               )}
             </View>
             <TextInput
+              ref={(ref) => registerMainInput('first_name', ref)}
               style={[
                 // Use inputNoMargin base if there's an error to avoid double spacing
                 (submitCount > 0 && errors.first_name) ? styles.inputNoMargin : styles.input,
@@ -657,13 +689,16 @@ export default function Profile({ navigation }) {
               placeholderTextColor="rgba(47,47,47,0.6)"
               value={values.first_name}
               onChangeText={handleChange('first_name')}
+              onFocus={isEditingProfile ? createMainFocusHandler('first_name') : undefined}
               editable={isEditingProfile}
+              returnKeyType="next"
             />
             {submitCount > 0 && errors.first_name && (
               <Text style={styles.errorText}>{errors.first_name}</Text>
             )}
 
             <TextInput
+              ref={(ref) => registerMainInput('last_name', ref)}
               style={[
                 // Use inputNoMargin base if there's an error to avoid double spacing
                 (submitCount > 0 && errors.last_name) ? styles.inputNoMargin : styles.input,
@@ -674,7 +709,9 @@ export default function Profile({ navigation }) {
               placeholderTextColor="rgba(47,47,47,0.6)"
               value={values.last_name}
               onChangeText={handleChange('last_name')}
+              onFocus={isEditingProfile ? createMainFocusHandler('last_name') : undefined}
               editable={isEditingProfile}
+              returnKeyType="next"
             />
             {submitCount > 0 && errors.last_name && (
               <Text style={styles.errorText}>{errors.last_name}</Text>
@@ -688,6 +725,7 @@ export default function Profile({ navigation }) {
             />
 
             <TextInput
+              ref={(ref) => registerMainInput('phone', ref)}
               style={[
                 // Use inputNoMargin base if there's an error to avoid double spacing
                 (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
@@ -699,7 +737,9 @@ export default function Profile({ navigation }) {
               keyboardType="phone-pad"
               value={values.phone}
               onChangeText={handleChange('phone')}
+              onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
               editable={isEditingProfile}
+              returnKeyType="done"
             />
             {submitCount > 0 && errors.phone && (
               <Text style={styles.errorText}>{errors.phone}</Text>
@@ -836,11 +876,30 @@ export default function Profile({ navigation }) {
                           </TouchableOpacity>
                           
                           <TouchableOpacity
-                            style={styles.pickerConfirmButton}
+                            style={[
+                              styles.pickerConfirmButton,
+                              !values.birthDate && styles.pickerConfirmButtonDisabled
+                            ]}
+                            disabled={!values.birthDate}
                             onPress={() => {
-                              setShowMonthYearPicker(false);
+                              if (values.birthDate) {
+                                setShowMonthYearPicker(false);
+                                setFieldTouched('birthDate', true);
+                              } else {
+                                showAlert({
+                                  type: 'info',
+                                  title: 'Selección incompleta',
+                                  message: 'Por favor selecciona tanto el mes como el año de tu cumpleaños.',
+                                  confirmText: 'OK',
+                                });
+                              }
                             }}>
-                            <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
+                            <Text style={[
+                              styles.pickerConfirmButtonText,
+                              !values.birthDate && styles.pickerConfirmButtonTextDisabled
+                            ]}>
+                              {values.birthDate ? '✓ Confirmar' : 'Selecciona fecha'}
+                            </Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1314,6 +1373,7 @@ export default function Profile({ navigation }) {
                         <View style={styles.modalInputGroup}>
                           <Text style={styles.modalLabel}>Mensaje *</Text>
                           <TextInput
+                            ref={(ref) => registerModalInput('message', ref)}
                             style={[
                               // Use textAreaNoMargin if there's an error to avoid double spacing
                               (touched.message && errors.message) ? styles.modalTextAreaNoMargin : styles.modalTextArea,
@@ -1324,6 +1384,7 @@ export default function Profile({ navigation }) {
                             value={values.message}
                             onChangeText={handleChange('message')}
                             onBlur={handleBlur('message')}
+                            onFocus={createModalFocusHandler('message', 50)}
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
@@ -1475,16 +1536,37 @@ const styles = StyleSheet.create({
   // === CONTENEDORES MIGRADOS AL TEMA ===
   container: containers.screen,
   scrollContent: containers.scrollContent,
-  // === HEADER - ESTILOS ESPECÍFICOS (se mantienen) ===
-  header: containers.avatarContainer,
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 12,
+  // === HEADER - NUEVO DISEÑO SIN FOTOGRAFÍA ===
+  header: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    ...shadows.small,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  userProfileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  initialsCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#D27F27',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    ...shadows.small,
+  },
+  initialsText: {
+    fontSize: 28,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  userInfo: {
+    flex: 1,
   },
   founderBadge: {
     position: 'absolute',
@@ -1507,6 +1589,23 @@ const styles = StyleSheet.create({
   founderBadgeIcon: {
     fontSize: fonts.size.medium,
     textAlign: 'center',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#33A744',
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
+    color: '#33A744',
   },
   // === TIPOGRAFÍA MIGRADA AL TEMA ===
   name: {
@@ -2019,5 +2118,14 @@ const styles = StyleSheet.create({
     color: '#33A744',
     textAlign: 'left',
     lineHeight: 18,
+  },
+  
+  // 🎂 Estilos para botón deshabilitado del selector de fecha
+  pickerConfirmButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
+  },
+  pickerConfirmButtonTextDisabled: {
+    color: '#999999',
   },
 });

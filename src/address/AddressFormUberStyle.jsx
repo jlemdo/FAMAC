@@ -9,6 +9,9 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -17,10 +20,20 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 const AddressFormUberStyle = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  
+  // 🔧 Hook para manejo profesional del teclado
+  const { 
+    scrollViewRef, 
+    registerInput, 
+    createFocusHandler, 
+    keyboardAvoidingViewProps, 
+    scrollViewProps 
+  } = useKeyboardBehavior();
   
   // Parámetros de navegación
   const { 
@@ -309,12 +322,15 @@ const AddressFormUberStyle = () => {
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
+          ref={(ref) => registerInput('searchQuery', ref)}
           style={styles.searchInput}
           placeholder="Calle, colonia, código postal..."
           value={searchQuery}
           onChangeText={setSearchQuery}
+          onFocus={createFocusHandler('searchQuery')}
           placeholderTextColor="#999"
           autoFocus={false}
+          returnKeyType="search"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -411,14 +427,18 @@ const AddressFormUberStyle = () => {
       </Text>
 
       <TextInput
+        ref={(ref) => registerInput('references', ref)}
         style={styles.referencesInput}
         placeholder="Ej: Casa azul, junto al Oxxo, edificio Towers..."
         value={references}
         onChangeText={setReferences}
+        onFocus={createFocusHandler('references', 30)}
         multiline
         numberOfLines={3}
         placeholderTextColor="#999"
         maxLength={200}
+        returnKeyType="done"
+        textAlignVertical="top"
       />
 
       <Text style={styles.characterCount}>
@@ -443,56 +463,67 @@ const AddressFormUberStyle = () => {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            if (currentStep === 1) {
-              navigation.goBack();
-            } else {
-              setCurrentStep(currentStep - 1);
-            }
-          }}
-          style={styles.backIcon}>
-          <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{title}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {/* Indicador de pasos */}
-      <View style={styles.stepsIndicator}>
-        {[1, 2, 3].map((step) => (
-          <View key={step} style={styles.stepIndicatorContainer}>
-            <View
-              style={[
-                styles.stepDot,
-                step < currentStep ? styles.stepDotCompleted : 
-                step === currentStep ? styles.stepDotActive : 
-                styles.stepDotInactive
-              ]}>
-              {step < currentStep && (
-                <Ionicons name="checkmark" size={12} color="#FFF" />
-              )}
-            </View>
-            {step < 3 && <View style={styles.stepLine} />}
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      {...keyboardAvoidingViewProps}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.containerInner}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => {
+                if (currentStep === 1) {
+                  navigation.goBack();
+                } else {
+                  setCurrentStep(currentStep - 1);
+                }
+              }}
+              style={styles.backIcon}>
+              <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{title}</Text>
+            <View style={styles.headerSpacer} />
           </View>
-        ))}
-      </View>
 
-      {/* Contenido del paso actual */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {currentStep === 1 && renderSearchStep()}
-        {currentStep === 2 && renderConfirmationStep()}
-        {currentStep === 3 && renderReferencesStep()}
-      </ScrollView>
-    </View>
+          {/* Indicador de pasos */}
+          <View style={styles.stepsIndicator}>
+            {[1, 2, 3].map((step) => (
+              <View key={step} style={styles.stepIndicatorContainer}>
+                <View
+                  style={[
+                    styles.stepDot,
+                    step < currentStep ? styles.stepDotCompleted : 
+                    step === currentStep ? styles.stepDotActive : 
+                    styles.stepDotInactive
+                  ]}>
+                  {step < currentStep && (
+                    <Ionicons name="checkmark" size={12} color="#FFF" />
+                  )}
+                </View>
+                {step < 3 && <View style={styles.stepLine} />}
+              </View>
+            ))}
+          </View>
+
+          {/* Contenido del paso actual */}
+          <ScrollView 
+            {...scrollViewProps}
+            style={styles.content}>
+            {currentStep === 1 && renderSearchStep()}
+            {currentStep === 2 && renderConfirmationStep()}
+            {currentStep === 3 && renderReferencesStep()}
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  containerInner: {
     flex: 1,
     backgroundColor: '#F2EFE4',
   },

@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   totalPrice: {
     fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
-    fontSize: fonts.size.XL, // ✅ Mantiene autoscaling
+    fontSize: fonts.size.large, // ✅ Reducido de XL a large
     color: '#D27F27',
     textAlign: 'center',
   },
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   },
   originalTotalStriked: {
     fontFamily: fonts.price, // ✅ Fuente optimizada para precios
-    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
+    fontSize: fonts.size.small, // ✅ Reducido de medium a small
     color: '#999',
     textDecorationLine: 'line-through',
     marginBottom: 4,
@@ -461,13 +461,16 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? (Dimensions.get('window').height >= 812 ? 28 : 18) : 18,
     alignItems: 'center',
     borderRadius: 16,
+    // 🎯 Sombra más dramática y contraste mejorado
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, 
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.8)',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3, 
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#B8691E', // Borde más oscuro para contraste
+    // Gradiente simulado con sombra interna
+    shadowInset: true,
   },
   cartButtonContent: {
     flexDirection: 'row',
@@ -482,12 +485,20 @@ const styles = StyleSheet.create({
     color: '#FFF',
     flex: 1,
     textAlign: 'center',
+    // 🎯 Sombra de texto para más contraste
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   cartPrice: {
     fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios en botón
-    fontSize: fonts.size.large, // ✅ Mantiene autoscaling
+    fontSize: fonts.size.medium, // ✅ Reducido de large a medium
     color: '#FFF',
     marginLeft: 16,
+    // 🎯 Sombra de texto para más contraste
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   
   // Estilos de la alerta de éxito

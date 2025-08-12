@@ -773,7 +773,7 @@ export default function Cart() {
                 address={address}
               />
             }
-            ListFooterComponentStyle={{paddingTop: 16}}
+            ListFooterComponentStyle={{paddingTop: 8}}
           />
         </>
       )}
@@ -1086,8 +1086,8 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
-    marginTop: 24,
-    marginBottom: 16,
+    marginTop: 8,
+    marginBottom: 8,
     textAlign: 'center',
   },
   upsellItem: {

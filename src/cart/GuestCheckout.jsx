@@ -16,12 +16,22 @@ import { AuthContext } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import fonts from '../theme/fonts';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 export default function GuestCheckout() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, updateUser } = useContext(AuthContext);
   const { showAlert } = useAlert();
+  
+  // 🔧 Hook para manejo profesional del teclado
+  const { 
+    scrollViewRef, 
+    registerInput, 
+    createFocusHandler, 
+    keyboardAvoidingViewProps, 
+    scrollViewProps 
+  } = useKeyboardBehavior();
   
   // Parámetros recibidos del Cart
   const { 
@@ -250,6 +260,7 @@ export default function GuestCheckout() {
       </Text>
       
       <TextInput
+        ref={(ref) => registerInput('email', ref)}
         style={[
           styles.input, 
           emailLocked && styles.disabledInput,
@@ -258,11 +269,13 @@ export default function GuestCheckout() {
         placeholder="correo@ejemplo.com"
         value={email}
         onChangeText={setEmail}
+        onFocus={!emailLocked ? createFocusHandler('email') : undefined}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
         editable={!emailLocked}
         placeholderTextColor="rgba(47,47,47,0.6)"
+        returnKeyType="done"
       />
       
       {email.trim() && !validateEmail(email.trim()) && !emailLocked && (
@@ -340,7 +353,7 @@ export default function GuestCheckout() {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {...keyboardAvoidingViewProps}>
       
       {/* Header */}
       <View style={styles.header}>
@@ -367,10 +380,9 @@ export default function GuestCheckout() {
 
       {/* Contenido del paso */}
       <ScrollView 
+        {...scrollViewProps}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        contentContainerStyle={styles.scrollContent}>
         
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}

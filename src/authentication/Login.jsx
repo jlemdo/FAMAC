@@ -27,12 +27,22 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
 export default function Login({ showGuest = true, onForgotPassword, onSignUp }) {
   const {login, loginAsGuest} = useContext(AuthContext);
   const navigation = useNavigation();
   const {showAlert} = useAlert();
   const [googleLoading, setGoogleLoading] = useState(false);
+  
+  // 🔧 Hook para manejo profesional del teclado
+  const { 
+    scrollViewRef, 
+    registerInput, 
+    createFocusHandler, 
+    keyboardAvoidingViewProps, 
+    scrollViewProps 
+  } = useKeyboardBehavior();
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -180,13 +190,11 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+      {...keyboardAvoidingViewProps}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          {...scrollViewProps}
+          contentContainerStyle={styles.scrollContainer}>
           
           <Image source={require('../assets/logo.png')} style={styles.logo} />
 
@@ -207,6 +215,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                 {/* Email */}
                 <View style={styles.inputGroup}>
                   <TextInput
+                    ref={(ref) => registerInput('email', ref)}
                     style={[
                       styles.input,
                       touched.email && errors.email && styles.inputError,
@@ -219,6 +228,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     value={values.email}
                     onChangeText={handleChange('email')}
                     onBlur={handleBlur('email')}
+                    onFocus={createFocusHandler('email')}
                   />
                   {touched.email && errors.email && (
                     <Text style={styles.error}>{errors.email}</Text>
@@ -228,6 +238,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                 {/* Contraseña */}
                 <View style={styles.inputGroup}>
                   <TextInput
+                    ref={(ref) => registerInput('password', ref)}
                     style={[
                       styles.input,
                       touched.password && errors.password && styles.inputError,
@@ -239,6 +250,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     value={values.password}
                     onChangeText={handleChange('password')}
                     onBlur={handleBlur('password')}
+                    onFocus={createFocusHandler('password', 20)}
                     onSubmitEditing={handleSubmit}
                   />
                   {touched.password && errors.password && (
