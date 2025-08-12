@@ -216,7 +216,22 @@ export default function Cart() {
           completeOrder();
         }, 300);
       }
-    }, [user?.id, user?.usertype, navigation])
+      
+      // NUEVO: Scroll automático al entrar al carrito para TODOS los usuarios
+      if (cart.length > 0) {
+        setTimeout(() => {
+          if (deliveryInfo) {
+            // Ya tiene horario seleccionado → scroll al botón "Pagar"
+            console.log('Usuario con horario - scroll hacia botón pagar');
+            flatListRef.current?.scrollToEnd({ animated: true });
+          } else {
+            // No tiene horario → scroll al botón "Seleccionar Horario"
+            console.log('Usuario sin horario - scroll hacia selección horario');
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }
+        }, 800); // Delay para asegurar que todo esté renderizado
+      }
+    }, [user?.id, user?.usertype, navigation, cart.length, deliveryInfo])
   );
 
 
@@ -367,7 +382,13 @@ export default function Cart() {
         'Horario pendiente';
       
       // Obtener número de orden de la respuesta
-      const orderNumber = orderData?.order_id || orderData?.id || 'N/A';
+      const orderNumber = orderData?.order_id || orderData?.id;
+      const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
+      
+      console.log('=== MODAL ÉXITO PEDIDO ===');
+      console.log('orderData completo:', orderData);
+      console.log('orderNumber extraído:', orderNumber);
+      console.log('isValidOrderId:', isValidOrderId);
       
       showAlert({
         type: 'success',
@@ -378,18 +399,29 @@ export default function Cart() {
                  `📦 ${itemCount} producto${itemCount !== 1 ? 's' : ''}\n` +
                  `🚚 ${deliveryText}` +
                  `${needInvoice ? '\n🧾 Factura solicitada' : ''}`,
-        confirmText: 'Ver mi pedido',
+        confirmText: isValidOrderId ? 'Ver mi pedido' : 'Ver mis pedidos',
         cancelText: 'Ir al Inicio',
         onConfirm: () => {
-          // Actualizar órdenes y navegar a detalles del pedido
+          // Actualizar órdenes primero
           refreshOrders();
-          navigation.navigate('MainTabs', { 
-            screen: 'Pedidos',
-            params: { 
-              screen: 'OrderDetail',
-              params: { orderId: orderNumber }
-            }
-          });
+          
+          if (isValidOrderId) {
+            // Si tenemos ID válido, navegar directamente al pedido específico
+            console.log('Navegando a pedido específico:', orderNumber);
+            navigation.navigate('MainTabs', { 
+              screen: 'Ordenes',
+              params: { 
+                screen: 'OrderDetails',
+                params: { orderId: orderNumber.toString() }
+              }
+            });
+          } else {
+            // Si no tenemos ID válido, ir a la lista de pedidos
+            console.log('ID inválido, navegando a lista de pedidos');
+            navigation.navigate('MainTabs', { 
+              screen: 'Ordenes'
+            });
+          }
         },
         onCancel: () => {
           // Actualizar órdenes y ir al inicio
@@ -1626,8 +1658,6 @@ const CartFooter = ({
     {/* Facturación (solo si hay deliveryInfo) */}
     {deliveryInfo && (
       <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total: {formatPriceWithSymbol(totalPrice)}</Text>
-
         <View style={styles.invoiceRow}>
           <Text style={styles.invoiceLabel}>¿Necesitas factura?</Text>
           <Switch
@@ -1677,7 +1707,9 @@ const CartFooter = ({
           style={[styles.checkoutButton, !deliveryInfo && {opacity: 0.5}]}
           onPress={handleCheckout}
           disabled={!deliveryInfo}>
-          <Text style={styles.checkoutText}>Proceder al Pago</Text>
+          <Text style={styles.checkoutText}>
+            💳 Pagar ${totalPrice} MXN
+          </Text>
         </TouchableOpacity>
       </View>
     )}
