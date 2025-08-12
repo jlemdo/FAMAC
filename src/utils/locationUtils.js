@@ -50,18 +50,30 @@ const LOCATION_CONFIGS = {
 export const requestLocationPermission = async (userType = 'user', showAlert = true) => {
   const config = LOCATION_CONFIGS[userType] || LOCATION_CONFIGS.user;
   
+  console.log('🔐 SOLICITANDO PERMISOS DE UBICACIÓN');
+  console.log('- userType:', userType);
+  console.log('- showAlert:', showAlert);
+  console.log('- Platform:', Platform.OS);
+  console.log('- config:', config);
+  
   try {
     let granted = false;
 
     if (Platform.OS === 'android') {
+      console.log('📱 ANDROID: Verificando permisos existentes...');
       // Verificar si ya tiene permiso
       const hasPermission = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       );
       
+      console.log('📱 ANDROID: ¿Ya tiene permiso?', hasPermission);
+      
       if (hasPermission) {
+        console.log('✅ ANDROID: Permiso ya otorgado, retornando true');
         return true;
       }
+
+      console.log('❌ ANDROID: No tiene permiso, solicitando...');
 
       // Solicitar permiso con mensaje personalizado
       const result = await PermissionsAndroid.request(
@@ -75,11 +87,16 @@ export const requestLocationPermission = async (userType = 'user', showAlert = t
         }
       );
       
+      console.log('📱 ANDROID: Resultado de solicitud:', result);
       granted = result === PermissionsAndroid.RESULTS.GRANTED;
+      console.log('📱 ANDROID: Permiso otorgado?', granted);
     } else {
+      console.log('🍎 iOS: Solicitando permiso LOCATION_WHEN_IN_USE...');
       // iOS
       const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      console.log('🍎 iOS: Resultado de solicitud:', status);
       granted = status === RESULTS.GRANTED;
+      console.log('🍎 iOS: Permiso otorgado?', granted);
     }
 
     // Manejar caso cuando el permiso es requerido pero no otorgado
@@ -114,7 +131,8 @@ export const getCurrentLocation = async (userType = 'user', onSuccess = null, on
   
   try {
     // Verificar permisos primero
-    const hasPermission = await requestLocationPermission(userType, false);
+    console.log('🔍 Verificando permisos de ubicación para userType:', userType);
+    const hasPermission = await requestLocationPermission(userType, true);
     if (!hasPermission) {
       if (onError) onError(new Error('Permission not granted'));
       return null;

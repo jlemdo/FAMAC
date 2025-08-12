@@ -57,15 +57,154 @@ const AddressFormUberStyle = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [userWrittenAddress, setUserWrittenAddress] = useState(''); // NUEVA: Dirección escrita por el usuario
+  
+  // NUEVO: Estados para campos estructurados de dirección
+  const [streetName, setStreetName] = useState('');
+  const [exteriorNumber, setExteriorNumber] = useState('');
+  const [interiorNumber, setInteriorNumber] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [municipality, setMunicipality] = useState('');
+  const [state, setState] = useState('CDMX'); // Default CDMX
+  
   const [references, setReferences] = useState('');
   const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
-  // Función para obtener ubicación actual usando locationUtils
+  // Función para parsear dirección de Google y auto-rellenar campos
+  const parseGoogleAddress = (googleAddress) => {
+    if (!googleAddress || !googleAddress.description) return;
+    
+    console.log('=== PARSEANDO DIRECCIÓN DE GOOGLE ===');
+    console.log('Dirección completa:', googleAddress.description);
+    
+    // Limpiar campos primero
+    setStreetName('');
+    setExteriorNumber('');
+    setInteriorNumber('');
+    setNeighborhood('');
+    setPostalCode('');
+    setMunicipality('');
+    setState('CDMX');
+    
+    // Parsear usando regex y patrones comunes en México
+    const addressStr = googleAddress.description;
+    
+    try {
+      // 1. Detectar número exterior (primer número encontrado)
+      const numberMatch = addressStr.match(/(\d+)/);
+      if (numberMatch) {
+        setExteriorNumber(numberMatch[1]);
+      }
+      
+      // 2. Detectar calle (parte antes del primer número o coma)
+      let streetMatch = addressStr.match(/^([^,\d]+?)(?:\s*\d|,)/);
+      if (streetMatch) {
+        const street = streetMatch[1].trim()
+          .replace(/^(Calle|Av\.|Avenida|Blvd\.|Boulevard|Calz\.|Calzada)\s*/i, '');
+        setStreetName(street);
+      }
+      
+      // 3. Detectar colonia/neighborhood (buscar después de "Col." o similar)
+      const neighborhoodPatterns = [
+        /(?:Col\.|Colonia|Fracc\.|Fraccionamiento)\s+([^,]+)/i,
+        /,\s*([^,]+?)(?:,|\s*\d{5})/  // Fallback: segundo elemento antes del CP
+      ];
+      
+      for (const pattern of neighborhoodPatterns) {
+        const neighMatch = addressStr.match(pattern);
+        if (neighMatch) {
+          setNeighborhood(neighMatch[1].trim());
+          break;
+        }
+      }
+      
+      // 4. Detectar código postal (5 dígitos)
+      const postalMatch = addressStr.match(/(\d{5})/);
+      if (postalMatch) {
+        setPostalCode(postalMatch[1]);
+        
+        // Auto-detectar estado por CP
+        const cp = parseInt(postalMatch[1]);
+        if (cp >= 1000 && cp <= 16999) {
+          setState('CDMX');
+        } else if (cp >= 50000 && cp <= 56999) {
+          setState('Estado de México');
+        }
+      }
+      
+      // 5. Detectar alcaldía/municipio (patrones conocidos)
+      const municipalityPatterns = [
+        // Alcaldías CDMX
+        /(Álvaro Obregón|Azcapotzalco|Benito Juárez|Coyoacán|Cuajimalpa|Gustavo A\. Madero|Iztacalco|Iztapalapa|Magdalena Contreras|Miguel Hidalgo|Milpa Alta|Tláhuac|Tlalpan|Venustiano Carranza|Xochimilco|Cuauhtémoc)/i,
+        // Municipios Estado de México
+        /(Naucalpan|Tlalnepantla|Ecatepec|Nezahualcóyotl|Chimalhuacán|Atizapán|Tultitlán|Coacalco|Cuautitlán Izcalli|Huixquilucan|Nicolás Romero|Tecámac|La Paz|Chalco|Ixtapaluca)/i
+      ];
+      
+      for (const pattern of municipalityPatterns) {
+        const munMatch = addressStr.match(pattern);
+        if (munMatch) {
+          setMunicipality(munMatch[1]);
+          break;
+        }
+      }
+      
+      console.log('✅ Campos auto-rellenados:');
+      console.log('- Calle:', streetMatch?.[1]?.trim() || 'No detectada');
+      console.log('- No. Ext:', numberMatch?.[1] || 'No detectado');
+      console.log('- Colonia:', neighborhood || 'No detectada');
+      console.log('- CP:', postalMatch?.[1] || 'No detectado');
+      console.log('- Alcaldía/Mun:', municipality || 'No detectada');
+      console.log('- Estado:', state);
+      
+    } catch (error) {
+      console.log('❌ Error parseando dirección:', error);
+    }
+  };
+
+  // Función para construir dirección final desde los campos
+  const buildFinalAddress = () => {
+    const parts = [];
+    
+    if (streetName.trim()) {
+      let fullStreet = streetName.trim();
+      if (exteriorNumber.trim()) {
+        fullStreet += ` ${exteriorNumber.trim()}`;
+      }
+      if (interiorNumber.trim()) {
+        fullStreet += `-${interiorNumber.trim()}`;
+      }
+      parts.push(fullStreet);
+    }
+    
+    if (neighborhood.trim()) {
+      parts.push(`Col. ${neighborhood.trim()}`);
+    }
+    
+    if (postalCode.trim()) {
+      parts.push(`CP ${postalCode.trim()}`);
+    }
+    
+    if (municipality.trim()) {
+      parts.push(municipality.trim());
+    }
+    
+    if (state.trim()) {
+      parts.push(state.trim());
+    }
+    
+    return parts.join(', ');
+  };
+
+  // Función para obtener ubicación actual usando locationUtils - CON DEBUG MEJORADO
   const handleGetCurrentLocation = async () => {
     setIsLoadingLocation(true);
     
     try {
+      console.log('🚀 INICIANDO PRUEBA DE UBICACIÓN');
+      console.log('Platform:', Platform.OS);
+      console.log('Llamando a getCurrentLocation con userType: guest');
+      
       // Usar la función ya existente de locationUtils optimizada para guest
       const location = await getCurrentLocation('guest', 
         // onSuccess callback
@@ -98,6 +237,8 @@ const AddressFormUberStyle = () => {
               setMapCoordinates({ latitude, longitude }); // Guardar coordenadas para el mapa
               // Pre-llenar dirección manual con ubicación actual
               setUserWrittenAddress(address.description);
+              // NUEVO: También parsear campos estructurados automáticamente
+              parseGoogleAddress(address);
               setCurrentStep(2); // Ir a dirección manual
             } else {
               // Si no hay resultados de geocoding, usar coordenadas básicas
@@ -132,25 +273,78 @@ const AddressFormUberStyle = () => {
             );
           }
         },
-        // onError callback mejorado
+        // onError callback mejorado para iOS y Android
         (error) => {
-          console.warn('Location error:', error);
+          console.error('❌ Location error details:', {
+            code: error.code,
+            message: error.message,
+            platform: Platform.OS
+          });
           
-          // Mensajes específicos según el tipo de error
-          let message = 'No se pudo obtener tu ubicación actual.';
-          if (error.message?.includes('permission') || error.message?.includes('Permission')) {
-            message = 'Necesitas activar los permisos de ubicación en tu dispositivo.';
-          } else if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
-            message = 'La búsqueda de ubicación tardó demasiado. Inténtalo de nuevo.';
-          } else if (error.message?.includes('network') || error.message?.includes('Network')) {
-            message = 'Problema de conexión. Verifica tu internet e inténtalo de nuevo.';
+          let errorTitle = 'Ubicación no disponible';
+          let errorMessage = '';
+          let buttons = [];
+          
+          // Manejo específico por código de error de geolocation
+          switch (error.code) {
+            case 1: // PERMISSION_DENIED
+              errorTitle = 'Permisos de ubicación necesarios';
+              if (Platform.OS === 'ios') {
+                errorMessage = 'Para obtener tu ubicación actual:\n\n' +
+                              '📱 Ve a Configuración de iOS\n' +
+                              '🔒 Toca "Privacidad y seguridad"\n' +
+                              '📍 Toca "Servicio de ubicación"\n' +
+                              '📲 Busca la app "FAMAC"\n' +
+                              '✅ Selecciona "Al usar la App"';
+                buttons = [
+                  { text: 'Buscar dirección', style: 'cancel' },
+                  { text: 'Cómo configurar', onPress: () => {
+                    Alert.alert(
+                      'Configuración de ubicación',
+                      'Configuración > Privacidad y seguridad > Servicio de ubicación > FAMAC > "Al usar la App"',
+                      [{ text: 'Entendido' }]
+                    );
+                  }}
+                ];
+              } else {
+                errorMessage = 'Activa los permisos de ubicación para esta app en Configuración > Apps > FAMAC > Permisos.';
+                buttons = [{ text: 'Buscar dirección', style: 'cancel' }];
+              }
+              break;
+              
+            case 2: // POSITION_UNAVAILABLE
+              errorMessage = 'No se pudo determinar tu ubicación.\n\n' +
+                           '📶 Verifica tu conexión a internet\n' +
+                           '📍 Asegúrate que la ubicación esté activa\n' +
+                           '🏠 Si estás en interiores, intenta acercarte a una ventana';
+              buttons = [
+                { text: 'Buscar dirección', style: 'cancel' },
+                { text: 'Reintentar', onPress: () => handleGetCurrentLocation() }
+              ];
+              break;
+              
+            case 3: // TIMEOUT
+              errorMessage = 'La búsqueda de ubicación tardó demasiado tiempo.\n\n' +
+                           'Esto puede suceder en lugares cerrados o con señal GPS débil.';
+              buttons = [
+                { text: 'Buscar dirección', style: 'cancel' },
+                { text: 'Reintentar', onPress: () => handleGetCurrentLocation() }
+              ];
+              break;
+              
+            default:
+              // Verificar errores comunes por mensaje
+              if (error.message?.toLowerCase().includes('permission')) {
+                errorMessage = 'Los permisos de ubicación están desactivados. Ve a Configuración para activarlos.';
+              } else if (error.message?.toLowerCase().includes('network')) {
+                errorMessage = 'Problema de conexión. Verifica tu internet e inténtalo de nuevo.';
+              } else {
+                errorMessage = 'Error técnico al acceder a la ubicación.\n\nPuedes continuar buscando tu dirección manualmente.';
+              }
+              buttons = [{ text: 'Buscar dirección', style: 'default' }];
           }
           
-          Alert.alert(
-            'Ubicación no disponible',
-            `${message}\n\nPuedes buscar manualmente tu dirección abajo.`,
-            [{ text: 'Entendido', style: 'default' }]
-          );
+          Alert.alert(errorTitle, errorMessage, buttons);
         }
       );
       
@@ -237,6 +431,8 @@ const AddressFormUberStyle = () => {
         setSearchResults([]);
         // Pre-llenar dirección manual con lo seleccionado
         setUserWrittenAddress(address.description);
+        // NUEVO: Parsear automáticamente los campos estructurados
+        parseGoogleAddress(address);
         setCurrentStep(2); // Ir a dirección manual
       }
     } catch (error) {
@@ -585,61 +781,169 @@ const AddressFormUberStyle = () => {
     </View>
   );
 
-  // Renderizar paso 2: Dirección Manual (COHERENTE)
-  const renderManualAddressStep = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Escribe tu dirección exacta</Text>
-      <Text style={styles.stepSubtitle}>
-        Esta será la dirección que verá el repartidor. Escríbela exactamente como la conoces.
-      </Text>
-      
-      {/* Campo de dirección manual - MISMO ESTILO QUE PASO 1 */}
-      <View style={styles.selectedAddressCard}>
-        <Ionicons name="create" size={24} color="#D27F27" />
-        <View style={styles.selectedAddressContent}>
-          <TextInput
-            ref={(ref) => registerInput('userAddress', ref)}
-            style={styles.manualAddressInput}
-            placeholder="Ej: Av. Insurgentes Sur 123, Col. Roma Norte, CDMX"
-            value={userWrittenAddress}
-            onChangeText={setUserWrittenAddress}
-            onFocus={createFocusHandler('userAddress')}
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-        </View>
-      </View>
-      
-      {/* Mensaje informativo - MISMO ESTILO */}
-      <View style={styles.loadingContainer}>
-        <Ionicons name="information-circle" size={20} color="#D27F27" />
-        <Text style={styles.loadingText}>
-          Esta dirección NO la cambiará Google
+  // Renderizar paso 2: Dirección Manual con Campos Estructurados
+  const renderManualAddressStep = () => {
+    // Verificar si hay campos requeridos llenos
+    const hasRequiredFields = streetName.trim() && exteriorNumber.trim() && neighborhood.trim();
+    
+    return (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>Escribe tu dirección exacta</Text>
+        <Text style={styles.stepSubtitle}>
+          Completa los datos para que el repartidor encuentre tu dirección fácilmente.
         </Text>
+        
+        {/* Fila 1: Calle y Número Exterior */}
+        <View style={styles.addressRow}>
+          <View style={[styles.addressField, {flex: 2}]}>
+            <Text style={styles.fieldLabel}>Calle *</Text>
+            <TextInput
+              ref={(ref) => registerInput('street', ref)}
+              style={styles.addressInput}
+              placeholder="Ej: Insurgentes Sur"
+              value={streetName}
+              onChangeText={setStreetName}
+              onFocus={createFocusHandler('street')}
+              placeholderTextColor="#999"
+            />
+          </View>
+          <View style={[styles.addressField, {flex: 1}]}>
+            <Text style={styles.fieldLabel}>No. Ext *</Text>
+            <TextInput
+              ref={(ref) => registerInput('extNum', ref)}
+              style={styles.addressInput}
+              placeholder="123"
+              value={exteriorNumber}
+              onChangeText={setExteriorNumber}
+              onFocus={createFocusHandler('extNum')}
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
+
+        {/* Fila 2: Número Interior y Colonia */}
+        <View style={styles.addressRow}>
+          <View style={[styles.addressField, {flex: 1}]}>
+            <Text style={styles.fieldLabel}>No. Int</Text>
+            <TextInput
+              ref={(ref) => registerInput('intNum', ref)}
+              style={styles.addressInput}
+              placeholder="A, 4, etc"
+              value={interiorNumber}
+              onChangeText={setInteriorNumber}
+              onFocus={createFocusHandler('intNum')}
+              placeholderTextColor="#999"
+            />
+          </View>
+          <View style={[styles.addressField, {flex: 2}]}>
+            <Text style={styles.fieldLabel}>Colonia *</Text>
+            <TextInput
+              ref={(ref) => registerInput('colony', ref)}
+              style={styles.addressInput}
+              placeholder="Roma Norte"
+              value={neighborhood}
+              onChangeText={setNeighborhood}
+              onFocus={createFocusHandler('colony')}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+
+        {/* Fila 3: Código Postal y Alcaldía/Municipio */}
+        <View style={styles.addressRow}>
+          <View style={[styles.addressField, {flex: 1}]}>
+            <Text style={styles.fieldLabel}>CP</Text>
+            <TextInput
+              ref={(ref) => registerInput('postalCode', ref)}
+              style={styles.addressInput}
+              placeholder="06700"
+              value={postalCode}
+              onChangeText={setPostalCode}
+              onFocus={createFocusHandler('postalCode')}
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+              maxLength={5}
+            />
+          </View>
+          <View style={[styles.addressField, {flex: 2}]}>
+            <Text style={styles.fieldLabel}>Alcaldía/Municipio</Text>
+            <TextInput
+              ref={(ref) => registerInput('municipality', ref)}
+              style={styles.addressInput}
+              placeholder="Cuauhtémoc"
+              value={municipality}
+              onChangeText={setMunicipality}
+              onFocus={createFocusHandler('municipality')}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+
+        {/* Fila 4: Estado */}
+        <View style={styles.addressRow}>
+          <View style={styles.addressField}>
+            <Text style={styles.fieldLabel}>Estado</Text>
+            <View style={styles.stateSelector}>
+              <TouchableOpacity
+                style={[styles.stateOption, state === 'CDMX' && styles.stateOptionActive]}
+                onPress={() => setState('CDMX')}>
+                <Text style={[styles.stateOptionText, state === 'CDMX' && styles.stateOptionTextActive]}>
+                  CDMX
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.stateOption, state === 'Estado de México' && styles.stateOptionActive]}
+                onPress={() => setState('Estado de México')}>
+                <Text style={[styles.stateOptionText, state === 'Estado de México' && styles.stateOptionTextActive]}>
+                  Edo. Méx
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Vista previa de dirección construida */}
+        <View style={styles.addressPreview}>
+          <Text style={styles.previewLabel}>Vista previa:</Text>
+          <Text style={styles.previewText}>
+            {buildFinalAddress() || 'Completa los campos requeridos (*)'}
+          </Text>
+        </View>
+
+        {/* Mensaje informativo */}
+        <View style={styles.loadingContainer}>
+          <Ionicons name="information-circle" size={20} color="#D27F27" />
+          <Text style={styles.loadingText}>
+            Los campos con * son obligatorios
+          </Text>
+        </View>
+
+        {/* Botón continuar */}
+        <TouchableOpacity
+          style={[
+            styles.confirmButton, 
+            !hasRequiredFields && styles.confirmButtonDisabled
+          ]}
+          onPress={() => {
+            // Construir dirección final y guardarla
+            setUserWrittenAddress(buildFinalAddress());
+            setCurrentStep(3);
+          }}
+          disabled={!hasRequiredFields}>
+          <Ionicons name="arrow-forward" size={24} color="#FFF" />
+          <Text style={styles.confirmButtonText}>Continuar a referencias</Text>
+        </TouchableOpacity>
+
+        {/* Botón regresar */}
+        <TouchableOpacity
+          style={styles.backStepButton}
+          onPress={() => setCurrentStep(1)}>
+          <Text style={styles.backStepButtonText}>← Regresar a búsqueda</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* Botón continuar - MISMO ESTILO QUE CONFIRMACIÓN */}
-      <TouchableOpacity
-        style={[
-          styles.confirmButton, 
-          !userWrittenAddress.trim() && styles.confirmButtonDisabled
-        ]}
-        onPress={() => setCurrentStep(3)}
-        disabled={!userWrittenAddress.trim()}>
-        <Ionicons name="arrow-forward" size={24} color="#FFF" />
-        <Text style={styles.confirmButtonText}>Continuar a referencias</Text>
-      </TouchableOpacity>
-
-      {/* Botón regresar */}
-      <TouchableOpacity
-        style={styles.backStepButton}
-        onPress={() => setCurrentStep(1)}>
-        <Text style={styles.backStepButtonText}>← Regresar a búsqueda</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   // Renderizar paso 3: Referencias (COHERENTE)
   const renderReferencesStep = () => (
@@ -1218,6 +1522,80 @@ const styles = StyleSheet.create({
   confirmButtonDisabled: {
     backgroundColor: '#CCC',
     opacity: 0.6,
+  },
+  
+  // Nuevos estilos para campos estructurados
+  addressRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    gap: 12,
+  },
+  addressField: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 6,
+  },
+  addressInput: {
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+  },
+  stateSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+  },
+  stateOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+  },
+  stateOptionActive: {
+    backgroundColor: '#D27F27',
+  },
+  stateOptionText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+  },
+  stateOptionTextActive: {
+    color: '#FFF',
+    fontFamily: fonts.bold,
+  },
+  addressPreview: {
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.3)',
+  },
+  previewLabel: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginBottom: 4,
+  },
+  previewText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    lineHeight: 20,
   },
 });
 

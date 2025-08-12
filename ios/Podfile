@@ -17,6 +17,8 @@ source 'https://cdn.cocoapods.org/'
 
 # RN autolinking genérico
 require_relative '../node_modules/react-native/scripts/react_native_pods'
+# ➌ Configuración de permisos para react-native-permissions
+require_relative '../node_modules/react-native-permissions/scripts/setup'
 
 prepare_react_native_project!
 
@@ -30,6 +32,12 @@ target 'MyNewApp' do
     fabric_enabled: false,
     app_path: "#{Pod::Config.instance.installation_root}/.."
   )
+
+  # ➎ Configurar permisos específicos para react-native-permissions
+  setup_permissions([
+    'LocationWhenInUse',
+    'LocationAlways'
+  ])
 
   # ➎ Solo react-native-maps (incluye ios/AirMaps para RNMapsAirModule)
   pod 'react-native-maps',
