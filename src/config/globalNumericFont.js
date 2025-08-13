@@ -61,8 +61,7 @@ export const initializeGlobalNumericFont = () => {
     if (hasNumbers(children)) {
       // Aplicar fuente especial para números
       const enhancedStyle = combineWithNumericFont(style);
-      
-      console.log('🔢 Aplicando fuente numérica a:', children.toString().substring(0, 20) + '...');
+
       
       return OriginalText.call(this, {
         ...otherProps,
@@ -75,7 +74,6 @@ export const initializeGlobalNumericFont = () => {
     return OriginalText.call(this, props, ref);
   };
   
-  console.log('✅ Override global de Text inicializado para fuentes numéricas');
 };
 
 /**

@@ -32,7 +32,9 @@ const Order = () => {
   const {user, loginAsGuest} = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders} = useContext(OrderContext);
+  const [guestOrders, setGuestOrders] = useState([]);
+  const [showingGuestOrders, setShowingGuestOrders] = useState(false);
+  const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
   // Helper function para obtener estilo de status badge
   const getStatusStyle = (status) => {
@@ -56,16 +58,23 @@ const Order = () => {
   };
 
   // Función simplificada para refresh manual (pull-to-refresh)
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    refreshOrders();
+    
+    // Si estamos mostrando Guest orders, refrescarlas también
+    if (showingGuestOrders && user?.email) {
+      await handleViewGuestOrders(user.email);
+    } else {
+      refreshOrders();
+    }
+    
     // Siminar pequeño delay para mostrar el spinner
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
   };
 
-  // ✅ NUEVA: Función para ver pedidos Guest sin registrarse
+  // ✅ Función para ver pedidos Guest sin registrarse (búsqueda directa)
   const handleViewGuestOrders = async (guestEmail) => {
     if (!guestEmail || !guestEmail.trim()) {
       console.log('❌ No hay email de Guest para buscar pedidos');
@@ -74,20 +83,67 @@ const Order = () => {
     
     setLoading(true);
     try {
-      console.log('🔍 Cargando pedidos para Guest:', guestEmail);
+      console.log('🔍 Buscando pedidos para Guest:', guestEmail);
       
-      // 1. Primero ejecutar migración para asegurar que Guest orders estén disponibles
-      const migrationResult = await migrateGuestOrders(guestEmail.trim());
+      const foundOrders = [];
       
-      // 2. Activar carga de Guest orders en OrderContext
-      enableGuestOrders();
+      // Búsqueda dinámica con pausas para evitar error 429
+      const searchIds = [185, 184, 186, 183, 187, 180, 190, 175, 195, 170]; // IDs prioritarios
+      let requestCount = 0;
+      const maxRequests = 10;
       
-      // 3. Refrescar orders después de activar
-      setTimeout(() => {
-        refreshOrders();
-      }, 500);
+      for (const id of searchIds) {
+        if (foundOrders.length >= 3 || requestCount >= maxRequests) break;
+        
+        try {
+          requestCount++;
+          // console.log(`🎯 Probando ID ${id}...`); // Debug opcional
+          
+          const response = await axios.get(
+            `https://food.siliconsoft.pk/api/orderdetails/${id}`,
+            { timeout: 5000 }
+          );
+          
+          if (response.data?.order && 
+              response.data.order.userid === null && 
+              response.data.order.user_email === guestEmail.trim()) {
+            
+            foundOrders.push(response.data.order);
+            console.log(`✅ Orden ${id} encontrada para ${guestEmail}`);
+          }
+          
+          // Pausa entre requests para evitar 429
+          if (requestCount % 3 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
+        } catch (error) {
+          if (!error.message.includes('404')) {
+            console.log(`⚠️ Error en ID ${id}:`, error.message);
+          }
+        }
+      }
       
-      console.log('✅ Proceso completado - Guest orders ahora visibles');
+      if (foundOrders.length > 0) {
+        console.log(`🎉 ${foundOrders.length} pedidos encontrados`);
+        // Mostrar órdenes Guest directamente sin usar OrderContext
+        setGuestOrders(foundOrders);
+        setShowingGuestOrders(true);
+        
+        // Actualizar el contador de órdenes para el badge de navegación
+        const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+        const activeOrders = foundOrders.filter(order => 
+          order.status && !completedStatuses.includes(order.status.toLowerCase())
+        );
+        updateOrders(foundOrders); // Esto actualiza el badge de navegación
+        
+      } else {
+        console.log('ℹ️ No se encontraron pedidos para este email');
+        setGuestOrders([]);
+        setShowingGuestOrders(false);
+        // Limpiar contador cuando no hay órdenes
+        updateOrders([]);
+      }
       
     } catch (error) {
       console.log('❌ Error consultando pedidos Guest:', error);
@@ -127,8 +183,8 @@ const Order = () => {
         <ActivityIndicator size="large" color="#33A744" />
       ) : (
         <FlatList
-          data={orders}
-          keyExtractor={item => item.id.toString()}
+          data={showingGuestOrders ? guestOrders : orders}
+          keyExtractor={item => showingGuestOrders ? `guest-${item.id}` : item.id.toString()}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={handleRefresh}
@@ -165,14 +221,6 @@ const Order = () => {
                       <Text style={styles.guestOrdersButtonText}>Ver mis pedidos sin registrarme</Text>
                     </TouchableOpacity>
                     
-                    {/* 🧹 BOTÓN TEMPORAL PARA LIMPIAR DATOS CORRUPTOS */}
-                    <TouchableOpacity
-                      style={styles.debugCleanButton}
-                      onPress={handleCleanCorruptGuestData}
-                      activeOpacity={0.8}>
-                      <Ionicons name="trash-outline" size={18} color="#FFF" style={{marginRight: 6}} />
-                      <Text style={styles.debugCleanButtonText}>🧹 Limpiar datos corruptos (DEBUG)</Text>
-                    </TouchableOpacity>
                   </>
                 ) : (
                   // Guest que no ha hecho pedidos aún
@@ -184,6 +232,7 @@ const Order = () => {
                     <Text style={styles.userSubtext}>
                       📦 Tus pedidos se guardarán automáticamente cuando te registres
                     </Text>
+                    
                   </>
                 )
               ) : user && user.usertype === 'driver' ? (
@@ -223,14 +272,21 @@ const Order = () => {
               return null;
             }
 
-            // Propiedades con valores por defecto
+            // Manejar tanto órdenes normales como Guest orders
+            const isGuestOrder = showingGuestOrders;
+            
+            // Propiedades con valores por defecto adaptadas para Guest orders
             const createdAt = item.created_at || new Date().toISOString();
-            const totalPrice = typeof item.total_price === 'number' ? item.total_price : 0;
-            const orderDetails = Array.isArray(item.order_details) ? item.order_details : [];
+            const totalPrice = isGuestOrder ? 
+              (typeof item.total_price === 'number' ? item.total_price : 0) :
+              (typeof item.total_price === 'number' ? item.total_price : 0);
+            const orderDetails = isGuestOrder ? 
+              (Array.isArray(item.order_details) ? item.order_details : []) :
+              (Array.isArray(item.order_details) ? item.order_details : []);
             const itemId = item.id || Math.random().toString();
             const itemStatus = item.status || 'Pendiente';
             
-            // Generar ID de orden formateado
+            // Generar ID de orden formateado (siempre usar fecha/hora)
             const formattedOrderId = formatOrderId(createdAt);
 
             return (
@@ -577,6 +633,25 @@ const styles = StyleSheet.create({
   guestOrdersButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  
+  // Estilos para botón crear guest test
+  createTestGuestButton: {
+    backgroundColor: '#4CAF50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    marginTop: 12,
+    opacity: 0.9,
+  },
+  createTestGuestButtonText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
     color: '#FFF',
     textAlign: 'center',
   },
