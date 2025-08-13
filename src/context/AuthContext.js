@@ -55,6 +55,7 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+
   // Función para limpiar datos de guest después de migración exitosa
   const clearGuestData = async (guestEmail) => {
     try {

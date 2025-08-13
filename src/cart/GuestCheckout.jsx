@@ -88,6 +88,11 @@ export default function GuestCheckout() {
           console.log('🗺️ Coordenadas recibidas en GuestCheckout:', route.params.selectedCoordinates);
         }
         
+        // ✅ SCROLL AUTOMÁTICO al botón "Completar Pedido" cuando regresa con dirección
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+        
         // Limpiar los parámetros
         navigation.setParams({ 
           selectedAddress: undefined,
@@ -184,10 +189,8 @@ export default function GuestCheckout() {
     setLoading(true);
     
     try {
-      // Actualizar email en contexto si es necesario
-      if (user?.usertype === 'Guest' && (!user?.email || user?.email?.trim() === '') && email?.trim()) {
-        await updateUser({ email: email.trim() });
-      }
+      // ✅ FIX: NO actualizar email aquí - se hace SOLO después del pago exitoso en Cart.jsx
+      // El email se guarda únicamente cuando el pago se completa correctamente
       
       // Navegar de regreso con los datos
       console.log('=== NAVEGANDO DE VUELTA AL CART ===');
@@ -346,7 +349,7 @@ export default function GuestCheckout() {
         }}
         activeOpacity={0.7}>
         <Text style={address ? styles.addressText : styles.addressPlaceholder}>
-          {address || 'Seleccionar dirección completa'}
+          {address ? 'Elegir otra dirección' : 'Seleccionar dirección completa'}
         </Text>
         <Text style={styles.addressIcon}>📍</Text>
       </TouchableOpacity>
@@ -365,6 +368,22 @@ export default function GuestCheckout() {
       style={styles.container}
       {...keyboardAvoidingViewProps}>
       
+      {/* Header estático */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.7}>
+          <Text style={styles.backButtonText}>← Atrás</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Checkout Invitado</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      {/* Stepper estático */}
+      {renderStepper()}
+      
+      {/* Contenido scrolleable */}
       <TouchableWithoutFeedback onPress={() => {}}>
         <ScrollView 
           {...scrollViewProps}
@@ -373,21 +392,6 @@ export default function GuestCheckout() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}>
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={handleBack}
-              activeOpacity={0.7}>
-              <Text style={styles.backButtonText}>← Atrás</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Checkout Invitado</Text>
-            <View style={styles.headerRight} />
-          </View>
-
-          {/* Stepper */}
-          {renderStepper()}
           
           {/* Resumen del pedido */}
           <View style={styles.orderSummary}>
@@ -403,9 +407,9 @@ export default function GuestCheckout() {
             {currentStep === 2 && renderStep2()}        
           </View>
 
-          {/* Bottom Actions - Solo mostrar en paso 1 */}
-          {currentStep === 1 && (
-            <View style={styles.bottomActions}>
+          {/* Bottom Actions */}
+          <View style={styles.bottomActions}>
+            {currentStep === 1 && (
               <TouchableOpacity
                 style={[
                   styles.continueButton,
@@ -421,8 +425,26 @@ export default function GuestCheckout() {
                   <Text style={styles.continueButtonText}>Continuar</Text>
                 )}
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+            
+            {currentStep === 2 && (
+              <TouchableOpacity
+                style={[
+                  styles.continueButton,
+                  !validateStep(currentStep) && styles.continueButtonDisabled,
+                  loading && styles.continueButtonDisabled
+                ]}
+                onPress={handleComplete}
+                disabled={!validateStep(currentStep) || loading}
+                activeOpacity={0.8}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.continueButtonText}>Completar Pedido</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
           
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -546,6 +568,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+    backgroundColor: '#F2EFE4',
   },
   scrollContent: {
     flexGrow: 1,

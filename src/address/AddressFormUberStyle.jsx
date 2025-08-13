@@ -640,40 +640,40 @@ const AddressFormUberStyle = () => {
           throw new Error('Faltan parámetros del carrito');
         }
         
-        // Si returnToCart es true, ir directo al carrito en lugar de GuestCheckout
+        // Si returnToCart es true, regresar a GuestCheckout con los datos
+        // ✅ FIX iOS: Evitar navegación anidada compleja que causa problemas en iOS
         if (route.params?.returnToCart) {
-          // Preparar datos para el carrito con auto-pago
-          const guestData = {
-            email: route.params?.currentEmail || '',
-            address: addressToSend,
+          console.log('✅ FIX iOS: Regresando a GuestCheckout con datos preservados');
+          
+          // Navegar de vuelta a GuestCheckout con todos los datos necesarios
+          navigation.navigate('GuestCheckout', {
+            // Parámetros básicos validados
+            totalPrice: route.params.totalPrice,
+            itemCount: route.params.itemCount,
+            returnToCart: route.params?.returnToCart || false,
+            
+            // Datos preservados del Cart
             preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
-            preservedNeedInvoice: route.params?.preservedNeedInvoice,
-            preservedTaxDetails: route.params?.preservedTaxDetails,
-            preservedCoordinates: finalAddress.coordinates ? {
+            preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
+            preservedTaxDetails: route.params?.preservedTaxDetails || null,
+            
+            // Email actuales
+            currentEmail: route.params?.currentEmail || '',
+            currentAddress: route.params?.currentAddress || '',
+            
+            // ✅ DATOS NUEVOS de la dirección seleccionada
+            selectedAddress: addressToSend,
+            selectedCoordinates: finalAddress.coordinates ? {
               driver_lat: finalAddress.coordinates.latitude,
               driver_long: finalAddress.coordinates.longitude
-            } : null, // ✅ Convertir formato para Cart.jsx
-          };
-          
-          const mapCoordinates = finalAddress.coordinates ? {
-            latitude: finalAddress.coordinates.latitude,
-            longitude: finalAddress.coordinates.longitude
-          } : null;
-          
-          console.log('📤 ENVIANDO A CART - AddressFormUberStyle:', JSON.stringify({
-            guestData,
-            mapCoordinates
-          }, null, 2));
-          
-          // ✅ FIX: Usar el formato correcto para que Cart.jsx pueda acceder a los params
-          navigation.navigate('MainTabs', {
-            screen: 'Carrito',
-            params: {
-              guestData: guestData,
-              mapCoordinates: mapCoordinates,
-            }
+            } : null,
+            selectedReferences: finalAddress.references,
+            shouldGoToStep2: true, // Ir directamente al paso 2
+            preservedEmail: route.params?.currentEmail || '',
+            addressCompleted: true,
           });
-          console.log('✓ Navegación directa al carrito completada con auto-pago Guest');
+          
+          console.log('✓ Navegación a GuestCheckout con datos completos');
           return;
         }
         
@@ -1184,6 +1184,44 @@ const AddressFormUberStyle = () => {
     <KeyboardAvoidingView 
       style={styles.container} 
       {...keyboardAvoidingViewProps}>
+      
+      {/* Header estático */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => {
+            if (currentStep === 1) {
+              navigation.goBack();
+            } else {
+              setCurrentStep(currentStep - 1);
+            }
+          }}
+          style={styles.backIcon}>
+          <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{title}</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.stepsIndicator}>
+        {(skipMapStep ? [1, 2, 3] : [1, 2, 3, 4]).map((step) => (
+          <View key={step} style={styles.stepIndicatorContainer}>
+            <View
+              style={[
+                styles.stepDot,
+                step < currentStep ? styles.stepDotCompleted : 
+                step === currentStep ? styles.stepDotActive : 
+                styles.stepDotInactive
+              ]}>
+              {step < currentStep && (
+                <Ionicons name="checkmark" size={12} color="#FFF" />
+              )}
+            </View>
+            {step < (skipMapStep ? 3 : 4) && <View style={styles.stepLine} />}
+          </View>
+        ))}
+      </View>
+      
+      {/* Contenido scrolleable */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
           {...scrollViewProps}
@@ -1192,43 +1230,6 @@ const AddressFormUberStyle = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={true}>
-          
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => {
-                if (currentStep === 1) {
-                  navigation.goBack();
-                } else {
-                  setCurrentStep(currentStep - 1);
-                }
-              }}
-              style={styles.backIcon}>
-              <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{title}</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          {/* Indicador de pasos - Condicional según si incluye mapa */}
-          <View style={styles.stepsIndicator}>
-            {(skipMapStep ? [1, 2, 3] : [1, 2, 3, 4]).map((step) => (
-              <View key={step} style={styles.stepIndicatorContainer}>
-                <View
-                  style={[
-                    styles.stepDot,
-                    step < currentStep ? styles.stepDotCompleted : 
-                    step === currentStep ? styles.stepDotActive : 
-                    styles.stepDotInactive
-                  ]}>
-                  {step < currentStep && (
-                    <Ionicons name="checkmark" size={12} color="#FFF" />
-                  )}
-                </View>
-                {step < (skipMapStep ? 3 : 4) && <View style={styles.stepLine} />}
-              </View>
-            ))}
-          </View>
 
           {/* Contenido del paso actual */}
           <View style={styles.content}>

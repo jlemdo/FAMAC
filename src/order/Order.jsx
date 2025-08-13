@@ -17,13 +17,22 @@ import {OrderContext} from '../context/OrderContext';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
+import {migrateGuestOrders} from '../utils/orderMigration';
+
+// Import AsyncStorage para limpieza temporal
+let AsyncStorage;
+try {
+  AsyncStorage = require('@react-native-async-storage/async-storage').default;
+} catch (e) {
+  AsyncStorage = null;
+}
 
 const Order = () => {
   const navigation = useNavigation();
-  const {user} = useContext(AuthContext);
+  const {user, loginAsGuest} = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const {orders, orderCount, refreshOrders, lastFetch} = useContext(OrderContext);
+  const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders} = useContext(OrderContext);
 
   // Helper function para obtener estilo de status badge
   const getStatusStyle = (status) => {
@@ -54,6 +63,62 @@ const Order = () => {
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
+  };
+
+  // ✅ NUEVA: Función para ver pedidos Guest sin registrarse
+  const handleViewGuestOrders = async (guestEmail) => {
+    if (!guestEmail || !guestEmail.trim()) {
+      console.log('❌ No hay email de Guest para buscar pedidos');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      console.log('🔍 Cargando pedidos para Guest:', guestEmail);
+      
+      // 1. Primero ejecutar migración para asegurar que Guest orders estén disponibles
+      const migrationResult = await migrateGuestOrders(guestEmail.trim());
+      
+      // 2. Activar carga de Guest orders en OrderContext
+      enableGuestOrders();
+      
+      // 3. Refrescar orders después de activar
+      setTimeout(() => {
+        refreshOrders();
+      }, 500);
+      
+      console.log('✅ Proceso completado - Guest orders ahora visibles');
+      
+    } catch (error) {
+      console.log('❌ Error consultando pedidos Guest:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🧹 FUNCIÓN TEMPORAL para limpiar datos corruptos
+  const handleCleanCorruptGuestData = async () => {
+    try {
+      console.log('🧹 Limpiando datos corruptos de Guest...');
+      
+      if (AsyncStorage) {
+        // Limpiar AsyncStorage completamente
+        await AsyncStorage.removeItem('userData');
+        await AsyncStorage.removeItem('persistSession');
+        console.log('✅ AsyncStorage limpiado');
+      }
+      
+      // Reiniciar como Guest limpio (sin email)
+      await loginAsGuest(null);
+      
+      // Desactivar Guest orders si estaba activado
+      disableGuestOrders();
+      
+      console.log('✅ Datos de Guest limpiados - reiniciado como Guest sin email');
+      
+    } catch (error) {
+      console.log('❌ Error limpiando datos:', error);
+    }
   };
 
   return (
@@ -90,6 +155,24 @@ const Order = () => {
                     <Text style={styles.userSubtext}>
                       ✨ Al registrarte, todos tus pedidos aparecerán automáticamente aquí
                     </Text>
+                    
+                    {/* Botón para ver pedidos como Guest */}
+                    <TouchableOpacity
+                      style={styles.guestOrdersButton}
+                      onPress={() => handleViewGuestOrders(user.email)}
+                      activeOpacity={0.8}>
+                      <Ionicons name="eye-outline" size={20} color="#FFF" style={{marginRight: 8}} />
+                      <Text style={styles.guestOrdersButtonText}>Ver mis pedidos sin registrarme</Text>
+                    </TouchableOpacity>
+                    
+                    {/* 🧹 BOTÓN TEMPORAL PARA LIMPIAR DATOS CORRUPTOS */}
+                    <TouchableOpacity
+                      style={styles.debugCleanButton}
+                      onPress={handleCleanCorruptGuestData}
+                      activeOpacity={0.8}>
+                      <Ionicons name="trash-outline" size={18} color="#FFF" style={{marginRight: 6}} />
+                      <Text style={styles.debugCleanButtonText}>🧹 Limpiar datos corruptos (DEBUG)</Text>
+                    </TouchableOpacity>
                   </>
                 ) : (
                   // Guest que no ha hecho pedidos aún
@@ -473,6 +556,48 @@ const styles = StyleSheet.create({
   },
   statusPendingText: {
     color: '#D27F27',
+  },
+  
+  // Estilos para botón Guest
+  guestOrdersButton: {
+    backgroundColor: '#33A744',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  guestOrdersButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  
+  // Estilos para botón de limpieza temporal
+  debugCleanButton: {
+    backgroundColor: '#FF4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    marginTop: 12,
+    opacity: 0.8,
+  },
+  debugCleanButtonText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#FFF',
+    textAlign: 'center',
   },
 });
 

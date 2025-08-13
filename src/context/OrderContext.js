@@ -11,9 +11,13 @@ export function OrderProvider({ children }) {
     const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
     const { user } = useContext(AuthContext);
 
+    // ✅ Estado para permitir cargar órdenes Guest temporalmente
+    const [allowGuestOrders, setAllowGuestOrders] = useState(false);
+
     // Función para obtener órdenes del servidor
     const fetchOrdersFromServer = useCallback(async () => {
-        if (!user || user.usertype === 'Guest') {
+        // ✅ Permitir Guest solo si se activó explícitamente
+        if (!user || (user.usertype === 'Guest' && !allowGuestOrders)) {
             setOrders([]);
             setOrderCount(0);
             return;
@@ -23,6 +27,9 @@ export function OrderProvider({ children }) {
             let url;
             if (user.usertype === 'driver') {
                 url = `https://food.siliconsoft.pk/api/orderhistorydriver/${user.id}`;
+            } else if (user.usertype === 'Guest' && allowGuestOrders) {
+                // ✅ Para Guest, usar email como user_id en el endpoint normal
+                url = `https://food.siliconsoft.pk/api/orderhistory/${encodeURIComponent(user.email)}`;
             } else {
                 url = `https://food.siliconsoft.pk/api/orderhistory/${user.id}`;
             }
@@ -47,7 +54,21 @@ export function OrderProvider({ children }) {
             
         } catch (error) {
         }
-    }, [user]);
+    }, [user, allowGuestOrders]);
+
+    // ✅ NUEVA: Función para activar carga Guest temporal
+    const enableGuestOrders = () => {
+        setAllowGuestOrders(true);
+    };
+
+    // ✅ NUEVA: Función para desactivar carga Guest
+    const disableGuestOrders = () => {
+        setAllowGuestOrders(false);
+        if (user?.usertype === 'Guest') {
+            setOrders([]);
+            setOrderCount(0);
+        }
+    };
 
     // Función manual para actualizar (para compatibilidad)
     const updateOrders = (ordersData) => {
@@ -66,7 +87,7 @@ export function OrderProvider({ children }) {
 
     // Auto-refresh cada 30 segundos cuando el usuario esté logueado
     useEffect(() => {
-        if (user && user.usertype !== 'Guest') {
+        if (user && (user.usertype !== 'Guest' || allowGuestOrders)) {
             // Fetch inicial
             fetchOrdersFromServer();
             
@@ -89,7 +110,7 @@ export function OrderProvider({ children }) {
                 setAutoRefreshInterval(null);
             }
         }
-    }, [user, fetchOrdersFromServer]);
+    }, [user, fetchOrdersFromServer, allowGuestOrders]);
 
     return (
         <OrderContext.Provider value={{ 
@@ -98,6 +119,8 @@ export function OrderProvider({ children }) {
             updateOrders, 
             refreshOrders, 
             lastFetch,
+            enableGuestOrders,
+            disableGuestOrders,
             fetchOrdersFromServer 
         }}>
             {children}

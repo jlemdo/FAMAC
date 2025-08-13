@@ -1,6 +1,32 @@
 # Progreso del Proyecto FAMAC
 
-## 🚨 PROBLEMA CRÍTICO ACTUAL: Pérdida de datos en flujo de carrito
+## ✅ PROBLEMAS CRÍTICOS RESUELTOS
+
+### ✅ **RESUELTO: Navegación iOS Guest solucionada**
+- **Problema**: Guest se congelaba en iOS después de seleccionar ubicación
+- **Causa**: Navegación anidada compleja causaba pérdida de parámetros en iOS
+- **Solución**: Navegación simple con `navigation.goBack()` en AddressFormUberStyle.jsx
+- **Resultado**: iOS Guest funciona igual que Android
+
+### ✅ **RESUELTO: Email Guest guardado sin pago completado**
+- **Problema crítico**: Email se guardaba en GuestCheckout antes del pago
+- **Consecuencia**: Guest mostraba "tienes pedidos" sin tener pedidos reales
+- **Fix aplicado**: Eliminado `updateUser` de GuestCheckout.jsx:189
+- **Garantía**: Email solo se guarda después de pago exitoso en Cart.jsx
+
+### ✅ **IMPLEMENTADO: Ver pedidos Guest sin registro**
+- **Nueva funcionalidad**: Botón "Ver mis pedidos sin registrarme"
+- **Técnica**: Usa migrate API como consulta + OrderContext temporal
+- **Beneficio**: Guest puede ver pedidos reales usando solo endpoints existentes
+- **Auto-limpieza**: Detecta automáticamente si Guest tiene pedidos o no
+
+### ✅ **MEJORADO: UX Header y Stepper fijos**
+- **Problema**: Header y barra de pasos se movían con scroll
+- **Solución**: Estructura reorganizada - header/stepper estáticos, solo contenido scroll
+- **Archivos**: GuestCheckout.jsx y AddressFormUberStyle.jsx
+- **Resultado**: Navegación siempre visible, UX profesional
+
+## 🚨 PROBLEMA HISTÓRICO RESUELTO: Pérdida de datos en flujo de carrito
 
 ### **Descripción del problema:**
 - **Síntoma principal**: Cuando el usuario cancela el pago, los datos de deliveryInfo (fecha/hora de entrega) y coordenadas se pierden
@@ -77,45 +103,61 @@ useEffect(() => {
 - Los datos se pierden DESPUÉS del regreso al carrito
 
 ### **Estado actual del problema:**
-- 🔍 **DEBUGGING EN PROGRESO**: Problema de navegación Guest identificado y solucionado
-- ✅ **Root cause encontrado**: Navigation parameter structure incorrecta en AddressFormUberStyle.jsx
-- ✅ **Fix implementado**: Corrección de formato de parámetros para Guest auto-payment
-- 🔄 **Enhanced debugging**: Logs detallados agregados para verificar flujo completo
+- ✅ **PROBLEMA RESUELTO COMPLETAMENTE**: Guest auto-payment funciona igual que User registrado
+- ✅ **Root cause solucionado**: Navigation parameter structure + timing issue corregidos
+- ✅ **Fix implementado y verificado**: Guest llega correctamente a pasarela de pagos
+- ✅ **Testing exitoso**: Validaciones completas funcionando para ambos flujos
 
-### **Fixes implementados:**
+### **Solución completa implementada:**
 
 #### **1. AddressFormUberStyle.jsx - Línea 669-675**
 - **Problema**: Estructura incorrecta de parámetros de navegación para Guest
-- **Fix**: Cambio de estructura anidada a estructura directa:
+- **Fix**: Navegación directa con parámetros correctos:
 ```javascript
-// ANTES (incorrecto):
-navigation.navigate('MainTabs', navigationParams);
-
-// DESPUÉS (correcto):
 navigation.navigate('MainTabs', {
   screen: 'Carrito',
-  params: {
-    guestData: guestData,
-    mapCoordinates: mapCoordinates,
-  }
+  params: { guestData: guestData, mapCoordinates: mapCoordinates }
 });
 ```
 
 #### **2. Cart.jsx - Líneas 340-359**
 - **Problema**: Acceso incorrecto a parámetros de navegación anidados
-- **Fix**: Logic mejorada para acceder a parámetros en navegación MainTabs → Carrito:
+- **Fix**: Navegación state mejorada para MainTabs → Carrito
+
+#### **3. Cart.jsx - Líneas 482-509 (SOLUCIÓN DEFINITIVA)**
+- **Problema crítico**: Timing issue - setState asíncrono vs setTimeout síncrono
+- **Fix**: useEffect que detecta cuando TODOS los datos Guest están completos:
 ```javascript
-const navState = navigation.getState();
-const mainTabsRoute = navState?.routes?.find(route => route.name === 'MainTabs');
-const carritoRoute = mainTabsRoute?.state?.routes?.find(route => route.name === 'Carrito');
-const params = params2 || params1 || params3; // Prioridad a carritoRoute.params
+useEffect(() => {
+  if (user?.usertype === 'Guest' && 
+      deliveryInfo && email?.trim() && address?.trim() && 
+      latlong?.driver_lat && latlong?.driver_long && cart.length > 0) {
+    
+    setTimeout(() => completeOrder(), 300);
+  }
+}, [user?.usertype, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length]);
 ```
 
-### **Testing requerido:**
-1. **Verificar Guest auto-payment**: Confirmar que datos se reciben correctamente en Cart.jsx
-2. **Validar logs detallados**: Los nuevos logs mostrarán el flujo completo de parámetros
-3. **Testing User flow**: Asegurar que User registrado sigue funcionando
-4. **Cleanup**: Limpiar logs de debugging una vez confirmado el fix
+### **Implementaciones adicionales completadas:**
+
+#### **4. UI: Navegación inferior - App.jsx**
+- **Cambio**: "Órdenes" → "Pedidos" en tab bar
+- **Archivos**: `App.jsx` líneas 202-204, 221-226, 252-257
+
+#### **5. Sistema global de fuentes numéricas**
+- **Objetivo**: Fuente consistente (SF Pro Display/Roboto) para TODOS los números
+- **Implementación**:
+  - `src/config/globalNumericFont.js` - Override global de componente Text
+  - `src/theme/fonts.js` - Estilos con fontVariantNumeric para números monospaced
+  - `App.jsx` - Inicialización automática al inicio de la app
+- **Cobertura**: Precios, cantidades, IDs, fechas, teléfonos, cualquier número
+
+### **Estado final del proyecto:**
+- ✅ **Guest auto-payment**: Funciona igual que User registrado
+- ✅ **UI mejorada**: Terminología "Pedidos" consistente
+- ✅ **Typography**: Fuentes numéricas optimizadas globalmente
+- ✅ **Testing verificado**: Guest llega a pasarela sin errores
+- 🧹 **Pendiente**: Cleanup de logs de debugging
 
 ---
 
@@ -276,14 +318,28 @@ orderDropdown: { position: 'absolute', top: '100%', zIndex: 1001 }
 2. **Verificar parámetros de navegación**: ¿Los datos se pierden en el camino?
 3. **Verificar orden de useEffect**: ¿Se están limpiando antes de procesarse?
 
-### **Estado actual:**
-- ❌ **Auto-pago Guest**: Falla consistentemente
-- ✅ **Pago manual Guest**: Funciona correctamente
-- ✅ **Auto-pago User**: Funciona correctamente
-- 🔍 **Necesidad urgente**: Encontrar por qué `guestData` no llega al Cart
+---
+
+## 📋 ARCHIVOS MODIFICADOS EN ESTA SESIÓN
+
+### Core Fixes:
+- **src/cart/GuestCheckout.jsx**: Eliminado updateUser prematuro, navegación mejorada, scroll automático
+- **src/address/AddressFormUberStyle.jsx**: Navegación iOS fix, estructura static headers
+- **src/context/OrderContext.js**: Soporte temporal Guest orders con enableGuestOrders()
+- **src/order/Order.jsx**: Botón "Ver pedidos sin registro", limpieza datos corruptos
+
+### UX Improvements:
+- **Headers y steppers estáticos** en pantallas de checkout y direcciones
+- **Scroll automático** al botón "Completar Pedido" en Guest
+- **Botón limpieza temporal** para casos de datos inconsistentes
+
+### Funcionalidades Nuevas:
+- **Guest puede ver pedidos** sin registrarse usando migrate API
+- **Auto-detección** de Guest con/sin pedidos reales
+- **Validación robusta** email solo después de pago exitoso
 
 ---
 
-**Fecha última actualización**: 2025-08-13
-**Versión React Native**: 0.79.1
-**Estado**: PROBLEMA CRÍTICO ACTIVO ❌ - Auto-pago Guest no funciona por datos no restaurados
+**Fecha última actualización**: 2025-08-13  
+**Versión React Native**: 0.79.1  
+**Estado**: ✅ TODOS LOS PROBLEMAS CRÍTICOS RESUELTOS
