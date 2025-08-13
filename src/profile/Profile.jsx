@@ -558,7 +558,7 @@ export default function Profile({ navigation, route }) {
           first_name: profile.first_name,
           last_name:  profile.last_name,
           phone:      profile.phone,
-          birthDate:  profile.birthDate || new Date(), // Mes y año actual por defecto
+          birthDate:  profile.birthDate || null, // Sin fecha inicial - mostrar placeholder
         }}
         enableReinitialize
         validationSchema={ProfileSchema}
@@ -841,6 +841,19 @@ export default function Profile({ navigation, route }) {
                           <View style={styles.pickerColumn}>
                             <Text style={styles.pickerColumnTitle}>Mes</Text>
                             <ScrollView 
+                              ref={(ref) => {
+                                // Auto-scroll para centrar el mes actual cuando se abre el modal
+                                if (ref && !values.birthDate) {
+                                  setTimeout(() => {
+                                    const monthIndex = 3; // Posición fija para que se vea paralelo al año (ambos índice 3)
+                                    const itemHeight = 44; // paddingVertical(24px) + texto(~20px) = ~44px
+                                    const containerHeight = 160; // Altura visible del ScrollView
+                                    // Fórmula para centrar: posición del item - mitad del container + mitad del item
+                                    const scrollToY = Math.max(0, (monthIndex * itemHeight) - (containerHeight / 2) + (itemHeight / 2));
+                                    ref.scrollTo({ y: scrollToY, animated: true });
+                                  }, 100);
+                                }
+                              }}
                               style={styles.pickerScrollView} 
                               showsVerticalScrollIndicator={false}
                               nestedScrollEnabled={true}
@@ -849,14 +862,16 @@ export default function Profile({ navigation, route }) {
                                 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
                               ].map((month, index) => {
-                                const currentMonth = values.birthDate ? values.birthDate.getMonth() : -1;
-                                const isSelected = currentMonth === index;
+                                // Si values.birthDate existe, usar su mes. Si no, usar índice 3 (abril) como referencia visual
+                                const monthToShow = values.birthDate ? values.birthDate.getMonth() : 3;
+                                const isSelected = monthToShow === index;
                                 
                                 return (
                                   <TouchableOpacity
                                     key={month}
                                     style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
                                     onPress={() => {
+                                      // Si values.birthDate existe, usar su año. Si no, usar año actual menos 25 como sugerencia
                                       const currentYear = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 25;
                                       const newDate = new Date(currentYear, index, 1);
                                       console.log('🐛 PICKER DEBUG - Estableciendo mes:', {month, index, newDate});
@@ -875,20 +890,35 @@ export default function Profile({ navigation, route }) {
                           <View style={styles.pickerColumn}>
                             <Text style={styles.pickerColumnTitle}>Año</Text>
                             <ScrollView 
+                              ref={(ref) => {
+                                // Auto-scroll para centrar el año sugerido cuando se abre el modal
+                                if (ref && !values.birthDate) {
+                                  setTimeout(() => {
+                                    const yearIndex = 3; // Posición fija para que se vea paralelo al mes (ambos índice 3)
+                                    const itemHeight = 44; // paddingVertical(24px) + texto(~20px) = ~44px
+                                    const containerHeight = 160; // Altura visible del ScrollView
+                                    // Fórmula para centrar: posición del item - mitad del container + mitad del item
+                                    const scrollToY = Math.max(0, (yearIndex * itemHeight) - (containerHeight / 2) + (itemHeight / 2));
+                                    ref.scrollTo({ y: scrollToY, animated: true });
+                                  }, 100);
+                                }
+                              }}
                               style={styles.pickerScrollView} 
                               showsVerticalScrollIndicator={false}
                               nestedScrollEnabled={true}
                               keyboardShouldPersistTaps="handled">
                               {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((year) => {
-                                const currentYear = values.birthDate ? values.birthDate.getFullYear() : -1;
-                                const isSelected = currentYear === year;
+                                // Si values.birthDate existe, usar su año. Si no, usar año en posición 3 como referencia visual
+                                const yearToShow = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 3;
+                                const isSelected = yearToShow === year;
                                 
                                 return (
                                   <TouchableOpacity
                                     key={year}
                                     style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
                                     onPress={() => {
-                                      const currentMonth = values.birthDate ? values.birthDate.getMonth() : 0;
+                                      // Si values.birthDate existe, usar su mes. Si no, usar mes actual como referencia
+                                      const currentMonth = values.birthDate ? values.birthDate.getMonth() : new Date().getMonth();
                                       const newDate = new Date(year, currentMonth, 1);
                                       console.log('🐛 PICKER DEBUG - Estableciendo año:', {year, currentMonth, newDate});
                                       setFieldValue('birthDate', newDate);

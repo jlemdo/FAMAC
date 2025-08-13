@@ -720,6 +720,7 @@ export default function Cart() {
         applePay: {
           // sólo iOS
           merchantCountryCode: 'MX',
+          merchantIdentifier: 'merchant.com.occr.productos',
         },
         googlePay: {
           // sólo Android
