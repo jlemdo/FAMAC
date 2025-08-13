@@ -791,67 +791,33 @@ export default function Cart() {
       console.log('orderNumber extraído:', orderNumber);
       console.log('isValidOrderId:', isValidOrderId);
       
-      showAlert({
-        type: 'success',
-        title: '¡Pedido Realizado Exitosamente!',
-        message: `Tu pedido ha sido procesado correctamente.\n\n` +
-                 `📋 Número de pedido: ${formatOrderId(orderData?.created_at || new Date().toISOString())}\n` +
-                 `💰 Total: $${totalPrice}\n` +
-                 `📦 ${itemCount} producto${itemCount !== 1 ? 's' : ''}\n` +
-                 `🚚 ${deliveryText}` +
-                 `${needInvoice ? '\n🧾 Factura solicitada' : ''}`,
-        confirmText: isValidOrderId ? 'Ver mi pedido' : 'Ver mis pedidos',
-        cancelText: 'Ir al Inicio',
-        onConfirm: () => {
-          // Actualizar órdenes primero
-          refreshOrders();
-          
-          // LIMPIAR datos solo cuando el pago es exitoso y confirmado
-          clearCart();
-          setDeliveryInfo(null);
-          setLatlong(null);
-          
-          // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
-          if (user?.id) {
-            clearSavedDeliveryInfo(user.id);
-            clearSavedCoordinates(user.id);
-          }
-          
-          if (isValidOrderId) {
-            // Si tenemos ID válido, navegar directamente al pedido específico
-            console.log('Navegando a pedido específico:', orderNumber);
-            navigation.navigate('MainTabs', { 
-              screen: 'Ordenes',
-              params: { 
-                screen: 'OrderDetails',
-                params: { orderId: orderNumber.toString() }
-              }
-            });
-          } else {
-            // Si no tenemos ID válido, ir a la lista de pedidos
-            console.log('ID inválido, navegando a lista de pedidos');
-            navigation.navigate('MainTabs', { 
-              screen: 'Ordenes'
-            });
-          }
-        },
-        onCancel: () => {
-          // Actualizar órdenes y ir al inicio
-          refreshOrders();
-          navigation.navigate('MainTabs', { 
-            screen: 'Inicio',
-            params: { screen: 'CategoriesList' }
-          });
-          
-          // SOLO limpiar datos cuando el usuario confirma la navegación exitosa
-          clearCart();
-          setDeliveryInfo(null);
-          setLatlong(null); // También limpiar coordenadas
-          
-          // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
-          if (user?.id) {
-            clearSavedDeliveryInfo(user.id);
-            clearSavedCoordinates(user.id);
+      // Limpiar datos inmediatamente después del pedido exitoso
+      clearCart();
+      setDeliveryInfo(null);
+      setLatlong(null);
+      
+      // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
+      if (user?.id) {
+        clearSavedDeliveryInfo(user.id);
+        clearSavedCoordinates(user.id);
+      }
+      
+      // Actualizar órdenes
+      refreshOrders();
+      
+      // Navegar al inicio inmediatamente con los datos del pedido para mostrar el modal
+      navigation.navigate('MainTabs', { 
+        screen: 'Inicio',
+        params: { 
+          screen: 'CategoriesList',
+          showSuccessModal: true,
+          orderData: {
+            orderNumber: formatOrderId(orderData?.created_at || new Date().toISOString()),
+            totalPrice: totalPrice,
+            itemCount: itemCount,
+            deliveryText: deliveryText,
+            needInvoice: needInvoice,
+            orderId: isValidOrderId ? orderNumber.toString() : null
           }
         }
       });

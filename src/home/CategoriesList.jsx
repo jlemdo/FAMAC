@@ -15,12 +15,15 @@ import {
 } from 'react-native';
 import Video from 'react-native-video';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute} from '@react-navigation/native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import {useAlert} from '../context/AlertContext';
 
 export default function CategoriesList() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const {showAlert} = useAlert();
 
   // State hooks for categories, loading, and error handling
   const [categories, setCategories] = useState([]);
@@ -178,6 +181,54 @@ export default function CategoriesList() {
         setLoading(false);
       });
   }, []);
+
+  // useEffect para mostrar modal de éxito cuando se reciben parámetros de pedido exitoso
+  useEffect(() => {
+    const params = route.params;
+    if (params?.showSuccessModal && params?.orderData) {
+      const { orderData } = params;
+      
+      // Pequeño delay para asegurar que la pantalla se haya renderizado
+      setTimeout(() => {
+        showAlert({
+          type: 'success',
+          title: '¡Pedido Realizado Exitosamente!',
+          message: `Tu pedido ha sido procesado correctamente.\n\n` +
+                   `📋 Número de pedido: ${orderData.orderNumber}\n` +
+                   `💰 Total: $${orderData.totalPrice}\n` +
+                   `📦 ${orderData.itemCount} producto${orderData.itemCount !== 1 ? 's' : ''}\n` +
+                   `🚚 ${orderData.deliveryText}` +
+                   `${orderData.needInvoice ? '\n🧾 Factura solicitada' : ''}`,
+          confirmText: orderData.orderId ? 'Ver mi pedido' : 'Ver mis pedidos',
+          cancelText: 'Continuar comprando',
+          onConfirm: () => {
+            if (orderData.orderId) {
+              // Navegar a pedido específico
+              navigation.navigate('MainTabs', { 
+                screen: 'Ordenes',
+                params: { 
+                  screen: 'OrderDetails',
+                  params: { orderId: orderData.orderId }
+                }
+              });
+            } else {
+              // Navegar a lista de pedidos
+              navigation.navigate('MainTabs', { 
+                screen: 'Ordenes'
+              });
+            }
+          },
+          onCancel: () => {
+            // Quedarse en inicio - limpiar parámetros para evitar modal repetido
+            navigation.setParams({ showSuccessModal: false, orderData: null });
+          }
+        });
+      }, 500);
+      
+      // Limpiar parámetros para evitar que el modal se muestre de nuevo
+      navigation.setParams({ showSuccessModal: false, orderData: null });
+    }
+  }, [route.params, navigation, showAlert]);
 
    return (
     <View style={styles.container}>
