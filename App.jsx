@@ -1,5 +1,6 @@
 import React, {useContext, useCallback, useMemo} from 'react';
 import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
+import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
 import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
@@ -199,8 +200,8 @@ function MainTabs() {
             } else if (route.name === 'Carrito') {
               iconName = focused ? 'cart' : 'cart-outline';
             } else if (
-              route.name === 'Ordenes' ||
-              route.name === 'Historial de Ordenes'
+              route.name === 'Pedidos' ||
+              route.name === 'Historial de Pedidos'
             ) {
               iconName = focused ? 'clipboard' : 'clipboard-outline';
             } else if (route.name === 'Ruta') {
@@ -218,7 +219,7 @@ function MainTabs() {
           <>
             {/* <Tab.Screen name="Home" component={HomeStack} /> */}
             <Tab.Screen
-              name="Historial de Ordenes"
+              name="Historial de Pedidos"
               component={OrderStack}
               options={{
                 tabBarBadge: ordersBadge,
@@ -249,7 +250,7 @@ function MainTabs() {
               }}
             />
             <Tab.Screen 
-              name="Ordenes" 
+              name="Pedidos" 
               component={OrderStack}
               options={{
                 tabBarBadge: ordersBadge,
@@ -330,6 +331,11 @@ function AuthFlow() {
 }
 
 export default function App() {
+  // ✅ INICIALIZAR: Override global para fuentes numéricas
+  React.useEffect(() => {
+    initializeGlobalNumericFont();
+  }, []);
+
   return (
     <AlertProvider>
       <NotificationProvider>

@@ -18,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {CartContext} from '../context/CartContext';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
+import {numericPresets} from '../utils/numericStyles';
 
 export default function ProductDetails() {
   const route = useRoute();
@@ -137,8 +138,8 @@ export default function ProductDetails() {
             <Text style={styles.totalLabel}>Total por {formatQuantity(quantity)}:</Text>
             {discountNum > 0 ? (
               <View style={styles.totalPriceWithDiscount}>
-                <Text style={styles.originalTotalStriked}>{formatPriceWithSymbol(originalTotalPrice)}</Text>
-                <Text style={styles.totalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
+                <Text style={numericPresets.price(styles.originalTotalStriked)}>{formatPriceWithSymbol(originalTotalPrice)}</Text>
+                <Text style={numericPresets.priceBold(styles.totalPrice)}>{formatPriceWithSymbol(totalPrice)}</Text>
                 <Text style={styles.savingsText}>¡Ahorras ${totalSavings}!</Text>
               </View>
             ) : (

@@ -32,13 +32,10 @@ const MapSelector = () => {
   // Función para obtener coordenadas de la dirección del usuario
   const geocodeUserAddress = async (address) => {
     if (!address || address.trim() === '') {
-      console.log('No hay dirección para geocodificar, usando centro de CDMX');
       return { latitude: 19.4326, longitude: -99.1332 };
     }
 
     try {
-      console.log('=== GEOCODING DIRECCIÓN USUARIO ===');
-      console.log('Dirección a geocodificar:', address);
 
       const response = await axios.get(
         'https://maps.googleapis.com/maps/api/geocode/json',
@@ -60,16 +57,11 @@ const MapSelector = () => {
           longitude: location.lng,
         };
         
-        console.log('✅ Geocoding exitoso:', coordinates);
-        console.log('Dirección encontrada:', response.data.results[0].formatted_address);
-        
         return coordinates;
       } else {
-        console.log('❌ Geocoding no encontró resultados, usando fallback');
         return { latitude: 19.4326, longitude: -99.1332 };
       }
     } catch (error) {
-      console.log('❌ Error en geocoding, usando fallback:', error);
       return { latitude: 19.4326, longitude: -99.1332 };
     }
   };
@@ -82,15 +74,17 @@ const MapSelector = () => {
       // Obtener coordenadas de la dirección del usuario
       const userCoordinates = await geocodeUserAddress(userAddress);
       
-      console.log('=== NAVEGANDO A ADDRESS MAP ===');
-      console.log('Coordenadas calculadas:', userCoordinates);
-      console.log('Dirección usuario:', userAddress);
+      // Callback para recibir coordenadas del mapa
+      const handleLocationReturn = (coordinates) => {
+        setSelectedCoordinates(coordinates);
+      };
       
       navigation.navigate('AddressMap', {
         addressForm: { address: userAddress },
         selectedLocation: userCoordinates, // Coordenadas basadas en la dirección del usuario
         userWrittenAddress: userAddress,
         fromMapSelector: true, // Flag para identificar que viene de MapSelector
+        onLocationReturn: handleLocationReturn, // NUEVO: Callback directo
       });
     } catch (error) {
       console.error('Error preparando mapa:', error);
@@ -107,9 +101,6 @@ const MapSelector = () => {
       return;
     }
     
-    console.log('=== MAP SELECTOR CONFIRMANDO COORDENADAS ===');
-    console.log('Coordenadas seleccionadas:', selectedCoordinates);
-    
     // Si hay callback (uso directo), ejecutarlo
     if (onConfirm) {
       onConfirm(selectedCoordinates);
@@ -125,7 +116,7 @@ const MapSelector = () => {
     }
   };
   
-  // Manejar coordenadas recibidas del mapa
+  // Manejar coordenadas recibidas del mapa (fallback para navegación por parámetros)
   useEffect(() => {
     if (route.params?.selectedLocationFromMap) {
       setSelectedCoordinates(route.params.selectedLocationFromMap);

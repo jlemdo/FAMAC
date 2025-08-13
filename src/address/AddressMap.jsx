@@ -34,11 +34,6 @@ const AddressMap = () => {
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
   const mapRef = useRef(null);
   
-  // Log para verificar la inicialización
-  console.log('=== ADDRESS MAP INICIALIZADO ===');
-  console.log('selectedLocation recibido:', selectedLocation);
-  console.log('currentLocation inicial:', currentLocation);
-  console.log('fromGuestCheckout:', fromGuestCheckout);
 
   // Opciones de Alcaldías para el mapeo
   const alcaldiasCDMX = [
@@ -134,8 +129,6 @@ const AddressMap = () => {
   // Manejar pin en mapa
   const handleMapPress = async (event) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
-    console.log('=== MAPA TOCADO ===');
-    console.log('Nueva ubicación seleccionada:', { latitude, longitude });
     setCurrentLocation({ latitude, longitude });
     
     try {
@@ -221,27 +214,30 @@ const AddressMap = () => {
         console.warn('Reverse geocoding failed:', error);
       }
       
-      console.log('=== ADDRESS MAP REGRESANDO A ADDRESS FORM ===');
-      console.log('Preservando params del mapa:', {
-        preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
-        preservedNeedInvoice: route.params?.preservedNeedInvoice,
-        preservedTaxDetails: route.params?.preservedTaxDetails,
-      });
       
       // Si viene de MapSelector, regresar con coordenadas
       if (fromMapSelector) {
-        console.log('=== ADDRESS MAP REGRESANDO A MAP SELECTOR ===');
-        navigation.navigate('MapSelector', {
+        // Usar callback directo si está disponible
+        if (onLocationReturn) {
+          onLocationReturn(currentLocation);
+          navigation.goBack();
+          return;
+        }
+        
+        // Fallback: usar parámetros de navegación
+        navigation.replace('MapSelector', {
           ...route.params,
           selectedLocationFromMap: currentLocation,
         });
         return;
       }
       
-      // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats) con solo coordenadas
+      // CRITICAL: Solo devolver coordenadas y preservar dirección + referencias del usuario
       navigation.navigate('AddressFormUberStyle', {
-        selectedLocationFromMap: currentLocation,
-        mapSelectedAddress: null, // NO enviar dirección formateada para no sobrescribir
+        selectedLocationFromMap: currentLocation, // SOLO coordenadas
+        // PRESERVAR dirección y referencias originales del usuario
+        preservedUserAddress: route.params?.userWrittenAddress,
+        preservedReferences: route.params?.references,
         fromGuestCheckout: true,
         // CRITICAL: Preservar TODOS los parámetros originales que llegaron al mapa
         ...route.params, // Devolver todos los parámetros preservados

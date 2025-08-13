@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../context/AuthContext';
@@ -50,6 +51,7 @@ export default function GuestCheckout() {
   const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState(currentEmail || '');
   const [address, setAddress] = useState(currentAddress || '');
+  const [coordinates, setCoordinates] = useState(null); // NUEVO: Estado para coordenadas
   const [loading, setLoading] = useState(false);
   
   // Verificar si el email debe estar bloqueado
@@ -80,14 +82,21 @@ export default function GuestCheckout() {
           setEmail(route.params.preservedEmail);
         }
         
+        // NUEVO: Manejar coordenadas seleccionadas del mapa
+        if (route.params?.selectedCoordinates) {
+          setCoordinates(route.params.selectedCoordinates);
+          console.log('🗺️ Coordenadas recibidas en GuestCheckout:', route.params.selectedCoordinates);
+        }
+        
         // Limpiar los parámetros
         navigation.setParams({ 
           selectedAddress: undefined,
           shouldGoToStep2: undefined,
           preservedEmail: undefined,
+          selectedCoordinates: undefined,
         });
       }
-    }, [route.params?.selectedAddress, route.params?.shouldGoToStep2, route.params?.preservedEmail, navigation])
+    }, [route.params?.selectedAddress, route.params?.shouldGoToStep2, route.params?.preservedEmail, route.params?.selectedCoordinates, navigation])
   );
 
   // Función para validar email
@@ -207,6 +216,7 @@ export default function GuestCheckout() {
               } : preservedDeliveryInfo,
               preservedNeedInvoice,
               preservedTaxDetails,
+              preservedCoordinates: coordinates, // ✅ Agregar coordenadas del mapa
             }
           }
         });
@@ -355,61 +365,67 @@ export default function GuestCheckout() {
       style={styles.container}
       {...keyboardAvoidingViewProps}>
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}>
-          <Text style={styles.backButtonText}>← Atrás</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout Invitado</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <TouchableWithoutFeedback onPress={() => {}}>
+        <ScrollView 
+          {...scrollViewProps}
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={true}>
+          
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleBack}
+              activeOpacity={0.7}>
+              <Text style={styles.backButtonText}>← Atrás</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Checkout Invitado</Text>
+            <View style={styles.headerRight} />
+          </View>
 
-      {/* Stepper */}
-      {renderStepper()}
-      
-      {/* Resumen del pedido */}
-      <View style={styles.orderSummary}>
-        <Text style={styles.orderSummaryTitle}>📦 Resumen del pedido</Text>
-        <Text style={styles.orderSummaryDetails}>
-          {itemCount || 0} {itemCount === 1 ? 'producto' : 'productos'} • Total: ${totalPrice || '0.00'}
-        </Text>
-      </View>
-
-      {/* Contenido del paso */}
-      <ScrollView 
-        {...scrollViewProps}
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}>
-        
-        {currentStep === 1 && renderStep1()}
-        {currentStep === 2 && renderStep2()}
-        
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !validateStep(currentStep) && styles.continueButtonDisabled,
-            loading && styles.continueButtonDisabled
-          ]}
-          onPress={handleNext}
-          disabled={!validateStep(currentStep) || loading}
-          activeOpacity={0.8}>
-          {loading ? (
-            <ActivityIndicator size="small" color="#FFF" />
-          ) : (
-            <Text style={styles.continueButtonText}>
-              {currentStep === 2 ? 'Completar Pedido' : 'Continuar'}
+          {/* Stepper */}
+          {renderStepper()}
+          
+          {/* Resumen del pedido */}
+          <View style={styles.orderSummary}>
+            <Text style={styles.orderSummaryTitle}>📦 Resumen del pedido</Text>
+            <Text style={styles.orderSummaryDetails}>
+              {itemCount || 0} {itemCount === 1 ? 'producto' : 'productos'} • Total: ${totalPrice || '0.00'}
             </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          </View>
 
+          {/* Contenido del paso */}
+          <View style={styles.stepContentContainer}>        
+            {currentStep === 1 && renderStep1()}
+            {currentStep === 2 && renderStep2()}        
+          </View>
+
+          {/* Bottom Actions - Solo mostrar en paso 1 */}
+          {currentStep === 1 && (
+            <View style={styles.bottomActions}>
+              <TouchableOpacity
+                style={[
+                  styles.continueButton,
+                  !validateStep(currentStep) && styles.continueButtonDisabled,
+                  loading && styles.continueButtonDisabled
+                ]}
+                onPress={handleNext}
+                disabled={!validateStep(currentStep) || loading}
+                activeOpacity={0.8}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.continueButtonText}>Continuar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          
+        </ScrollView>
+      </TouchableWithoutFeedback>
       
     </KeyboardAvoidingView>
   );
@@ -528,11 +544,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: 'rgba(47,47,47,0.7)',
   },
-  scrollView: {
+  scrollContainer: {
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 120, // Espacio extra para dispositivos pequeños
+  },
+  stepContentContainer: {
     paddingHorizontal: 16,
+    flex: 1,
   },
   stepContent: {
     backgroundColor: '#FFF',

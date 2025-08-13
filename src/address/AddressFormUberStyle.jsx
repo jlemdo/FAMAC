@@ -69,6 +69,7 @@ const AddressFormUberStyle = () => {
   
   const [references, setReferences] = useState('');
   const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
+  const [userHasConfirmedLocation, setUserHasConfirmedLocation] = useState(false); // Usuario confirmó en mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Función para parsear dirección de Google y auto-rellenar campos
@@ -442,40 +443,63 @@ const AddressFormUberStyle = () => {
     }
   };
 
-  // Función para ir al mapa
-  const goToMap = () => {
+  // Función para ir al mapa con geocoding inteligente
+  const goToMap = async () => {
     console.log('=== NAVEGANDO AL MAPA ===');
-    console.log('Preservando params para el mapa:', {
-      preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
-      preservedNeedInvoice: route.params?.preservedNeedInvoice,
-      preservedTaxDetails: route.params?.preservedTaxDetails,
-    });
     
-    // Usar coordenadas existentes o centro de CDMX
-    const mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
+    let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
+    
+    // NUEVO: Si hay dirección escrita pero no coordenadas previas, geocodificar para centrar mapa
+    if (!mapCoordinates && userWrittenAddress?.trim()) {
+      try {
+        console.log('🗺️ Geocodificando dirección para centrar mapa:', userWrittenAddress);
+        
+        const response = await axios.get(
+          `https://maps.googleapis.com/maps/api/geocode/json`,
+          {
+            params: {
+              address: userWrittenAddress.trim(),
+              key: Config.GOOGLE_DIRECTIONS_API_KEY,
+              language: 'es',
+              region: 'mx',
+              bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
+            },
+          }
+        );
+
+        if (response.data.results && response.data.results[0]) {
+          const location = response.data.results[0].geometry.location;
+          mapCenter = {
+            latitude: location.lat,
+            longitude: location.lng,
+          };
+          console.log('✅ Mapa centrado cerca de la dirección del usuario:', mapCenter);
+        } else {
+          console.log('⚠️ No se pudo geocodificar, usando centro CDMX');
+        }
+      } catch (error) {
+        console.warn('❌ Error geocodificando dirección:', error);
+        console.log('⚠️ Usando centro CDMX como fallback');
+      }
+    }
     
     navigation.navigate('AddressMap', {
       addressForm: {},
-      selectedLocation: mapCoordinates || mapCenter,
+      selectedLocation: mapCenter, // Coordenadas calculadas o fallback
       pickerId,
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
       userWrittenAddress: userWrittenAddress, // Pasar dirección escrita para contexto
+      references: references, // NUEVO: Pasar referencias para preservarlas
       // CRITICAL: Preservar TODOS los parámetros para que no se pierdan en el mapa
       ...route.params, // Pasar todos los parámetros originales
     });
   };
 
-  // Función para finalizar con validaciones mejoradas
+  // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
   const handleConfirm = async () => {
-    // Validaciones básicas antes de proceder
+    // VALIDACIONES EXACTAS DE PROFILE - NO CAMBIAR
     if (!userWrittenAddress?.trim()) {
       Alert.alert('Error', 'Por favor escribe una dirección válida.');
-      return;
-    }
-    
-    // Solo validar coordenadas si NO es Profile (Profile no usa mapa)
-    if (!skipMapStep && !mapCoordinates) {
-      Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
       return;
     }
     
@@ -484,15 +508,22 @@ const AddressFormUberStyle = () => {
       return;
     }
     
+    // ÚNICA DIFERENCIA: Guest requiere coordenadas del mapa (Profile no)
+    if (!skipMapStep && !mapCoordinates) {
+      Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
+      return;
+    }
+    
+    // CONSTRUCCIÓN DE DIRECCIÓN FINAL - EXACTA A PROFILE
     const finalAddress = {
-      userWrittenAddress: userWrittenAddress.trim(), // Lo que escribió el usuario
-      fullAddress: userWrittenAddress.trim(), // Para compatibilidad
-      coordinates: skipMapStep ? null : mapCoordinates, // Coordenadas solo si no es Profile
+      userWrittenAddress: userWrittenAddress.trim(),
+      fullAddress: userWrittenAddress.trim(),
+      coordinates: skipMapStep ? null : mapCoordinates, // Guest incluye coordenadas, Profile no
       references: references.trim(),
-      verified: skipMapStep ? false : true, // Profile no está verificado con mapa
-      hasUserWrittenAddress: true, // Flag para identificar el nuevo formato
-      timestamp: new Date().toISOString(), // Timestamp de creación
-      isProfileAddress: skipMapStep, // Flag para indicar que viene de Profile
+      verified: skipMapStep ? false : true, // Guest verificado con mapa, Profile sin mapa
+      hasUserWrittenAddress: true,
+      timestamp: new Date().toISOString(),
+      isProfileAddress: skipMapStep, // false para Guest, true para Profile
     };
 
     // Ejecutar callback si existe (sistema antiguo)
@@ -595,17 +626,55 @@ const AddressFormUberStyle = () => {
     // Si viene de GuestCheckout
     else if (route.params?.fromGuestCheckout) {
       try {
-        // Asegurar que tenemos una dirección válida para enviar
-        const addressToSend = finalAddress.userWrittenAddress;
+        // USAR EXACTAMENTE EL MISMO FORMATO QUE PROFILE.JSX
+        const addressToSend = `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`;
         
         console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
         console.log('Dirección final:', addressToSend.substring(0, 50) + '...');
         console.log('Coordenadas:', finalAddress.coordinates);
         console.log('Referencias:', finalAddress.references.substring(0, 30) + '...');
+        console.log('returnToCart:', route.params?.returnToCart);
         
         // Validar parámetros críticos antes de navegar
         if (!route.params?.totalPrice || !route.params?.itemCount) {
           throw new Error('Faltan parámetros del carrito');
+        }
+        
+        // Si returnToCart es true, ir directo al carrito en lugar de GuestCheckout
+        if (route.params?.returnToCart) {
+          // Preparar datos para el carrito con auto-pago
+          const guestData = {
+            email: route.params?.currentEmail || '',
+            address: addressToSend,
+            preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
+            preservedNeedInvoice: route.params?.preservedNeedInvoice,
+            preservedTaxDetails: route.params?.preservedTaxDetails,
+            preservedCoordinates: finalAddress.coordinates ? {
+              driver_lat: finalAddress.coordinates.latitude,
+              driver_long: finalAddress.coordinates.longitude
+            } : null, // ✅ Convertir formato para Cart.jsx
+          };
+          
+          const mapCoordinates = finalAddress.coordinates ? {
+            latitude: finalAddress.coordinates.latitude,
+            longitude: finalAddress.coordinates.longitude
+          } : null;
+          
+          console.log('📤 ENVIANDO A CART - AddressFormUberStyle:', JSON.stringify({
+            guestData,
+            mapCoordinates
+          }, null, 2));
+          
+          // ✅ FIX: Usar el formato correcto para que Cart.jsx pueda acceder a los params
+          navigation.navigate('MainTabs', {
+            screen: 'Carrito',
+            params: {
+              guestData: guestData,
+              mapCoordinates: mapCoordinates,
+            }
+          });
+          console.log('✓ Navegación directa al carrito completada con auto-pago Guest');
+          return;
         }
         
         // Preservar información de entrega con validación
@@ -638,7 +707,10 @@ const AddressFormUberStyle = () => {
           
           // Parámetros específicos de regreso - NUEVOS DATOS
           selectedAddress: addressToSend,
-          selectedCoordinates: finalAddress.coordinates,
+          selectedCoordinates: finalAddress.coordinates ? {
+            driver_lat: finalAddress.coordinates.latitude,
+            driver_long: finalAddress.coordinates.longitude
+          } : null, // ✅ Convertir formato para Cart.jsx
           selectedReferences: finalAddress.references,
           shouldGoToStep2: true, // Indicar que debe ir al paso 2
           
@@ -670,14 +742,29 @@ const AddressFormUberStyle = () => {
     }
   };
 
-  // Manejar coordenadas seleccionadas del mapa (sin cambiar dirección escrita)
+  // Manejar coordenadas seleccionadas del mapa (PRESERVANDO dirección y referencias)
   useEffect(() => {
     if (selectedLocationFromMap) {
       setMapCoordinates(selectedLocationFromMap);
-      // Si venimos del mapa y estamos en el paso 4, las coordenadas ya están listas
+      setUserHasConfirmedLocation(true); // ✅ Usuario confirmó ubicación en el mapa
+      
+      // CRITICAL FIX: Si venimos del mapa, ir automáticamente al paso 4
+      setCurrentStep(4);
+      
+      // CRITICAL: RESTAURAR dirección y referencias preservadas del usuario
+      if (route.params?.preservedUserAddress) {
+        setUserWrittenAddress(route.params.preservedUserAddress);
+        console.log('🔄 Dirección del usuario restaurada:', route.params.preservedUserAddress);
+      }
+      
+      if (route.params?.preservedReferences) {
+        setReferences(route.params.preservedReferences);
+        console.log('🔄 Referencias del usuario restauradas:', route.params.preservedReferences);
+      }
+      
       console.log('=== COORDENADAS RECIBIDAS DEL MAPA ===');
       console.log('Coordenadas:', selectedLocationFromMap);
-      console.log('Dirección escrita preservada:', userWrittenAddress);
+      console.log('✅ Usuario confirmó ubicación en mapa - DIRECCIÓN Y REFERENCIAS PRESERVADAS');
     }
   }, [selectedLocationFromMap]);
 
@@ -1076,10 +1163,10 @@ const AddressFormUberStyle = () => {
       <TouchableOpacity
         style={[
           styles.confirmButton,
-          !mapCoordinates && styles.confirmButtonDisabled
+          (!mapCoordinates || !userHasConfirmedLocation) && styles.confirmButtonDisabled
         ]}
         onPress={handleConfirm}
-        disabled={!mapCoordinates}>
+        disabled={!mapCoordinates || !userHasConfirmedLocation}>
         <Ionicons name="checkmark-circle" size={24} color="#FFF" />
         <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
       </TouchableOpacity>
@@ -1098,7 +1185,14 @@ const AddressFormUberStyle = () => {
       style={styles.container} 
       {...keyboardAvoidingViewProps}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.containerInner}>
+        <ScrollView 
+          {...scrollViewProps}
+          style={styles.containerInner}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={true}>
+          
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -1137,15 +1231,14 @@ const AddressFormUberStyle = () => {
           </View>
 
           {/* Contenido del paso actual */}
-          <ScrollView 
-            {...scrollViewProps}
-            style={styles.content}>
+          <View style={styles.content}>
             {currentStep === 1 && renderSearchStep()}
             {currentStep === 2 && renderManualAddressStep()}
             {currentStep === 3 && renderReferencesStep()}
             {currentStep === 4 && !skipMapStep && renderMapStep()}
-          </ScrollView>
-        </View>
+          </View>
+          
+        </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
@@ -1224,9 +1317,14 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  scrollContentContainer: {
+    flexGrow: 1,
+    paddingBottom: 120, // Espacio extra para dispositivos pequeños y botones flotantes
+  },
   stepContainer: {
     paddingHorizontal: 16,
     paddingVertical: 24,
+    minHeight: 400, // Asegurar altura mínima para scroll en dispositivos pequeños
   },
   stepTitle: {
     fontSize: fonts.size.XL,

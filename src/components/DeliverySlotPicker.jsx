@@ -12,16 +12,28 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
 
   // Generate next 4 days
   useEffect(() => {
+    console.log('📅 GENERANDO DÍAS EN PICKER...');
     const tempDays = [];
     for (let i = 0; i < 4; i++) {
       const date = new Date();
+      console.log(`- Día ${i}: new Date() inicial:`, date);
+      console.log(`- Día ${i}: typeof date:`, typeof date);
+      console.log(`- Día ${i}: date instanceof Date:`, date instanceof Date);
+      
       date.setDate(date.getDate() + i);
-      tempDays.push({
+      console.log(`- Día ${i}: después de setDate(+${i}):`, date);
+      console.log(`- Día ${i}: date.getTime():`, date.getTime());
+      
+      const dayObj = {
         date,
         label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'numeric' }),
         isoDate: date.toISOString().split('T')[0], // YYYY-MM-DD format
-      });
+      };
+      
+      console.log(`- Día ${i}: objeto final:`, dayObj);
+      tempDays.push(dayObj);
     }
+    console.log('📅 ARRAY COMPLETO DE DÍAS:', tempDays);
     setDays(tempDays);
   }, []);
 
@@ -65,6 +77,12 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
 
   const handleConfirm = () => {
     const selectedDay = days[selectedDateIndex];
+    console.log('📅 DELIVERY SLOT PICKER - CONFIRMANDO:');
+    console.log('- selectedDay:', selectedDay);
+    console.log('- selectedDay.date:', selectedDay.date);
+    console.log('- selectedDay.date type:', typeof selectedDay.date);
+    console.log('- selectedSlot:', selectedSlot);
+    
     onConfirm({ date: selectedDay.date, slot: selectedSlot });
     onClose();
   };

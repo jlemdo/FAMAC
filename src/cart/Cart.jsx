@@ -34,6 +34,7 @@ import fonts from '../theme/fonts';
 import { getCurrentLocation } from '../utils/locationUtils';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -65,8 +66,168 @@ export default function Cart() {
     driver_lat: '',
     driver_long: '',
   });
+  
   const [pickerVisible, setPickerVisible] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
+  const [isRestoringDeliveryInfo, setIsRestoringDeliveryInfo] = useState(false);
+  
+  // 🔍 DEBUG: Monitorear cambios en deliveryInfo
+  useEffect(() => {
+    console.log('🚨 DELIVERY INFO CAMBIÓ:', {
+      valor: deliveryInfo,
+      esNull: deliveryInfo === null,
+      stackTrace: new Error().stack
+    });
+    
+    // Guardar deliveryInfo en AsyncStorage cuando cambie (solo para usuarios registrados)
+    if (deliveryInfo && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
+      saveDeliveryInfo(deliveryInfo, user.id);
+    }
+  }, [deliveryInfo, user?.id, cart.length]);
+  
+  // 🔍 DEBUG: Monitorear cambios en coordenadas
+  useEffect(() => {
+    console.log('📍 COORDENADAS CAMBIARON:', {
+      latlong: latlong,
+      hasCoords: !!(latlong?.driver_lat && latlong?.driver_long)
+    });
+    
+    // Guardar coordenadas en AsyncStorage cuando cambien (solo para usuarios registrados)
+    if (latlong?.driver_lat && latlong?.driver_long && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
+      saveCoordinates(latlong, user.id);
+    }
+  }, [latlong, user?.id, cart.length]);
+  
+  // 🛒 MONITOR: Resetear datos cuando carrito esté vacío
+  useEffect(() => {
+    console.log('🛒 CARRITO CAMBIÓ:', {
+      cartLength: cart.length,
+      totalPrice: totalPrice,
+      isEmpty: cart.length === 0
+    });
+    
+    // Si el carrito está vacío, resetear todos los datos
+    if (cart.length === 0) {
+      console.log('🧹 CARRITO VACÍO - Reseteando datos...');
+      
+      // Resetear fecha y hora de entrega
+      setDeliveryInfo(null);
+      
+      // Resetear coordenadas
+      setLatlong({
+        driver_lat: '',
+        driver_long: '',
+      });
+      
+      // Resetear datos de facturación
+      setNeedInvoice(false);
+      setTaxDetails('');
+      
+      // Limpiar AsyncStorage si hay usuario registrado
+      if (user?.id && user?.usertype !== 'Guest') {
+        clearSavedDeliveryInfo(user.id);
+        clearSavedCoordinates(user.id);
+      }
+      
+      // Para Guest, no hay AsyncStorage que limpiar, solo resetear estado local
+      
+      console.log('✅ Datos reseteados para carrito nuevo');
+    }
+  }, [cart.length, totalPrice, user?.id]);
+  
+  // Función para guardar deliveryInfo en AsyncStorage
+  const saveDeliveryInfo = async (info, userId) => {
+    try {
+      const key = `deliveryInfo_${userId}`;
+      const dataToSave = {
+        ...info,
+        date: info.date.toISOString() // Serializar Date a string
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(dataToSave));
+      console.log('💾 DELIVERY INFO GUARDADO:', dataToSave);
+    } catch (error) {
+      console.error('❌ Error guardando deliveryInfo:', error);
+    }
+  };
+  
+  // Función para restaurar deliveryInfo desde AsyncStorage
+  const restoreDeliveryInfo = async (userId) => {
+    setIsRestoringDeliveryInfo(true);
+    try {
+      const key = `deliveryInfo_${userId}`;
+      const savedData = await AsyncStorage.getItem(key);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        const restoredInfo = {
+          ...parsedData,
+          date: new Date(parsedData.date) // Deserializar string a Date
+        };
+        console.log('📂 DELIVERY INFO RESTAURADO:', restoredInfo);
+        setDeliveryInfo(restoredInfo);
+        // Pequeño delay para asegurar que el estado se actualice
+        setTimeout(() => {
+          setIsRestoringDeliveryInfo(false);
+        }, 100);
+        return restoredInfo;
+      }
+    } catch (error) {
+      console.error('❌ Error restaurando deliveryInfo:', error);
+    }
+    setIsRestoringDeliveryInfo(false);
+    return null;
+  };
+  
+  // Función para limpiar deliveryInfo guardado
+  const clearSavedDeliveryInfo = async (userId) => {
+    try {
+      const key = `deliveryInfo_${userId}`;
+      await AsyncStorage.removeItem(key);
+      console.log('🗑️ DELIVERY INFO LIMPIADO del AsyncStorage');
+    } catch (error) {
+      console.error('❌ Error limpiando deliveryInfo:', error);
+    }
+  };
+  
+  // Función para guardar coordenadas en AsyncStorage
+  const saveCoordinates = async (coords, userId) => {
+    try {
+      const key = `coordinates_${userId}`;
+      await AsyncStorage.setItem(key, JSON.stringify(coords));
+      console.log('💾 COORDENADAS GUARDADAS:', coords);
+    } catch (error) {
+      console.error('❌ Error guardando coordenadas:', error);
+    }
+  };
+  
+  // Función para restaurar coordenadas desde AsyncStorage
+  const restoreCoordinates = async (userId) => {
+    try {
+      const key = `coordinates_${userId}`;
+      const savedData = await AsyncStorage.getItem(key);
+      if (savedData) {
+        const restoredCoords = JSON.parse(savedData);
+        console.log('📂 COORDENADAS RESTAURADAS:', restoredCoords);
+        setLatlong(restoredCoords);
+        return restoredCoords;
+      }
+    } catch (error) {
+      console.error('❌ Error restaurando coordenadas:', error);
+    }
+    return null;
+  };
+  
+  // Función para limpiar coordenadas guardadas
+  const clearSavedCoordinates = async (userId) => {
+    try {
+      const key = `coordinates_${userId}`;
+      await AsyncStorage.removeItem(key);
+      console.log('🗑️ COORDENADAS LIMPIADAS del AsyncStorage');
+    } catch (error) {
+      console.error('❌ Error limpiando coordenadas:', error);
+    }
+  };
+  
+  
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -108,19 +269,27 @@ export default function Cart() {
     }
   };
 
-  // Registrar callback para limpiar deliveryInfo cuando se limpia el carrito
-  useEffect(() => {
-    const clearDeliveryInfo = () => {
-      setDeliveryInfo(null);
-    };
-    
-    if (setCartClearCallback) {
-      setCartClearCallback(clearDeliveryInfo);
-    }
-  }, [setCartClearCallback]);
+  // TEMPORALMENTE DESHABILITADO - El callback automático está causando problemas
+  // useEffect(() => {
+  //   const clearDeliveryInfo = () => {
+  //     console.log('🧹 CALLBACK CLEAR DELIVERY INFO EJECUTADO');
+  //     console.trace('Stack trace del callback clearDeliveryInfo:');
+  //     setDeliveryInfo(null);
+  //   };
+  //   
+  //   if (setCartClearCallback) {
+  //     setCartClearCallback(clearDeliveryInfo);
+  //   }
+  // }, [setCartClearCallback]);
 
   // Inicializar estados cuando cambia el usuario
   useEffect(() => {
+    console.log('🔄 USUARIO CAMBIÓ - Inicializando estados:', {
+      userType: user?.usertype,
+      userId: user?.id,
+      deliveryInfoAntes: deliveryInfo
+    });
+    
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
@@ -130,29 +299,64 @@ export default function Cart() {
       // Cargar perfil completo para obtener dirección actualizada
       fetchUserProfile();
     }
+    
+    console.log('🔄 Estados inicializados para usuario:', user?.usertype);
   }, [user]);
 
   // Actualizar perfil cuando la pantalla gana foco (para refrescar dirección actualizada)
   useFocusEffect(
     React.useCallback(() => {
-      if (user?.usertype !== 'Guest' && user?.id) {
-        fetchUserProfile();
-      }
+      const handleFocus = async () => {
+        console.log('📱 PANTALLA CART GANÓ FOCO:', {
+          userType: user?.usertype,
+          deliveryInfoActual: deliveryInfo,
+          timestamp: new Date().toISOString()
+        });
+        
+        if (user?.usertype !== 'Guest' && user?.id) {
+          fetchUserProfile();
+          // Solo restaurar datos si hay productos en el carrito
+          if (cart.length > 0) {
+            // Restaurar deliveryInfo para usuarios registrados
+            if (!deliveryInfo) {
+              const restored = await restoreDeliveryInfo(user.id);
+              console.log('🔄 RESTAURACIÓN COMPLETADA:', restored);
+            }
+            // Restaurar coordenadas para usuarios registrados
+            if (!latlong?.driver_lat || !latlong?.driver_long) {
+              const restoredCoords = await restoreCoordinates(user.id);
+              console.log('🔄 COORDENADAS RESTAURADAS:', restoredCoords);
+            }
+          } else {
+            console.log('⚠️ Carrito vacío - no se restauran datos');
+          }
+        }
+      };
+      
+      handleFocus();
       
       // Revisar si hay datos de guest en los parámetros de navegación
-      console.log('=== VERIFICANDO GUEST DATA EN CART ===');
-      console.log('User type:', user?.usertype);
-      
       // Intentar múltiples formas de obtener los parámetros
-      const params1 = navigation.getState()?.routes?.find(route => route.name === 'MainTabs')?.params;
-      const params2 = route?.params;
+      const navState = navigation.getState();
+      const mainTabsRoute = navState?.routes?.find(route => route.name === 'MainTabs');
+      const carritoRoute = mainTabsRoute?.state?.routes?.find(route => route.name === 'Carrito');
       
-      console.log('Params método 1 (MainTabs):', params1);
-      console.log('Params método 2 (route):', params2);
+      const params1 = mainTabsRoute?.params;
+      const params2 = carritoRoute?.params;
+      const params3 = route?.params;
       
-      const params = params1 || params2;
-      console.log('Params finales:', params);
-      console.log('GuestData encontrado:', params?.guestData);
+      const params = params2 || params1 || params3;
+      
+      console.log('🔍 PARÁMETROS DE NAVEGACIÓN DETALLADOS:', {
+        navState: JSON.stringify(navState, null, 2),
+        mainTabsRoute: JSON.stringify(mainTabsRoute, null, 2),
+        carritoRoute: JSON.stringify(carritoRoute, null, 2),
+        params1: JSON.stringify(params1, null, 2),
+        params2: JSON.stringify(params2, null, 2),
+        params3: JSON.stringify(params3, null, 2),
+        paramsFinales: JSON.stringify(params, null, 2),
+        hasGuestData: !!params?.guestData
+      });
       
       if (params?.guestData && user?.usertype === 'Guest') {
         // Usar los datos del guest checkout
@@ -161,11 +365,13 @@ export default function Cart() {
         
         // CRITICAL: Restaurar también los datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
+          console.log('🔄 RESTAURANDO DELIVERY INFO:', params.guestData.preservedDeliveryInfo);
           // Convertir el string de fecha de vuelta a Date object
           const deliveryInfoToRestore = {
             ...params.guestData.preservedDeliveryInfo,
             date: new Date(params.guestData.preservedDeliveryInfo.date), // Convertir string a Date
           };
+          console.log('📅 DELIVERY INFO RESTAURADO:', deliveryInfoToRestore);
           setDeliveryInfo(deliveryInfoToRestore);
         }
         if (params.guestData.preservedNeedInvoice !== undefined) {
@@ -174,33 +380,54 @@ export default function Cart() {
         if (params.guestData.preservedTaxDetails !== undefined) {
           setTaxDetails(params.guestData.preservedTaxDetails);
         }
+        if (params.guestData.preservedCoordinates) {
+          console.log('🔄 RESTAURANDO COORDENADAS GUEST:', params.guestData.preservedCoordinates);
+          setLatlong(params.guestData.preservedCoordinates);
+        }
         
-        console.log('=== GUEST CHECKOUT COMPLETADO ===');
-        console.log('Email configurado:', params.guestData.email);
-        console.log('Dirección configurada:', params.guestData.address);
-        console.log('DeliveryInfo restaurado:', params.guestData.preservedDeliveryInfo);
-        console.log('NeedInvoice restaurado:', params.guestData.preservedNeedInvoice);
-        console.log('TaxDetails restaurado:', params.guestData.preservedTaxDetails);
-        
-        // Limpiar los parámetros para evitar reutilización
-        navigation.setParams({ guestData: null });
-        
-        // Scroll automático - si tiene deliveryInfo, ir al botón de pago, si no al de horario
-        setTimeout(() => {
-          if (params.guestData.preservedDeliveryInfo) {
-            // Tiene horario seleccionado - ir directo al botón "Proceder al Pago"
-            flatListRef.current?.scrollToEnd({ animated: true });
-          } else {
-            // No tiene horario - ir al botón "Seleccionar Horario"
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }
-        }, 500); // Delay más largo para que se rendericen los datos primero
+        // NUEVO: Si Guest también tiene mapCoordinates, procesar auto-pago aquí mismo
+        if (params?.mapCoordinates && user?.usertype === 'Guest') {
+          console.log('🚀 Guest: Procesando guestData + mapCoordinates juntos');
+          
+          // Actualizar coordenadas también
+          setLatlong({
+            driver_lat: params.mapCoordinates.latitude,
+            driver_long: params.mapCoordinates.longitude,
+          });
+          
+          // ✅ NUEVO ENFOQUE: Marcar flag para auto-pago una vez que el estado esté listo
+          // Esto será manejado por un useEffect que vigila cuando todos los datos están completos
+          
+          console.log('🏃‍♂️ MARCANDO GUEST PARA AUTO-PAGO...');
+          
+          // Pequeño delay para asegurar que todos los setState terminen
+          setTimeout(() => {
+            // Limpiar parámetros después de procesar
+            navigation.setParams({ guestData: null, mapCoordinates: null });
+            console.log('✅ Parámetros limpiados, esperando que useEffect detecte datos completos...');
+          }, 100);
+          
+        } else {
+          // Limpiar solo guestData si no hay mapCoordinates
+          navigation.setParams({ guestData: null });
+          
+          // Scroll automático normal - si tiene deliveryInfo, ir al botón de pago, si no al de horario
+          setTimeout(() => {
+            if (params.guestData.preservedDeliveryInfo) {
+              // Tiene horario seleccionado - ir directo al botón "Proceder al Pago"
+              flatListRef.current?.scrollToEnd({ animated: true });
+            } else {
+              // No tiene horario - ir al botón "Seleccionar Horario"
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }
+          }, 500); // Delay más largo para que se rendericen los datos primero
+        }
       }
       
-      // NUEVO: Manejar coordenadas regresadas de MapSelector
+      // NUEVO: Manejar coordenadas regresadas de MapSelector (solo User registrado)
+      // Guest se procesa arriba junto con guestData
       if (params?.mapCoordinates && user?.usertype !== 'Guest') {
-        console.log('=== COORDENADAS RECIBIDAS DE MAP SELECTOR ===');
-        console.log('Coordenadas:', params.mapCoordinates);
+        console.log('🗺️ User registrado: Coordenadas recibidas de MapSelector:', params.mapCoordinates);
         
         // Guardar coordenadas en el estado
         setLatlong({
@@ -213,6 +440,7 @@ export default function Cart() {
         
         // Proceder directamente al pago con coordenadas frescas
         setTimeout(() => {
+          console.log('🚀 User registrado: Auto-iniciando pago después de confirmar coordenadas');
           completeOrder();
         }, 300);
       }
@@ -251,31 +479,206 @@ export default function Cart() {
     setCurrentUserId(userId);
   }, [user?.id, currentUserId]);
 
+  // 🚀 AUTO-PAGO GUEST: Detectar cuando todos los datos están completos y lanzar auto-pago
+  useEffect(() => {
+    // Solo para Guest users con datos completos
+    if (user?.usertype === 'Guest' && 
+        deliveryInfo && 
+        email?.trim() && 
+        address?.trim() && 
+        latlong?.driver_lat && 
+        latlong?.driver_long &&
+        cart.length > 0) {
+      
+      console.log('🎯 GUEST AUTO-PAGO: Todos los datos están completos!', {
+        deliveryInfo: !!deliveryInfo,
+        email: email,
+        address: address.substring(0, 50) + '...',
+        coordinates: latlong,
+        cartItems: cart.length
+      });
+      
+      // Pequeño delay para asegurar que la UI esté lista
+      const autoPayTimeout = setTimeout(() => {
+        console.log('🚀 EJECUTANDO AUTO-PAGO GUEST...');
+        completeOrder();
+      }, 300);
+      
+      return () => clearTimeout(autoPayTimeout);
+    }
+  }, [user?.usertype, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length]);
+
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
     completeOrder();
   };
 
+
   // 1) Flujo único y robusto de pago
   const completeOrder = async () => {
-    console.log('=== COMPLETE ORDER INICIADO ===');
-    console.log('Loading:', loading);
-    console.log('TotalPrice:', totalPrice);
-    console.log('Email actual:', email);
-    console.log('Address actual:', address);
-    console.log('User type:', user?.usertype);
     
     if (loading) return;
+    
+    console.log('🔍 COMPLETE ORDER - VALIDACIONES:', {
+      deliveryInfo: deliveryInfo,
+      isRestoringDeliveryInfo: isRestoringDeliveryInfo,
+      userType: user?.usertype,
+      totalPrice: totalPrice,
+      email: email,
+      address: address,
+      latlong: latlong,
+      userProfile: userProfile
+    });
+    
+    // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
+    
+    // 1. Validar carrito no vacío
     if (totalPrice <= 0) {
-      console.log('ERROR: No hay productos en carrito');
       showAlert({
         type: 'error',
         title: 'Error',
         message: 'No hay productos en el carrito.',
         confirmText: 'Cerrar',
       });
-
       return;
+    }
+    
+    // 2. Validar información de entrega (CRÍTICO)
+    // Si está restaurando, mostrar mensaje diferente
+    if (isRestoringDeliveryInfo) {
+      showAlert({
+        type: 'info',
+        title: 'Cargando datos',
+        message: 'Espera un momento mientras restauramos tu información de entrega...',
+        confirmText: 'Cerrar',
+      });
+      return;
+    }
+    
+    if (!deliveryInfo) {
+      // Intentar restaurar una vez más antes de fallar
+      console.log('⚠️ deliveryInfo es null, intentando restaurar...');
+      if (user?.id && user?.usertype !== 'Guest') {
+        // Usuario registrado: intentar restaurar de AsyncStorage
+        const restored = await restoreDeliveryInfo(user.id);
+        if (!restored) {
+          showAlert({
+            type: 'error',
+            title: 'Información incompleta',
+            message: 'Por favor selecciona la fecha y hora de entrega.',
+            confirmText: 'Cerrar',
+          });
+          return;
+        }
+        console.log('✅ deliveryInfo restaurado en validación:', restored);
+        // Continuar con la orden usando el deliveryInfo restaurado
+      } else if (user?.usertype === 'Guest') {
+        // Guest: esperar un momento más para que se actualice el estado
+        console.log('⚠️ Guest sin deliveryInfo, esperando actualización de estado...');
+        setTimeout(() => {
+          if (deliveryInfo) {
+            console.log('✅ Guest deliveryInfo actualizado, reintentando pago');
+            completeOrder();
+          } else {
+            showAlert({
+              type: 'error',
+              title: 'Información incompleta',
+              message: 'Por favor selecciona la fecha y hora de entrega.',
+              confirmText: 'Cerrar',
+            });
+          }
+        }, 200);
+        return;
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Información incompleta',
+          message: 'Por favor selecciona la fecha y hora de entrega.',
+          confirmText: 'Cerrar',
+        });
+        return;
+      }
+    }
+    
+    // 3. Validar datos según tipo de usuario
+    if (user?.usertype === 'Guest') {
+      // Guest: requiere email, dirección Y coordenadas del mapa
+      if (!email?.trim()) {
+        showAlert({
+          type: 'error',
+          title: 'Información incompleta',
+          message: 'Por favor proporciona tu email.',
+          confirmText: 'Cerrar',
+        });
+        return;
+      }
+      
+      if (!address?.trim()) {
+        showAlert({
+          type: 'error',
+          title: 'Información incompleta', 
+          message: 'Por favor proporciona tu dirección.',
+          confirmText: 'Cerrar',
+        });
+        return;
+      }
+      
+      // Guest también necesita coordenadas del mapa
+      if (!latlong?.driver_lat || !latlong?.driver_long) {
+        console.log('⚠️ Guest sin coordenadas, esperando actualización de estado...');
+        setTimeout(() => {
+          if (latlong?.driver_lat && latlong?.driver_long) {
+            console.log('✅ Guest coordenadas actualizadas, reintentando pago');
+            completeOrder();
+          } else {
+            showAlert({
+              type: 'error',
+              title: 'Ubicación requerida',
+              message: 'Por favor confirma tu ubicación exacta en el mapa.',
+              confirmText: 'Cerrar',
+            });
+          }
+        }, 200);
+        return;
+      }
+    } else {
+      // Usuario registrado: requiere dirección Y coordenadas del mapa
+      const savedAddress = userProfile?.address || user?.address;
+      if (!savedAddress?.trim() && !address?.trim()) {
+        showAlert({
+          type: 'error',
+          title: 'Dirección requerida',
+          message: 'Por favor agrega una dirección en tu perfil o proporciona una dirección.',
+          confirmText: 'Cerrar',
+        });
+        return;
+      }
+      
+      if (!latlong?.driver_lat || !latlong?.driver_long) {
+        // Intentar restaurar coordenadas antes de fallar
+        console.log('⚠️ Coordenadas faltantes, intentando restaurar...');
+        if (user?.id) {
+          const restoredCoords = await restoreCoordinates(user.id);
+          if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
+            showAlert({
+              type: 'error',
+              title: 'Ubicación requerida',
+              message: 'Por favor confirma tu ubicación exacta en el mapa.',
+              confirmText: 'Cerrar',
+            });
+            return;
+          }
+          console.log('✅ Coordenadas restauradas en validación:', restoredCoords);
+        } else {
+          showAlert({
+            type: 'error',
+            title: 'Ubicación requerida',
+            message: 'Por favor confirma tu ubicación exacta en el mapa.',
+            confirmText: 'Cerrar',
+          });
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -345,10 +748,7 @@ export default function Cart() {
       }
 
       // 1.3) Presentar la UI de pago
-      console.log('=== PRESENTANDO PAYMENT SHEET ===');
-      console.log('ClientSecret obtenido:', clientSecret);
       const {error: paymentError} = await presentPaymentSheet();
-      console.log('PaymentSheet resultado:', paymentError ? 'ERROR' : 'SUCCESS');
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
           showAlert({
@@ -405,6 +805,17 @@ export default function Cart() {
           // Actualizar órdenes primero
           refreshOrders();
           
+          // LIMPIAR datos solo cuando el pago es exitoso y confirmado
+          clearCart();
+          setDeliveryInfo(null);
+          setLatlong(null);
+          
+          // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
+          if (user?.id) {
+            clearSavedDeliveryInfo(user.id);
+            clearSavedCoordinates(user.id);
+          }
+          
           if (isValidOrderId) {
             // Si tenemos ID válido, navegar directamente al pedido específico
             console.log('Navegando a pedido específico:', orderNumber);
@@ -430,12 +841,19 @@ export default function Cart() {
             screen: 'Inicio',
             params: { screen: 'CategoriesList' }
           });
+          
+          // SOLO limpiar datos cuando el usuario confirma la navegación exitosa
+          clearCart();
+          setDeliveryInfo(null);
+          setLatlong(null); // También limpiar coordenadas
+          
+          // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
+          if (user?.id) {
+            clearSavedDeliveryInfo(user.id);
+            clearSavedCoordinates(user.id);
+          }
         }
       });
-      
-      // Limpiar carrito y información de entrega después del pedido exitoso
-      clearCart();
-      setDeliveryInfo(null);
     } catch (err) {
       showAlert({
         type: 'error',
@@ -452,43 +870,24 @@ export default function Cart() {
   const getOrderCoordinates = () => {
     const userType = user?.usertype;
     
-    if (userType === 'driver') {
-      // 2. Driver: siempre ubicación en tiempo real
-      
+    if (userType === 'Guest') {
+      // Guest: usa dirección manual que escribió + coordenadas del mapa
       return {
-        customer_lat: latlong.driver_lat || '',
-        customer_long: latlong.driver_long || '',
-        address_source: 'real_time_location'
-      };
-    } 
-    else if (userType === 'Guest') {
-      // 4. Guest: siempre usa dirección manual (nunca ubicación automática)
-      return {
-        customer_lat: '', // No enviar coordenadas para guest
-        customer_long: '',
-        address_source: 'manual_address',
+        customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
+        customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
+        address_source: 'guest_manual_address',
         delivery_address: address?.trim() || ''
       };
     } 
     else {
-      // Usuario registrado
+      // Usuario registrado: usa dirección guardada + coordenadas del MapSelector
       const savedAddress = userProfile?.address || user?.address;
-      if (savedAddress && savedAddress.trim()) {
-        // 1. Usuario registrado con dirección: usar dirección guardada + coordenadas de MapSelector
-        return {
-          customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
-          customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
-          address_source: 'saved_address_with_coordinates',
-          delivery_address: savedAddress
-        };
-      } else {
-        // 3. Usuario sin dirección que eligió usar ubicación actual
-        return {
-          customer_lat: latlong.driver_lat || '',
-          customer_long: latlong.driver_long || '',
-          address_source: 'real_time_location'
-        };
-      }
+      return {
+        customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
+        customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
+        address_source: 'registered_user_address',
+        delivery_address: savedAddress?.trim() || address?.trim() || ''
+      };
     }
   };
 
@@ -517,6 +916,12 @@ export default function Cart() {
 
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
+      
+      console.log('📍 DATOS DE ENVÍO:', {
+        coordinates: coordinates,
+        finalDeliveryAddress: coordinates.delivery_address || address?.trim() || '',
+        userType: user?.usertype
+      });
 
       const payload = {
         userid: user?.id,
@@ -550,12 +955,14 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
+    console.log('🔍 HANDLE CHECKOUT - ESTADO ACTUAL:', {
+      deliveryInfo: deliveryInfo,
+      isRestoringDeliveryInfo: isRestoringDeliveryInfo,
+      userType: user?.usertype,
+      cartLength: cart.length
+    });
+    
     if (user?.usertype === 'Guest') {
-      console.log('=== GUEST CHECKOUT DECISION ===');
-      console.log('Email actual:', email);
-      console.log('Address actual:', address);
-      console.log('Email válido:', !!email?.trim());
-      console.log('Address válido:', !!address?.trim());
       
       // Verificar si el guest ya tiene email y dirección
       const hasEmail = email?.trim() && email.trim() !== '';
@@ -563,11 +970,9 @@ export default function Cart() {
       
       if (hasEmail && hasAddress) {
         // Guest ya completó sus datos: proceder directamente al pago
-        console.log('=== GUEST CON DATOS COMPLETOS - PROCEDIENDO AL PAGO ===');
         completeOrder();
       } else {
         // Guest necesita completar datos: ir a GuestCheckout
-        console.log('=== GUEST SIN DATOS - ENVIANDO A GUEST CHECKOUT ===');
         const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
         
         navigation.navigate('GuestCheckout', {
@@ -581,6 +986,7 @@ export default function Cart() {
           } : null,
           preservedNeedInvoice: needInvoice,
           preservedTaxDetails: taxDetails,
+          preservedCoordinates: latlong, // Preservar coordenadas para Guest
           // También preservar email/address actuales si existen
           currentEmail: email,
           currentAddress: address,
@@ -595,8 +1001,6 @@ export default function Cart() {
         setShowAddressModal(true);
       } else {
         // Usuario tiene dirección: ir a MapSelector para obtener coordenadas
-        console.log('=== USUARIO REGISTRADO CON DIRECCION - ENVIANDO A MAP SELECTOR ===');
-        console.log('Dirección guardada:', userProfile.address);
         
         navigation.navigate('MapSelector', {
           userAddress: userProfile.address,
@@ -687,6 +1091,17 @@ export default function Cart() {
 
   return (
     <View style={styles.container}>
+      {/* Overlay de loading que bloquea toda la pantalla */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="#33A744" />
+            <Text style={styles.loadingText}>🔄 Procesando pago...</Text>
+            <Text style={styles.loadingSubtext}>Por favor no cierres la aplicación</Text>
+          </View>
+        </View>
+      )}
+      
       <Text style={styles.title}>Carrito de Compras</Text>
 
       {cart.length === 0 ? (
@@ -821,6 +1236,8 @@ export default function Cart() {
                 needInvoice={needInvoice}
                 setNeedInvoice={setNeedInvoice}
                 taxDetails={taxDetails}
+                isRestoringDeliveryInfo={isRestoringDeliveryInfo}
+                loading={loading}
                 setTaxDetails={setTaxDetails}
                 handleCheckout={handleCheckout}
                 setPickerVisible={setPickerVisible}
@@ -841,6 +1258,11 @@ export default function Cart() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={({date, slot}) => {
+          console.log('📅 CART - RECIBIENDO DE PICKER:');
+          console.log('- date recibido:', date);
+          console.log('- date type:', typeof date);
+          console.log('- slot recibido:', slot);
+          
           setDeliveryInfo({date, slot});
           setPickerVisible(false);
           
@@ -1537,6 +1959,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 4,
   },
+  guestAddressContainer: {
+    flex: 1,
+  },
   guestIndicatorIcon: {
     fontSize: fonts.size.medium,
     marginRight: 8,
@@ -1553,6 +1978,41 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#D27F27',
   },
+  // Estilos para overlay de loading
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingContent: {
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    elevation: 10,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2F2F2F',
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
 });
 
 // <-- justo después de StyleSheet.create({...})
@@ -1562,6 +2022,8 @@ const CartFooter = ({
   needInvoice,
   setNeedInvoice,
   taxDetails,
+  isRestoringDeliveryInfo,
+  loading,
   setTaxDetails,
   handleCheckout,
   setPickerVisible,
@@ -1695,20 +2157,25 @@ const CartFooter = ({
             {address && (
               <View style={styles.guestIndicatorItem}>
                 <Text style={styles.guestIndicatorIcon}>📍</Text>
-                <Text style={styles.guestIndicatorText}>
-                  Dirección: <Text style={styles.guestIndicatorValue}>{address.length > 50 ? address.substring(0, 50) + '...' : address}</Text>
-                </Text>
+                <View style={styles.guestAddressContainer}>
+                  <Text style={styles.guestIndicatorText}>Dirección:</Text>
+                  <Text style={styles.guestIndicatorValue} numberOfLines={0}>
+                    {address}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
         )}
 
         <TouchableOpacity
-          style={[styles.checkoutButton, !deliveryInfo && {opacity: 0.5}]}
+          style={[styles.checkoutButton, (!deliveryInfo || isRestoringDeliveryInfo || loading) && {opacity: 0.5}]}
           onPress={handleCheckout}
-          disabled={!deliveryInfo}>
+          disabled={!deliveryInfo || isRestoringDeliveryInfo || loading}>
           <Text style={styles.checkoutText}>
-            💳 Pagar ${totalPrice} MXN
+            {loading ? '🔄 Procesando pago...' : 
+             isRestoringDeliveryInfo ? '⏳ Cargando...' : 
+             `💳 Pagar ${totalPrice} MXN`}
           </Text>
         </TouchableOpacity>
       </View>

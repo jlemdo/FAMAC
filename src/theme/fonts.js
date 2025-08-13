@@ -50,6 +50,28 @@ const fonts = {
   
   // Tamaños base para referencia (no usar directamente en componentes)
   baseSize: baseSizes,
+  
+  // ✅ NUEVO: Estilos específicos para números con fontVariantNumeric
+  numericStyles: {
+    // Para números monospaced (precios, cantidades, IDs)
+    tabular: {
+      fontFamily: fontFamilyPrices,
+      fontVariantNumeric: ['tabular-nums'],
+    },
+    tabularBold: {
+      fontFamily: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
+      fontVariantNumeric: ['tabular-nums'],
+    },
+    // Para números proporcionales (cuando sea necesario)
+    proportional: {
+      fontFamily: fontFamilyPrices,
+      fontVariantNumeric: ['proportional-nums'],
+    },
+    proportionalBold: {
+      fontFamily: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
+      fontVariantNumeric: ['proportional-nums'],
+    },
+  },
 };
 
 export default fonts;
