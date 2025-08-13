@@ -52,6 +52,34 @@ jobs:
       - name: Verifica versión de Xcode
         run: xcodebuild -version
 
+      - name: Configure Apple Pay Entitlements (Automated)
+        run: |
+          echo "🍎 Setting up Apple Pay entitlements automatically..."
+          
+          # Crear entitlements automáticamente
+          mkdir -p ios/MyNewApp
+          cat > ios/MyNewApp/MyNewApp.entitlements << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.developer.in-app-payments</key>
+              <array>
+                  <string>merchant.com.occr.productos</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+          
+          # Actualizar project.pbxproj para Debug configuration
+          sed -i.backup '/CLANG_ENABLE_MODULES = YES;/{
+          N
+          /CURRENT_PROJECT_VERSION = 1;/i\
+          				CODE_SIGN_ENTITLEMENTS = MyNewApp/MyNewApp.entitlements;
+          }' ios/MyNewApp.xcodeproj/project.pbxproj
+          
+          echo "✅ Apple Pay entitlements configured automatically"
+          
       - name: Instala CocoaPods pods
         working-directory: ios
         run: pod install --repo-update
