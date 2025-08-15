@@ -557,11 +557,7 @@ const AddressFormUberStyle = () => {
       return;
     }
     
-    // Referencias opcionales - solo validar si se requieren específicamente
-    if (!skipMapStep && (!references?.trim() || references.trim().length < 10)) {
-      Alert.alert('Error', 'Por favor agrega referencias de al menos 10 caracteres.');
-      return;
-    }
+    // Referencias son completamente opcionales - no validar
     
     // ÚNICA DIFERENCIA: Guest requiere coordenadas del mapa (Profile no)
     if (!skipMapStep && !mapCoordinates) {
@@ -1167,7 +1163,7 @@ const AddressFormUberStyle = () => {
         <View style={styles.loadingContainer}>
           <Ionicons name="checkmark-circle" size={20} color="#33A744" />
           <Text style={styles.loadingText}>
-            🧠 Ubicación obtenida automáticamente
+            📍 Ve al mapa para confirmar ubicación
           </Text>
         </View>
       ) : (
@@ -1179,15 +1175,6 @@ const AddressFormUberStyle = () => {
         </View>
       )}
       
-      {/* ✅ INFORMACIÓN ADICIONAL: Si hay coordenadas automáticas */}
-      {mapCoordinates && (
-        <View style={styles.smartGeocodingInfo}>
-          <Ionicons name="bulb" size={16} color="#33A744" />
-          <Text style={styles.smartGeocodingText}>
-            Obtuvimos tu ubicación basándose en tu dirección. Puedes ajustarla en el mapa si es necesario.
-          </Text>
-        </View>
-      )}
 
       {/* Botón ir al mapa - MISMO ESTILO QUE MAPA ORIGINAL */}
       <TouchableOpacity
@@ -1203,15 +1190,13 @@ const AddressFormUberStyle = () => {
       <TouchableOpacity
         style={[
           styles.confirmButton,
-          !mapCoordinates && styles.confirmButtonDisabled
+          !userHasConfirmedLocation && styles.confirmButtonDisabled
         ]}
         onPress={handleConfirm}
-        disabled={!mapCoordinates}>
+        disabled={!userHasConfirmedLocation}>
         <Ionicons name="checkmark-circle" size={24} color="#FFF" />
         <Text style={styles.confirmButtonText}>
-          {mapCoordinates && !userHasConfirmedLocation 
-            ? '🧠 Usar ubicación automática' 
-            : 'Confirmar dirección'}
+          Confirmar dirección
         </Text>
       </TouchableOpacity>
 
