@@ -683,15 +683,8 @@ export default function Cart() {
 
     setLoading(true);
     try {
-      // ✅ JUST-IN-TIME: Obtener ubicación solo cuando se va a hacer el pedido
-      const userType = user?.usertype === 'Guest' ? 'guest' : 'user';
-      const location = await getCurrentLocation(userType);
-      if (location) {
-        setLatlong({
-          driver_lat: location.latitude,
-          driver_long: location.longitude,
-        });
-      }
+      // Las coordenadas ya fueron confirmadas por el usuario en el mapa
+      // No necesitamos pedir permisos de ubicación nuevamente
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
