@@ -955,7 +955,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('street', ref)}
               style={styles.addressInput}
-              placeholder="Ej: Insurgentes Sur"
+              placeholder="Calle o avenida"
               value={streetName}
               onChangeText={setStreetName}
               onFocus={createFocusHandler('street')}
@@ -967,7 +967,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('extNum', ref)}
               style={styles.addressInput}
-              placeholder="123"
+              placeholder="Número"
               value={exteriorNumber}
               onChangeText={setExteriorNumber}
               onFocus={createFocusHandler('extNum')}
@@ -984,7 +984,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('intNum', ref)}
               style={styles.addressInput}
-              placeholder="A, 4, etc"
+              placeholder="Opcional"
               value={interiorNumber}
               onChangeText={setInteriorNumber}
               onFocus={createFocusHandler('intNum')}
@@ -996,7 +996,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('colony', ref)}
               style={styles.addressInput}
-              placeholder="Roma Norte"
+              placeholder="Colonia"
               value={neighborhood}
               onChangeText={setNeighborhood}
               onFocus={createFocusHandler('colony')}
@@ -1012,7 +1012,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('postalCode', ref)}
               style={styles.addressInput}
-              placeholder="06700"
+              placeholder="5 dígitos"
               value={postalCode}
               onChangeText={setPostalCode}
               onFocus={createFocusHandler('postalCode')}
@@ -1026,7 +1026,7 @@ const AddressFormUberStyle = () => {
             <TextInput
               ref={(ref) => registerInput('municipality', ref)}
               style={styles.addressInput}
-              placeholder="Cuauhtémoc"
+              placeholder="Alcaldía"
               value={municipality}
               onChangeText={setMunicipality}
               onFocus={createFocusHandler('municipality')}
