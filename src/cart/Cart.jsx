@@ -2064,7 +2064,8 @@ const CartFooter = ({
   userProfile, // ✅ NUEVO: Para direcciones de usuario registrado
 }) => {
   
-  // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend
+  // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend - TEMPORALMENTE DESHABILITADA
+  /*
   const buildDebugPayload = () => {
     if (!cart || cart.length === 0) return null;
     
@@ -2125,8 +2126,9 @@ const CartFooter = ({
       return { error: error.message };
     }
   };
+  */
   
-  const debugPayload = buildDebugPayload();
+  // const debugPayload = buildDebugPayload(); // TEMPORALMENTE DESHABILITADO
   
   return (
   <View>
@@ -2276,7 +2278,8 @@ const CartFooter = ({
       </View>
     )}
     
-    {/* 🐛 DEBUG: Caja para mostrar payload que se enviará al backend */}
+    {/* 🐛 DEBUG: Caja para mostrar payload que se enviará al backend - TEMPORALMENTE DESHABILITADO */}
+    {/*
     {debugPayload && (
       <View style={styles.debugContainer}>
         <TouchableOpacity 
@@ -2289,7 +2292,6 @@ const CartFooter = ({
         </TouchableOpacity>
         
         <View style={styles.debugContent}>
-          {/* Información básica */}
           <View style={styles.debugSection}>
             <Text style={styles.debugSectionTitle}>📋 Información básica:</Text>
             <Text style={styles.debugText}>👤 Usuario: {debugPayload.user_email || 'Sin email'}</Text>
@@ -2298,7 +2300,6 @@ const CartFooter = ({
             <Text style={styles.debugText}>💰 Total: ${totalPrice} MXN</Text>
           </View>
           
-          {/* Entrega */}
           <View style={styles.debugSection}>
             <Text style={styles.debugSectionTitle}>🚚 Entrega:</Text>
             <Text style={styles.debugText}>📅 Fecha: {debugPayload.delivery_date || 'No seleccionada'}</Text>
@@ -2308,7 +2309,6 @@ const CartFooter = ({
             </Text>
           </View>
           
-          {/* Coordenadas */}
           <View style={styles.debugSection}>
             <Text style={styles.debugSectionTitle}>🗺️ Coordenadas:</Text>
             <Text style={styles.debugText}>📐 Lat: {debugPayload.customer_lat || 'Sin coordenadas'}</Text>
@@ -2316,7 +2316,6 @@ const CartFooter = ({
             <Text style={styles.debugText}>🏗️ Origen: {debugPayload.address_source}</Text>
           </View>
           
-          {/* Facturación */}
           {needInvoice && (
             <View style={styles.debugSection}>
               <Text style={styles.debugSectionTitle}>🧾 Facturación:</Text>
@@ -2327,7 +2326,6 @@ const CartFooter = ({
             </View>
           )}
           
-          {/* Estado de validación */}
           <View style={[styles.debugSection, styles.debugValidation]}>
             <Text style={styles.debugSectionTitle}>✅ Validación:</Text>
             <Text style={[styles.debugText, 
@@ -2350,6 +2348,7 @@ const CartFooter = ({
         </View>
       </View>
     )}
+    */}
   </View>
   );
 };
