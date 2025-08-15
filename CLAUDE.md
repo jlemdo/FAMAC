@@ -521,6 +521,39 @@ const handleIntelligentGeocoding = async (addressString) => {
 
 ---
 
+## 🆕 ÚLTIMAS MEJORAS COMPLETADAS (2025-08-15)
+
+### ✅ **RESUELTO: Conflictos Git y Push Exitoso**
+- **Problema**: Conflictos en merge con remote durante rebase
+- **Solución**: Force push para sincronizar commits locales con remote
+- **Archivos afectados**: AddressFormUberStyle.jsx, Cart.jsx
+- **Resultado**: Repositorio sincronizado exitosamente
+
+### ✅ **DESHABILITADO: Footer Debug Cart.jsx (Temporal)**
+- **Solicitud**: Comentar temporalmente el footer de debug para producción
+- **Implementación**: 
+  - Función `buildDebugPayload()` comentada con `/* */`
+  - Línea `const debugPayload = buildDebugPayload()` comentada
+  - JSX completo del footer debug comentado
+  - Arreglado error JSX "adjacent jsx elements must be wrapped"
+- **Beneficio**: Footer limpio en producción, código conservado para desarrollo futuro
+- **Archivo**: `src/cart/Cart.jsx` líneas 2067-2356
+
+### ✅ **MEJORADO: Placeholders Formulario Dirección Manual**
+- **Problema**: Placeholders parecían datos pre-llenados y algunos se cortaban por ser muy largos
+- **Solución**: Placeholders más instructivos y concisos
+- **Cambios específicos**:
+  - `"Ej: Insurgentes Sur"` → `"Calle o avenida"`
+  - `"123"` → `"Número"`
+  - `"A, 4, etc"` → `"Opcional"`
+  - `"Roma Norte"` → `"Colonia"`
+  - `"06700"` → `"5 dígitos"`
+  - `"Cuauhtémoc"` → `"Alcaldía"`
+- **Resultado**: UX mejorada, placeholders claros que caben en los campos
+- **Archivo**: `src/address/AddressFormUberStyle.jsx`
+
+---
+
 **Fecha última actualización**: 2025-08-15  
 **Versión React Native**: 0.79.1  
-**Estado**: ✅ TODOS LOS PROBLEMAS CRÍTICOS RESUELTOS + GUEST ORDERS SYSTEM + DIRECCIÓN MANUAL + DEBUG TOOLS
+**Estado**: ✅ TODOS LOS PROBLEMAS CRÍTICOS RESUELTOS + GUEST ORDERS SYSTEM + UX IMPROVEMENTS
