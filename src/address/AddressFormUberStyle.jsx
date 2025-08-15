@@ -557,7 +557,8 @@ const AddressFormUberStyle = () => {
       return;
     }
     
-    if (!references?.trim() || references.trim().length < 10) {
+    // Referencias opcionales - solo validar si se requieren específicamente
+    if (!skipMapStep && (!references?.trim() || references.trim().length < 10)) {
       Alert.alert('Error', 'Por favor agrega referencias de al menos 10 caracteres.');
       return;
     }
@@ -803,8 +804,8 @@ const AddressFormUberStyle = () => {
       setMapCoordinates(selectedLocationFromMap);
       setUserHasConfirmedLocation(true); // ✅ Usuario confirmó ubicación en el mapa
       
-      // CRITICAL FIX: Si venimos del mapa, ir automáticamente al paso 4
-      setCurrentStep(4);
+      // CRITICAL FIX: Si venimos del mapa, ir automáticamente al paso 3 (renumerado)
+      setCurrentStep(3);
       
       // CRITICAL: RESTAURAR dirección y referencias preservadas del usuario
       if (route.params?.preservedUserAddress) {
@@ -1077,7 +1078,29 @@ const AddressFormUberStyle = () => {
           </Text>
         </View>
 
-        {/* Botón continuar */}
+        {/* Campo de referencias integrado */}
+        <View style={styles.addressField}>
+          <Text style={styles.fieldLabel}>Referencias (Opcional)</Text>
+          <TextInput
+            ref={(ref) => registerInput('references', ref)}
+            style={[styles.addressInput, styles.referencesInput]}
+            placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
+            value={references}
+            onChangeText={setReferences}
+            onFocus={createFocusHandler('references', 30)}
+            multiline
+            numberOfLines={3}
+            placeholderTextColor="#999"
+            maxLength={300}
+            returnKeyType="done"
+            textAlignVertical="top"
+          />
+          <Text style={styles.characterCount}>
+            {references.length}/300 caracteres
+          </Text>
+        </View>
+
+        {/* Botón continuar directo al mapa */}
         <TouchableOpacity
           style={[
             styles.confirmButton, 
@@ -1091,11 +1114,18 @@ const AddressFormUberStyle = () => {
             // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente
             await handleIntelligentGeocoding(finalAddress);
             
-            setCurrentStep(3);
+            // Ir directamente al mapa (paso 3, antes era 4)
+            if (skipMapStep) {
+              handleConfirm();
+            } else {
+              setCurrentStep(3);
+            }
           }}
           disabled={!hasRequiredFields}>
           <Ionicons name="arrow-forward" size={24} color="#FFF" />
-          <Text style={styles.confirmButtonText}>Continuar a referencias</Text>
+          <Text style={styles.confirmButtonText}>
+            {skipMapStep ? 'Completar dirección' : 'Continuar al mapa'}
+          </Text>
         </TouchableOpacity>
 
         {/* Botón regresar */}
@@ -1108,84 +1138,8 @@ const AddressFormUberStyle = () => {
     );
   };
 
-  // Renderizar paso 3: Referencias (COHERENTE)
-  const renderReferencesStep = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Agrega referencias importantes</Text>
-      <Text style={styles.stepSubtitle}>
-        Ayúdanos a encontrar tu dirección más fácil con referencias útiles
-      </Text>
-
-      {/* Campo de referencias - MISMO ESTILO QUE OTROS PASOS */}
-      <View style={styles.selectedAddressCard}>
-        <Ionicons name="information-circle" size={24} color="#33A744" />
-        <View style={styles.selectedAddressContent}>
-          <TextInput
-            ref={(ref) => registerInput('references', ref)}
-            style={styles.manualAddressInput}
-            placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
-            value={references}
-            onChangeText={setReferences}
-            onFocus={createFocusHandler('references', 30)}
-            multiline
-            numberOfLines={3}
-            placeholderTextColor="#999"
-            maxLength={300}
-            returnKeyType="done"
-            textAlignVertical="top"
-          />
-        </View>
-      </View>
-
-      <Text style={styles.characterCount}>
-        {references.length}/300 caracteres
-      </Text>
-      
-      {/* Mensaje informativo consistente */}
-      <View style={styles.loadingContainer}>
-        <Ionicons name="checkmark-circle" size={20} color="#33A744" />
-        <Text style={styles.loadingText}>
-          Referencias mejoran la entrega exitosa
-        </Text>
-      </View>
-
-      {/* Botón continuar - Condicional según si es Profile o no */}
-      {skipMapStep ? (
-        // Si es Profile, finalizar aquí (sin mapa)
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            references.trim().length < 10 && styles.confirmButtonDisabled
-          ]}
-          onPress={handleConfirm}
-          disabled={references.trim().length < 10}>
-          <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-          <Text style={styles.confirmButtonText}>Guardar dirección</Text>
-        </TouchableOpacity>
-      ) : (
-        // Si no es Profile, continuar al mapa
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            references.trim().length < 10 && styles.confirmButtonDisabled
-          ]}
-          onPress={() => setCurrentStep(4)}
-          disabled={references.trim().length < 10}>
-          <Ionicons name="map" size={24} color="#FFF" />
-          <Text style={styles.confirmButtonText}>Ir al mapa</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Botón regresar */}
-      <TouchableOpacity
-        style={styles.backStepButton}
-        onPress={() => setCurrentStep(2)}>
-        <Text style={styles.backStepButtonText}>← Editar dirección</Text>
-      </TouchableOpacity>
-    </View>
-  );
   
-  // Renderizar paso 4: Mapa (COHERENTE)
+  // Renderizar paso 3: Mapa (renumerado desde paso 4)
   const renderMapStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>Confirma tu ubicación exacta</Text>
@@ -1264,8 +1218,8 @@ const AddressFormUberStyle = () => {
       {/* Botón regresar */}
       <TouchableOpacity
         style={styles.backStepButton}
-        onPress={() => setCurrentStep(3)}>
-        <Text style={styles.backStepButtonText}>← Editar referencias</Text>
+        onPress={() => setCurrentStep(2)}>
+        <Text style={styles.backStepButtonText}>← Editar dirección</Text>
       </TouchableOpacity>
     </View>
   );
@@ -1293,7 +1247,7 @@ const AddressFormUberStyle = () => {
       </View>
 
       <View style={styles.stepsIndicator}>
-        {(skipMapStep ? [1, 2, 3] : [1, 2, 3, 4]).map((step) => (
+        {(skipMapStep ? [1, 2] : [1, 2, 3]).map((step) => (
           <View key={step} style={styles.stepIndicatorContainer}>
             <View
               style={[
@@ -1306,7 +1260,7 @@ const AddressFormUberStyle = () => {
                 <Ionicons name="checkmark" size={12} color="#FFF" />
               )}
             </View>
-            {step < (skipMapStep ? 3 : 4) && <View style={styles.stepLine} />}
+            {step < (skipMapStep ? 2 : 3) && <View style={styles.stepLine} />}
           </View>
         ))}
       </View>
@@ -1325,8 +1279,7 @@ const AddressFormUberStyle = () => {
           <View style={styles.content}>
             {currentStep === 1 && renderSearchStep()}
             {currentStep === 2 && renderManualAddressStep()}
-            {currentStep === 3 && renderReferencesStep()}
-            {currentStep === 4 && !skipMapStep && renderMapStep()}
+            {currentStep === 3 && !skipMapStep && renderMapStep()}
           </View>
           
         </ScrollView>
