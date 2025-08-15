@@ -14,6 +14,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useResponsive } from '../hooks/useResponsive';
 import { scaleSpacing, scaleFontSize, getButtonDimensions } from '../utils/responsiveUtils';
+import { executeNavigationCallback } from '../utils/navigationCallbacks';
 
 const AddressMap = () => {
   const navigation = useNavigation();
@@ -25,7 +26,8 @@ const AddressMap = () => {
     addressForm = {},
     selectedLocation = { latitude: 19.4326, longitude: -99.1332 },
     pickerId,
-    onLocationReturn,
+    callbackId, // ✅ NUEVO: ID del callback en lugar de función
+    onLocationReturn, // ⚠️ DEPRECATED: Mantener por compatibilidad
     fromGuestCheckout = false,
     userWrittenAddress = '', // NUEVO: Dirección escrita por usuario para mostrar contexto
     fromMapSelector = false // NUEVO: Flag para identificar que viene de MapSelector
@@ -152,14 +154,18 @@ const AddressMap = () => {
           { latitude, longitude }
         );
         
-        // Callback con la ubicación y form actualizado
-        if (onLocationReturn) {
+        // ✅ SOLUCIONADO: Usar callback por ID o fallback a función directa
+        if (callbackId) {
+          executeNavigationCallback(callbackId, { latitude, longitude }, updatedForm);
+        } else if (onLocationReturn) {
           onLocationReturn({ latitude, longitude }, updatedForm);
         }
       }
     } catch (error) {
-      // Error with reverse geocoding, mantener solo coordenadas
-      if (onLocationReturn) {
+      // ✅ SOLUCIONADO: Error with reverse geocoding, mantener solo coordenadas
+      if (callbackId) {
+        executeNavigationCallback(callbackId, { latitude, longitude }, addressForm);
+      } else if (onLocationReturn) {
         onLocationReturn({ latitude, longitude }, addressForm);
       }
     }
@@ -217,8 +223,12 @@ const AddressMap = () => {
       
       // Si viene de MapSelector, regresar con coordenadas
       if (fromMapSelector) {
-        // Usar callback directo si está disponible
-        if (onLocationReturn) {
+        // ✅ SOLUCIONADO: Usar callback por ID o fallback a función directa
+        if (callbackId) {
+          executeNavigationCallback(callbackId, currentLocation);
+          navigation.goBack();
+          return;
+        } else if (onLocationReturn) {
           onLocationReturn(currentLocation);
           navigation.goBack();
           return;
@@ -243,8 +253,11 @@ const AddressMap = () => {
         ...route.params, // Devolver todos los parámetros preservados
       });
     }
-    // Sistema de callbacks original
-    else if (onLocationReturn) {
+    // ✅ SOLUCIONADO: Sistema de callbacks original
+    else if (callbackId) {
+      executeNavigationCallback(callbackId, currentLocation, addressForm);
+      navigation.goBack();
+    } else if (onLocationReturn) {
       onLocationReturn(currentLocation, addressForm);
       navigation.goBack();
     }

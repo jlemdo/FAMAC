@@ -85,7 +85,7 @@ export default function GuestCheckout() {
         // NUEVO: Manejar coordenadas seleccionadas del mapa
         if (route.params?.selectedCoordinates) {
           setCoordinates(route.params.selectedCoordinates);
-          console.log('🗺️ Coordenadas recibidas en GuestCheckout:', route.params.selectedCoordinates);
+          // console.log('🗺️ Coordenadas recibidas en GuestCheckout:', route.params.selectedCoordinates);
         }
         
         // ✅ SCROLL AUTOMÁTICO al botón "Completar Pedido" cuando regresa con dirección
@@ -164,13 +164,13 @@ export default function GuestCheckout() {
   // Completar checkout
   const handleComplete = async () => {
     // Debug: verificar qué valores tenemos
-    console.log('=== DEBUG GUEST CHECKOUT ===');
-    console.log('Email:', email);
-    console.log('Address:', address);
-    console.log('Email trimmed:', email?.trim());
-    console.log('Address trimmed:', address?.trim());
-    console.log('Email valid?', !!email?.trim());
-    console.log('Address valid?', !!address?.trim());
+    // console.log('=== DEBUG GUEST CHECKOUT ===');
+    // console.log('Email:', email);
+    // console.log('Address:', address);
+    // console.log('Email trimmed:', email?.trim());
+    // console.log('Address trimmed:', address?.trim());
+    // console.log('Email valid?', !!email?.trim());
+    // console.log('Address valid?', !!address?.trim());
     
     if (!email?.trim() || !address?.trim()) {
       const missingFields = [];
@@ -193,15 +193,15 @@ export default function GuestCheckout() {
       // El email se guarda únicamente cuando el pago se completa correctamente
       
       // Navegar de regreso con los datos
-      console.log('=== NAVEGANDO DE VUELTA AL CART ===');
-      console.log('returnToCart:', returnToCart);
-      console.log('Datos preservados a enviar:', {
-        email: email.trim(),
-        address: address.trim(),
-        preservedDeliveryInfo,
-        preservedNeedInvoice,
-        preservedTaxDetails,
-      });
+      // console.log('=== NAVEGANDO DE VUELTA AL CART ===');
+      // console.log('returnToCart:', returnToCart);
+      // console.log('Datos preservados a enviar:', {
+        // email: email.trim(),
+        // address: address.trim(),
+        // preservedDeliveryInfo,
+        // preservedNeedInvoice,
+        // preservedTaxDetails,
+      // });
       
       if (returnToCart) {
         navigation.navigate('MainTabs', {
@@ -223,9 +223,9 @@ export default function GuestCheckout() {
             }
           }
         });
-        console.log('Navegación a MainTabs enviada');
+        // console.log('Navegación a MainTabs enviada');
       } else {
-        console.log('Haciendo goBack()');
+        // console.log('Haciendo goBack()');
         navigation.goBack();
       }
       
@@ -316,10 +316,10 @@ export default function GuestCheckout() {
       <TouchableOpacity
         style={styles.addressButton}
         onPress={() => {
-          console.log('=== GUEST CHECKOUT NAVEGANDO A ADDRESS FORM ===');
-          console.log('Enviando preservedDeliveryInfo:', preservedDeliveryInfo);
-          console.log('Enviando preservedNeedInvoice:', preservedNeedInvoice);
-          console.log('Enviando preservedTaxDetails:', preservedTaxDetails);
+          // console.log('=== GUEST CHECKOUT NAVEGANDO A ADDRESS FORM ===');
+          // console.log('Enviando preservedDeliveryInfo:', preservedDeliveryInfo);
+          // console.log('Enviando preservedNeedInvoice:', preservedNeedInvoice);
+          // console.log('Enviando preservedTaxDetails:', preservedTaxDetails);
           
           // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats)
           navigation.navigate('AddressFormUberStyle', {

@@ -77,13 +77,13 @@ const Order = () => {
   // ✅ Función para ver pedidos Guest sin registrarse (búsqueda directa)
   const handleViewGuestOrders = async (guestEmail) => {
     if (!guestEmail || !guestEmail.trim()) {
-      console.log('❌ No hay email de Guest para buscar pedidos');
+      // console.log('❌ No hay email de Guest para buscar pedidos');
       return;
     }
     
     setLoading(true);
     try {
-      console.log('🔍 Buscando pedidos para Guest:', guestEmail);
+      // console.log('🔍 Buscando pedidos para Guest:', guestEmail);
       
       const foundOrders = [];
       
@@ -109,7 +109,7 @@ const Order = () => {
               response.data.order.user_email === guestEmail.trim()) {
             
             foundOrders.push(response.data.order);
-            console.log(`✅ Orden ${id} encontrada para ${guestEmail}`);
+            // console.log(`✅ Orden ${id} encontrada para ${guestEmail}`);
           }
           
           // Pausa entre requests para evitar 429
@@ -119,13 +119,13 @@ const Order = () => {
           
         } catch (error) {
           if (!error.message.includes('404')) {
-            console.log(`⚠️ Error en ID ${id}:`, error.message);
+            // console.log(`⚠️ Error en ID ${id}:`, error.message);
           }
         }
       }
       
       if (foundOrders.length > 0) {
-        console.log(`🎉 ${foundOrders.length} pedidos encontrados`);
+        // console.log(`🎉 ${foundOrders.length} pedidos encontrados`);
         // Mostrar órdenes Guest directamente sin usar OrderContext
         setGuestOrders(foundOrders);
         setShowingGuestOrders(true);
@@ -138,7 +138,7 @@ const Order = () => {
         updateOrders(foundOrders); // Esto actualiza el badge de navegación
         
       } else {
-        console.log('ℹ️ No se encontraron pedidos para este email');
+        // console.log('ℹ️ No se encontraron pedidos para este email');
         setGuestOrders([]);
         setShowingGuestOrders(false);
         // Limpiar contador cuando no hay órdenes
@@ -146,7 +146,7 @@ const Order = () => {
       }
       
     } catch (error) {
-      console.log('❌ Error consultando pedidos Guest:', error);
+      // console.log('❌ Error consultando pedidos Guest:', error);
     } finally {
       setLoading(false);
     }
@@ -155,13 +155,13 @@ const Order = () => {
   // 🧹 FUNCIÓN TEMPORAL para limpiar datos corruptos
   const handleCleanCorruptGuestData = async () => {
     try {
-      console.log('🧹 Limpiando datos corruptos de Guest...');
+      // console.log('🧹 Limpiando datos corruptos de Guest...');
       
       if (AsyncStorage) {
         // Limpiar AsyncStorage completamente
         await AsyncStorage.removeItem('userData');
         await AsyncStorage.removeItem('persistSession');
-        console.log('✅ AsyncStorage limpiado');
+        // console.log('✅ AsyncStorage limpiado');
       }
       
       // Reiniciar como Guest limpio (sin email)
@@ -170,10 +170,10 @@ const Order = () => {
       // Desactivar Guest orders si estaba activado
       disableGuestOrders();
       
-      console.log('✅ Datos de Guest limpiados - reiniciado como Guest sin email');
+      // console.log('✅ Datos de Guest limpiados - reiniciado como Guest sin email');
       
     } catch (error) {
-      console.log('❌ Error limpiando datos:', error);
+      // console.log('❌ Error limpiando datos:', error);
     }
   };
 

@@ -76,8 +76,8 @@ const AddressFormUberStyle = () => {
   const parseGoogleAddress = (googleAddress) => {
     if (!googleAddress || !googleAddress.description) return;
     
-    console.log('=== PARSEANDO DIRECCIÓN DE GOOGLE ===');
-    console.log('Dirección completa:', googleAddress.description);
+    // console.log('=== PARSEANDO DIRECCIÓN DE GOOGLE ===');
+    // console.log('Dirección completa:', googleAddress.description);
     
     // Limpiar campos primero
     setStreetName('');
@@ -150,16 +150,16 @@ const AddressFormUberStyle = () => {
         }
       }
       
-      console.log('✅ Campos auto-rellenados:');
-      console.log('- Calle:', streetMatch?.[1]?.trim() || 'No detectada');
-      console.log('- No. Ext:', numberMatch?.[1] || 'No detectado');
-      console.log('- Colonia:', neighborhood || 'No detectada');
-      console.log('- CP:', postalMatch?.[1] || 'No detectado');
-      console.log('- Alcaldía/Mun:', municipality || 'No detectada');
-      console.log('- Estado:', state);
+      // console.log('✅ Campos auto-rellenados:');
+      // console.log('- Calle:', streetMatch?.[1]?.trim() || 'No detectada');
+      // console.log('- No. Ext:', numberMatch?.[1] || 'No detectado');
+      // console.log('- Colonia:', neighborhood || 'No detectada');
+      // console.log('- CP:', postalMatch?.[1] || 'No detectado');
+      // console.log('- Alcaldía/Mun:', municipality || 'No detectada');
+      // console.log('- Estado:', state);
       
     } catch (error) {
-      console.log('❌ Error parseando dirección:', error);
+      // console.log('❌ Error parseando dirección:', error);
     }
   };
 
@@ -197,14 +197,68 @@ const AddressFormUberStyle = () => {
     return parts.join(', ');
   };
 
+  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual
+  const handleIntelligentGeocoding = async (addressString) => {
+    if (!addressString || addressString.trim() === '') {
+      // console.log('⚠️ No hay dirección para geocodificar');
+      return;
+    }
+
+    try {
+      // console.log('🧠 GEOCODING INTELIGENTE iniciado para:', addressString);
+      
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json`,
+        {
+          params: {
+            address: `${addressString}, México`,
+            key: Config.GOOGLE_DIRECTIONS_API_KEY,
+            language: 'es',
+            region: 'mx',
+            bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
+          },
+        }
+      );
+
+      if (response.data.status === 'OK' && response.data.results[0]) {
+        const result = response.data.results[0];
+        const location = result.geometry.location;
+        
+        const coordinates = {
+          latitude: location.lat,
+          longitude: location.lng,
+        };
+        
+        // Guardar coordenadas automáticamente
+        setMapCoordinates(coordinates);
+        
+        // console.log('✅ GEOCODING INTELIGENTE exitoso:', {
+          // address: addressString,
+          // coordinates: coordinates,
+          // formattedAddress: result.formatted_address
+        // });
+        
+        // Opcional: Actualizar con la dirección formateada de Google
+        // setUserWrittenAddress(result.formatted_address);
+        
+      } else {
+        // console.log('⚠️ GEOCODING INTELIGENTE: No se encontraron resultados para:', addressString);
+        // No hacer nada, el usuario puede usar el mapa manualmente en el paso 4
+      }
+    } catch (error) {
+      // console.error('❌ Error en GEOCODING INTELIGENTE:', error);
+      // No hacer nada, el usuario puede usar el mapa manualmente en el paso 4
+    }
+  };
+
   // Función para obtener ubicación actual usando locationUtils - CON DEBUG MEJORADO
   const handleGetCurrentLocation = async () => {
     setIsLoadingLocation(true);
     
     try {
-      console.log('🚀 INICIANDO PRUEBA DE UBICACIÓN');
-      console.log('Platform:', Platform.OS);
-      console.log('Llamando a getCurrentLocation con userType: guest');
+      // console.log('🚀 INICIANDO PRUEBA DE UBICACIÓN');
+      // console.log('Platform:', Platform.OS);
+      // console.log('Llamando a getCurrentLocation con userType: guest');
       
       // Usar la función ya existente de locationUtils optimizada para guest
       const location = await getCurrentLocation('guest', 
@@ -255,7 +309,7 @@ const AddressFormUberStyle = () => {
               setCurrentStep(2);
             }
           } catch (geocodingError) {
-            console.warn('Geocoding error:', geocodingError);
+            // console.warn('Geocoding error:', geocodingError);
             // Continuar con coordenadas básicas si falla el geocoding
             const basicAddress = {
               description: `Ubicación actual (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
@@ -276,11 +330,11 @@ const AddressFormUberStyle = () => {
         },
         // onError callback mejorado para iOS y Android
         (error) => {
-          console.error('❌ Location error details:', {
-            code: error.code,
-            message: error.message,
-            platform: Platform.OS
-          });
+          // console.error('❌ Location error details:', {
+            // code: error.code,
+            // message: error.message,
+            // platform: Platform.OS
+          // });
           
           let errorTitle = 'Ubicación no disponible';
           let errorMessage = '';
@@ -358,7 +412,7 @@ const AddressFormUberStyle = () => {
         );
       }
     } catch (error) {
-      console.error('Location error:', error);
+      // console.error('Location error:', error);
       Alert.alert(
         'Error', 
         'Hubo un problema al obtener tu ubicación. Puedes buscar manualmente tu dirección.',
@@ -396,7 +450,7 @@ const AddressFormUberStyle = () => {
 
       setSearchResults(response.data.predictions || []);
     } catch (error) {
-      console.error('Error searching addresses:', error);
+      // console.error('Error searching addresses:', error);
     } finally {
       setIsSearching(false);
     }
@@ -445,14 +499,14 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa con geocoding inteligente
   const goToMap = async () => {
-    console.log('=== NAVEGANDO AL MAPA ===');
+    // console.log('=== NAVEGANDO AL MAPA ===');
     
     let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
     
     // NUEVO: Si hay dirección escrita pero no coordenadas previas, geocodificar para centrar mapa
     if (!mapCoordinates && userWrittenAddress?.trim()) {
       try {
-        console.log('🗺️ Geocodificando dirección para centrar mapa:', userWrittenAddress);
+        // console.log('🗺️ Geocodificando dirección para centrar mapa:', userWrittenAddress);
         
         const response = await axios.get(
           `https://maps.googleapis.com/maps/api/geocode/json`,
@@ -473,13 +527,13 @@ const AddressFormUberStyle = () => {
             latitude: location.lat,
             longitude: location.lng,
           };
-          console.log('✅ Mapa centrado cerca de la dirección del usuario:', mapCenter);
+          // console.log('✅ Mapa centrado cerca de la dirección del usuario:', mapCenter);
         } else {
-          console.log('⚠️ No se pudo geocodificar, usando centro CDMX');
+          // console.log('⚠️ No se pudo geocodificar, usando centro CDMX');
         }
       } catch (error) {
-        console.warn('❌ Error geocodificando dirección:', error);
-        console.log('⚠️ Usando centro CDMX como fallback');
+        // console.warn('❌ Error geocodificando dirección:', error);
+        // console.log('⚠️ Usando centro CDMX como fallback');
       }
     }
     
@@ -514,16 +568,17 @@ const AddressFormUberStyle = () => {
       return;
     }
     
-    // CONSTRUCCIÓN DE DIRECCIÓN FINAL - EXACTA A PROFILE
+    // CONSTRUCCIÓN DE DIRECCIÓN FINAL - INTELIGENTE
     const finalAddress = {
       userWrittenAddress: userWrittenAddress.trim(),
       fullAddress: userWrittenAddress.trim(),
       coordinates: skipMapStep ? null : mapCoordinates, // Guest incluye coordenadas, Profile no
       references: references.trim(),
-      verified: skipMapStep ? false : true, // Guest verificado con mapa, Profile sin mapa
+      verified: skipMapStep ? false : !!mapCoordinates, // Verificado si tiene coordenadas (manual o inteligente)
       hasUserWrittenAddress: true,
       timestamp: new Date().toISOString(),
       isProfileAddress: skipMapStep, // false para Guest, true para Profile
+      geocodingSource: userHasConfirmedLocation ? 'user_map_selection' : 'intelligent_geocoding', // ✅ NUEVO: Origen de coordenadas
     };
 
     // Ejecutar callback si existe (sistema antiguo)
@@ -537,7 +592,7 @@ const AddressFormUberStyle = () => {
     // Si viene de Profile (NUEVO CASO)
     else if (route.params?.fromProfile && userId) {
       try {
-        console.log('🚀 Iniciando actualización de dirección para usuario:', userId);
+        // console.log('🚀 Iniciando actualización de dirección para usuario:', userId);
         
         // Primero obtener datos actuales del usuario para no sobrescribir nada
         const userDetailsResponse = await axios.get(
@@ -569,10 +624,10 @@ const AddressFormUberStyle = () => {
           }
         }
         
-        console.log('🚀 Payload para actualización:', {
-          ...payload,
-          address: payload.address.substring(0, 50) + '...' // Solo mostrar inicio de dirección
-        });
+        // console.log('🚀 Payload para actualización:', {
+          // ...payload,
+          // address: payload.address.substring(0, 50) + '...' // Solo mostrar inicio de dirección
+        // });
         
         const response = await axios.post(
           'https://food.siliconsoft.pk/api/updateuserprofile',
@@ -581,7 +636,7 @@ const AddressFormUberStyle = () => {
         );
         
         if (response.status === 200) {
-          console.log('✓ Dirección actualizada exitosamente');
+          // console.log('✓ Dirección actualizada exitosamente');
           
           // Mostrar confirmación al usuario
           Alert.alert(
@@ -599,7 +654,7 @@ const AddressFormUberStyle = () => {
           throw new Error(`Error del servidor: ${response.status}`);
         }
       } catch (error) {
-        console.error('❌ Error actualizando dirección:', error);
+        // console.error('❌ Error actualizando dirección:', error);
         
         let errorMessage = 'No se pudo actualizar la dirección.';
         
@@ -629,11 +684,11 @@ const AddressFormUberStyle = () => {
         // USAR EXACTAMENTE EL MISMO FORMATO QUE PROFILE.JSX
         const addressToSend = `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`;
         
-        console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
-        console.log('Dirección final:', addressToSend.substring(0, 50) + '...');
-        console.log('Coordenadas:', finalAddress.coordinates);
-        console.log('Referencias:', finalAddress.references.substring(0, 30) + '...');
-        console.log('returnToCart:', route.params?.returnToCart);
+        // console.log('=== ADDRESS FORM UBER STYLE NAVEGANDO DE VUELTA ===');
+        // console.log('Dirección final:', addressToSend.substring(0, 50) + '...');
+        // console.log('Coordenadas:', finalAddress.coordinates);
+        // console.log('Referencias:', finalAddress.references.substring(0, 30) + '...');
+        // console.log('returnToCart:', route.params?.returnToCart);
         
         // Validar parámetros críticos antes de navegar
         if (!route.params?.totalPrice || !route.params?.itemCount) {
@@ -643,7 +698,7 @@ const AddressFormUberStyle = () => {
         // Si returnToCart es true, regresar a GuestCheckout con los datos
         // ✅ FIX iOS: Evitar navegación anidada compleja que causa problemas en iOS
         if (route.params?.returnToCart) {
-          console.log('✅ FIX iOS: Regresando a GuestCheckout con datos preservados');
+          // console.log('✅ FIX iOS: Regresando a GuestCheckout con datos preservados');
           
           // Navegar de vuelta a GuestCheckout con todos los datos necesarios
           navigation.navigate('GuestCheckout', {
@@ -673,7 +728,7 @@ const AddressFormUberStyle = () => {
             addressCompleted: true,
           });
           
-          console.log('✓ Navegación a GuestCheckout con datos completos');
+          // console.log('✓ Navegación a GuestCheckout con datos completos');
           return;
         }
         
@@ -721,10 +776,10 @@ const AddressFormUberStyle = () => {
           addressCompleted: true,
         });
         
-        console.log('✓ Navegación a GuestCheckout completada exitosamente');
+        // console.log('✓ Navegación a GuestCheckout completada exitosamente');
         
       } catch (error) {
-        console.error('❌ Error navegando de vuelta a GuestCheckout:', error);
+        // console.error('❌ Error navegando de vuelta a GuestCheckout:', error);
         Alert.alert(
           'Error',
           'Hubo un problema al regresar al checkout. Inténtalo de nuevo.',
@@ -754,17 +809,17 @@ const AddressFormUberStyle = () => {
       // CRITICAL: RESTAURAR dirección y referencias preservadas del usuario
       if (route.params?.preservedUserAddress) {
         setUserWrittenAddress(route.params.preservedUserAddress);
-        console.log('🔄 Dirección del usuario restaurada:', route.params.preservedUserAddress);
+        // console.log('🔄 Dirección del usuario restaurada:', route.params.preservedUserAddress);
       }
       
       if (route.params?.preservedReferences) {
         setReferences(route.params.preservedReferences);
-        console.log('🔄 Referencias del usuario restauradas:', route.params.preservedReferences);
+        // console.log('🔄 Referencias del usuario restauradas:', route.params.preservedReferences);
       }
       
-      console.log('=== COORDENADAS RECIBIDAS DEL MAPA ===');
-      console.log('Coordenadas:', selectedLocationFromMap);
-      console.log('✅ Usuario confirmó ubicación en mapa - DIRECCIÓN Y REFERENCIAS PRESERVADAS');
+      // console.log('=== COORDENADAS RECIBIDAS DEL MAPA ===');
+      // console.log('Coordenadas:', selectedLocationFromMap);
+      // console.log('✅ Usuario confirmó ubicación en mapa - DIRECCIÓN Y REFERENCIAS PRESERVADAS');
     }
   }, [selectedLocationFromMap]);
 
@@ -796,6 +851,22 @@ const AddressFormUberStyle = () => {
         )}
         <Text style={styles.currentLocationText}>
           {isLoadingLocation ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}
+        </Text>
+        <Ionicons name="chevron-forward" size={20} color="#999" />
+      </TouchableOpacity>
+
+      {/* ✅ NUEVA OPCIÓN: Dirección manual */}
+      <TouchableOpacity
+        style={styles.manualAddressButton}
+        onPress={() => {
+          // console.log('📝 Usuario eligió: Agregar dirección manualmente');
+          // Ir directo al paso 2 (dirección manual)
+          setCurrentStep(2);
+        }}
+        activeOpacity={0.8}>
+        <Ionicons name="create-outline" size={24} color="#8B5E3C" />
+        <Text style={styles.manualAddressText}>
+          Agregar dirección manualmente
         </Text>
         <Ionicons name="chevron-forward" size={20} color="#999" />
       </TouchableOpacity>
@@ -1012,9 +1083,14 @@ const AddressFormUberStyle = () => {
             styles.confirmButton, 
             !hasRequiredFields && styles.confirmButtonDisabled
           ]}
-          onPress={() => {
+          onPress={async () => {
             // Construir dirección final y guardarla
-            setUserWrittenAddress(buildFinalAddress());
+            const finalAddress = buildFinalAddress();
+            setUserWrittenAddress(finalAddress);
+            
+            // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente
+            await handleIntelligentGeocoding(finalAddress);
+            
             setCurrentStep(3);
           }}
           disabled={!hasRequiredFields}>
@@ -1132,12 +1208,12 @@ const AddressFormUberStyle = () => {
         </View>
       </View>
       
-      {/* Estado de mapa - COHERENTE CON LOADING */}
+      {/* Estado de mapa - INTELIGENTE CON GEOCODING */}
       {mapCoordinates ? (
         <View style={styles.loadingContainer}>
           <Ionicons name="checkmark-circle" size={20} color="#33A744" />
           <Text style={styles.loadingText}>
-            Ubicación confirmada en el mapa
+            🧠 Ubicación obtenida automáticamente
           </Text>
         </View>
       ) : (
@@ -1145,6 +1221,16 @@ const AddressFormUberStyle = () => {
           <Ionicons name="location-outline" size={20} color="#D27F27" />
           <Text style={styles.loadingText}>
             Selecciona tu ubicación en el mapa
+          </Text>
+        </View>
+      )}
+      
+      {/* ✅ INFORMACIÓN ADICIONAL: Si hay coordenadas automáticas */}
+      {mapCoordinates && (
+        <View style={styles.smartGeocodingInfo}>
+          <Ionicons name="bulb" size={16} color="#33A744" />
+          <Text style={styles.smartGeocodingText}>
+            Obtuvimos tu ubicación basándose en tu dirección. Puedes ajustarla en el mapa si es necesario.
           </Text>
         </View>
       )}
@@ -1159,16 +1245,20 @@ const AddressFormUberStyle = () => {
         </Text>
       </TouchableOpacity>
 
-      {/* Botón finalizar - MISMO ESTILO QUE CONFIRMACIÓN */}
+      {/* Botón finalizar - INTELIGENTE CON GEOCODING */}
       <TouchableOpacity
         style={[
           styles.confirmButton,
-          (!mapCoordinates || !userHasConfirmedLocation) && styles.confirmButtonDisabled
+          !mapCoordinates && styles.confirmButtonDisabled
         ]}
         onPress={handleConfirm}
-        disabled={!mapCoordinates || !userHasConfirmedLocation}>
+        disabled={!mapCoordinates}>
         <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-        <Text style={styles.confirmButtonText}>Confirmar dirección</Text>
+        <Text style={styles.confirmButtonText}>
+          {mapCoordinates && !userHasConfirmedLocation 
+            ? '🧠 Usar ubicación automática' 
+            : 'Confirmar dirección'}
+        </Text>
       </TouchableOpacity>
 
       {/* Botón regresar */}
@@ -1363,6 +1453,28 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#D27F27',
+    marginLeft: 12,
+  },
+  manualAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    padding: 18,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#8B5E3C',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  manualAddressText: {
+    flex: 1,
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#8B5E3C',
     marginLeft: 12,
   },
   separator: {
@@ -1695,6 +1807,24 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: '#2F2F2F',
     lineHeight: 20,
+  },
+  smartGeocodingInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 167, 68, 0.2)',
+  },
+  smartGeocodingText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#33A744',
+    lineHeight: 18,
   },
 });
 

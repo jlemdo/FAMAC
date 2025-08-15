@@ -422,6 +422,105 @@ if (response.data?.order &&
 
 ---
 
-**Fecha última actualización**: 2025-08-13  
+---
+
+## 🆕 NUEVA FUNCIONALIDAD: Dirección Manual con Geocoding Inteligente (2025-08-15)
+
+### **✅ IMPLEMENTACIÓN COMPLETA: Tercera Opción de Dirección**
+
+#### **Funcionalidad Principal:**
+- **Nueva opción**: "Agregar dirección manualmente" en paso 1 de AddressFormUberStyle
+- **Flujo directo**: Ir del paso 1 → paso 2 (campos estructurados) → geocoding automático
+- **Beneficio**: Usuarios que prefieren escribir dirección completa paso a paso
+
+#### **Geocoding Inteligente Automático:**
+```javascript
+// Se ejecuta automáticamente al completar paso 2
+const handleIntelligentGeocoding = async (addressString) => {
+  // Obtiene coordenadas de Google Maps basándose en dirección construida
+  // Guarda coordenadas automáticamente en mapCoordinates
+  // Permite continuar sin ir al mapa manualmente
+}
+```
+
+#### **Flujo Completo:**
+1. **Paso 1**: Usuario elige "Agregar dirección manualmente"
+2. **Paso 2**: Llena campos estructurados (calle, número, colonia, CP, etc.)
+3. **Auto-geocoding**: Sistema obtiene coordenadas automáticamente
+4. **Paso 3**: Referencias (normal)
+5. **Paso 4**: Mapa inteligente
+   - **Si geocoding exitoso**: "🧠 Ubicación obtenida automáticamente"
+   - **Si geocoding falló**: "Selecciona tu ubicación en el mapa"
+   - **Botón dinámico**: "🧠 Usar ubicación automática" o "Confirmar dirección"
+
+#### **Características Técnicas:**
+- **API**: Misma Google Geocoding API con bounds CDMX/EdoMex
+- **Validación inteligente**: No requiere confirmación manual si geocoding es exitoso
+- **Fallback robusto**: Si falla geocoding, usuario puede usar mapa manualmente
+- **Campo nuevo**: `geocodingSource` indica origen de coordenadas
+- **Compatibilidad**: Funciona con sistema existente sin afectar otras opciones
+
+#### **UX Mejorada:**
+- **3 opciones claras** en paso 1:
+  1. 📍 Usar mi ubicación actual
+  2. 🔍 Buscar dirección (autocompletado)
+  3. ✏️ Agregar dirección manualmente ← **NUEVA**
+- **Información contextual**: Usuario ve que se obtuvo ubicación automáticamente
+- **Flexibilidad**: Puede ajustar en mapa si desea mayor precisión
+
+#### **Archivos Modificados:**
+- **`src/address/AddressFormUberStyle.jsx`**:
+  - Líneas 803-817: Nuevo botón de dirección manual
+  - Líneas 1031-1040: Geocoding automático en paso 2
+  - Líneas 1384-1405: Estilos para nuevo botón
+  - Líneas 1806-1823: Estilos para info de geocoding inteligente
+  - Líneas 200-252: Función `handleIntelligentGeocoding()`
+
+#### **Beneficios para el Usuario:**
+- **Flexibilidad**: 3 formas de agregar dirección según preferencia
+- **Velocidad**: Geocoding automático evita paso manual del mapa
+- **Precisión**: Coordenadas basadas en dirección estructurada
+- **Confiabilidad**: Fallback al mapa si geocoding falla
+
+---
+
+## 🔧 FIXES TÉCNICOS IMPLEMENTADOS (2025-08-15)
+
+### **✅ RESUELTO: Error de Serialización en Navegación**
+- **Problema**: "Non-serializable values were found in the navigation state"
+- **Causa**: Funciones `onLocationReturn` pasadas como parámetros de navegación
+- **Solución**: Sistema de callbacks globales con IDs únicos
+
+#### **Sistema de Callbacks Implementado:**
+- **Archivo**: `src/utils/navigationCallbacks.js` (NUEVO)
+- **Función**: Evitar pasar funciones en navegación usando IDs únicos
+- **Beneficio**: React Navigation puede serializar parámetros correctamente
+
+#### **Archivos Actualizados:**
+- **`src/address/MapSelector.jsx`**: Usa callback por ID
+- **`src/address/AddressForm.jsx`**: Usa callback por ID  
+- **`src/address/AddressMap.jsx`**: Acepta callbackId y onLocationReturn (compatibilidad)
+
+### **✅ IMPLEMENTADO: Caja Debug para Payload Backend**
+- **Ubicación**: CartFooter (final del carrito)
+- **Función**: Mostrar payload exacto que se enviará al backend
+- **Beneficio**: Debug en tiempo real antes de pasarela de pagos
+
+#### **Información Mostrada:**
+- **📋 Información básica**: Usuario, tipo, items, total
+- **🚚 Entrega**: Fecha, horario, dirección
+- **🗺️ Coordenadas**: Lat/lng, origen de coordenadas
+- **🧾 Facturación**: RFC si requiere factura
+- **✅ Validación**: Estados con colores (verde=completo, rojo=faltante)
+
+#### **Archivos Modificados:**
+- **`src/cart/Cart.jsx`**:
+  - Líneas 2008-2070: Función `buildDebugPayload()`
+  - Líneas 2220-2294: Caja debug en CartFooter
+  - Líneas 1984-2046: Estilos para debug container
+
+---
+
+**Fecha última actualización**: 2025-08-15  
 **Versión React Native**: 0.79.1  
-**Estado**: ✅ TODOS LOS PROBLEMAS CRÍTICOS RESUELTOS + GUEST ORDERS SYSTEM IMPLEMENTADO
+**Estado**: ✅ TODOS LOS PROBLEMAS CRÍTICOS RESUELTOS + GUEST ORDERS SYSTEM + DIRECCIÓN MANUAL + DEBUG TOOLS

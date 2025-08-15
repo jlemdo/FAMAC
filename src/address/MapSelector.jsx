@@ -13,6 +13,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import Config from 'react-native-config';
 import fonts from '../theme/fonts';
+import { 
+  generateCallbackId, 
+  registerNavigationCallback, 
+  cleanupNavigationCallback 
+} from '../utils/navigationCallbacks';
 
 const MapSelector = () => {
   const navigation = useNavigation();
@@ -28,6 +33,7 @@ const MapSelector = () => {
   // Estado para coordenadas seleccionadas
   const [selectedCoordinates, setSelectedCoordinates] = useState(null);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [callbackId] = useState(() => generateCallbackId()); // ID único para este componente
   
   // Función para obtener coordenadas de la dirección del usuario
   const geocodeUserAddress = async (address) => {
@@ -74,17 +80,19 @@ const MapSelector = () => {
       // Obtener coordenadas de la dirección del usuario
       const userCoordinates = await geocodeUserAddress(userAddress);
       
-      // Callback para recibir coordenadas del mapa
+      // ✅ NUEVO: Registrar callback con ID único en lugar de pasar función
       const handleLocationReturn = (coordinates) => {
         setSelectedCoordinates(coordinates);
       };
+      
+      registerNavigationCallback(callbackId, handleLocationReturn);
       
       navigation.navigate('AddressMap', {
         addressForm: { address: userAddress },
         selectedLocation: userCoordinates, // Coordenadas basadas en la dirección del usuario
         userWrittenAddress: userAddress,
         fromMapSelector: true, // Flag para identificar que viene de MapSelector
-        onLocationReturn: handleLocationReturn, // NUEVO: Callback directo
+        callbackId: callbackId, // ✅ SOLUCIONADO: Pasar ID en lugar de función
       });
     } catch (error) {
       console.error('Error preparando mapa:', error);
@@ -122,6 +130,13 @@ const MapSelector = () => {
       setSelectedCoordinates(route.params.selectedLocationFromMap);
     }
   }, [route.params?.selectedLocationFromMap]);
+  
+  // ✅ CLEANUP: Limpiar callback al desmontar componente
+  useEffect(() => {
+    return () => {
+      cleanupNavigationCallback(callbackId);
+    };
+  }, [callbackId]);
   
   return (
     <View style={styles.container}>

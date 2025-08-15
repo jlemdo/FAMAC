@@ -17,6 +17,11 @@ import fonts from '../theme/fonts';
 import { useResponsive, useAdaptiveLayout } from '../hooks/useResponsive';
 import { scaleSpacing, scaleFontSize, getInputDimensions, getButtonDimensions } from '../utils/responsiveUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
+import { 
+  generateCallbackId, 
+  registerNavigationCallback, 
+  cleanupNavigationCallback 
+} from '../utils/navigationCallbacks';
 
 const AddressForm = () => {
   const navigation = useNavigation();
@@ -57,6 +62,7 @@ const AddressForm = () => {
   // Estado para mostrar todas las alcaldías
   const [showAllAlcaldias, setShowAllAlcaldias] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [callbackId] = useState(() => generateCallbackId()); // ID único para callbacks
 
   // Opciones de Alcaldías y Ciudades
   const alcaldiasCDMX = [
@@ -388,28 +394,36 @@ const AddressForm = () => {
     // Mostrar loading mientras geocodifica
     const targetLocation = await geocodeManualAddress();
     
+    // ✅ SOLUCIONADO: Registrar callback con ID único
+    const handleLocationReturn = (location, updatedForm) => {
+      setSelectedLocation(location);
+      setAddressForm(updatedForm);
+    };
+    
+    registerNavigationCallback(callbackId, handleLocationReturn);
+    
     navigation.navigate('AddressMap', {
       addressForm,
       selectedLocation: targetLocation,
       // Pasar información sobre de dónde viene
       pickerId: pickerId || null,
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
-      onLocationReturn: (location, updatedForm) => {
-        setSelectedLocation(location);
-        setAddressForm(updatedForm);
-      }
+      callbackId: callbackId, // ✅ NUEVO: ID en lugar de función
     });
   };
 
   // Cleanup cuando se desmonta el componente
   React.useEffect(() => {
     return () => {
+      // Limpiar callbacks de navegación
+      cleanupNavigationCallback(callbackId);
+      
       // Limpiar callbacks si la pantalla se cierra sin confirmar
       if (pickerId && callbacks) {
         cleanupAddressPickerCallbacks(pickerId);
       }
     };
-  }, [pickerId, callbacks]);
+  }, [pickerId, callbacks, callbackId]);
 
   return (
     <View style={styles.container}>

@@ -73,11 +73,11 @@ export default function Cart() {
   
   // 🔍 DEBUG: Monitorear cambios en deliveryInfo
   useEffect(() => {
-    console.log('🚨 DELIVERY INFO CAMBIÓ:', {
-      valor: deliveryInfo,
-      esNull: deliveryInfo === null,
-      stackTrace: new Error().stack
-    });
+    // console.log('🚨 DELIVERY INFO CAMBIÓ:', {
+      // valor: deliveryInfo,
+      // esNull: deliveryInfo === null,
+      // stackTrace: new Error().stack
+    // });
     
     // Guardar deliveryInfo en AsyncStorage cuando cambie (solo para usuarios registrados)
     if (deliveryInfo && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
@@ -87,10 +87,10 @@ export default function Cart() {
   
   // 🔍 DEBUG: Monitorear cambios en coordenadas
   useEffect(() => {
-    console.log('📍 COORDENADAS CAMBIARON:', {
-      latlong: latlong,
-      hasCoords: !!(latlong?.driver_lat && latlong?.driver_long)
-    });
+    // console.log('📍 COORDENADAS CAMBIARON:', {
+      // latlong: latlong,
+      // hasCoords: !!(latlong?.driver_lat && latlong?.driver_long)
+    // });
     
     // Guardar coordenadas en AsyncStorage cuando cambien (solo para usuarios registrados)
     if (latlong?.driver_lat && latlong?.driver_long && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
@@ -100,15 +100,15 @@ export default function Cart() {
   
   // 🛒 MONITOR: Resetear datos cuando carrito esté vacío
   useEffect(() => {
-    console.log('🛒 CARRITO CAMBIÓ:', {
-      cartLength: cart.length,
-      totalPrice: totalPrice,
-      isEmpty: cart.length === 0
-    });
+    // console.log('🛒 CARRITO CAMBIÓ:', {
+      // cartLength: cart.length,
+      // totalPrice: totalPrice,
+      // isEmpty: cart.length === 0
+    // });
     
     // Si el carrito está vacío, resetear todos los datos
     if (cart.length === 0) {
-      console.log('🧹 CARRITO VACÍO - Reseteando datos...');
+      // console.log('🧹 CARRITO VACÍO - Reseteando datos...');
       
       // Resetear fecha y hora de entrega
       setDeliveryInfo(null);
@@ -131,7 +131,7 @@ export default function Cart() {
       
       // Para Guest, no hay AsyncStorage que limpiar, solo resetear estado local
       
-      console.log('✅ Datos reseteados para carrito nuevo');
+      // console.log('✅ Datos reseteados para carrito nuevo');
     }
   }, [cart.length, totalPrice, user?.id]);
   
@@ -144,9 +144,9 @@ export default function Cart() {
         date: info.date.toISOString() // Serializar Date a string
       };
       await AsyncStorage.setItem(key, JSON.stringify(dataToSave));
-      console.log('💾 DELIVERY INFO GUARDADO:', dataToSave);
+      // console.log('💾 DELIVERY INFO GUARDADO:', dataToSave);
     } catch (error) {
-      console.error('❌ Error guardando deliveryInfo:', error);
+      // console.error('❌ Error guardando deliveryInfo:', error);
     }
   };
   
@@ -162,7 +162,7 @@ export default function Cart() {
           ...parsedData,
           date: new Date(parsedData.date) // Deserializar string a Date
         };
-        console.log('📂 DELIVERY INFO RESTAURADO:', restoredInfo);
+        // console.log('📂 DELIVERY INFO RESTAURADO:', restoredInfo);
         setDeliveryInfo(restoredInfo);
         // Pequeño delay para asegurar que el estado se actualice
         setTimeout(() => {
@@ -171,7 +171,7 @@ export default function Cart() {
         return restoredInfo;
       }
     } catch (error) {
-      console.error('❌ Error restaurando deliveryInfo:', error);
+      // console.error('❌ Error restaurando deliveryInfo:', error);
     }
     setIsRestoringDeliveryInfo(false);
     return null;
@@ -182,9 +182,9 @@ export default function Cart() {
     try {
       const key = `deliveryInfo_${userId}`;
       await AsyncStorage.removeItem(key);
-      console.log('🗑️ DELIVERY INFO LIMPIADO del AsyncStorage');
+      // console.log('🗑️ DELIVERY INFO LIMPIADO del AsyncStorage');
     } catch (error) {
-      console.error('❌ Error limpiando deliveryInfo:', error);
+      // console.error('❌ Error limpiando deliveryInfo:', error);
     }
   };
   
@@ -193,9 +193,9 @@ export default function Cart() {
     try {
       const key = `coordinates_${userId}`;
       await AsyncStorage.setItem(key, JSON.stringify(coords));
-      console.log('💾 COORDENADAS GUARDADAS:', coords);
+      // console.log('💾 COORDENADAS GUARDADAS:', coords);
     } catch (error) {
-      console.error('❌ Error guardando coordenadas:', error);
+      // console.error('❌ Error guardando coordenadas:', error);
     }
   };
   
@@ -206,12 +206,12 @@ export default function Cart() {
       const savedData = await AsyncStorage.getItem(key);
       if (savedData) {
         const restoredCoords = JSON.parse(savedData);
-        console.log('📂 COORDENADAS RESTAURADAS:', restoredCoords);
+        // console.log('📂 COORDENADAS RESTAURADAS:', restoredCoords);
         setLatlong(restoredCoords);
         return restoredCoords;
       }
     } catch (error) {
-      console.error('❌ Error restaurando coordenadas:', error);
+      // console.error('❌ Error restaurando coordenadas:', error);
     }
     return null;
   };
@@ -221,9 +221,9 @@ export default function Cart() {
     try {
       const key = `coordinates_${userId}`;
       await AsyncStorage.removeItem(key);
-      console.log('🗑️ COORDENADAS LIMPIADAS del AsyncStorage');
+      // console.log('🗑️ COORDENADAS LIMPIADAS del AsyncStorage');
     } catch (error) {
-      console.error('❌ Error limpiando coordenadas:', error);
+      // console.error('❌ Error limpiando coordenadas:', error);
     }
   };
   
@@ -284,11 +284,11 @@ export default function Cart() {
 
   // Inicializar estados cuando cambia el usuario
   useEffect(() => {
-    console.log('🔄 USUARIO CAMBIÓ - Inicializando estados:', {
-      userType: user?.usertype,
-      userId: user?.id,
-      deliveryInfoAntes: deliveryInfo
-    });
+    // console.log('🔄 USUARIO CAMBIÓ - Inicializando estados:', {
+      // userType: user?.usertype,
+      // userId: user?.id,
+      // deliveryInfoAntes: deliveryInfo
+    // });
     
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
@@ -300,18 +300,18 @@ export default function Cart() {
       fetchUserProfile();
     }
     
-    console.log('🔄 Estados inicializados para usuario:', user?.usertype);
+    // console.log('🔄 Estados inicializados para usuario:', user?.usertype);
   }, [user]);
 
   // Actualizar perfil cuando la pantalla gana foco (para refrescar dirección actualizada)
   useFocusEffect(
     React.useCallback(() => {
       const handleFocus = async () => {
-        console.log('📱 PANTALLA CART GANÓ FOCO:', {
-          userType: user?.usertype,
-          deliveryInfoActual: deliveryInfo,
-          timestamp: new Date().toISOString()
-        });
+        // console.log('📱 PANTALLA CART GANÓ FOCO:', {
+          // userType: user?.usertype,
+          // deliveryInfoActual: deliveryInfo,
+          // timestamp: new Date().toISOString()
+        // });
         
         if (user?.usertype !== 'Guest' && user?.id) {
           fetchUserProfile();
@@ -320,15 +320,15 @@ export default function Cart() {
             // Restaurar deliveryInfo para usuarios registrados
             if (!deliveryInfo) {
               const restored = await restoreDeliveryInfo(user.id);
-              console.log('🔄 RESTAURACIÓN COMPLETADA:', restored);
+              // console.log('🔄 RESTAURACIÓN COMPLETADA:', restored);
             }
             // Restaurar coordenadas para usuarios registrados
             if (!latlong?.driver_lat || !latlong?.driver_long) {
               const restoredCoords = await restoreCoordinates(user.id);
-              console.log('🔄 COORDENADAS RESTAURADAS:', restoredCoords);
+              // console.log('🔄 COORDENADAS RESTAURADAS:', restoredCoords);
             }
           } else {
-            console.log('⚠️ Carrito vacío - no se restauran datos');
+            // console.log('⚠️ Carrito vacío - no se restauran datos');
           }
         }
       };
@@ -347,16 +347,16 @@ export default function Cart() {
       
       const params = params2 || params1 || params3;
       
-      console.log('🔍 PARÁMETROS DE NAVEGACIÓN DETALLADOS:', {
-        navState: JSON.stringify(navState, null, 2),
-        mainTabsRoute: JSON.stringify(mainTabsRoute, null, 2),
-        carritoRoute: JSON.stringify(carritoRoute, null, 2),
-        params1: JSON.stringify(params1, null, 2),
-        params2: JSON.stringify(params2, null, 2),
-        params3: JSON.stringify(params3, null, 2),
-        paramsFinales: JSON.stringify(params, null, 2),
-        hasGuestData: !!params?.guestData
-      });
+      // console.log('🔍 PARÁMETROS DE NAVEGACIÓN DETALLADOS:', {
+        // navState: JSON.stringify(navState, null, 2),
+        // mainTabsRoute: JSON.stringify(mainTabsRoute, null, 2),
+        // carritoRoute: JSON.stringify(carritoRoute, null, 2),
+        // params1: JSON.stringify(params1, null, 2),
+        // params2: JSON.stringify(params2, null, 2),
+        // params3: JSON.stringify(params3, null, 2),
+        // paramsFinales: JSON.stringify(params, null, 2),
+        // hasGuestData: !!params?.guestData
+      // });
       
       if (params?.guestData && user?.usertype === 'Guest') {
         // Usar los datos del guest checkout
@@ -365,13 +365,13 @@ export default function Cart() {
         
         // CRITICAL: Restaurar también los datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
-          console.log('🔄 RESTAURANDO DELIVERY INFO:', params.guestData.preservedDeliveryInfo);
+          // console.log('🔄 RESTAURANDO DELIVERY INFO:', params.guestData.preservedDeliveryInfo);
           // Convertir el string de fecha de vuelta a Date object
           const deliveryInfoToRestore = {
             ...params.guestData.preservedDeliveryInfo,
             date: new Date(params.guestData.preservedDeliveryInfo.date), // Convertir string a Date
           };
-          console.log('📅 DELIVERY INFO RESTAURADO:', deliveryInfoToRestore);
+          // console.log('📅 DELIVERY INFO RESTAURADO:', deliveryInfoToRestore);
           setDeliveryInfo(deliveryInfoToRestore);
         }
         if (params.guestData.preservedNeedInvoice !== undefined) {
@@ -381,13 +381,13 @@ export default function Cart() {
           setTaxDetails(params.guestData.preservedTaxDetails);
         }
         if (params.guestData.preservedCoordinates) {
-          console.log('🔄 RESTAURANDO COORDENADAS GUEST:', params.guestData.preservedCoordinates);
+          // console.log('🔄 RESTAURANDO COORDENADAS GUEST:', params.guestData.preservedCoordinates);
           setLatlong(params.guestData.preservedCoordinates);
         }
         
         // NUEVO: Si Guest también tiene mapCoordinates, procesar auto-pago aquí mismo
         if (params?.mapCoordinates && user?.usertype === 'Guest') {
-          console.log('🚀 Guest: Procesando guestData + mapCoordinates juntos');
+          // console.log('🚀 Guest: Procesando guestData + mapCoordinates juntos');
           
           // Actualizar coordenadas también
           setLatlong({
@@ -398,13 +398,13 @@ export default function Cart() {
           // ✅ NUEVO ENFOQUE: Marcar flag para auto-pago una vez que el estado esté listo
           // Esto será manejado por un useEffect que vigila cuando todos los datos están completos
           
-          console.log('🏃‍♂️ MARCANDO GUEST PARA AUTO-PAGO...');
+          // console.log('🏃‍♂️ MARCANDO GUEST PARA AUTO-PAGO...');
           
           // Pequeño delay para asegurar que todos los setState terminen
           setTimeout(() => {
             // Limpiar parámetros después de procesar
             navigation.setParams({ guestData: null, mapCoordinates: null });
-            console.log('✅ Parámetros limpiados, esperando que useEffect detecte datos completos...');
+            // console.log('✅ Parámetros limpiados, esperando que useEffect detecte datos completos...');
           }, 100);
           
         } else {
@@ -427,7 +427,7 @@ export default function Cart() {
       // NUEVO: Manejar coordenadas regresadas de MapSelector (solo User registrado)
       // Guest se procesa arriba junto con guestData
       if (params?.mapCoordinates && user?.usertype !== 'Guest') {
-        console.log('🗺️ User registrado: Coordenadas recibidas de MapSelector:', params.mapCoordinates);
+        // console.log('🗺️ User registrado: Coordenadas recibidas de MapSelector:', params.mapCoordinates);
         
         // Guardar coordenadas en el estado
         setLatlong({
@@ -440,7 +440,7 @@ export default function Cart() {
         
         // Proceder directamente al pago con coordenadas frescas
         setTimeout(() => {
-          console.log('🚀 User registrado: Auto-iniciando pago después de confirmar coordenadas');
+          // console.log('🚀 User registrado: Auto-iniciando pago después de confirmar coordenadas');
           completeOrder();
         }, 300);
       }
@@ -450,11 +450,11 @@ export default function Cart() {
         setTimeout(() => {
           if (deliveryInfo) {
             // Ya tiene horario seleccionado → scroll al botón "Pagar"
-            console.log('Usuario con horario - scroll hacia botón pagar');
+            // console.log('Usuario con horario - scroll hacia botón pagar');
             flatListRef.current?.scrollToEnd({ animated: true });
           } else {
             // No tiene horario → scroll al botón "Seleccionar Horario"
-            console.log('Usuario sin horario - scroll hacia selección horario');
+            // console.log('Usuario sin horario - scroll hacia selección horario');
             flatListRef.current?.scrollToEnd({ animated: true });
           }
         }, 800); // Delay para asegurar que todo esté renderizado
@@ -490,17 +490,17 @@ export default function Cart() {
         latlong?.driver_long &&
         cart.length > 0) {
       
-      console.log('🎯 GUEST AUTO-PAGO: Todos los datos están completos!', {
-        deliveryInfo: !!deliveryInfo,
-        email: email,
-        address: address.substring(0, 50) + '...',
-        coordinates: latlong,
-        cartItems: cart.length
-      });
+      // console.log('🎯 GUEST AUTO-PAGO: Todos los datos están completos!', {
+        // deliveryInfo: !!deliveryInfo,
+        // email: email,
+        // address: address.substring(0, 50) + '...',
+        // coordinates: latlong,
+        // cartItems: cart.length
+      // });
       
       // Pequeño delay para asegurar que la UI esté lista
       const autoPayTimeout = setTimeout(() => {
-        console.log('🚀 EJECUTANDO AUTO-PAGO GUEST...');
+        // console.log('🚀 EJECUTANDO AUTO-PAGO GUEST...');
         completeOrder();
       }, 300);
       
@@ -519,16 +519,16 @@ export default function Cart() {
     
     if (loading) return;
     
-    console.log('🔍 COMPLETE ORDER - VALIDACIONES:', {
-      deliveryInfo: deliveryInfo,
-      isRestoringDeliveryInfo: isRestoringDeliveryInfo,
-      userType: user?.usertype,
-      totalPrice: totalPrice,
-      email: email,
-      address: address,
-      latlong: latlong,
-      userProfile: userProfile
-    });
+    // console.log('🔍 COMPLETE ORDER - VALIDACIONES:', {
+      // deliveryInfo: deliveryInfo,
+      // isRestoringDeliveryInfo: isRestoringDeliveryInfo,
+      // userType: user?.usertype,
+      // totalPrice: totalPrice,
+      // email: email,
+      // address: address,
+      // latlong: latlong,
+      // userProfile: userProfile
+    // });
     
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
     
@@ -557,7 +557,7 @@ export default function Cart() {
     
     if (!deliveryInfo) {
       // Intentar restaurar una vez más antes de fallar
-      console.log('⚠️ deliveryInfo es null, intentando restaurar...');
+      // console.log('⚠️ deliveryInfo es null, intentando restaurar...');
       if (user?.id && user?.usertype !== 'Guest') {
         // Usuario registrado: intentar restaurar de AsyncStorage
         const restored = await restoreDeliveryInfo(user.id);
@@ -570,14 +570,14 @@ export default function Cart() {
           });
           return;
         }
-        console.log('✅ deliveryInfo restaurado en validación:', restored);
+        // console.log('✅ deliveryInfo restaurado en validación:', restored);
         // Continuar con la orden usando el deliveryInfo restaurado
       } else if (user?.usertype === 'Guest') {
         // Guest: esperar un momento más para que se actualice el estado
-        console.log('⚠️ Guest sin deliveryInfo, esperando actualización de estado...');
+        // console.log('⚠️ Guest sin deliveryInfo, esperando actualización de estado...');
         setTimeout(() => {
           if (deliveryInfo) {
-            console.log('✅ Guest deliveryInfo actualizado, reintentando pago');
+            // console.log('✅ Guest deliveryInfo actualizado, reintentando pago');
             completeOrder();
           } else {
             showAlert({
@@ -625,10 +625,10 @@ export default function Cart() {
       
       // Guest también necesita coordenadas del mapa
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        console.log('⚠️ Guest sin coordenadas, esperando actualización de estado...');
+        // console.log('⚠️ Guest sin coordenadas, esperando actualización de estado...');
         setTimeout(() => {
           if (latlong?.driver_lat && latlong?.driver_long) {
-            console.log('✅ Guest coordenadas actualizadas, reintentando pago');
+            // console.log('✅ Guest coordenadas actualizadas, reintentando pago');
             completeOrder();
           } else {
             showAlert({
@@ -656,7 +656,7 @@ export default function Cart() {
       
       if (!latlong?.driver_lat || !latlong?.driver_long) {
         // Intentar restaurar coordenadas antes de fallar
-        console.log('⚠️ Coordenadas faltantes, intentando restaurar...');
+        // console.log('⚠️ Coordenadas faltantes, intentando restaurar...');
         if (user?.id) {
           const restoredCoords = await restoreCoordinates(user.id);
           if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
@@ -668,7 +668,7 @@ export default function Cart() {
             });
             return;
           }
-          console.log('✅ Coordenadas restauradas en validación:', restoredCoords);
+          // console.log('✅ Coordenadas restauradas en validación:', restoredCoords);
         } else {
           showAlert({
             type: 'error',
@@ -786,10 +786,10 @@ export default function Cart() {
       const orderNumber = orderData?.order_id || orderData?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
       
-      console.log('=== MODAL ÉXITO PEDIDO ===');
-      console.log('orderData completo:', orderData);
-      console.log('orderNumber extraído:', orderNumber);
-      console.log('isValidOrderId:', isValidOrderId);
+      // console.log('=== MODAL ÉXITO PEDIDO ===');
+      // console.log('orderData completo:', orderData);
+      // console.log('orderNumber extraído:', orderNumber);
+      // console.log('isValidOrderId:', isValidOrderId);
       
       // Limpiar datos inmediatamente después del pedido exitoso
       clearCart();
@@ -884,11 +884,11 @@ export default function Cart() {
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
       
-      console.log('📍 DATOS DE ENVÍO:', {
-        coordinates: coordinates,
-        finalDeliveryAddress: coordinates.delivery_address || address?.trim() || '',
-        userType: user?.usertype
-      });
+      // console.log('📍 DATOS DE ENVÍO:', {
+        // coordinates: coordinates,
+        // finalDeliveryAddress: coordinates.delivery_address || address?.trim() || '',
+        // userType: user?.usertype
+      // });
 
       const payload = {
         userid: user?.id,
@@ -922,12 +922,12 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
-    console.log('🔍 HANDLE CHECKOUT - ESTADO ACTUAL:', {
-      deliveryInfo: deliveryInfo,
-      isRestoringDeliveryInfo: isRestoringDeliveryInfo,
-      userType: user?.usertype,
-      cartLength: cart.length
-    });
+    // console.log('🔍 HANDLE CHECKOUT - ESTADO ACTUAL:', {
+      // deliveryInfo: deliveryInfo,
+      // isRestoringDeliveryInfo: isRestoringDeliveryInfo,
+      // userType: user?.usertype,
+      // cartLength: cart.length
+    // });
     
     if (user?.usertype === 'Guest') {
       
@@ -1214,6 +1214,9 @@ export default function Cart() {
                 user={user}
                 email={email}
                 address={address}
+                cart={cart}
+                latlong={latlong}
+                userProfile={userProfile}
               />
             }
             ListFooterComponentStyle={{paddingTop: 8}}
@@ -1225,10 +1228,10 @@ export default function Cart() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={({date, slot}) => {
-          console.log('📅 CART - RECIBIENDO DE PICKER:');
-          console.log('- date recibido:', date);
-          console.log('- date type:', typeof date);
-          console.log('- slot recibido:', slot);
+          // console.log('📅 CART - RECIBIENDO DE PICKER:');
+          // console.log('- date recibido:', date);
+          // console.log('- date type:', typeof date);
+          // console.log('- slot recibido:', slot);
           
           setDeliveryInfo({date, slot});
           setPickerVisible(false);
@@ -1980,6 +1983,69 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  
+  // 🐛 Estilos para caja de debug
+  debugContainer: {
+    backgroundColor: '#2F2F2F',
+    margin: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  debugHeader: {
+    backgroundColor: '#FF6B35',
+    padding: 12,
+    alignItems: 'center',
+  },
+  debugTitle: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    marginBottom: 2,
+  },
+  debugSubtitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  debugContent: {
+    padding: 16,
+  },
+  debugSection: {
+    marginBottom: 16,
+  },
+  debugSectionTitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FF6B35',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#FFF',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  debugValidation: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.3)',
+  },
+  debugValid: {
+    color: '#4CAF50',
+  },
+  debugInvalid: {
+    color: '#F44336',
+  },
 });
 
 // <-- justo después de StyleSheet.create({...})
@@ -2000,7 +2066,76 @@ const CartFooter = ({
   user,
   email,
   address,
-}) => (
+  cart, // ✅ NUEVO: Para construir payload debug
+  latlong, // ✅ NUEVO: Para mostrar coordenadas
+  userProfile, // ✅ NUEVO: Para direcciones de usuario registrado
+}) => {
+  
+  // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend
+  const buildDebugPayload = () => {
+    if (!cart || cart.length === 0) return null;
+    
+    try {
+      // Construir array de productos igual que en completeOrderFunc
+      const cartUpdateArr = cart.map(it => {
+        const itemDiscount = Number(it.discount) || 0;
+        const finalPrice = it.price - itemDiscount;
+        
+        return {
+          item_name: it.name,
+          item_price: finalPrice.toString(),
+          item_original_price: it.price.toString(),
+          item_discount: itemDiscount.toString(),
+          item_qty: it.quantity.toString(),
+          item_image: it.photo,
+        };
+      });
+      
+      // Email según tipo de usuario
+      const userEmailForOrder = user?.usertype === 'Guest' 
+        ? (email?.trim() || user?.email || '') 
+        : (user?.email || '');
+      
+      // Coordenadas según tipo de usuario (lógica simplificada)
+      let coordinates = {
+        customer_lat: latlong?.driver_lat || '',
+        customer_long: latlong?.driver_long || '',
+        address_source: user?.usertype === 'Guest' ? 'guest_manual_address' : 'registered_user_address',
+        delivery_address: ''
+      };
+      
+      if (user?.usertype === 'Guest') {
+        coordinates.delivery_address = address?.trim() || '';
+      } else {
+        const savedAddress = userProfile?.address || user?.address;
+        coordinates.delivery_address = savedAddress?.trim() || address?.trim() || '';
+      }
+      
+      // Payload completo
+      const payload = {
+        userid: user?.id,
+        orderno: '1',
+        user_email: userEmailForOrder,
+        orderdetails: cartUpdateArr,
+        customer_lat: coordinates.customer_lat,
+        customer_long: coordinates.customer_long,
+        address_source: coordinates.address_source,
+        delivery_address: coordinates.delivery_address,
+        need_invoice: needInvoice ? "true" : "false",
+        tax_details: needInvoice ? (taxDetails || '') : '',
+        delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
+        delivery_slot: deliveryInfo?.slot || '',
+      };
+      
+      return payload;
+    } catch (error) {
+      return { error: error.message };
+    }
+  };
+  
+  const debugPayload = buildDebugPayload();
+  
+  return (
   <View>
     {/* Upsell */}
     <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
@@ -2147,5 +2282,81 @@ const CartFooter = ({
         </TouchableOpacity>
       </View>
     )}
+    
+    {/* 🐛 DEBUG: Caja para mostrar payload que se enviará al backend */}
+    {debugPayload && (
+      <View style={styles.debugContainer}>
+        <TouchableOpacity 
+          style={styles.debugHeader}
+          onPress={() => {
+            // Toggle para expandir/contraer (simplificado)
+          }}>
+          <Text style={styles.debugTitle}>🐛 Debug: Payload Backend</Text>
+          <Text style={styles.debugSubtitle}>Datos que se enviarán al API</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.debugContent}>
+          {/* Información básica */}
+          <View style={styles.debugSection}>
+            <Text style={styles.debugSectionTitle}>📋 Información básica:</Text>
+            <Text style={styles.debugText}>👤 Usuario: {debugPayload.user_email || 'Sin email'}</Text>
+            <Text style={styles.debugText}>🏷️ Tipo: {user?.usertype || 'Unknown'}</Text>
+            <Text style={styles.debugText}>📦 Items: {debugPayload.orderdetails?.length || 0}</Text>
+            <Text style={styles.debugText}>💰 Total: ${totalPrice} MXN</Text>
+          </View>
+          
+          {/* Entrega */}
+          <View style={styles.debugSection}>
+            <Text style={styles.debugSectionTitle}>🚚 Entrega:</Text>
+            <Text style={styles.debugText}>📅 Fecha: {debugPayload.delivery_date || 'No seleccionada'}</Text>
+            <Text style={styles.debugText}>⏰ Horario: {debugPayload.delivery_slot || 'No seleccionado'}</Text>
+            <Text style={styles.debugText} numberOfLines={2}>
+              📍 Dirección: {debugPayload.delivery_address || 'Sin dirección'}
+            </Text>
+          </View>
+          
+          {/* Coordenadas */}
+          <View style={styles.debugSection}>
+            <Text style={styles.debugSectionTitle}>🗺️ Coordenadas:</Text>
+            <Text style={styles.debugText}>📐 Lat: {debugPayload.customer_lat || 'Sin coordenadas'}</Text>
+            <Text style={styles.debugText}>📐 Lng: {debugPayload.customer_long || 'Sin coordenadas'}</Text>
+            <Text style={styles.debugText}>🏗️ Origen: {debugPayload.address_source}</Text>
+          </View>
+          
+          {/* Facturación */}
+          {needInvoice && (
+            <View style={styles.debugSection}>
+              <Text style={styles.debugSectionTitle}>🧾 Facturación:</Text>
+              <Text style={styles.debugText}>✅ Requiere factura</Text>
+              <Text style={styles.debugText} numberOfLines={1}>
+                📄 RFC: {debugPayload.tax_details || 'Sin datos fiscales'}
+              </Text>
+            </View>
+          )}
+          
+          {/* Estado de validación */}
+          <View style={[styles.debugSection, styles.debugValidation]}>
+            <Text style={styles.debugSectionTitle}>✅ Validación:</Text>
+            <Text style={[styles.debugText, 
+              debugPayload.user_email ? styles.debugValid : styles.debugInvalid]}>
+              Email: {debugPayload.user_email ? '✅' : '❌'}
+            </Text>
+            <Text style={[styles.debugText, 
+              debugPayload.delivery_address ? styles.debugValid : styles.debugInvalid]}>
+              Dirección: {debugPayload.delivery_address ? '✅' : '❌'}
+            </Text>
+            <Text style={[styles.debugText, 
+              (debugPayload.customer_lat && debugPayload.customer_long) ? styles.debugValid : styles.debugInvalid]}>
+              Coordenadas: {(debugPayload.customer_lat && debugPayload.customer_long) ? '✅' : '❌'}
+            </Text>
+            <Text style={[styles.debugText, 
+              (debugPayload.delivery_date && debugPayload.delivery_slot) ? styles.debugValid : styles.debugInvalid]}>
+              Horario: {(debugPayload.delivery_date && debugPayload.delivery_slot) ? '✅' : '❌'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    )}
   </View>
-);
+  );
+};

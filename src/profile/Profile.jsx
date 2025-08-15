@@ -563,8 +563,8 @@ export default function Profile({ navigation, route }) {
         enableReinitialize
         validationSchema={ProfileSchema}
         onSubmit={async (values, { setSubmitting }) => {
-          console.log('🐛 FORMIK DEBUG - Values recibidos:', values);
-          console.log('🐛 FORMIK DEBUG - Profile actual:', profile);
+          // console.log('🐛 FORMIK DEBUG - Values recibidos:', values);
+          // console.log('🐛 FORMIK DEBUG - Profile actual:', profile);
           setLoading(true);
           try {
             // DOB Logic: Solo establecer UNA VEZ, nunca actualizar
@@ -586,7 +586,7 @@ export default function Profile({ navigation, route }) {
             if (shouldUpdateBirthDate && values.birthDate) {
               const opts = {month: 'long', year: 'numeric'};
               dobFormatted = values.birthDate.toLocaleDateString('es-ES', opts);
-              console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
+              // console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
             }
             
             
@@ -614,11 +614,11 @@ export default function Profile({ navigation, route }) {
               payload.dob = `${monthName} ${year}`;
             }
             
-            console.log('🐛 PAYLOAD FINAL enviado al backend:', payload);
+            // console.log('🐛 PAYLOAD FINAL enviado al backend:', payload);
             
             // Si hay DOB, intentar con endpoint diferente primero
             if (dobFormatted) {
-              console.log('🐛 Intentando actualizar DOB con endpoint específico...');
+              // console.log('🐛 Intentando actualizar DOB con endpoint específico...');
               try {
                 const dobPayload = {
                   userid: user.id,
@@ -628,9 +628,9 @@ export default function Profile({ navigation, route }) {
                   'https://food.siliconsoft.pk/api/updatedob', // Intentar endpoint específico para DOB
                   dobPayload
                 );
-                console.log('🐛 DOB UPDATE RESPONSE:', dobRes.data);
+                // console.log('🐛 DOB UPDATE RESPONSE:', dobRes.data);
               } catch (dobError) {
-                console.log('🐛 DOB endpoint falló, intentando con updateuserprofile...', dobError.response?.data);
+                // console.log('🐛 DOB endpoint falló, intentando con updateuserprofile...', dobError.response?.data);
               }
             }
             
@@ -638,7 +638,7 @@ export default function Profile({ navigation, route }) {
               'https://food.siliconsoft.pk/api/updateuserprofile',
               payload
             );
-            console.log('🐛 BACKEND RESPONSE:', res.data);
+            // console.log('🐛 BACKEND RESPONSE:', res.data);
             if (res.status === 200) {
               // Solo actualizar los campos del formulario, manteniendo address intacto
               const updatedProfile = { 
@@ -793,11 +793,11 @@ export default function Profile({ navigation, route }) {
               onPress={() => {
                 // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
                 const canOpenPicker = isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()));
-                console.log('🐛 PICKER DEBUG - Can open?:', {
-                  isEditingProfile,
-                  profile_birthDate: profile.birthDate,
-                  canOpenPicker
-                });
+                // console.log('🐛 PICKER DEBUG - Can open?:', {
+                  // isEditingProfile,
+                  // profile_birthDate: profile.birthDate,
+                  // canOpenPicker
+                // });
                 if (canOpenPicker) {
                   setShowMonthYearPicker(true);
                 }
@@ -874,7 +874,7 @@ export default function Profile({ navigation, route }) {
                                       // Si values.birthDate existe, usar su año. Si no, usar año actual menos 25 como sugerencia
                                       const currentYear = values.birthDate ? values.birthDate.getFullYear() : new Date().getFullYear() - 25;
                                       const newDate = new Date(currentYear, index, 1);
-                                      console.log('🐛 PICKER DEBUG - Estableciendo mes:', {month, index, newDate});
+                                      // console.log('🐛 PICKER DEBUG - Estableciendo mes:', {month, index, newDate});
                                       setFieldValue('birthDate', newDate);
                                     }}>
                                     <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
@@ -920,7 +920,7 @@ export default function Profile({ navigation, route }) {
                                       // Si values.birthDate existe, usar su mes. Si no, usar mes actual como referencia
                                       const currentMonth = values.birthDate ? values.birthDate.getMonth() : new Date().getMonth();
                                       const newDate = new Date(year, currentMonth, 1);
-                                      console.log('🐛 PICKER DEBUG - Estableciendo año:', {year, currentMonth, newDate});
+                                      // console.log('🐛 PICKER DEBUG - Estableciendo año:', {year, currentMonth, newDate});
                                       setFieldValue('birthDate', newDate);
                                     }}>
                                     <Text style={[styles.pickerOptionText, isSelected && styles.pickerOptionSelectedText]}>
