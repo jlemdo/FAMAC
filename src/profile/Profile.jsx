@@ -1008,7 +1008,7 @@ export default function Profile({ navigation, route }) {
           </Text>
         </View>
         <Text style={styles.sectionHeaderSubtitle}>
-          Dirección completa con referencias y ubicación exacta
+          Gestiona tu dirección de entrega
         </Text>
       </TouchableOpacity>
 
@@ -1017,7 +1017,7 @@ export default function Profile({ navigation, route }) {
           {/* Información de la dirección actual */}
           <View style={styles.addressInfoContainer}>
             <View style={styles.addressInfo}>
-              <Text style={styles.addressLabel}>📍 Dirección actual:</Text>
+              <Text style={styles.addressLabel}>Tu dirección:</Text>
               {profile.address ? (
                 <Text style={styles.addressText}>
                   {profile.address}
@@ -1046,10 +1046,7 @@ export default function Profile({ navigation, route }) {
                 }}
                 activeOpacity={0.8}>
                 <Text style={styles.addressButtonText}>
-                  📍 {profile.address ? 'Actualizar dirección completa' : 'Agregar dirección completa'}
-                </Text>
-                <Text style={styles.addressButtonSubtext}>
-                  Incluye: Dirección manual + Referencias + Ubicación en mapa
+                  📍 {profile.address ? 'Actualizar dirección' : 'Agregar dirección'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2069,31 +2066,25 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
   
-  // === ESTILOS PARA BOTÓN DE DIRECCIÓN HÍBRIDA ===
+  // === ESTILOS PARA BOTÓN DE DIRECCIÓN ===
   addressButton: {
-    backgroundColor: '#D27F27',
-    paddingVertical: 16,
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#8B5E3C',
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   addressButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#FFF',
+    color: '#8B5E3C',
     textAlign: 'center',
-    marginBottom: 4,
-  },
-  addressButtonSubtext: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    lineHeight: 16,
   },
 });
