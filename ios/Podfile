@@ -45,11 +45,8 @@ target 'MyNewApp' do
       podspec: '../node_modules/react-native-maps/react-native-maps.podspec',
       modular_headers: true
 
-  # ✅ FIREBASE: Dependencias para notificaciones push
-  pod 'Firebase', :modular_headers => true
-  pod 'FirebaseCore', :modular_headers => true
-  pod 'FirebaseMessaging', :modular_headers => true
-  pod 'FirebaseAnalytics', :modular_headers => true
+  # ✅ FIREBASE: Manejado automáticamente por react-native-firebase
+  # Las versiones específicas las maneja @react-native-firebase/app y messaging
 end
 
 post_install do |installer|
