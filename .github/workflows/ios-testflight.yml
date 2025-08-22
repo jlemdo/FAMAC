@@ -42,7 +42,10 @@ jobs:
 
       - name: Instala dependencias JS
         # run: yarn install --frozen-lockfile
-        run: npm ci
+        run: |
+          echo "🔄 Updating package-lock.json with new Firebase dependencies..."
+          npm install
+          echo "✅ Dependencies installed and lock file updated"
 
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
