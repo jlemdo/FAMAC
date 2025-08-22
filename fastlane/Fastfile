@@ -68,6 +68,18 @@ platform :ios do
       UI.user_error!("❌ No se generó ios/main.jsbundle — abortando deploy.")
     end
 
+    # 🔥 FIREBASE: Copiar GoogleService-Info.plist al bundle antes de compilar
+    UI.message("🔥 Copying GoogleService-Info.plist to ensure it's included in bundle...")
+    firebase_source = "ios/MyNewApp/GoogleService-Info.plist"
+    firebase_dest = "ios/GoogleService-Info.plist"
+    
+    if File.exist?(firebase_source)
+      FileUtils.cp(firebase_source, firebase_dest)
+      UI.success("✅ GoogleService-Info.plist copied to: #{firebase_dest}")
+    else
+      UI.error("❌ GoogleService-Info.plist not found at: #{firebase_source}")
+    end
+
     # 4️⃣ Compilar con Gym
     begin
       build_app(

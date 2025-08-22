@@ -82,6 +82,17 @@ jobs:
           
           echo "✅ Apple Pay entitlements configured automatically"
           
+      - name: Verify Firebase source file exists
+        run: |
+          echo "🔍 Verificando GoogleService-Info.plist source file..."
+          if [ -f "ios/MyNewApp/GoogleService-Info.plist" ]; then
+            echo "✅ Source file found: ios/MyNewApp/GoogleService-Info.plist"
+            echo "📋 File size: $(wc -c < ios/MyNewApp/GoogleService-Info.plist) bytes"
+          else
+            echo "❌ GoogleService-Info.plist not found at ios/MyNewApp/"
+            exit 1
+          fi
+          
       - name: Instala CocoaPods pods
         working-directory: ios
         run: pod install --repo-update
