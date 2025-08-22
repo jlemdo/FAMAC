@@ -47,6 +47,9 @@ target 'MyNewApp' do
 
   # ✅ FIREBASE: Manejado automáticamente por react-native-firebase
   # Las versiones específicas las maneja @react-native-firebase/app y messaging
+  
+  # ⚠️ WORKAROUND: Forzar GoogleUtilities compatible
+  pod 'GoogleUtilities', '~> 7.12'
 end
 
 post_install do |installer|
