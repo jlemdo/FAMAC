@@ -52,9 +52,9 @@ jobs:
       - name: Verifica versión de Xcode
         run: xcodebuild -version
 
-      - name: Configure Apple Pay + Push Notifications Entitlements (Automated)
+      - name: Configure Apple Pay Entitlements (Automated)
         run: |
-          echo "🍎 Setting up Apple Pay + Push Notifications entitlements automatically..."
+          echo "🍎 Setting up Apple Pay entitlements automatically..."
           
           # Crear entitlements automáticamente
           mkdir -p ios/MyNewApp
@@ -67,8 +67,6 @@ jobs:
               <array>
                   <string>merchant.com.occr.productos</string>
               </array>
-              <key>aps-environment</key>
-              <string>production</string>
           </dict>
           </plist>
           EOF
@@ -80,7 +78,7 @@ jobs:
           				CODE_SIGN_ENTITLEMENTS = MyNewApp/MyNewApp.entitlements;
           }' ios/MyNewApp.xcodeproj/project.pbxproj
           
-          echo "✅ Apple Pay + Push Notifications entitlements configured automatically"
+          echo "✅ Apple Pay entitlements configured automatically"
           
       - name: Verify Firebase source file exists
         run: |
