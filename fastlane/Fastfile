@@ -43,13 +43,14 @@ platform :ios do
       key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
     )
 
-    # Regenerar profiles para incluir Apple Pay capability
+    # Regenerar profiles para incluir Apple Pay + Push Notifications capability
     match(
       type: "appstore", 
       api_key: api_key, 
-      readonly: false,  # Cambiar a false para regenerar profiles con Apple Pay
+      readonly: false,  # Cambiar a false para regenerar profiles con Apple Pay + Push
       clone_branch_directly: true,
-      force_for_new_devices: true  # Fuerza regeneración
+      force_for_new_devices: true,  # Fuerza regeneración
+      force_for_new_certificates: true  # 🔥 FORCE: Descargar nuevo profile con Push Notifications
     )
 
     # 1️⃣ Bundling RN para iOS
