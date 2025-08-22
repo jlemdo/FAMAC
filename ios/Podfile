@@ -75,6 +75,8 @@ post_install do |installer|
   app_target.build_configurations.each do |cfg|
     cfg.build_settings['SWIFT_EMIT_MODULE']      = 'NO'
     cfg.build_settings['SWIFT_COMPILATION_MODE'] = 'none'
+    # Fix Firebase Swift optimization conflicts
+    cfg.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone' if cfg.name == 'Debug'
   end
   app_proj.save
 end

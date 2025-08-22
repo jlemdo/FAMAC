@@ -108,3 +108,24 @@ jobs:
           APP_IDENTIFIER:                   ${{ secrets.APP_IDENTIFIER }}
           CI_KEYCHAIN_NAME:                 fastlane-ci
         run: bundle install && bundle exec fastlane ios beta
+
+      - name: Verify Firebase file in IPA (DIAGNOSTIC)
+        run: |
+          echo "🔍 DIAGNÓSTICO: Verificando si GoogleService-Info.plist está en el .ipa final..."
+          
+          # Buscar el .ipa generado
+          IPA_FILE=$(find . -name "*.ipa" | head -1)
+          if [ -f "$IPA_FILE" ]; then
+            echo "📱 IPA encontrado: $IPA_FILE"
+            
+            # Verificar contenido
+            echo "📋 Contenido del .ipa:"
+            unzip -l "$IPA_FILE" | grep -i googleservice || echo "❌ GoogleService-Info.plist NO ENCONTRADO en .ipa"
+            
+            # También buscar archivos relacionados
+            echo "🔍 Buscando archivos Firebase en .ipa:"
+            unzip -l "$IPA_FILE" | grep -i firebase || echo "ℹ️ No hay otros archivos Firebase"
+            
+          else
+            echo "❌ No se encontró archivo .ipa"
+          fi
