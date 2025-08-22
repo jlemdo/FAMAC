@@ -702,7 +702,7 @@ export default function Cart() {
       const {error: initError} = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Lácteos y más',
-        allowsDelayedPaymentMethods: false, // Cambiado a false para mejor compatibilidad
+        allowsDelayedPaymentMethods: true, // CAMBIADO: true para OXXO y otros métodos delayed
         returnURL: 'occr-productos-app://stripe-redirect',
         // Configuración de métodos de pago específicos para México
         defaultBillingDetails: {

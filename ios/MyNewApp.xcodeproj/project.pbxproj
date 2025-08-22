@@ -41,6 +41,7 @@
 		78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */; };
 		6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */; };
 		630E71CC03854366BBE81806 /* GreatVibes-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 32A1F667DC394038916895A0 /* GreatVibes-Regular.ttf */; };
+		A1B2C3D4E5F6789012345678 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978012345678 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,6 +96,7 @@
 		4E275E0DF1AE4CBEADC59123 /* PlayfairDisplay-ExtraBold.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-ExtraBold.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-ExtraBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		6049446BD1844D3090EE3190 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; name = "PlayfairDisplay-Regular.ttf"; path = "../src/assets/fonts/PlayfairDisplay/PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 		32A1F667DC394038916895A0 /* GreatVibes-Regular.ttf */ = {isa = PBXFileReference; name = "GreatVibes-Regular.ttf"; path = "../src/assets/fonts/Great_Vibes/GreatVibes-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F1E2D3C4B5A6978012345678 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "MyNewApp/GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +126,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				F1E2D3C4B5A6978012345678 /* GoogleService-Info.plist */,
 				55955F5BE4B0768EF59B366A /* main.m */,
 				CF2309CC481C82B34E21D865 /* AppDelegate.m */,
 			);
@@ -313,6 +316,7 @@
 				78F7B1BA7F934E999EE3A5C7 /* PlayfairDisplay-ExtraBold.ttf in Resources */,
 				6C74B632BF144212A119BCD9 /* PlayfairDisplay-Regular.ttf in Resources */,
 				630E71CC03854366BBE81806 /* GreatVibes-Regular.ttf in Resources */,
+				A1B2C3D4E5F6789012345678 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
