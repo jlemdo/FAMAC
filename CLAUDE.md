@@ -1,6 +1,6 @@
 # Progreso del Proyecto FAMAC
 
-## ✅ PROBLEMAS CRÍTICOS RESUELTOS
+## ✅ PROBLEMAS CRÍTICOS RESUELTOS 
 
 ### ✅ **RESUELTO: Navegación iOS Guest solucionada**
 - **Problema**: Guest se congelaba en iOS después de seleccionar ubicación
