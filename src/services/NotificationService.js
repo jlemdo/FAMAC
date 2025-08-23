@@ -55,6 +55,20 @@ class NotificationService {
       if (Platform.OS === 'ios') {
         await messaging().registerDeviceForRemoteMessages();
         console.log('📱 iOS device registered for remote messages');
+        
+        // 🔥 NUEVA SOLUCIÓN: Obtener y setear APNS token ANTES de FCM token
+        try {
+          const apnsToken = await messaging().getAPNSToken();
+          if (apnsToken) {
+            console.log('🍎 APNS Token obtenido:', apnsToken);
+            await messaging().setAPNSToken(apnsToken);
+            console.log('✅ APNS Token seteado correctamente');
+          } else {
+            console.log('⚠️ No se pudo obtener APNS token - pero intentaremos FCM token');
+          }
+        } catch (apnsError) {
+          console.log('⚠️ Error con APNS token, pero continuamos:', apnsError.message);
+        }
       }
       
       const token = await messaging().getToken();
