@@ -21,6 +21,11 @@ import fonts from '../theme/fonts';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import { 
+  generateCallbackId, 
+  registerNavigationCallback, 
+  cleanupNavigationCallback 
+} from '../utils/navigationCallbacks';
 
 const AddressFormUberStyle = () => {
   const navigation = useNavigation();
@@ -51,7 +56,7 @@ const AddressFormUberStyle = () => {
   const callbacks = pickerId ? getAddressPickerCallbacks(pickerId) : null;
 
   // Estados principales
-  const [currentStep, setCurrentStep] = useState(1); // 1: Búsqueda, 2: Dirección Manual, 3: Referencias, 4: Mapa
+  const [currentStep, setCurrentStep] = useState(1); // 1: Búsqueda, 2: Dirección Manual con Mapa Opcional
   const [searchQuery, setSearchQuery] = useState(initialAddress);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -71,6 +76,7 @@ const AddressFormUberStyle = () => {
   const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
   const [userHasConfirmedLocation, setUserHasConfirmedLocation] = useState(false); // Usuario confirmó en mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
 
   // Función para parsear dirección de Google y auto-rellenar campos
   const parseGoogleAddress = (googleAddress) => {
@@ -197,15 +203,25 @@ const AddressFormUberStyle = () => {
     return parts.join(', ');
   };
 
-  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual
+  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual (MEJORADO - MÁS ESTRICTO)
   const handleIntelligentGeocoding = async (addressString) => {
-    if (!addressString || addressString.trim() === '') {
-      // console.log('⚠️ No hay dirección para geocodificar');
+    if (!addressString || addressString.trim() === '' || addressString.length < 15) {
+      // console.log('⚠️ Dirección muy corta o vacía para geocodificar:', addressString);
+      return;
+    }
+
+    // Validación previa: la dirección debe tener componentes básicos
+    const hasStreetNumber = /\d+/.test(addressString);
+    const hasStreetName = addressString.split(' ').length >= 2;
+    const hasLocation = addressString.includes('CDMX') || addressString.includes('México') || addressString.includes('Col.');
+    
+    if (!hasStreetNumber || !hasStreetName) {
+      // console.log('⚠️ Dirección incompleta, no tiene número o calle:', addressString);
       return;
     }
 
     try {
-      // console.log('🧠 GEOCODING INTELIGENTE iniciado para:', addressString);
+      // console.log('🧠 GEOCODING INTELIGENTE ESTRICTO iniciado para:', addressString);
       
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json`,
@@ -215,39 +231,66 @@ const AddressFormUberStyle = () => {
             key: Config.GOOGLE_DIRECTIONS_API_KEY,
             language: 'es',
             region: 'mx',
-            bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
+            bounds: '19.048,-99.365|19.761,-98.877', // Bounds estrictos para CDMX y Edomex
+            components: 'country:MX|locality:Ciudad de México|administrative_area:Ciudad de México|administrative_area:México', // Solo CDMX y EdoMex
           },
         }
       );
 
-      if (response.data.status === 'OK' && response.data.results[0]) {
+      if (response.data.status === 'OK' && response.data.results.length > 0) {
         const result = response.data.results[0];
-        const location = result.geometry.location;
         
-        const coordinates = {
-          latitude: location.lat,
-          longitude: location.lng,
-        };
+        // VALIDACIÓN ESTRICTA: Verificar que el resultado sea realmente de CDMX o EdoMex
+        const addressComponents = result.address_components;
+        const isValidLocation = addressComponents.some(component => 
+          component.types.includes('administrative_area_level_1') &&
+          (component.long_name.includes('Ciudad de México') || 
+           component.long_name.includes('México') ||
+           component.short_name === 'CDMX' ||
+           component.short_name === 'MEX')
+        );
         
-        // Guardar coordenadas automáticamente
-        setMapCoordinates(coordinates);
+        // VALIDACIÓN DE PRECISIÓN: Solo aceptar resultados con alta precisión
+        const locationType = result.geometry.location_type;
+        const isHighPrecision = locationType === 'ROOFTOP' || locationType === 'RANGE_INTERPOLATED';
         
-        // console.log('✅ GEOCODING INTELIGENTE exitoso:', {
-          // address: addressString,
-          // coordinates: coordinates,
-          // formattedAddress: result.formatted_address
-        // });
-        
-        // Opcional: Actualizar con la dirección formateada de Google
-        // setUserWrittenAddress(result.formatted_address);
-        
+        if (isValidLocation && isHighPrecision) {
+          const location = result.geometry.location;
+          const coordinates = {
+            latitude: location.lat,
+            longitude: location.lng,
+          };
+          
+          // Verificación final: coordenadas dentro de bounds de CDMX/EdoMex
+          const isWithinBounds = 
+            coordinates.latitude >= 19.048 && coordinates.latitude <= 19.761 &&
+            coordinates.longitude >= -99.365 && coordinates.longitude <= -98.877;
+          
+          if (isWithinBounds) {
+            // Guardar coordenadas automáticamente solo si pasan todas las validaciones
+            setMapCoordinates(coordinates);
+            
+            // console.log('✅ GEOCODING INTELIGENTE ESTRICTO exitoso:', {
+              // address: addressString,
+              // coordinates: coordinates,
+              // locationType: locationType,
+              // formattedAddress: result.formatted_address
+            // });
+          } else {
+            // console.log('⚠️ GEOCODING: Coordenadas fuera de bounds permitidos');
+          }
+        } else {
+          // console.log('⚠️ GEOCODING: Ubicación no válida o precisión insuficiente', {
+            // isValidLocation,
+            // isHighPrecision,
+            // locationType
+          // });
+        }
       } else {
         // console.log('⚠️ GEOCODING INTELIGENTE: No se encontraron resultados para:', addressString);
-        // No hacer nada, el usuario puede usar el mapa manualmente en el paso 4
       }
     } catch (error) {
       // console.error('❌ Error en GEOCODING INTELIGENTE:', error);
-      // No hacer nada, el usuario puede usar el mapa manualmente en el paso 4
     }
   };
 
@@ -323,8 +366,8 @@ const AddressFormUberStyle = () => {
             setCurrentStep(2);
             
             Alert.alert(
-              'Ubicación obtenida',
-              'Se obtuvo tu ubicación. Por favor confirma o edita la dirección en el siguiente paso.'
+              'Ubicación actual detectada',
+              'Puedes confirmar o editar tu dirección en el siguiente paso.'
             );
           }
         },
@@ -537,10 +580,19 @@ const AddressFormUberStyle = () => {
       }
     }
     
+    // ✅ REGISTRAR CALLBACK para recibir coordenadas del mapa
+    const handleLocationReturn = (coordinates) => {
+      setMapCoordinates(coordinates);
+      setUserHasConfirmedLocation(true);
+    };
+    
+    registerNavigationCallback(mapCallbackId, handleLocationReturn);
+    
     navigation.navigate('AddressMap', {
       addressForm: {},
       selectedLocation: mapCenter, // Coordenadas calculadas o fallback
       pickerId,
+      callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
       userWrittenAddress: userWrittenAddress, // Pasar dirección escrita para contexto
       references: references, // NUEVO: Pasar referencias para preservarlas
@@ -559,11 +611,8 @@ const AddressFormUberStyle = () => {
     
     // Referencias son completamente opcionales - no validar
     
-    // ÚNICA DIFERENCIA: Guest requiere coordenadas del mapa (Profile no)
-    if (!skipMapStep && !mapCoordinates) {
-      Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
-      return;
-    }
+    // DIFERENCIA: Guest puede usar ubicación detectada automáticamente o del mapa (Profile no requiere ubicación específica)
+    // Nota: Si no hay coordenadas, se procede normalmente ya que el geocoding es opcional
     
     // CONSTRUCCIÓN DE DIRECCIÓN FINAL - INTELIGENTE
     const finalAddress = {
@@ -831,6 +880,13 @@ const AddressFormUberStyle = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, currentStep]);
 
+  // ✅ CLEANUP: Limpiar callback del mapa al desmontar componente
+  useEffect(() => {
+    return () => {
+      cleanupNavigationCallback(mapCallbackId);
+    };
+  }, [mapCallbackId]);
+
   // Renderizar paso 1: Búsqueda
   const renderSearchStep = () => (
     <View style={styles.stepContainer}>
@@ -1096,7 +1152,52 @@ const AddressFormUberStyle = () => {
           </Text>
         </View>
 
-        {/* Botón continuar directo al mapa */}
+        {/* NUEVA SECCIÓN: Ubicación en Mapa (Opcional) */}
+        {hasRequiredFields && (
+          <View style={styles.mapSection}>
+            <Text style={styles.mapSectionTitle}>Ubicación en mapa (Opcional)</Text>
+            <Text style={styles.mapSectionSubtitle}>
+              Para mayor precisión en la entrega, puedes ajustar tu ubicación exacta
+            </Text>
+            
+            {/* Estado del geocoding inteligente o ubicación manual */}
+            {mapCoordinates ? (
+              <View style={styles.coordinatesStatus}>
+                <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+                <Text style={styles.coordinatesStatusText}>
+                  Ubicación detectada automáticamente
+                </Text>
+                <TouchableOpacity
+                  style={styles.adjustLocationButton}
+                  onPress={goToMap}>
+                  <Ionicons name="map-outline" size={16} color="#8B5E3C" />
+                  <Text style={styles.adjustLocationButtonText}>Ajustar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.coordinatesStatus}>
+                <Ionicons name="location-outline" size={20} color="#D27F27" />
+                <Text style={styles.coordinatesStatusText}>
+                  Puedes seleccionar ubicación para mayor precisión
+                </Text>
+                <TouchableOpacity
+                  style={styles.selectLocationButton}
+                  onPress={async () => {
+                    // Construir dirección y hacer geocoding antes de ir al mapa
+                    const finalAddress = buildFinalAddress();
+                    setUserWrittenAddress(finalAddress);
+                    await handleIntelligentGeocoding(finalAddress);
+                    goToMap();
+                  }}>
+                  <Ionicons name="map" size={16} color="#FFF" />
+                  <Text style={styles.selectLocationButtonText}>Ir al mapa</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Botón completar dirección - ahora incluye geocoding automático */}
         <TouchableOpacity
           style={[
             styles.confirmButton, 
@@ -1107,20 +1208,18 @@ const AddressFormUberStyle = () => {
             const finalAddress = buildFinalAddress();
             setUserWrittenAddress(finalAddress);
             
-            // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente
-            await handleIntelligentGeocoding(finalAddress);
-            
-            // Ir directamente al mapa (paso 3, antes era 4)
-            if (skipMapStep) {
-              handleConfirm();
-            } else {
-              setCurrentStep(3);
+            // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente si no las tiene
+            if (!mapCoordinates) {
+              await handleIntelligentGeocoding(finalAddress);
             }
+            
+            // Completar dirección directamente (sin ir a paso 3)
+            handleConfirm();
           }}
           disabled={!hasRequiredFields}>
-          <Ionicons name="arrow-forward" size={24} color="#FFF" />
+          <Ionicons name="checkmark-circle" size={24} color="#FFF" />
           <Text style={styles.confirmButtonText}>
-            {skipMapStep ? 'Completar dirección' : 'Continuar al mapa'}
+            Completar dirección
           </Text>
         </TouchableOpacity>
 
@@ -1134,80 +1233,6 @@ const AddressFormUberStyle = () => {
     );
   };
 
-  
-  // Renderizar paso 3: Mapa (renumerado desde paso 4)
-  const renderMapStep = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Confirma tu ubicación exacta</Text>
-      <Text style={styles.stepSubtitle}>
-        Selecciona tu ubicación en el mapa para entregas precisas
-      </Text>
-      
-      {/* Resumen - MISMO ESTILO QUE CONFIRMACIÓN */}
-      <View style={styles.selectedAddressCard}>
-        <Ionicons name="location" size={24} color="#33A744" />
-        <View style={styles.selectedAddressContent}>
-          <Text style={styles.selectedAddressText} numberOfLines={2}>
-            {userWrittenAddress}
-          </Text>
-          {references.trim() && (
-            <Text style={styles.referencesText} numberOfLines={1}>
-              {references}
-            </Text>
-          )}
-        </View>
-      </View>
-      
-      {/* Estado de mapa - INTELIGENTE CON GEOCODING */}
-      {mapCoordinates ? (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="checkmark-circle" size={20} color="#33A744" />
-          <Text style={styles.loadingText}>
-            📍 Ve al mapa para confirmar ubicación
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="location-outline" size={20} color="#D27F27" />
-          <Text style={styles.loadingText}>
-            Selecciona tu ubicación en el mapa
-          </Text>
-        </View>
-      )}
-      
-
-      {/* Botón ir al mapa - MISMO ESTILO QUE MAPA ORIGINAL */}
-      <TouchableOpacity
-        style={styles.mapButton}
-        onPress={goToMap}>
-        <Ionicons name="map" size={24} color="#FFF" />
-        <Text style={styles.mapButtonText}>
-          {mapCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Botón finalizar - INTELIGENTE CON GEOCODING */}
-      <TouchableOpacity
-        style={[
-          styles.confirmButton,
-          !userHasConfirmedLocation && styles.confirmButtonDisabled
-        ]}
-        onPress={handleConfirm}
-        disabled={!userHasConfirmedLocation}>
-        <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-        <Text style={styles.confirmButtonText}>
-          Confirmar dirección
-        </Text>
-      </TouchableOpacity>
-
-      {/* Botón regresar */}
-      <TouchableOpacity
-        style={styles.backStepButton}
-        onPress={() => setCurrentStep(2)}>
-        <Text style={styles.backStepButtonText}>← Editar dirección</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView 
@@ -1232,7 +1257,7 @@ const AddressFormUberStyle = () => {
       </View>
 
       <View style={styles.stepsIndicator}>
-        {(skipMapStep ? [1, 2] : [1, 2, 3]).map((step) => (
+        {[1, 2].map((step) => (
           <View key={step} style={styles.stepIndicatorContainer}>
             <View
               style={[
@@ -1245,7 +1270,7 @@ const AddressFormUberStyle = () => {
                 <Ionicons name="checkmark" size={12} color="#FFF" />
               )}
             </View>
-            {step < (skipMapStep ? 2 : 3) && <View style={styles.stepLine} />}
+            {step < 2 && <View style={styles.stepLine} />}
           </View>
         ))}
       </View>
@@ -1264,7 +1289,6 @@ const AddressFormUberStyle = () => {
           <View style={styles.content}>
             {currentStep === 1 && renderSearchStep()}
             {currentStep === 2 && renderManualAddressStep()}
-            {currentStep === 3 && !skipMapStep && renderMapStep()}
           </View>
           
         </ScrollView>
@@ -1763,6 +1787,81 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: '#33A744',
     lineHeight: 18,
+  },
+  
+  // NUEVOS ESTILOS PARA MAPA OPCIONAL INTEGRADO
+  mapSection: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mapSectionTitle: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 4,
+  },
+  mapSectionSubtitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  coordinatesStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  coordinatesStatusText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+  },
+  adjustLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(139, 94, 60, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+  },
+  adjustLocationButtonText: {
+    marginLeft: 4,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#8B5E3C',
+  },
+  selectLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#8B5E3C',
+    borderRadius: 6,
+  },
+  selectLocationButtonText: {
+    marginLeft: 4,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
   },
 });
 

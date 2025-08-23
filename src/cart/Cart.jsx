@@ -28,6 +28,12 @@ import {useAlert} from '../context/AlertContext';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import AddressPicker from '../components/AddressPicker';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { 
+  generateCallbackId, 
+  registerNavigationCallback, 
+  cleanupNavigationCallback 
+} from '../utils/navigationCallbacks';
 import CheckBox from 'react-native-check-box';
 import axios from 'axios';
 import fonts from '../theme/fonts';
@@ -232,6 +238,7 @@ export default function Cart() {
   const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh falso
+  const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
   
   // Ref para el scroll automático al botón de pagar
   const flatListRef = React.useRef(null);
@@ -960,18 +967,53 @@ export default function Cart() {
         // No tiene dirección: mostrar modal para seleccionar/agregar
         setShowAddressModal(true);
       } else {
-        // Usuario tiene dirección: ir a MapSelector para obtener coordenadas
+        // Usuario tiene dirección: verificar si ya tiene coordenadas
+        const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
         
-        navigation.navigate('MapSelector', {
-          userAddress: userProfile.address,
-          title: 'Confirmar ubicación para entrega',
-          // No pasamos onConfirm como callback, MapSelector regresará aquí con coordenadas
-        });
+        if (hasCoordinates) {
+          // ✅ Ya tiene coordenadas: proceder directamente al pago
+          completeOrder();
+        } else {
+          // No tiene coordenadas: ir a MapSelector (flujo legacy)
+          navigation.navigate('MapSelector', {
+            userAddress: userProfile.address,
+            title: 'Confirmar ubicación para entrega',
+            // No pasamos onConfirm como callback, MapSelector regresará aquí con coordenadas
+          });
+        }
       }
     }
   };
 
+  // ✅ NUEVA FUNCIÓN: Ir al mapa directamente desde el carrito (usuarios registrados)
+  const goToMapFromCart = async () => {
+    const userAddress = userProfile?.address || user?.address || '';
+    
+    // ✅ REGISTRAR CALLBACK para recibir coordenadas del mapa
+    const handleLocationReturn = (coordinates) => {
+      setLatlong({
+        driver_lat: coordinates.latitude,
+        driver_long: coordinates.longitude,
+      });
+    };
+    
+    registerNavigationCallback(mapCallbackId, handleLocationReturn);
+    
+    navigation.navigate('AddressMap', {
+      addressForm: {},
+      selectedLocation: { latitude: 19.4326, longitude: -99.1332 }, // Centro CDMX por defecto
+      callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
+      userWrittenAddress: userAddress, // Pasar dirección del usuario para contexto
+      fromGuestCheckout: false, // Es un usuario registrado
+    });
+  };
 
+  // ✅ CLEANUP: Limpiar callback del mapa al desmontar componente
+  useEffect(() => {
+    return () => {
+      cleanupNavigationCallback(mapCallbackId);
+    };
+  }, [mapCallbackId]);
 
   useEffect(() => {
     const fetchUpsellItems = async () => {
@@ -1210,6 +1252,7 @@ export default function Cart() {
                 cart={cart}
                 latlong={latlong}
                 userProfile={userProfile}
+                goToMapFromCart={goToMapFromCart} // ✅ NUEVA: Función para ir al mapa desde el carrito
               />
             }
             ListFooterComponentStyle={{paddingTop: 8}}
@@ -2039,6 +2082,83 @@ const styles = StyleSheet.create({
   debugInvalid: {
     color: '#F44336',
   },
+  
+  // ✅ NUEVOS ESTILOS PARA SECCIÓN DE UBICACIÓN DE USUARIOS REGISTRADOS
+  registeredUserLocationSection: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  locationSectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  userAddressText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#2F2F2F',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  locationStatusContainer: {
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  locationStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  locationStatusText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#2F2F2F',
+  },
+  adjustLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(139, 94, 60, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+  },
+  adjustLocationButtonText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontFamily: 'Poppins-Bold',
+    color: '#8B5E3C',
+  },
+  selectLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#8B5E3C',
+    borderRadius: 6,
+  },
+  selectLocationButtonText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontFamily: 'Poppins-Bold',
+    color: '#FFF',
+  },
 });
 
 // <-- justo después de StyleSheet.create({...})
@@ -2062,6 +2182,7 @@ const CartFooter = ({
   cart, // ✅ NUEVO: Para construir payload debug
   latlong, // ✅ NUEVO: Para mostrar coordenadas
   userProfile, // ✅ NUEVO: Para direcciones de usuario registrado
+  goToMapFromCart, // ✅ NUEVA: Función para ir al mapa desde el carrito
 }) => {
   
   // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend - TEMPORALMENTE DESHABILITADA
@@ -2262,6 +2383,47 @@ const CartFooter = ({
                 </View>
               </View>
             )}
+          </View>
+        )}
+
+        {/* ✅ NUEVA SECCIÓN: Ubicación opcional para usuarios registrados */}
+        {user && user.usertype !== 'Guest' && deliveryInfo && userProfile?.address && (
+          <View style={styles.registeredUserLocationSection}>
+            <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
+            <Text style={styles.userAddressText}>
+              {userProfile.address}
+            </Text>
+            
+            {/* Estado de la ubicación en mapa */}
+            <View style={styles.locationStatusContainer}>
+              {latlong?.driver_lat && latlong?.driver_long ? (
+                <View style={styles.locationStatusRow}>
+                  <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+                  <Text style={styles.locationStatusText}>
+                    Ubicación confirmada en el mapa
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.adjustLocationButton}
+                    onPress={goToMapFromCart}>
+                    <Ionicons name="map-outline" size={16} color="#8B5E3C" />
+                    <Text style={styles.adjustLocationButtonText}>Ajustar</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.locationStatusRow}>
+                  <Ionicons name="location-outline" size={20} color="#D27F27" />
+                  <Text style={styles.locationStatusText}>
+                    Para mayor precisión, puedes confirmar tu ubicación
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.selectLocationButton}
+                    onPress={goToMapFromCart}>
+                    <Ionicons name="map" size={16} color="#FFF" />
+                    <Text style={styles.selectLocationButtonText}>Confirmar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         )}
 

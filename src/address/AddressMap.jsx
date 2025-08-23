@@ -183,7 +183,39 @@ const AddressMap = () => {
       return;
     }
 
-    // Si viene de GuestCheckout, navegar de vuelta con la ubicación
+    // ✅ CORREGIDO: Primero verificar MapSelector (tiene prioridad)
+    if (fromMapSelector) {
+      // Usar callback por ID o fallback a función directa
+      if (callbackId) {
+        executeNavigationCallback(callbackId, currentLocation);
+        navigation.goBack();
+        return;
+      } else if (onLocationReturn) {
+        onLocationReturn(currentLocation);
+        navigation.goBack();
+        return;
+      }
+      
+      // Fallback: usar parámetros de navegación
+      navigation.replace('MapSelector', {
+        ...route.params,
+        selectedLocationFromMap: currentLocation,
+      });
+      return;
+    }
+
+    // ✅ CORREGIDO: Luego verificar si viene del nuevo flujo consolidado (AddressFormUberStyle)
+    if (callbackId) {
+      executeNavigationCallback(callbackId, currentLocation, addressForm);
+      navigation.goBack();
+      return;
+    } else if (onLocationReturn) {
+      onLocationReturn(currentLocation, addressForm);
+      navigation.goBack();
+      return;
+    }
+
+    // ✅ CORREGIDO: Si viene de GuestCheckout (flujo legacy)
     if (fromGuestCheckout) {
       // Intentar obtener dirección legible con reverse geocoding
       let formattedAddress = 'Ubicación seleccionada en el mapa';
@@ -220,28 +252,6 @@ const AddressMap = () => {
         console.warn('Reverse geocoding failed:', error);
       }
       
-      
-      // Si viene de MapSelector, regresar con coordenadas
-      if (fromMapSelector) {
-        // ✅ SOLUCIONADO: Usar callback por ID o fallback a función directa
-        if (callbackId) {
-          executeNavigationCallback(callbackId, currentLocation);
-          navigation.goBack();
-          return;
-        } else if (onLocationReturn) {
-          onLocationReturn(currentLocation);
-          navigation.goBack();
-          return;
-        }
-        
-        // Fallback: usar parámetros de navegación
-        navigation.replace('MapSelector', {
-          ...route.params,
-          selectedLocationFromMap: currentLocation,
-        });
-        return;
-      }
-      
       // CRITICAL: Solo devolver coordenadas y preservar dirección + referencias del usuario
       navigation.navigate('AddressFormUberStyle', {
         selectedLocationFromMap: currentLocation, // SOLO coordenadas
@@ -252,19 +262,11 @@ const AddressMap = () => {
         // CRITICAL: Preservar TODOS los parámetros originales que llegaron al mapa
         ...route.params, // Devolver todos los parámetros preservados
       });
+      return;
     }
-    // ✅ SOLUCIONADO: Sistema de callbacks original
-    else if (callbackId) {
-      executeNavigationCallback(callbackId, currentLocation, addressForm);
-      navigation.goBack();
-    } else if (onLocationReturn) {
-      onLocationReturn(currentLocation, addressForm);
-      navigation.goBack();
-    }
-    // Fallback
-    else {
-      navigation.goBack();
-    }
+    
+    // ✅ Fallback: navegación simple de vuelta
+    navigation.goBack();
   };
 
   return (
