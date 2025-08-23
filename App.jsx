@@ -18,7 +18,6 @@ import {AlertProvider} from './src/context/AlertContext';
 import {ProfileProvider, useProfile} from './src/context/ProfileContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
-import NotificationService from './src/services/NotificationService';
 
 import Cart from './src/cart/Cart';
 import GuestCheckout from './src/cart/GuestCheckout';
