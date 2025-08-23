@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  Platform,
   FlatList,
   Animated
 } from 'react-native';
