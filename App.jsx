@@ -1,6 +1,7 @@
-import React, {useContext, useCallback, useMemo} from 'react';
+import React, {useContext, useCallback, useMemo, useEffect} from 'react';
 import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
 import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
+import NotificationService from './src/services/NotificationService';
 import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
@@ -9,7 +10,7 @@ import SpecificCategoryProduct from './src/home/SpecificCategoryProduct';
 import ProductDetails from './src/home/ProductDetails';
 import {CartContext, CartProvider} from './src/context/CartContext';
 import {OrderProvider} from './src/context/OrderContext';
-import {NotificationProvider} from './src/context/NotificationContext';
+import {NotificationProvider, useNotification} from './src/context/NotificationContext';
 import {StripeProvider} from '@stripe/stripe-react-native';
 import {AuthContext} from './src/context/AuthContext';
 import {AuthProvider} from './src/context/AuthContext';
@@ -17,6 +18,7 @@ import {AlertProvider} from './src/context/AlertContext';
 import {ProfileProvider, useProfile} from './src/context/ProfileContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
+import NotificationService from './src/services/NotificationService';
 
 import Cart from './src/cart/Cart';
 import GuestCheckout from './src/cart/GuestCheckout';
@@ -318,6 +320,19 @@ function RootStack() {
 
 function AuthFlow() {
   const {user} = useContext(AuthContext);
+  const {addNotification} = useNotification();
+
+  // Inicializar notificaciones cuando el usuario esté autenticado (EXACTO como commit 651d13b)
+  useEffect(() => {
+    if (user && user.id) {
+      console.log('🔔 Inicializando notificaciones para usuario:', user.id);
+      
+      // ✅ CONECTAR Firebase con NotificationContext (igual que Android)
+      NotificationService.setNotificationCallback(addNotification);
+      
+      NotificationService.initialize(user.id);
+    }
+  }, [user, addNotification]);
 
   if (user === undefined) {
     return <ActivityIndicator size="large" color="tomato" />;
