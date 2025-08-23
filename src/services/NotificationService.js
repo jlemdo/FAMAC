@@ -1,5 +1,5 @@
 import messaging from '@react-native-firebase/messaging';
-import {Alert, Platform} from 'react-native';
+import {Alert, Platform, Linking} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class NotificationService {
@@ -22,9 +22,28 @@ class NotificationService {
 
     if (enabled) {
       console.log('✅ Permisos de notificación otorgados:', authStatus);
+      
+      // 🔥 DEBUG iOS: Verificar estado específico
+      if (Platform.OS === 'ios') {
+        Alert.alert(
+          '✅ Permisos iOS Otorgados', 
+          `Estado: ${authStatus}\n\nSi no recibes notificaciones:\n1. Verifica APNs en Firebase Console\n2. Verifica certificados de producción\n3. Prueba desde Firebase Console`,
+          [{text: 'Entendido'}]
+        );
+      }
+      
       return true;
     } else {
       console.log('❌ Permisos de notificación denegados');
+      
+      if (Platform.OS === 'ios') {
+        Alert.alert(
+          '❌ Permisos Denegados', 
+          'Las notificaciones están deshabilitadas. Ve a Configuración > Notificaciones > FAMAC para habilitarlas.',
+          [{text: 'Ir a Configuración', onPress: () => Linking.openSettings()}]
+        );
+      }
+      
       return false;
     }
   }
@@ -90,6 +109,53 @@ class NotificationService {
       Alert.alert(
         '❌ Firebase Error',
         `Error: ${error.message}\n\nCheck Firebase configuration.`,
+        [{text: 'OK'}]
+      );
+    }
+  }
+
+  // 🆕 NUEVO: Test completo de notificaciones iOS
+  async testIOSNotifications() {
+    try {
+      Alert.alert(
+        '🧪 Test Notificaciones iOS',
+        'Iniciando test completo...',
+        [{text: 'Comenzar', onPress: async () => {
+          
+          // 1. Verificar permisos
+          const hasPermission = await this.requestPermission();
+          if (!hasPermission) {
+            Alert.alert('❌ Test Fallido', 'Sin permisos de notificación');
+            return;
+          }
+          
+          // 2. Obtener token
+          const token = await this.getToken();
+          if (!token) {
+            Alert.alert('❌ Test Fallido', 'No se pudo obtener FCM token');
+            return;
+          }
+          
+          // 3. Mostrar instrucciones para test manual
+          Alert.alert(
+            '✅ Token Obtenido',
+            `🔑 Token: ${token.substring(0, 50)}...\n\n📋 PASOS PARA PROBAR:\n\n1. Ve a Firebase Console\n2. Cloud Messaging > Send test message\n3. Pega este token\n4. Envía mensaje\n\n⚠️ Si no aparece: revisa certificado APNs`,
+            [
+              {text: 'Copiar Token', onPress: () => {
+                // En iOS no hay Clipboard nativo, solo mostrar
+                console.log('🔑 Full Token:', token);
+              }},
+              {text: 'Entendido'}
+            ]
+          );
+          
+        }}]
+      );
+      
+    } catch (error) {
+      Alert.alert(
+        '❌ Test Error',
+        `Error durante test: ${error.message}`,
         [{text: 'OK'}]
       );
     }

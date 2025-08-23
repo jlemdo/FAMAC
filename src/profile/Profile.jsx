@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  Platform,
   ActivityIndicator,
   Modal,
   KeyboardAvoidingView,
@@ -539,28 +540,34 @@ export default function Profile({ navigation, route }) {
           style={styles.fcmTestButton}
           onPress={async () => {
             try {
-              showAlert({
-                type: 'info',
-                title: '🔥 Firebase Test',
-                message: 'Iniciando prueba de Firebase FCM...',
-                confirmText: 'OK'
-              });
-              
-              const success = await NotificationService.initialize(user?.id);
-              if (success) {
-                showAlert({
-                  type: 'success',
-                  title: '✅ Firebase Exitoso',
-                  message: 'Token FCM generado correctamente. Revisa los logs y alerts.',
-                  confirmText: 'Perfecto'
-                });
+              // 🆕 Usar el nuevo método de test completo para iOS
+              if (Platform.OS === 'ios') {
+                await NotificationService.testIOSNotifications();
               } else {
+                // Android - método original
                 showAlert({
-                  type: 'error',
-                  title: '❌ Firebase Error',
-                  message: 'No se pudo generar el token FCM. Revisa logs para detalles.',
+                  type: 'info',
+                  title: '🔥 Firebase Test',
+                  message: 'Iniciando prueba de Firebase FCM...',
                   confirmText: 'OK'
                 });
+                
+                const success = await NotificationService.initialize(user?.id);
+                if (success) {
+                  showAlert({
+                    type: 'success',
+                    title: '✅ Firebase Exitoso',
+                    message: 'Token FCM generado correctamente. Revisa los logs y alerts.',
+                    confirmText: 'Perfecto'
+                  });
+                } else {
+                  showAlert({
+                    type: 'error',
+                    title: '❌ Firebase Error',
+                    message: 'No se pudo generar el token FCM. Revisa logs para detalles.',
+                    confirmText: 'OK'
+                  });
+                }
               }
             } catch (error) {
               showAlert({
@@ -572,7 +579,7 @@ export default function Profile({ navigation, route }) {
             }
           }}
           activeOpacity={0.8}>
-          <Text style={styles.fcmTestButtonText}>🔥 Test Firebase FCM</Text>
+          <Text style={styles.fcmTestButtonText}>🧪 Test iOS Notificaciones</Text>
         </TouchableOpacity>
       </View>
 
