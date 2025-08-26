@@ -83,6 +83,9 @@ platform :ios do
 
     # 4️⃣ Compilar con Gym
     begin
+      # 🔧 Listar SDKs disponibles para debugging
+      sh("xcodebuild -showsdks | grep iphoneos || echo 'No iPhone OS SDKs found'")
+      
       build_app(
         workspace:        "ios/MyNewApp.xcworkspace",
         scheme:           "MyNewApp",
@@ -91,6 +94,7 @@ platform :ios do
         export_method:    "app-store",
         output_directory: "build",
         output_name:      "MyNewApp",
+        sdk:              "iphoneos17.5",  # 🎯 FORZAR iOS 17.5 SDK
         export_options: {
           provisioningProfiles: {
             "com.occr.productos" => "match AppStore com.occr.productos"
