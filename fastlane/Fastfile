@@ -99,9 +99,9 @@ platform :ios do
       )
     rescue => exception
       sh("echo '----- GYM LOG COMPLETO -----'")
-      sh("cat ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
+      sh("find ~/Library/Logs/gym -name '*.log' -type f | head -1 | xargs cat || echo 'Log file not found'")
       sh("echo '----- ERRORES DE COMPILACIÓN -----'") 
-      sh("grep -i 'error\\|failed\\|failure' ~/Library/Logs/gym/MyNewApp-MyNewApp.log || echo 'No se encontraron errores específicos'")
+      sh("find ~/Library/Logs/gym -name '*.log' -type f | head -1 | xargs grep -i 'error\\|failed\\|failure' || echo 'No se encontraron errores específicos'")
       raise exception
     end
 
