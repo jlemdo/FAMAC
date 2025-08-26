@@ -298,24 +298,40 @@ const DriverTracking = ({order}) => {
       </View>
 
       <>
-        {currentStatus == 'Open' && (
+        {/* 🆕 Validación: Solo mostrar botones si el pago está completado */}
+        {order?.payment_status === 'completed' ? (
           <>
-            <TouchableOpacity
-              style={styles.rescheduleButton}
-              onPress={handleDriverLocation}>
-              <Text style={styles.rescheduleText}>Accept Order</Text>
-            </TouchableOpacity>
-          </>
-        )}
+            {currentStatus == 'Open' && (
+              <>
+                <TouchableOpacity
+                  style={styles.rescheduleButton}
+                  onPress={handleDriverLocation}>
+                  <Text style={styles.rescheduleText}>Accept Order</Text>
+                </TouchableOpacity>
+              </>
+            )}
 
-        {currentStatus == 'On the Way' && (
-          <>
-            <TouchableOpacity
-              style={styles.rescheduleButton}
-              onPress={completeOrderFromDriver}>
-              <Text style={styles.rescheduleText}>Deliver Now</Text>
-            </TouchableOpacity>
+            {currentStatus == 'On the Way' && (
+              <>
+                <TouchableOpacity
+                  style={styles.rescheduleButton}
+                  onPress={completeOrderFromDriver}>
+                  <Text style={styles.rescheduleText}>Deliver Now</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </>
+        ) : (
+          // 🔴 Mostrar mensaje si pago no está completado
+          <View style={styles.paymentPendingContainer}>
+            <Text style={styles.paymentPendingText}>
+              ⚠️ Esta orden no puede procesarse hasta que se confirme el pago
+            </Text>
+            <Text style={styles.paymentStatusInfo}>
+              Estado del pago: {order?.payment_status === 'pending' ? 'Pendiente' : 
+                                order?.payment_status === 'failed' ? 'Fallido' : 'Desconocido'}
+            </Text>
+          </View>
         )}
       </>
     </>
@@ -436,6 +452,31 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 24,
     elevation: 4,
+  },
+  
+  // 🆕 Payment Validation Styles
+  paymentPendingContainer: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+    borderRadius: 8,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  paymentPendingText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#F57C00',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  paymentStatusInfo: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#E65100',
+    textAlign: 'center',
   },
 });
 

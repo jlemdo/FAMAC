@@ -134,7 +134,20 @@ const OrderDetails = () => {
               <Text style={styles.orderIdLabel}>Pedido:</Text>
               <Text style={styles.orderIdText}>{formatOrderId(order?.created_at)}</Text>
             </View>
-            <Text style={styles.statusText}>Estado: {order?.status}</Text>
+            <View style={styles.statusSection}>
+              <Text style={styles.statusText}>Estado: {order?.status}</Text>
+              {/* 🆕 Nuevo: Payment Status */}
+              <Text style={[
+                styles.paymentStatusText,
+                order?.payment_status === 'pending' && styles.paymentStatusPending,
+                order?.payment_status === 'completed' && styles.paymentStatusCompleted,
+                order?.payment_status === 'failed' && styles.paymentStatusFailed
+              ]}>
+                Pago: {order?.payment_status === 'pending' ? 'Pendiente' : 
+                       order?.payment_status === 'completed' ? 'Completado' :
+                       order?.payment_status === 'failed' ? 'Fallido' : 'Desconocido'}
+              </Text>
+            </View>
           </View>
           
           <Text style={styles.orderDate}>
@@ -398,10 +411,29 @@ const styles = StyleSheet.create({
     color: '#D27F27',
     letterSpacing: 0.5,
   },
+  statusSection: {
+    alignItems: 'flex-end',
+  },
   statusText: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
+  },
+  
+  // 🆕 Nuevo: Payment Status Styles
+  paymentStatusText: {
+    fontFamily: fonts.numericBold,
+    fontSize: fonts.size.small,
+    marginTop: 4,
+  },
+  paymentStatusPending: {
+    color: '#FF9800', // Naranja
+  },
+  paymentStatusCompleted: {
+    color: '#33A744', // Verde
+  },
+  paymentStatusFailed: {
+    color: '#E63946', // Rojo
   },
   orderDate: {
     fontSize: fonts.size.small,

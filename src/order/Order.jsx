@@ -36,9 +36,17 @@ const Order = () => {
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
-  // Helper function para obtener estilo de status badge
-  const getStatusStyle = (status) => {
+  // Helper function para obtener estilo de status badge (incluye payment_status)
+  const getStatusStyle = (status, paymentStatus) => {
     const statusLower = status?.toLowerCase() || '';
+    const paymentStatusLower = paymentStatus?.toLowerCase() || '';
+    
+    // 🔴 Pago pendiente o fallido tiene prioridad visual
+    if (['pending', 'failed', 'rejected'].includes(paymentStatusLower)) {
+      return { badge: styles.statusPaymentPending, text: styles.statusPaymentPendingText };
+    }
+    
+    // ✅ Estados normales cuando pago está confirmado
     if (['delivered', 'entregado', 'completed', 'finalizado'].includes(statusLower)) {
       return { badge: styles.statusDelivered, text: styles.statusDeliveredText };
     } else if (['cancelled', 'cancelado'].includes(statusLower)) {
@@ -131,9 +139,11 @@ const Order = () => {
         setShowingGuestOrders(true);
         
         // Actualizar el contador de órdenes para el badge de navegación
+        // 🆕 Ahora también filtra por payment_status
         const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
         const activeOrders = foundOrders.filter(order => 
-          order.status && !completedStatuses.includes(order.status.toLowerCase())
+          order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
+          order.payment_status === 'completed' // Solo contar órdenes con pago completado
         );
         updateOrders(foundOrders); // Esto actualiza el badge de navegación
         
@@ -285,6 +295,7 @@ const Order = () => {
               (Array.isArray(item.order_details) ? item.order_details : []);
             const itemId = item.id || Math.random().toString();
             const itemStatus = item.status || 'Pendiente';
+            const paymentStatus = item.payment_status || 'pending'; // 🆕 Nuevo campo
             
             // Generar ID de orden formateado (siempre usar fecha/hora)
             const formattedOrderId = formatOrderId(createdAt);
@@ -308,10 +319,10 @@ const Order = () => {
                   })}
                 </Text>
 
-                {/* Status Badge */}
-                <View style={[styles.statusBadge, getStatusStyle(itemStatus).badge]}>
-                  <Text style={[styles.statusText, getStatusStyle(itemStatus).text]}>
-                    {itemStatus || 'Pendiente'}
+                {/* Status Badge - Ahora incluye payment_status */}
+                <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
+                  <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
+                    {paymentStatus === 'pending' ? `${itemStatus || 'Pendiente'} • Pago Pendiente` : (itemStatus || 'Pendiente')}
                   </Text>
                 </View>
 
@@ -612,6 +623,17 @@ const styles = StyleSheet.create({
   },
   statusPendingText: {
     color: '#D27F27',
+  },
+  
+  // 🆕 Nuevo: Payment Status Styles
+  statusPaymentPending: {
+    backgroundColor: '#FFF3E0', // Naranja muy claro
+    borderColor: '#FF9800',     // Naranja
+    borderWidth: 1,
+  },
+  statusPaymentPendingText: {
+    color: '#FF9800',           // Naranja
+    fontWeight: 'bold',
   },
   
   // Estilos para botón Guest

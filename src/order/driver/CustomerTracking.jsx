@@ -114,6 +114,16 @@ const CustomerTracking = ({order}) => {
       <View style={styles.deliveryInfo}>
         <Text style={styles.sectionTitle}>Información del conductor</Text>
         
+        {/* 🆕 Payment Status Indicator */}
+        {order?.payment_status !== 'completed' && (
+          <View style={styles.paymentWarning}>
+            <Ionicons name="warning-outline" size={16} color="#FF9800" />
+            <Text style={styles.paymentWarningText}>
+              ⚠️ Pago pendiente - El conductor no puede procesar esta orden aún
+            </Text>
+          </View>
+        )}
+        
         {/* Connection Status Indicator */}
         {!isConnected && (
           <View style={styles.connectionStatus}>
@@ -321,6 +331,26 @@ const styles = StyleSheet.create({
   retryButton: {
     marginLeft: 8,
     padding: 4,
+  },
+  
+  // 🆕 Payment Warning Styles
+  paymentWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  paymentWarningText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#F57C00',
+    marginLeft: 8,
+    flex: 1,
   },
 });
 
