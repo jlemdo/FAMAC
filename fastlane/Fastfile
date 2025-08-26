@@ -98,8 +98,10 @@ platform :ios do
         }
       )
     rescue => exception
-      sh("echo '----- GYM LOG (últimas 200 líneas) -----'")
-      sh("tail -n200 ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
+      sh("echo '----- GYM LOG COMPLETO -----'")
+      sh("cat ~/Library/Logs/gym/MyNewApp-MyNewApp.log")
+      sh("echo '----- ERRORES DE COMPILACIÓN -----'") 
+      sh("grep -i 'error\\|failed\\|failure' ~/Library/Logs/gym/MyNewApp-MyNewApp.log || echo 'No se encontraron errores específicos'")
       raise exception
     end
 
