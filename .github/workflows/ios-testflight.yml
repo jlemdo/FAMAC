@@ -47,10 +47,10 @@ jobs:
           npm install
           echo "✅ Dependencies installed and lock file updated"
 
-      - name: Select Xcode 16
+      - name: Select Xcode 15
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.0.0'
+          xcode-version: '15.4'
       
       - name: Verifica versión de Xcode
         run: xcodebuild -version
