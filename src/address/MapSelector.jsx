@@ -13,6 +13,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import Config from 'react-native-config';
 import fonts from '../theme/fonts';
+import { useAlert } from '../context/AlertContext';
 import { 
   generateCallbackId, 
   registerNavigationCallback, 
@@ -22,6 +23,7 @@ import {
 const MapSelector = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { showAlert } = useAlert();
   
   // Parámetros recibidos
   const {
@@ -96,7 +98,11 @@ const MapSelector = () => {
       });
     } catch (error) {
       console.error('Error preparando mapa:', error);
-      Alert.alert('Error', 'No se pudo preparar el mapa. Inténtalo de nuevo.');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo preparar el mapa. Inténtalo de nuevo.'
+      });
     } finally {
       setIsGeocodingAddress(false);
     }
@@ -105,7 +111,11 @@ const MapSelector = () => {
   // Función para confirmar coordenadas
   const handleConfirm = () => {
     if (!selectedCoordinates) {
-      Alert.alert('Error', 'Por favor selecciona tu ubicación en el mapa.');
+      showAlert({
+        type: 'warning',
+        title: 'Ubicación Requerida',
+        message: 'Por favor selecciona tu ubicación en el mapa.'
+      });
       return;
     }
     

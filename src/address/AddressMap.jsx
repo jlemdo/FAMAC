@@ -12,6 +12,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Config from 'react-native-config';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { useAlert } from '../context/AlertContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { scaleSpacing, scaleFontSize, getButtonDimensions } from '../utils/responsiveUtils';
 import { executeNavigationCallback } from '../utils/navigationCallbacks';
@@ -19,6 +20,7 @@ import { executeNavigationCallback } from '../utils/navigationCallbacks';
 const AddressMap = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { showAlert } = useAlert();
   const responsive = useResponsive();
   
   // Parámetros de navegación
@@ -175,11 +177,11 @@ const AddressMap = () => {
   const handleConfirm = async () => {
     // Asegurarse de que hay una ubicación seleccionada
     if (!currentLocation) {
-      Alert.alert(
-        'Ubicación requerida',
-        'Por favor toca en el mapa para seleccionar tu ubicación exacta',
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'warning',
+        title: 'Ubicación requerida',
+        message: 'Por favor toca en el mapa para seleccionar tu ubicación exacta'
+      });
       return;
     }
 

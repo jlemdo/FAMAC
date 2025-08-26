@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,14 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Config from 'react-native-config';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { useAlert } from '../context/AlertContext';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
@@ -26,10 +28,14 @@ import {
   registerNavigationCallback, 
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
+import { addressService } from '../services/addressService';
+import { AuthContext } from '../context/AuthContext';
 
 const AddressFormUberStyle = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { user } = useContext(AuthContext);
+  const { showAlert } = useAlert();
   
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -49,7 +55,8 @@ const AddressFormUberStyle = () => {
     selectedLocationFromMap = null,
     fromProfile = false, // NUEVO: Flag para identificar Profile
     userId = null, // NUEVO: ID del usuario para actualización directa
-    skipMapStep = false // NUEVO: Flag para saltar paso 4 (mapa) en Profile
+    skipMapStep = false, // NUEVO: Flag para saltar paso 4 (mapa) en Profile
+    isLegacyEdit = false // NUEVO: Flag para edición de dirección legacy
   } = route.params || {};
 
   // Obtener callbacks
@@ -77,6 +84,20 @@ const AddressFormUberStyle = () => {
   const [userHasConfirmedLocation, setUserHasConfirmedLocation] = useState(false); // Usuario confirmó en mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
+  
+  // Estados para modal de confirmación
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalTitle, setSuccessModalTitle] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState('');
+  const [successModalCallback, setSuccessModalCallback] = useState(null);
+
+  // Función para mostrar modal de éxito personalizado
+  const displaySuccessModal = (title, message, callback = null) => {
+    setSuccessModalTitle(title);
+    setSuccessModalMessage(message);
+    setSuccessModalCallback(() => callback);
+    setShowSuccessModal(true);
+  };
 
   // Función para parsear dirección de Google y auto-rellenar campos
   const parseGoogleAddress = (googleAddress) => {
@@ -294,6 +315,97 @@ const AddressFormUberStyle = () => {
     }
   };
 
+  // ✅ NUEVA: Función para parsear dirección legacy del perfil y pre-llenar campos
+  const parseLegacyAddress = (legacyAddress) => {
+    if (!legacyAddress || typeof legacyAddress !== 'string') return;
+    
+    console.log('📋 Parseando dirección legacy:', legacyAddress);
+    
+    // Separar dirección principal de referencias si las hay
+    let mainAddress = legacyAddress;
+    let extractedReferences = '';
+    
+    // Buscar referencias al final (después de "Referencias:")
+    const refMatch = legacyAddress.match(/(.*?),?\s*Referencias:\s*(.+)$/i);
+    if (refMatch) {
+      mainAddress = refMatch[1].trim();
+      extractedReferences = refMatch[2].trim();
+    }
+    
+    // Establecer la dirección completa como texto
+    setUserWrittenAddress(mainAddress);
+    
+    // Establecer referencias si existen
+    if (extractedReferences) {
+      setReferences(extractedReferences);
+    }
+    
+    // Intentar parsear componentes básicos para pre-llenar campos estructurados
+    const addressStr = mainAddress.toLowerCase();
+    
+    // Detectar número exterior (primer número que aparece)
+    const numberMatch = mainAddress.match(/\b(\d+)(?:-?[a-zA-Z]?)?\b/);
+    if (numberMatch) {
+      setExteriorNumber(numberMatch[1]);
+    }
+    
+    // Detectar calle (parte antes del primer número)
+    const streetMatch = mainAddress.match(/^([^,\d]+?)(?:\s*\d|,)/);
+    if (streetMatch) {
+      const street = streetMatch[1].trim()
+        .replace(/^(calle|av\.|avenida|blvd\.|boulevard|calz\.|calzada)\s+/i, '');
+      setStreetName(street);
+    }
+    
+    // Detectar colonia (después de Col., Colonia, etc.)
+    const colonyPatterns = [
+      /(?:col\.|colonia|fracc\.|fraccionamiento)\s+([^,]+)/i,
+      /,\s*([^,]+?)(?:,|\s*\d{5})/
+    ];
+    
+    for (const pattern of colonyPatterns) {
+      const match = mainAddress.match(pattern);
+      if (match) {
+        setNeighborhood(match[1].trim());
+        break;
+      }
+    }
+    
+    // Detectar código postal (5 dígitos)
+    const cpMatch = mainAddress.match(/(\d{5})/);
+    if (cpMatch) {
+      setPostalCode(cpMatch[1]);
+      // Auto-detectar estado basado en CP
+      const cp = cpMatch[1];
+      if (cp >= '01000' && cp <= '16999') {
+        setState('CDMX');
+      } else if (cp >= '50000' && cp <= '56999') {
+        setState('Estado de México');
+      }
+    }
+    
+    // Detectar municipio/alcaldía
+    const municipalityPatterns = [
+      /(Álvaro Obregón|Azcapotzalco|Benito Juárez|Coyoacán|Cuajimalpa|Gustavo A\. Madero|Iztacalco|Iztapalapa|Magdalena Contreras|Miguel Hidalgo|Milpa Alta|Tláhuac|Tlalpan|Venustiano Carranza|Xochimilco|Cuauhtémoc|Naucalpan|Tlalnepantla|Ecatepec|Nezahualcóyotl|Chimalhuacán|Atizapán|Tultitlán|Coacalco|Cuautitlán Izcalli|Huixquilucan)/i
+    ];
+    
+    for (const pattern of municipalityPatterns) {
+      const match = mainAddress.match(pattern);
+      if (match) {
+        setMunicipality(match[1]);
+        break;
+      }
+    }
+    
+    console.log('✅ Campos pre-llenados:', {
+      userWrittenAddress: mainAddress,
+      references: extractedReferences,
+      streetName: streetMatch?.[1]?.trim() || '',
+      exteriorNumber: numberMatch?.[1] || '',
+      neighborhood: neighborhood,
+    });
+  };
+
   // Función para obtener ubicación actual usando locationUtils - CON DEBUG MEJORADO
   const handleGetCurrentLocation = async () => {
     setIsLoadingLocation(true);
@@ -365,10 +477,11 @@ const AddressFormUberStyle = () => {
             setUserWrittenAddress('Mi ubicación actual');
             setCurrentStep(2);
             
-            Alert.alert(
-              'Ubicación actual detectada',
-              'Puedes confirmar o editar tu dirección en el siguiente paso.'
-            );
+            showAlert({
+              type: 'success',
+              title: 'Ubicación actual detectada',
+              message: 'Puedes confirmar o editar tu dirección en el siguiente paso.'
+            });
           }
         },
         // onError callback mejorado para iOS y Android
@@ -397,11 +510,11 @@ const AddressFormUberStyle = () => {
                 buttons = [
                   { text: 'Buscar dirección', style: 'cancel' },
                   { text: 'Cómo configurar', onPress: () => {
-                    Alert.alert(
-                      'Configuración de ubicación',
-                      'Configuración > Privacidad y seguridad > Servicio de ubicación > FAMAC > "Al usar la App"',
-                      [{ text: 'Entendido' }]
-                    );
+                    showAlert({
+                      type: 'info',
+                      title: 'Configuración de ubicación',
+                      message: 'Configuración > Privacidad y seguridad > Servicio de ubicación > FAMAC > "Al usar la App"'
+                    });
                   }}
                 ];
               } else {
@@ -442,17 +555,21 @@ const AddressFormUberStyle = () => {
               buttons = [{ text: 'Buscar dirección', style: 'default' }];
           }
           
-          Alert.alert(errorTitle, errorMessage, buttons);
+          showAlert({
+            type: 'error',
+            title: errorTitle,
+            message: errorMessage
+          });
         }
       );
       
       // Si no se obtuvo ubicación (permisos denegados, etc.)
       if (!location) {
-        Alert.alert(
-          'Ubicación no disponible', 
-          'No se pudo acceder a tu ubicación. Puedes buscar manualmente tu dirección abajo.',
-          [{ text: 'Entendido', style: 'default' }]
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Ubicación no disponible',
+          message: 'No se pudo acceder a tu ubicación. Puedes buscar manualmente tu dirección abajo.'
+        });
       }
     } catch (error) {
       // console.error('Location error:', error);
@@ -603,6 +720,15 @@ const AddressFormUberStyle = () => {
 
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
   const handleConfirm = async () => {
+    console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
+      fromAddressManager: route.params?.fromAddressManager,
+      fromCart: route.params?.fromCart,
+      fromProfile: route.params?.fromProfile,
+      userId: user?.id,
+      usertype: user?.usertype,
+      editMode: route.params?.editMode
+    });
+
     // VALIDACIONES EXACTAS DE PROFILE - NO CAMBIAR
     if (!userWrittenAddress?.trim()) {
       Alert.alert('Error', 'Por favor escribe una dirección válida.');
@@ -685,16 +811,18 @@ const AddressFormUberStyle = () => {
           // console.log('✓ Dirección actualizada exitosamente');
           
           // Mostrar confirmación al usuario
-          Alert.alert(
+          displaySuccessModal(
             '✓ Dirección actualizada',
             'Tu dirección se ha actualizado correctamente.',
-            [{ 
-              text: 'Continuar', 
-              onPress: () => {
-                // Regresar a Profile (no necesitamos pasar parámetros ya que el Profile se actualizará automáticamente)
+            () => {
+              if (route.params?.fromAddressManager) {
+                // Si viene de AddressManager, regresar allí para que se actualice la lista
+                navigation.goBack();
+              } else {
+                // Si viene directamente del Profile, regresar al Profile
                 navigation.goBack();
               }
-            }]
+            }
           );
         } else {
           throw new Error(`Error del servidor: ${response.status}`);
@@ -716,6 +844,72 @@ const AddressFormUberStyle = () => {
         
         Alert.alert(
           'Error al actualizar',
+          errorMessage,
+          [
+            { text: 'Reintentar', onPress: () => handleConfirm() },
+            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
+          ]
+        );
+      }
+    }
+    // Si viene del AddressManager, Cart, o necesita guardar como nueva dirección
+    else if (route.params?.fromAddressManager || route.params?.fromCart || (user?.id && user?.usertype !== 'Guest' && !route.params?.fromProfile)) {
+      try {
+        // Preparar datos de la dirección
+        const addressData = {
+          userId: user.id,
+          address: `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`,
+          phone: route.params?.phone || '', // Si se proporciona teléfono
+          isDefault: route.params?.setAsDefault || false // Si debe ser predeterminada
+        };
+
+        // Validar datos antes de enviar
+        const validation = addressService.validateAddressData(addressData);
+        if (!validation.isValid) {
+          Alert.alert('Error', validation.errors.join('\n'));
+          return;
+        }
+
+        let response;
+        if (route.params?.editMode && route.params?.addressData?.id) {
+          // Actualizar dirección existente
+          response = await addressService.updateAddress({
+            ...addressData,
+            addressId: route.params.addressData.id
+          });
+        } else {
+          // Crear nueva dirección
+          response = await addressService.addAddress(addressData);
+        }
+
+        // Mostrar confirmación al usuario
+        displaySuccessModal(
+          '✓ Dirección guardada',
+          route.params?.editMode ? 'Tu dirección se ha actualizado correctamente.' : 'Tu dirección se ha guardado correctamente.',
+          () => {
+            if (route.params?.fromAddressManager) {
+              navigation.goBack();
+            } else if (route.params?.fromCart) {
+              // Si viene del cart, refrescar las direcciones
+              navigation.navigate('MainTabs', { screen: 'Carrito', params: { refreshAddresses: true } });
+            } else {
+              navigation.goBack();
+            }
+          }
+        );
+      } catch (error) {
+        console.error('❌ Error guardando dirección:', error);
+        
+        let errorMessage = 'No se pudo guardar la dirección.';
+        
+        if (error.message?.includes('timeout') || error.code === 'ECONNABORTED') {
+          errorMessage = 'La conexión tardó demasiado. Verifica tu internet e inténtalo de nuevo.';
+        } else if (error.message?.includes('Network Error')) {
+          errorMessage = 'Sin conexión a internet. Verifica tu conexión e inténtalo de nuevo.';
+        }
+        
+        Alert.alert(
+          'Error al guardar',
           errorMessage,
           [
             { text: 'Reintentar', onPress: () => handleConfirm() },
@@ -879,6 +1073,21 @@ const AddressFormUberStyle = () => {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, currentStep]);
+
+  // ✅ NUEVO: Inicializar campos cuando es edición legacy
+  useEffect(() => {
+    if (isLegacyEdit && initialAddress) {
+      console.log('🔧 Inicializando edición legacy...');
+      
+      // Parsear y pre-llenar dirección
+      parseLegacyAddress(initialAddress);
+      
+      // Ir directamente al paso 2 (campos estructurados)
+      setCurrentStep(2);
+      
+      console.log('✅ Edición legacy inicializada');
+    }
+  }, [isLegacyEdit, initialAddress]);
 
   // ✅ CLEANUP: Limpiar callback del mapa al desmontar componente
   useEffect(() => {
@@ -1152,6 +1361,7 @@ const AddressFormUberStyle = () => {
           </Text>
         </View>
 
+
         {/* NUEVA SECCIÓN: Ubicación en Mapa (Opcional) */}
         {hasRequiredFields && (
           <View style={styles.mapSection}>
@@ -1293,6 +1503,34 @@ const AddressFormUberStyle = () => {
           
         </ScrollView>
       </TouchableWithoutFeedback>
+
+      {/* Modal de confirmación de éxito */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessModal}
+        onRequestClose={() => setShowSuccessModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="checkmark-circle" size={50} color="#33A744" />
+              <Text style={styles.modalTitle}>{successModalTitle}</Text>
+            </View>
+            <Text style={styles.modalMessage}>{successModalMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                setShowSuccessModal(false);
+                if (successModalCallback) {
+                  successModalCallback();
+                }
+              }}>
+              <Text style={styles.modalButtonText}>Continuar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 };
@@ -1862,6 +2100,65 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+
+  // Estilos para modal de confirmación
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    minWidth: 300,
+    maxWidth: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginTop: 15,
+  },
+  modalMessage: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+  modalButton: {
+    backgroundColor: '#33A744',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+    minWidth: 150,
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
   },
 });
 
