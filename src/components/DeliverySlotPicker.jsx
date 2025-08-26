@@ -10,32 +10,79 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Generate next 4 days
+  // 🆕 NUEVA LÓGICA: Mostrar TODOS los jueves y domingos disponibles
   useEffect(() => {
-    // console.log('📅 GENERANDO DÍAS EN PICKER...');
     const tempDays = [];
-    for (let i = 0; i < 4; i++) {
-      const date = new Date();
-      // console.log(`- Día ${i}: new Date() inicial:`, date);
-      // console.log(`- Día ${i}: typeof date:`, typeof date);
-      // console.log(`- Día ${i}: date instanceof Date:`, date instanceof Date);
-      
-      date.setDate(date.getDate() + i);
-      // console.log(`- Día ${i}: después de setDate(+${i}):`, date);
-      // console.log(`- Día ${i}: date.getTime():`, date.getTime());
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    
+    // Generar próximos 3-4 Jueves y Domingos, ordenados por proximidad
+    const deliveryDates = [];
+    
+    // Obtener próximos 3 jueves
+    const nextThursdays = getNextWeekdays(4, 3); // 4=Jueves
+    // Obtener próximos 3 domingos  
+    const nextSundays = getNextWeekdays(0, 3); // 0=Domingo
+    
+    // Combinar todas las fechas
+    deliveryDates.push(...nextThursdays, ...nextSundays);
+    
+    // Ordenar por fecha (más cercana primero)
+    deliveryDates.sort((a, b) => a.getTime() - b.getTime());
+    
+    // Determinar cuál es el día preferente según cuándo compra
+    let preferredDay = '';
+    if ([6, 0, 1].includes(dayOfWeek)) {
+      preferredDay = 'Jueves'; // Sábado, Domingo, Lunes → prefieren Jueves
+    } else {
+      preferredDay = 'Domingo'; // Martes, Miércoles, Jueves, Viernes → prefieren Domingo
+    }
+    
+    // Tomar las primeras 4-5 fechas más cercanas
+    const selectedDates = deliveryDates.slice(0, 5);
+    
+    selectedDates.forEach((date, i) => {
+      const isThursday = date.getDay() === 4;
+      const isSunday = date.getDay() === 0;
+      const isPreferred = (isThursday && preferredDay === 'Jueves') || (isSunday && preferredDay === 'Domingo');
       
       const dayObj = {
         date,
-        label: date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'numeric' }),
-        isoDate: date.toISOString().split('T')[0], // YYYY-MM-DD format
+        label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+        isoDate: date.toISOString().split('T')[0],
+        isPreferred, // Para destacar visualmente la opción recomendada
       };
-      
-      // console.log(`- Día ${i}: objeto final:`, dayObj);
       tempDays.push(dayObj);
-    }
-    // console.log('📅 ARRAY COMPLETO DE DÍAS:', tempDays);
+    });
+    
     setDays(tempDays);
+    
+    // 🆕 Auto-seleccionar la primera fecha (más cercana)
+    if (tempDays.length > 0) {
+      setSelectedDateIndex(0);
+    }
   }, []);
+  
+  // Helper function para obtener próximos días específicos de la semana
+  const getNextWeekdays = (targetDay, count) => {
+    const dates = [];
+    const today = new Date();
+    let current = new Date(today);
+    
+    // Encontrar el próximo día objetivo
+    let daysUntilTarget = (targetDay - current.getDay() + 7) % 7;
+    if (daysUntilTarget === 0) daysUntilTarget = 7; // Si es hoy, ir a la próxima semana
+    
+    current.setDate(current.getDate() + daysUntilTarget);
+    
+    // Generar las próximas fechas del día objetivo
+    for (let i = 0; i < count; i++) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 7); // Próxima semana
+    }
+    
+    return dates;
+  };
 
   // Fetch slots when date changes
   useEffect(() => {
@@ -49,30 +96,89 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     try {
       const response = await axios.get(`https://food.siliconsoft.pk/api/fetch_ddates/${dateString}`);
       
+      let slotsToProcess = [];
+      
       // Mapear los slots del backend al formato que esperamos
       if (response.data && Array.isArray(response.data)) {
-        const formattedSlots = response.data.map(slot => ({
+        slotsToProcess = response.data.map(slot => ({
           label: slot.time_slot || slot.label || slot,
           value: slot.time_slot || slot.value || slot,
         }));
-        setAvailableSlots(formattedSlots);
       } else {
         // Fallback slots si el API falla
-        setAvailableSlots([
+        slotsToProcess = [
           { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
           { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
-        ]);
+        ];
       }
+      
+      // 🆕 FILTRAR horarios pasados si es el día actual de compra
+      const today = new Date();
+      const selectedDate = new Date(dateString);
+      const isToday = today.toDateString() === selectedDate.toDateString();
+      
+      if (isToday) {
+        const currentHour = today.getHours();
+        const filteredSlots = slotsToProcess.filter(slot => {
+          return !isSlotPassed(slot.value, currentHour);
+        });
+        setAvailableSlots(filteredSlots);
+      } else {
+        setAvailableSlots(slotsToProcess);
+      }
+      
     } catch (error) {
-      // Error fetching delivery slots
-      // Fallback slots en caso de error
-      setAvailableSlots([
+      // Error fetching delivery slots - usar fallback con filtros
+      let fallbackSlots = [
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
         { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
-      ]);
+      ];
+      
+      // Aplicar filtro incluso al fallback si es hoy
+      const today = new Date();
+      const selectedDate = new Date(dateString);
+      const isToday = today.toDateString() === selectedDate.toDateString();
+      
+      if (isToday) {
+        const currentHour = today.getHours();
+        fallbackSlots = fallbackSlots.filter(slot => {
+          return !isSlotPassed(slot.value, currentHour);
+        });
+      }
+      
+      setAvailableSlots(fallbackSlots);
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Helper function para determinar si un horario ya pasó
+  const isSlotPassed = (slotValue, currentHour) => {
+    // Parsear el horario para obtener la hora de fin
+    // Ejemplos: '9am-1pm' -> hora de fin: 13, '4pm-10pm' -> hora de fin: 22
+    const timeSlot = slotValue.toLowerCase();
+    let endHour = 0;
+    
+    if (timeSlot.includes('1pm') || timeSlot.includes('13')) {
+      endHour = 13; // 1:00 PM
+    } else if (timeSlot.includes('10pm') || timeSlot.includes('22')) {
+      endHour = 22; // 10:00 PM
+    } else if (timeSlot.includes('pm')) {
+      // Para otros horarios PM, extraer el número
+      const match = timeSlot.match(/(\d+)pm/);
+      if (match) {
+        endHour = parseInt(match[1]) === 12 ? 12 : parseInt(match[1]) + 12;
+      }
+    } else if (timeSlot.includes('am')) {
+      // Para horarios AM
+      const match = timeSlot.match(/(\d+)am/);
+      if (match) {
+        endHour = parseInt(match[1]) === 12 ? 0 : parseInt(match[1]);
+      }
+    }
+    
+    // Si la hora actual es mayor o igual a la hora de fin del slot, ya pasó
+    return currentHour >= endHour;
   };
 
   const handleConfirm = () => {
@@ -104,7 +210,18 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         <View style={styles.overlay}>
           <TouchableWithoutFeedback onPress={() => {}}>
             <View style={styles.container}>
-          <Text style={styles.title}>Selecciona Fecha y Hora</Text>
+          <Text style={styles.title}>Seleccionar Fecha y Horario</Text>
+          
+          {/* 🆕 Sección mejorada para elección de día */}
+          <View style={styles.deliveryDaySection}>
+            <View style={styles.deliveryDayHeader}>
+              <Text style={styles.deliveryDayTitle}>📅 Elige tu día de entrega</Text>
+              <View style={styles.deliveryDayInfo}>
+                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Jueves y Domingos</Text>
+                <Text style={styles.recommendedHint}>⭐ Más cercano a tu compra</Text>
+              </View>
+            </View>
+          </View>
 
           {/* Fecha */}
           <FlatList
@@ -117,19 +234,22 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
               <TouchableOpacity
                 style={[
                   styles.dayItem,
-                  selectedDateIndex === index && styles.dayItemSelected,
+                  selectedDateIndex === index && styles.dayItemSelected, // Solo mostrar selección cuando esté activo
                 ]}
                 onPress={() => {
                   setSelectedDateIndex(index);
                   setSelectedSlot(null);
                 }}
               >
-                <Text style={[
-                  styles.dayLabel,
-                  selectedDateIndex === index && styles.dayLabelSelected
-                ]}>
-                  {item.label}
-                </Text>
+                <View style={styles.dayContent}>
+                  <Text style={[
+                    styles.dayLabel,
+                    selectedDateIndex === index && styles.dayLabelSelected,
+                  ]}>
+                    {item.isPreferred && <Text style={styles.starIcon}>⭐️ </Text>}
+                    {item.label}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
           />
@@ -215,8 +335,41 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fonts.size.large,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: 'center',
+    color: '#2F2F2F',
+  },
+  // 🆕 Estilos para sección de elección de día mejorada
+  deliveryDaySection: {
+    backgroundColor: '#F8F6F3',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+  },
+  deliveryDayHeader: {
+    alignItems: 'center',
+  },
+  deliveryDayTitle: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  deliveryDayInfo: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  deliveryDaySubtitle: {
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+    fontFamily: fonts.regular,
+  },
+  recommendedHint: {
+    fontSize: fonts.size.small,
+    color: '#666',
+    fontStyle: 'italic',
   },
   daysList: {
     paddingVertical: 8,
@@ -227,18 +380,35 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
+    minWidth: 80, // 🆕 Ancho mínimo para acomodar más fechas
   },
   dayItemSelected: {
     backgroundColor: '#D27F27',
     borderColor: '#D27F27',
   },
+  dayItemPreferred: {
+    borderColor: '#33A744', // Verde para día recomendado
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+  },
   dayLabel: {
     fontSize: fonts.size.small,
     textAlign: 'center',
+    lineHeight: 18,
   },
   dayLabelSelected: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  dayLabelPreferred: {
+    color: '#33A744',
+    fontWeight: 'bold',
+  },
+  starIcon: {
+    fontSize: 10,
+  },
+  dayContent: {
+    alignItems: 'center',
   },
   subtitle: {
     marginTop: 16,
