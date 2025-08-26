@@ -41,6 +41,7 @@ import { getCurrentLocation } from '../utils/locationUtils';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { addressService } from '../services/addressService';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -63,6 +64,9 @@ export default function Cart() {
   const [timers, setTimers] = useState({});
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
   const [address, setAddress] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState(null); // Nueva dirección seleccionada
+  const [userAddresses, setUserAddresses] = useState([]); // Lista de direcciones del usuario
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [needInvoice, setNeedInvoice] = useState(false);
   const [taxDetails, setTaxDetails] = useState('');
   const [toggleCheckBox, setToggleCheckBox] = useState(false);
@@ -119,11 +123,17 @@ export default function Cart() {
       // Resetear fecha y hora de entrega
       setDeliveryInfo(null);
       
-      // Resetear coordenadas
-      setLatlong({
-        driver_lat: '',
-        driver_long: '',
-      });
+      // 🆕 GUEST FIX: No resetear coordenadas para Guest que ya las tiene
+      // Solo resetear coordenadas si NO es Guest o Guest sin coordenadas válidas
+      if (user?.usertype !== 'Guest' || 
+          !latlong?.driver_lat || 
+          !latlong?.driver_long) {
+        setLatlong({
+          driver_lat: '',
+          driver_long: '',
+        });
+      }
+      // console.log('📏 Coordenadas Guest preservadas entre compras:', latlong);
       
       // Resetear datos de facturación
       setNeedInvoice(false);
@@ -276,6 +286,31 @@ export default function Cart() {
     }
   };
 
+  // Función para cargar direcciones del usuario
+  const fetchUserAddresses = async () => {
+    if (!user?.id || user?.usertype === 'Guest') return;
+    
+    setLoadingAddresses(true);
+    try {
+      const addresses = await addressService.getAllAddresses(user.id);
+      setUserAddresses(addresses);
+      
+      // Si hay una dirección predeterminada, seleccionarla automáticamente
+      const defaultAddress = addresses.find(addr => 
+        addr.is_default === "1" || addr.is_default === 1
+      );
+      if (defaultAddress && !selectedAddress) {
+        setSelectedAddress(defaultAddress);
+        setAddress(defaultAddress.address);
+      }
+    } catch (error) {
+      console.error('❌ Error cargando direcciones:', error);
+      setUserAddresses([]);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
   // TEMPORALMENTE DESHABILITADO - El callback automático está causando problemas
   // useEffect(() => {
   //   const clearDeliveryInfo = () => {
@@ -305,6 +340,8 @@ export default function Cart() {
       setEmail(user?.email || '');
       // Cargar perfil completo para obtener dirección actualizada
       fetchUserProfile();
+      // Cargar direcciones del usuario
+      fetchUserAddresses();
     }
     
     // console.log('🔄 Estados inicializados para usuario:', user?.usertype);
@@ -322,6 +359,7 @@ export default function Cart() {
         
         if (user?.usertype !== 'Guest' && user?.id) {
           fetchUserProfile();
+          fetchUserAddresses();
           // Solo restaurar datos si hay productos en el carrito
           if (cart.length > 0) {
             // Restaurar deliveryInfo para usuarios registrados
@@ -1296,52 +1334,165 @@ export default function Cart() {
                   keyboardShouldPersistTaps="handled"
                   nestedScrollEnabled={true}
                   showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>📍 Dirección de Entrega</Text>
+                <Text style={styles.modalTitle}>📍 Seleccionar Dirección</Text>
                 
-                {userProfile?.address && userProfile?.address?.trim() !== '' ? (
-                  // Usuario CON dirección guardada
+                {loadingAddresses ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#8B5E3C" />
+                    <Text style={styles.loadingText}>Cargando direcciones...</Text>
+                  </View>
+                ) : userAddresses.length > 1 ? (
+                  // Usuario CON MÚLTIPLES direcciones guardadas - Mostrar selector
                   <>
                     <Text style={styles.modalMessage}>
-                      Tienes una dirección guardada en tu perfil:{'\n\n'}
-                      <Text style={styles.savedAddressText}>📍 {userProfile.address}</Text>
-                      {'\n\n'}¿Cómo quieres recibir tu pedido?
+                      Selecciona la dirección donde quieres recibir tu pedido:
                     </Text>
+                    
+                    <ScrollView style={styles.addressList} nestedScrollEnabled={true}>
+                      {userAddresses.map((addr) => {
+                        const isSelected = selectedAddress?.id === addr.id;
+                        const isDefault = addr.is_default === "1" || addr.is_default === 1;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={addr.id}
+                            style={[
+                              styles.addressOption,
+                              isSelected && styles.selectedAddressOption,
+                              isDefault && styles.defaultAddressOption
+                            ]}
+                            onPress={() => {
+                              setSelectedAddress(addr);
+                              setAddress(addr.address);
+                            }}>
+                            <View style={styles.addressOptionHeader}>
+                              <View style={styles.addressIconContainer}>
+                                <Ionicons 
+                                  name={isDefault ? "home" : "location-outline"} 
+                                  size={18} 
+                                  color={isSelected ? "#33A744" : isDefault ? "#D27F27" : "#8B5E3C"} 
+                                />
+                                {isDefault && (
+                                  <Text style={styles.defaultBadgeSmall}>Predeterminada</Text>
+                                )}
+                              </View>
+                              {isSelected && (
+                                <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+                              )}
+                            </View>
+                            <Text style={[
+                              styles.addressOptionText,
+                              isSelected && styles.selectedAddressText
+                            ]} numberOfLines={3}>
+                              {addr.address}
+                            </Text>
+                            {addr.phone && (
+                              <Text style={styles.phoneTextSmall}>
+                                📱 {addr.phone}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                    
                     <View style={styles.modalActions}>
                       <TouchableOpacity
                         style={styles.modalButtonSecondary}
                         onPress={() => {
                           setShowAddressModal(false);
-                          completeOrder(); // Usar ubicación actual
+                          navigation.navigate('AddressManager');
                         }}>
-                        <Text style={styles.modalButtonSecondaryText}>🗺️ Usar Mi Ubicación</Text>
+                        <Text style={styles.modalButtonSecondaryText}>⚙️ Gestionar Direcciones</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.modalButtonPrimary,
+                          !selectedAddress && styles.modalButtonDisabled
+                        ]}
+                        disabled={!selectedAddress}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          completeOrder(); // Usar dirección seleccionada
+                        }}>
+                        <Text style={[
+                          styles.modalButtonPrimaryText,
+                          !selectedAddress && styles.modalButtonDisabledText
+                        ]}>
+                          📋 Usar Dirección Seleccionada
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : userAddresses.length === 1 ? (
+                  // Usuario CON UNA SOLA dirección - Usar automáticamente
+                  <>
+                    <Text style={styles.modalMessage}>
+                      Usaremos tu dirección guardada para este pedido:
+                    </Text>
+                    
+                    <View style={[styles.addressOption, styles.singleAddressPreview]}>
+                      <View style={styles.addressOptionHeader}>
+                        <View style={styles.addressIconContainer}>
+                          <Ionicons 
+                            name="home" 
+                            size={18} 
+                            color="#33A744"
+                          />
+                          <Text style={styles.defaultBadgeSmall}>Tu dirección</Text>
+                        </View>
+                        <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+                      </View>
+                      <Text style={[styles.addressOptionText, styles.selectedAddressText]} numberOfLines={3}>
+                        {userAddresses[0].address}
+                      </Text>
+                      {userAddresses[0].phone && (
+                        <Text style={styles.phoneTextSmall}>
+                          📱 {userAddresses[0].phone}
+                        </Text>
+                      )}
+                    </View>
+                    
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={styles.modalButtonSecondary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          navigation.navigate('AddressManager');
+                        }}>
+                        <Text style={styles.modalButtonSecondaryText}>⚙️ Gestionar Direcciones</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.modalButtonPrimary}
                         onPress={() => {
+                          setSelectedAddress(userAddresses[0]);
+                          setAddress(userAddresses[0].address);
                           setShowAddressModal(false);
-                          // Actualizar dirección en memoria para este pedido
-                          setAddress(userProfile.address);
-                          completeOrder(); // Usar dirección guardada
+                          completeOrder(); // Usar la única dirección
                         }}>
-                        <Text style={styles.modalButtonPrimaryText}>📋 Usar Dirección Guardada</Text>
+                        <Text style={styles.modalButtonPrimaryText}>📋 Usar Esta Dirección</Text>
                       </TouchableOpacity>
                     </View>
                   </>
                 ) : (
-                  // Usuario SIN dirección guardada
+                  // Usuario SIN direcciones guardadas
                   <>
                     <Text style={styles.modalMessage}>
-                      Para completar tu pedido necesitamos una dirección de entrega.{'\n\n'}
-                      Puedes agregar una dirección en tu perfil o usar tu ubicación actual para esta compra.
+                      Aún no tienes direcciones guardadas.{'\n\n'}
+                      Puedes agregar una nueva dirección o usar tu ubicación actual para esta compra.
                     </Text>
                     <View style={styles.modalActions}>
                       <TouchableOpacity
                         style={styles.modalButtonSecondary}
                         onPress={() => {
                           setShowAddressModal(false);
-                          navigation.navigate('MainTabs', { screen: 'Perfil' });
+                          navigation.navigate('AddressFormUberStyle', {
+                            title: 'Agregar Dirección',
+                            editMode: false,
+                            fromCart: true,
+                          });
                         }}>
-                        <Text style={styles.modalButtonSecondaryText}>⚙️ Configurar Perfil</Text>
+                        <Text style={styles.modalButtonSecondaryText}>➕ Agregar Dirección</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.modalButtonPrimary}
@@ -2158,6 +2309,94 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Poppins-Bold',
     color: '#FFF',
+  },
+  
+  // ✅ ESTILOS PARA SELECTOR DE MÚLTIPLES DIRECCIONES
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+  },
+  addressList: {
+    maxHeight: 300,
+    marginVertical: 16,
+  },
+  addressOption: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  selectedAddressOption: {
+    borderColor: '#33A744',
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.05)',
+  },
+  defaultAddressOption: {
+    borderColor: '#D27F27',
+  },
+  addressOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addressIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  defaultBadgeSmall: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#D27F27',
+    color: '#FFF',
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    borderRadius: 4,
+  },
+  addressOptionText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  selectedAddressText: {
+    color: '#33A744',
+    fontFamily: fonts.bold,
+  },
+  phoneTextSmall: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+  },
+  modalButtonDisabled: {
+    backgroundColor: '#CCC',
+  },
+  modalButtonDisabledText: {
+    color: '#999',
+  },
+  singleAddressPreview: {
+    borderColor: '#33A744',
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.05)',
+    marginVertical: 16,
   },
 });
 

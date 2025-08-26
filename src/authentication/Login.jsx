@@ -317,15 +317,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     style={styles.secondaryBtn}
                     onPress={async () => {
                       await loginAsGuest();
-                      // Mostrar alert de bienvenida para guest
-                      setTimeout(() => {
-                        showAlert({
-                          type: 'success',
-                          title: 'Bienvenido',
-                          message: '¡Hola Invitado! Explora nuestros productos',
-                          confirmText: 'Continuar',
-                        });
-                      }, 500);
+                      // 🆕 Alerta de bienvenida Guest removida por solicitud del usuario
                     }}
                     disabled={isSubmitting}
                     activeOpacity={0.7}
