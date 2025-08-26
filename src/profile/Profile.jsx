@@ -265,9 +265,7 @@ export default function Profile({ navigation, route }) {
     if (!profile.phone || profile.phone.trim() === '') {
       missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
     }
-    if (!profile.address || profile.address.trim() === '') {
-      missing.push({ field: 'address', label: 'Dirección', reason: 'para poder hacer pedidos a domicilio' });
-    }
+    // La dirección se maneja ahora desde AddressManager - no validar en perfil
     
     // Verificar fecha de cumpleaños (debe existir y ser una fecha válida)
     if (!profile.birthDate || 
@@ -1061,45 +1059,33 @@ export default function Profile({ navigation, route }) {
 
       {showAddressSection && (
         <View style={styles.section}>
-          {/* Información de la dirección actual */}
-          <View style={styles.addressInfoContainer}>
-            <View style={styles.addressInfo}>
-              <Text style={styles.addressLabel}>Tu dirección:</Text>
-              {profile.address ? (
-                <Text style={styles.addressText}>
-                  {profile.address}
+          {/* Gestión completa de direcciones */}
+          <View style={styles.addressManagerContainer}>
+            <View style={styles.addressManagerHeader}>
+              <Ionicons name="location" size={24} color="#8B5E3C" />
+              <View style={styles.addressManagerText}>
+                <Text style={styles.addressManagerTitle}>Mis Direcciones</Text>
+                <Text style={styles.addressManagerSubtitle}>
+                  Gestiona todas tus direcciones de entrega (casa, trabajo, etc.)
                 </Text>
-              ) : (
-                <Text style={styles.addressPlaceholder}>
-                  No tienes una dirección registrada
-                </Text>
-              )}
+              </View>
             </View>
             
-            {/* Botón para sistema híbrido unificado */}
-            <View style={styles.editButtonContainer}>
-              <TouchableOpacity
-                style={styles.addressButton}
-                onPress={() => {
-                  // Navegar al nuevo AddressFormUberStyle para Profile (SIN MAPA)
-                  navigation.navigate('AddressFormUberStyle', {
-                    pickerId: 'profile-address',
-                    initialAddress: profile.address || '',
-                    title: 'Mi Dirección de Entrega',
-                    fromProfile: true, // Flag para identificar que viene de Profile
-                    userId: user.id, // Para actualización directa en Profile
-                    skipMapStep: true, // NUEVO: Saltar paso 4 (mapa) en Profile
-                  });
-                }}
-                activeOpacity={0.8}>
-                <Text style={styles.addressButtonText}>
-                  📍 {profile.address ? 'Actualizar dirección' : 'Agregar dirección'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.addressManagerButton}
+              onPress={() => navigation.navigate('AddressManager')}
+              activeOpacity={0.8}>
+              <View style={styles.addressManagerButtonContent}>
+                <View style={styles.addressManagerButtonLeft}>
+                  <Ionicons name="home-outline" size={20} color="#FFF" />
+                  <Text style={styles.addressManagerButtonText}>
+                    Ver y Gestionar Direcciones
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#FFF" />
+              </View>
+            </TouchableOpacity>
           </View>
-
-          {/* Formulario de edición de dirección eliminado - ahora usa AddressFormUberStyle */}
         </View>
       )}
 
@@ -2046,45 +2032,59 @@ const styles = StyleSheet.create({
   },
   
   // === ESTILOS PARA SECCIÓN DE DIRECCIONES ===
-  addressInfoContainer: {
-    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+  // ✅ ESTILOS PARA GESTIÓN DE DIRECCIONES SIMPLIFICADA
+  addressManagerContainer: {
+    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.15)',
-  },
-  addressInfo: {
-    marginBottom: 12,
-  },
-  addressLabel: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: '#8B5E3C',
-    marginBottom: 8,
-  },
-  addressText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    lineHeight: 20,
-    backgroundColor: '#FFF',
-    padding: 12,
-    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  addressPlaceholder: {
-    fontFamily: fonts.regular,
+  addressManagerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addressManagerText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  addressManagerTitle: {
+    fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: 'rgba(47,47,47,0.5)',
-    fontStyle: 'italic',
-    backgroundColor: '#F9F9F9',
-    padding: 12,
+    color: '#2F2F2F',
+    marginBottom: 2,
+  },
+  addressManagerSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    lineHeight: 18,
+  },
+  addressManagerButton: {
+    backgroundColor: '#8B5E3C',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.1)',
-    borderStyle: 'dashed',
+    padding: 12,
+  },
+  addressManagerButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addressManagerButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addressManagerButtonText: {
+    marginLeft: 8,
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
   },
   
   // === ESTILOS DEL TOAST DE ÉXITO (tipo carrito) ===
@@ -2132,25 +2132,4 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
   
-  // === ESTILOS PARA BOTÓN DE DIRECCIÓN ===
-  addressButton: {
-    backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: '#8B5E3C',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  addressButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#8B5E3C',
-    textAlign: 'center',
-  },
 });
