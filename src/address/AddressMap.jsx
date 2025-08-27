@@ -175,12 +175,12 @@ const AddressMap = () => {
 
   // Confirmar ubicación y regresar
   const handleConfirm = async () => {
-    // Asegurarse de que hay una ubicación seleccionada
-    if (!currentLocation) {
+    // Asegurarse de que hay una ubicación seleccionada (ya sea por geocoding o selección manual)
+    if (!currentLocation || (currentLocation.latitude === 19.4326 && currentLocation.longitude === -99.1332)) {
       showAlert({
         type: 'warning',
         title: 'Ubicación requerida',
-        message: 'Por favor toca en el mapa para seleccionar tu ubicación exacta'
+        message: 'Por favor ajusta tu ubicación en el mapa o verifica tu dirección'
       });
       return;
     }

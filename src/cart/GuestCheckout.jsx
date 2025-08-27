@@ -39,6 +39,7 @@ export default function GuestCheckout() {
     totalPrice, 
     itemCount, 
     returnToCart,
+    editingAddress, // 🆕 NUEVO: Flag para indicar que está editando dirección
     // Datos preservados del formulario de Cart
     preservedDeliveryInfo,
     preservedNeedInvoice,
@@ -63,7 +64,35 @@ export default function GuestCheckout() {
       setEmail(user.email);
       setEmailLocked(true);
     }
-  }, [user]);
+    
+    // Si viene con currentEmail, usar ese
+    if (currentEmail && currentEmail.trim() !== '') {
+      setEmail(currentEmail);
+      setEmailLocked(true);
+    }
+    
+    // 🆕 FLUJO SIMPLIFICADO: Si está editando dirección, ir directo a AddressFormUberStyle
+    if (editingAddress && currentEmail && currentEmail.trim() !== '') {
+      // Ir directo a selección de dirección, saltando todo el flow de GuestCheckout
+      setTimeout(() => {
+        navigation.navigate('AddressFormUberStyle', {
+          initialAddress: currentAddress || '',
+          title: 'Cambiar Dirección de Entrega',
+          returnToCart: true, // 🔧 USAR FLAG CORRECTO
+          fromGuestCheckout: true,
+          guestEmail: currentEmail,
+          currentEmail: currentEmail, // ✅ REQUERIDO por AddressFormUberStyle
+          totalPrice: totalPrice, // ✅ REQUERIDO por validación
+          itemCount: itemCount, // ✅ REQUERIDO por validación
+          // Preservar datos para que regrese al carrito con todo intacto
+          preservedDeliveryInfo: preservedDeliveryInfo,
+          preservedNeedInvoice: preservedNeedInvoice,
+          preservedTaxDetails: preservedTaxDetails,
+          preservedCoordinates: route.params?.preservedCoordinates,
+        });
+      }, 100);
+    }
+  }, [user, editingAddress, currentEmail]);
 
   // Escuchar cuando regresa de AddressForm
   useFocusEffect(
@@ -146,7 +175,27 @@ export default function GuestCheckout() {
     }
 
     if (currentStep === 1) {
-      setCurrentStep(2);
+      // Ir directamente al AddressFormUberStyle en lugar del paso 2
+      navigation.navigate('AddressFormUberStyle', {
+        initialAddress: address,
+        title: 'Dirección de Entrega',
+        returnScreen: 'GuestCheckout',
+        pickerId: null,
+        fromGuestCheckout: true,
+        totalPrice: totalPrice,
+        itemCount: itemCount,
+        returnToCart: returnToCart,
+        preservedDeliveryInfo: preservedDeliveryInfo ? {
+          ...preservedDeliveryInfo,
+          date: typeof preservedDeliveryInfo.date === 'string' 
+            ? preservedDeliveryInfo.date 
+            : preservedDeliveryInfo.date.toISOString(),
+        } : preservedDeliveryInfo,
+        preservedNeedInvoice: preservedNeedInvoice,
+        preservedTaxDetails: preservedTaxDetails,
+        currentEmail: email,
+        currentAddress: address,
+      });
     } else if (currentStep === 2) {
       handleComplete();
     }
@@ -241,37 +290,19 @@ export default function GuestCheckout() {
     }
   };
 
-  // Renderizar stepper
-  const renderStepper = () => (
-    <View style={styles.stepperContainer}>
-      <View style={styles.stepperContent}>
-        <View style={styles.step}>
-          <View style={[styles.stepCircle, currentStep >= 1 && styles.stepCircleActive]}>
-            <Text style={[styles.stepNumber, currentStep >= 1 && styles.stepNumberActive]}>1</Text>
-          </View>
-          <Text style={[styles.stepLabel, currentStep === 1 && styles.stepLabelActive]}>Email</Text>
-        </View>
-        
-        <View style={styles.stepLine} />
-        
-        <View style={styles.step}>
-          <View style={[styles.stepCircle, currentStep >= 2 && styles.stepCircleActive]}>
-            <Text style={[styles.stepNumber, currentStep >= 2 && styles.stepNumberActive]}>2</Text>
-          </View>
-          <Text style={[styles.stepLabel, currentStep === 2 && styles.stepLabelActive]}>Dirección</Text>
-        </View>
-      </View>
+  // Renderizar información simple del proceso
+  const renderProcessInfo = () => (
+    <View style={styles.processInfoContainer}>
+      <Text style={styles.processTitle}>📧 Ingresa tu email</Text>
+      <Text style={styles.processDescription}>
+        Después podrás elegir tu dirección de entrega
+      </Text>
     </View>
   );
 
-  // Renderizar paso 1 - Email
-  const renderStep1 = () => (
+  // Renderizar formulario de email
+  const renderEmailForm = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>📧 Tu correo electrónico</Text>
-      <Text style={styles.stepDescription}>
-        Necesitamos tu email para enviarte la confirmación del pedido
-      </Text>
-      
       <TextInput
         ref={(ref) => registerInput('email', ref)}
         style={[
@@ -305,63 +336,6 @@ export default function GuestCheckout() {
     </View>
   );
 
-  // Renderizar paso 2 - Dirección
-  const renderStep2 = () => (
-    <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>📍 Dirección de entrega</Text>
-      <Text style={styles.stepDescription}>
-        Selecciona dónde quieres recibir tu pedido
-      </Text>
-      
-      <TouchableOpacity
-        style={styles.addressButton}
-        onPress={() => {
-          // console.log('=== GUEST CHECKOUT NAVEGANDO A ADDRESS FORM ===');
-          // console.log('Enviando preservedDeliveryInfo:', preservedDeliveryInfo);
-          // console.log('Enviando preservedNeedInvoice:', preservedNeedInvoice);
-          // console.log('Enviando preservedTaxDetails:', preservedTaxDetails);
-          
-          // Navegar al nuevo AddressFormUberStyle (estilo Uber Eats)
-          navigation.navigate('AddressFormUberStyle', {
-            initialAddress: address,
-            title: 'Dirección de Entrega',
-            returnScreen: 'GuestCheckout',
-            // Pasar parámetros que espera AddressFormUberStyle para funcionar correctamente
-            pickerId: null, // No usar sistema de callbacks
-            fromGuestCheckout: true,
-            // IMPORTANTE: Pasar todos los parámetros originales del pedido para preservarlos
-            totalPrice: totalPrice,
-            itemCount: itemCount,
-            returnToCart: returnToCart,
-            // CRITICAL: Pasar TODOS los datos preservados del Cart - convertir Date a string
-            preservedDeliveryInfo: preservedDeliveryInfo ? {
-              ...preservedDeliveryInfo,
-              date: typeof preservedDeliveryInfo.date === 'string' 
-                ? preservedDeliveryInfo.date 
-                : preservedDeliveryInfo.date.toISOString(),
-            } : preservedDeliveryInfo,
-            preservedNeedInvoice: preservedNeedInvoice,
-            preservedTaxDetails: preservedTaxDetails,
-            // Email y dirección actuales
-            currentEmail: email,
-            currentAddress: address,
-          });
-        }}
-        activeOpacity={0.7}>
-        <Text style={address ? styles.addressText : styles.addressPlaceholder}>
-          {address ? 'Elegir otra dirección' : 'Seleccionar dirección completa'}
-        </Text>
-        <Text style={styles.addressIcon}>📍</Text>
-      </TouchableOpacity>
-      
-      {address ? (
-        <View style={styles.addressPreview}>
-          <Text style={styles.addressPreviewLabel}>Dirección seleccionada:</Text>
-          <Text style={styles.addressPreviewText}>{address}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView 
@@ -376,12 +350,12 @@ export default function GuestCheckout() {
           activeOpacity={0.7}>
           <Text style={styles.backButtonText}>← Atrás</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout Invitado</Text>
+        <Text style={styles.headerTitle}>Confirmar Pedido</Text>
         <View style={styles.headerRight} />
       </View>
 
-      {/* Stepper estático */}
-      {renderStepper()}
+      {/* Información del proceso */}
+      {renderProcessInfo()}
       
       {/* Contenido scrolleable */}
       <TouchableWithoutFeedback onPress={() => {}}>
@@ -401,49 +375,28 @@ export default function GuestCheckout() {
             </Text>
           </View>
 
-          {/* Contenido del paso */}
+          {/* Formulario de email */}
           <View style={styles.stepContentContainer}>        
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}        
+            {renderEmailForm()}
           </View>
 
           {/* Bottom Actions */}
           <View style={styles.bottomActions}>
-            {currentStep === 1 && (
-              <TouchableOpacity
-                style={[
-                  styles.continueButton,
-                  !validateStep(currentStep) && styles.continueButtonDisabled,
-                  loading && styles.continueButtonDisabled
-                ]}
-                onPress={handleNext}
-                disabled={!validateStep(currentStep) || loading}
-                activeOpacity={0.8}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.continueButtonText}>Continuar</Text>
-                )}
-              </TouchableOpacity>
-            )}
-            
-            {currentStep === 2 && (
-              <TouchableOpacity
-                style={[
-                  styles.continueButton,
-                  !validateStep(currentStep) && styles.continueButtonDisabled,
-                  loading && styles.continueButtonDisabled
-                ]}
-                onPress={handleComplete}
-                disabled={!validateStep(currentStep) || loading}
-                activeOpacity={0.8}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.continueButtonText}>Completar Pedido</Text>
-                )}
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[
+                styles.continueButton,
+                !validateStep(1) && styles.continueButtonDisabled,
+                loading && styles.continueButtonDisabled
+              ]}
+              onPress={handleNext}
+              disabled={!validateStep(1) || loading}
+              activeOpacity={0.8}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Continuar a Dirección</Text>
+              )}
+            </TouchableOpacity>
           </View>
           
         </ScrollView>
@@ -491,55 +444,28 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 60, // Balancear el header
   },
-  stepperContainer: {
+  processInfoContainer: {
     backgroundColor: '#FFF',
     paddingVertical: 20,
     paddingHorizontal: 16,
     marginBottom: 8,
-  },
-  stepperContent: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 94, 60, 0.2)',
   },
-  step: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  stepCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E5E5E5',
-    alignItems: 'center',
-    justifyContent: 'center',
+  processTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
     marginBottom: 8,
+    textAlign: 'center',
   },
-  stepCircleActive: {
-    backgroundColor: '#D27F27',
-  },
-  stepNumber: {
+  processDescription: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
-    color: '#999',
-  },
-  stepNumberActive: {
-    color: '#FFF',
-  },
-  stepLabel: {
-    fontSize: fonts.size.small,
     fontFamily: fonts.regular,
-    color: '#999',
-  },
-  stepLabelActive: {
-    color: '#D27F27',
-    fontFamily: fonts.bold,
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#E5E5E5',
-    marginHorizontal: 16,
+    color: 'rgba(47,47,47,0.7)',
+    textAlign: 'center',
+    lineHeight: 22,
   },
   orderSummary: {
     backgroundColor: '#FFF',
@@ -571,12 +497,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2EFE4',
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 120, // Espacio extra para dispositivos pequeños
+    paddingBottom: 20,
   },
   stepContentContainer: {
     paddingHorizontal: 16,
-    flex: 1,
+    marginBottom: 16,
   },
   stepContent: {
     backgroundColor: '#FFF',

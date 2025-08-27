@@ -289,16 +289,13 @@ const AddressFormUberStyle = () => {
           
           if (isWithinBounds) {
             // Guardar coordenadas automáticamente solo si pasan todas las validaciones
+            console.log('✅ GEOCODING EXITOSO - Guardando coordenadas:', coordinates);
             setMapCoordinates(coordinates);
             
-            // console.log('✅ GEOCODING INTELIGENTE ESTRICTO exitoso:', {
-              // address: addressString,
-              // coordinates: coordinates,
-              // locationType: locationType,
-              // formattedAddress: result.formatted_address
-            // });
+            // 🆕 RETORNAR coordenadas para uso inmediato
+            return coordinates;
           } else {
-            // console.log('⚠️ GEOCODING: Coordenadas fuera de bounds permitidos');
+            console.log('⚠️ GEOCODING: Coordenadas fuera de bounds permitidos');
           }
         } else {
           // console.log('⚠️ GEOCODING: Ubicación no válida o precisión insuficiente', {
@@ -311,8 +308,11 @@ const AddressFormUberStyle = () => {
         // console.log('⚠️ GEOCODING INTELIGENTE: No se encontraron resultados para:', addressString);
       }
     } catch (error) {
-      // console.error('❌ Error en GEOCODING INTELIGENTE:', error);
+      console.warn('❌ Error en GEOCODING INTELIGENTE:', error);
     }
+    
+    // Si llegamos aquí, el geocoding falló - retornar null
+    return null;
   };
 
   // ✅ NUEVA: Función para parsear dirección legacy del perfil y pre-llenar campos
@@ -659,7 +659,10 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa con geocoding inteligente
   const goToMap = async () => {
-    // console.log('=== NAVEGANDO AL MAPA ===');
+    console.log('🗺️ NAVEGANDO AL MAPA CON COORDENADAS:', {
+      mapCoordinatesState: mapCoordinates,
+      willUseDefault: !mapCoordinates
+    });
     
     let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
     
@@ -707,7 +710,7 @@ const AddressFormUberStyle = () => {
     
     navigation.navigate('AddressMap', {
       addressForm: {},
-      selectedLocation: mapCenter, // Coordenadas calculadas o fallback
+      selectedLocation: mapCoordinates || mapCenter, // USAR COORDENADAS DE GEOCODING SI EXISTEN
       pickerId,
       callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
@@ -719,7 +722,7 @@ const AddressFormUberStyle = () => {
   };
 
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
-  const handleConfirm = async () => {
+  const handleConfirm = async (providedAddress = null) => {
     console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
       fromAddressManager: route.params?.fromAddressManager,
       fromCart: route.params?.fromCart,
@@ -730,7 +733,9 @@ const AddressFormUberStyle = () => {
     });
 
     // VALIDACIONES EXACTAS DE PROFILE - NO CAMBIAR
-    if (!userWrittenAddress?.trim()) {
+    // Usar providedAddress si se pasó, sino userWrittenAddress del estado
+    const addressToValidate = providedAddress || userWrittenAddress;
+    if (!addressToValidate?.trim()) {
       Alert.alert('Error', 'Por favor escribe una dirección válida.');
       return;
     }
@@ -742,8 +747,8 @@ const AddressFormUberStyle = () => {
     
     // CONSTRUCCIÓN DE DIRECCIÓN FINAL - INTELIGENTE
     const finalAddress = {
-      userWrittenAddress: userWrittenAddress.trim(),
-      fullAddress: userWrittenAddress.trim(),
+      userWrittenAddress: addressToValidate.trim(),
+      fullAddress: addressToValidate.trim(),
       coordinates: skipMapStep ? null : mapCoordinates, // Guest incluye coordenadas, Profile no
       references: references.trim(),
       verified: skipMapStep ? false : !!mapCoordinates, // Verificado si tiene coordenadas (manual o inteligente)
@@ -935,40 +940,35 @@ const AddressFormUberStyle = () => {
           throw new Error('Faltan parámetros del carrito');
         }
         
-        // Si returnToCart es true, regresar a GuestCheckout con los datos
-        // ✅ FIX iOS: Evitar navegación anidada compleja que causa problemas en iOS
+        // Si returnToCart es true, ir directamente al Cart
+        // ✅ FIX: Evitar regreso a GuestCheckout, ir directo al carrito
         if (route.params?.returnToCart) {
-          // console.log('✅ FIX iOS: Regresando a GuestCheckout con datos preservados');
+          // console.log('✅ FIX: Yendo directo al carrito con datos completos');
           
-          // Navegar de vuelta a GuestCheckout con todos los datos necesarios
-          navigation.navigate('GuestCheckout', {
-            // Parámetros básicos validados
-            totalPrice: route.params.totalPrice,
-            itemCount: route.params.itemCount,
-            returnToCart: route.params?.returnToCart || false,
-            
-            // Datos preservados del Cart
-            preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
-            preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
-            preservedTaxDetails: route.params?.preservedTaxDetails || null,
-            
-            // Email actuales
-            currentEmail: route.params?.currentEmail || '',
-            currentAddress: route.params?.currentAddress || '',
-            
-            // ✅ DATOS NUEVOS de la dirección seleccionada
-            selectedAddress: addressToSend,
-            selectedCoordinates: finalAddress.coordinates ? {
-              driver_lat: finalAddress.coordinates.latitude,
-              driver_long: finalAddress.coordinates.longitude
-            } : null,
-            selectedReferences: finalAddress.references,
-            shouldGoToStep2: true, // Ir directamente al paso 2
-            preservedEmail: route.params?.currentEmail || '',
-            addressCompleted: true,
+          // Navegar directo al carrito con todos los datos necesarios
+          navigation.navigate('MainTabs', {
+            screen: 'Carrito',
+            params: {
+              guestData: {
+                email: route.params?.currentEmail || '',
+                address: addressToSend,
+                // Datos preservados del formulario de Cart
+                preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
+                preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
+                preservedTaxDetails: route.params?.preservedTaxDetails || null,
+                preservedCoordinates: finalAddress.coordinates ? {
+                  latitude: finalAddress.coordinates.latitude,
+                  longitude: finalAddress.coordinates.longitude
+                } : null,
+              },
+              mapCoordinates: finalAddress.coordinates ? {
+                latitude: finalAddress.coordinates.latitude,
+                longitude: finalAddress.coordinates.longitude
+              } : null
+            }
           });
           
-          // console.log('✓ Navegación a GuestCheckout con datos completos');
+          // console.log('✓ Navegación directa a Cart con datos completos');
           return;
         }
         
@@ -1095,6 +1095,33 @@ const AddressFormUberStyle = () => {
       cleanupNavigationCallback(mapCallbackId);
     };
   }, [mapCallbackId]);
+
+  // 🆕 GEOCODING AUTOMÁTICO: Cuando la dirección está completa
+  useEffect(() => {
+    const isAddressComplete = 
+      streetName?.trim() &&
+      exteriorNumber?.trim() &&
+      neighborhood?.trim() &&
+      postalCode?.trim() &&
+      municipality?.trim();
+
+    if (isAddressComplete && currentStep === 2) {
+      const finalAddress = buildFinalAddress();
+      if (finalAddress && finalAddress.length > 15) {
+        console.log('🤖 GEOCODING AUTOMÁTICO - Dirección completa detectada:', finalAddress);
+        
+        // Delay para evitar múltiples calls mientras user escribe
+        const timer = setTimeout(async () => {
+          const coords = await handleIntelligentGeocoding(finalAddress);
+          if (coords) {
+            console.log('✅ COORDENADAS OBTENIDAS AUTOMÁTICAMENTE:', coords);
+          }
+        }, 1500); // 1.5 segundos de delay
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, currentStep]);
 
   // Renderizar paso 1: Búsqueda
   const renderSearchStep = () => (
@@ -1395,9 +1422,16 @@ const AddressFormUberStyle = () => {
                   onPress={async () => {
                     // Construir dirección y hacer geocoding antes de ir al mapa
                     const finalAddress = buildFinalAddress();
+                    console.log('🎯 BOTÓN IR AL MAPA presionado - Dirección construida:', finalAddress);
                     setUserWrittenAddress(finalAddress);
-                    await handleIntelligentGeocoding(finalAddress);
-                    goToMap();
+                    console.log('🧠 Ejecutando geocoding...');
+                    const geocodedCoordinates = await handleIntelligentGeocoding(finalAddress);
+                    
+                    // 🔧 TIMING FIX: Pequeño delay para asegurar que el estado se actualice
+                    setTimeout(() => {
+                      console.log('🚀 Ir al mapa después del geocoding y delay');
+                      goToMap();
+                    }, 200);
                   }}>
                   <Ionicons name="map" size={16} color="#FFF" />
                   <Text style={styles.selectLocationButtonText}>Ir al mapa</Text>
@@ -1424,7 +1458,8 @@ const AddressFormUberStyle = () => {
             }
             
             // Completar dirección directamente (sin ir a paso 3)
-            handleConfirm();
+            // 🔧 TIMING FIX: Pasar finalAddress directamente en lugar de esperar setState
+            handleConfirm(finalAddress);
           }}
           disabled={!hasRequiredFields}>
           <Ionicons name="checkmark-circle" size={24} color="#FFF" />

@@ -117,11 +117,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 10,
+    flexWrap: 'wrap', // Permitir que los botones se envuelvan si es necesario
   },
   button: {
     paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 6,
+    minWidth: 80, // Ancho mínimo para consistencia
+    flex: 0, // No expandir automáticamente
   },
   outlineButton: {
     backgroundColor: 'transparent',
