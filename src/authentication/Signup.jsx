@@ -52,6 +52,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   // Verificar si el guest ya tiene email (ya hizo pedidos)
   const isGuestWithEmail = user?.usertype === 'Guest' && user?.email && user?.email?.trim() !== '';
   const guestEmail = isGuestWithEmail ? user.email : '';
+  
+  // Estado para mostrar advertencia cuando se modifica el email
+  const [emailModified, setEmailModified] = useState(false);
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -107,8 +110,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
-      .min(8, 'Mínimo 8 caracteres')
-      .matches(/^[a-zA-Z0-9]+$/, 'Solo letras y números, sin caracteres especiales')
+      .min(6, 'Mínimo 6 caracteres')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]+$/, 'Debe contener al menos: 1 minúscula, 1 mayúscula y 1 número')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -555,6 +558,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   </TouchableWithoutFeedback>
                 </Modal>
               )}
+              
+              {/* Leyenda motivacional para fecha de cumpleaños */}
+              <Text style={styles.birthdayMotivationalText}>
+                🎉 Recibe sorpresas en tu cumpleaños
+              </Text>
             </View>
 
             {/* Correo electrónico */}
@@ -564,22 +572,31 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 style={[
                   styles.input,
                   touched.email && errors.email && styles.inputError,
-                  isGuestWithEmail && styles.disabledInput, // Estilo para input bloqueado
                 ]}
                 placeholder="Correo electrónico"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={values.email}
-                onChangeText={isGuestWithEmail ? undefined : handleChange('email')} // Bloquear edición
+                onChangeText={(text) => {
+                  // Detectar si el email fue modificado
+                  if (isGuestWithEmail && text !== guestEmail) {
+                    setEmailModified(true);
+                  } else if (isGuestWithEmail && text === guestEmail) {
+                    setEmailModified(false);
+                  }
+                  
+                  // Comportamiento normal de Formik
+                  handleChange('email')(text);
+                }}
                 onBlur={handleBlur('email')}
-                onFocus={!isGuestWithEmail ? createFocusHandler('email') : undefined}
-                editable={!isGuestWithEmail} // Desactivar input si es guest con email
+                onFocus={createFocusHandler('email')}
                 returnKeyType="next"
               />
-              {isGuestWithEmail && (
-                <Text style={styles.blockedEmailText}>
-                  🔒 Usaremos el email de tus pedidos anteriores
+              {/* Mostrar advertencia solo cuando se modifica el email */}
+              {isGuestWithEmail && emailModified && (
+                <Text style={styles.warningText}>
+                  ⚠️ Si cambias este email, perderás el registro de tus pedidos anteriores
                 </Text>
               )}
               {touched.email && errors.email && (
@@ -595,7 +612,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña (mínimo 8 caracteres)"
+                placeholder="Contraseña (mínimo 6 caracteres)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
@@ -609,15 +626,27 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 <View style={styles.passwordRequirements}>
                   <Text style={[
                     styles.passwordRequirement,
-                    values.password.length >= 8 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                    values.password.length >= 6 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
-                    {values.password.length >= 8 ? '✓' : '×'} Mínimo 8 caracteres
+                    {values.password.length >= 6 ? '✓' : '×'} Mínimo 6 caracteres
                   </Text>
                   <Text style={[
                     styles.passwordRequirement,
-                    /^[a-zA-Z0-9]+$/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                    /[a-z]/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
-                    {/^[a-zA-Z0-9]+$/.test(values.password) ? '✓' : '×'} Solo letras y números
+                    {/[a-z]/.test(values.password) ? '✓' : '×'} Una minúscula (a-z)
+                  </Text>
+                  <Text style={[
+                    styles.passwordRequirement,
+                    /[A-Z]/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                  ]}>
+                    {/[A-Z]/.test(values.password) ? '✓' : '×'} Una mayúscula (A-Z)
+                  </Text>
+                  <Text style={[
+                    styles.passwordRequirement,
+                    /\d/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                  ]}>
+                    {/\d/.test(values.password) ? '✓' : '×'} Un número (0-9)
                   </Text>
                 </View>
               )}
@@ -1080,5 +1109,30 @@ const styles = StyleSheet.create({
   },
   agePreviewInvalid: {
     color: '#E63946',
+  },
+  
+  // 🎉 Estilos para leyenda motivacional del cumpleaños
+  birthdayMotivationalText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#8B5E3C',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  
+  // ⚠️ Estilo para advertencia simple
+  warningText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+    marginTop: 4,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    backgroundColor: 'rgba(210, 127, 39, 0.05)',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
 });
