@@ -16,6 +16,12 @@ import { useAlert } from '../context/AlertContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { scaleSpacing, scaleFontSize, getButtonDimensions } from '../utils/responsiveUtils';
 import { executeNavigationCallback } from '../utils/navigationCallbacks';
+import { 
+  ALCALDIAS_CDMX, 
+  MUNICIPIOS_EDOMEX, 
+  validatePostalCode,
+  parseAddressComponents 
+} from '../utils/addressValidators';
 
 const AddressMap = () => {
   const navigation = useNavigation();
@@ -39,96 +45,6 @@ const AddressMap = () => {
   const mapRef = useRef(null);
   
 
-  // Opciones de Alcaldías para el mapeo
-  const alcaldiasCDMX = [
-    'Álvaro Obregón', 'Azcapotzalco', 'Benito Juárez', 'Coyoacán',
-    'Cuajimalpa', 'Gustavo A. Madero', 'Iztacalco', 'Iztapalapa',
-    'Magdalena Contreras', 'Miguel Hidalgo', 'Milpa Alta', 'Tláhuac',
-    'Tlalpan', 'Venustiano Carranza', 'Xochimilco', 'Cuauhtémoc'
-  ];
-
-  const municipiosEdomex = [
-    'Naucalpan', 'Tlalnepantla', 'Ecatepec', 'Nezahualcóyotl', 
-    'Chimalhuacán', 'Atizapán', 'Tultitlán', 'Coacalco',
-    'Cuautitlán Izcalli', 'Huixquilucan', 'Nicolás Romero', 
-    'Tecámac', 'La Paz', 'Chalco', 'Ixtapaluca'
-  ];
-
-  // Validar Código Postal
-  const validatePostalCode = (cp, city) => {
-    if (city === 'CDMX') {
-      return cp >= '01000' && cp <= '16999';
-    } else {
-      return cp >= '50000' && cp <= '56999';
-    }
-  };
-
-  // Parsear componentes de dirección de Google para auto-rellenado
-  const parseAddressComponents = (components, fullAddress, location) => {
-    const addressData = {
-      ...addressForm, // Mantener datos existentes
-      fullAddress: fullAddress,
-    };
-
-    components.forEach(component => {
-      const types = component.types;
-      
-      if (types.includes('street_number')) {
-        addressData.exteriorNumber = component.long_name;
-      } else if (types.includes('route')) {
-        addressData.street = component.long_name;
-      } else if (types.includes('sublocality') || types.includes('sublocality_level_1') || 
-                 types.includes('political') || types.includes('locality') || 
-                 types.includes('administrative_area_level_2') || types.includes('administrative_area_level_1')) {
-        // Intentar mapear a alcaldía conocida con múltiples estrategias
-        const componentName = component.long_name.toLowerCase();
-        
-        // Estrategia 1: Coincidencia exacta
-        let foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
-          a.toLowerCase() === componentName
-        );
-        
-        // Estrategia 2: Coincidencia parcial
-        if (!foundAlcaldia) {
-          foundAlcaldia = [...alcaldiasCDMX, ...municipiosEdomex].find(a => 
-            a.toLowerCase().includes(componentName) ||
-            componentName.includes(a.toLowerCase())
-          );
-        }
-        
-        // Estrategia 3: Coincidencias especiales para nombres comunes
-        if (!foundAlcaldia) {
-          const specialMappings = {
-            'benito juarez': 'Benito Juárez',
-            'gustavo a madero': 'Gustavo A. Madero',
-            'cuauhtemoc': 'Cuauhtémoc',
-            'miguel hidalgo': 'Miguel Hidalgo',
-            'venustiano carranza': 'Venustiano Carranza',
-            'neza': 'Nezahualcóyotl',
-            'nezahualcoyotl': 'Nezahualcóyotl',
-            'atizapan': 'Atizapán',
-            'cuautitlan': 'Cuautitlán Izcalli'
-          };
-          foundAlcaldia = specialMappings[componentName];
-        }
-        
-        if (foundAlcaldia) {
-          addressData.alcaldia = foundAlcaldia;
-          addressData.city = alcaldiasCDMX.includes(foundAlcaldia) ? 'CDMX' : 'Estado de México';
-        }
-      } else if (types.includes('postal_code')) {
-        addressData.postalCode = component.long_name;
-        // Auto-detectar ciudad por CP
-        if (validatePostalCode(component.long_name, 'CDMX')) {
-          addressData.city = 'CDMX';
-        } else if (validatePostalCode(component.long_name, 'Estado de México')) {
-          addressData.city = 'Estado de México';
-        }
-      }
-    });
-
-    return addressData;
-  };
 
   // Manejar pin en mapa
   const handleMapPress = async (event) => {
@@ -153,7 +69,7 @@ const AddressMap = () => {
         const updatedForm = parseAddressComponents(
           result.address_components, 
           result.formatted_address, 
-          { latitude, longitude }
+          addressForm
         );
         
         // ✅ SOLUCIONADO: Usar callback por ID o fallback a función directa

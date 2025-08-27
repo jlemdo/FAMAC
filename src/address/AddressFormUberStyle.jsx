@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Config from 'react-native-config';
 import axios from 'axios';
+import { geocodeFormAddress } from '../utils/geocodingUtils';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 import { getCurrentLocation } from '../utils/locationUtils';
@@ -225,93 +226,17 @@ const AddressFormUberStyle = () => {
   };
 
   // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual (MEJORADO - MÁS ESTRICTO)
+  // Geocoding inteligente usando utility unificada
   const handleIntelligentGeocoding = async (addressString) => {
-    if (!addressString || addressString.trim() === '' || addressString.length < 15) {
-      // console.log('⚠️ Dirección muy corta o vacía para geocodificar:', addressString);
-      return;
-    }
-
-    // Validación previa: la dirección debe tener componentes básicos
-    const hasStreetNumber = /\d+/.test(addressString);
-    const hasStreetName = addressString.split(' ').length >= 2;
-    const hasLocation = addressString.includes('CDMX') || addressString.includes('México') || addressString.includes('Col.');
+    const coordinates = await geocodeFormAddress(addressString);
     
-    if (!hasStreetNumber || !hasStreetName) {
-      // console.log('⚠️ Dirección incompleta, no tiene número o calle:', addressString);
-      return;
-    }
-
-    try {
-      // console.log('🧠 GEOCODING INTELIGENTE ESTRICTO iniciado para:', addressString);
-      
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json`,
-        {
-          params: {
-            address: `${addressString}, México`,
-            key: Config.GOOGLE_DIRECTIONS_API_KEY,
-            language: 'es',
-            region: 'mx',
-            bounds: '19.048,-99.365|19.761,-98.877', // Bounds estrictos para CDMX y Edomex
-            components: 'country:MX|locality:Ciudad de México|administrative_area:Ciudad de México|administrative_area:México', // Solo CDMX y EdoMex
-          },
-        }
-      );
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
-        
-        // VALIDACIÓN ESTRICTA: Verificar que el resultado sea realmente de CDMX o EdoMex
-        const addressComponents = result.address_components;
-        const isValidLocation = addressComponents.some(component => 
-          component.types.includes('administrative_area_level_1') &&
-          (component.long_name.includes('Ciudad de México') || 
-           component.long_name.includes('México') ||
-           component.short_name === 'CDMX' ||
-           component.short_name === 'MEX')
-        );
-        
-        // VALIDACIÓN DE PRECISIÓN: Solo aceptar resultados con alta precisión
-        const locationType = result.geometry.location_type;
-        const isHighPrecision = locationType === 'ROOFTOP' || locationType === 'RANGE_INTERPOLATED';
-        
-        if (isValidLocation && isHighPrecision) {
-          const location = result.geometry.location;
-          const coordinates = {
-            latitude: location.lat,
-            longitude: location.lng,
-          };
-          
-          // Verificación final: coordenadas dentro de bounds de CDMX/EdoMex
-          const isWithinBounds = 
-            coordinates.latitude >= 19.048 && coordinates.latitude <= 19.761 &&
-            coordinates.longitude >= -99.365 && coordinates.longitude <= -98.877;
-          
-          if (isWithinBounds) {
-            // Guardar coordenadas automáticamente solo si pasan todas las validaciones
-            console.log('✅ GEOCODING EXITOSO - Guardando coordenadas:', coordinates);
-            setMapCoordinates(coordinates);
-            
-            // 🆕 RETORNAR coordenadas para uso inmediato
-            return coordinates;
-          } else {
-            console.log('⚠️ GEOCODING: Coordenadas fuera de bounds permitidos');
-          }
-        } else {
-          // console.log('⚠️ GEOCODING: Ubicación no válida o precisión insuficiente', {
-            // isValidLocation,
-            // isHighPrecision,
-            // locationType
-          // });
-        }
-      } else {
-        // console.log('⚠️ GEOCODING INTELIGENTE: No se encontraron resultados para:', addressString);
-      }
-    } catch (error) {
-      console.warn('❌ Error en GEOCODING INTELIGENTE:', error);
+    if (coordinates) {
+      console.log('✅ GEOCODING EXITOSO - Guardando coordenadas:', coordinates);
+      setMapCoordinates(coordinates);
+      return coordinates;
     }
     
-    // Si llegamos aquí, el geocoding falló - retornar null
+    console.log('⚠️ GEOCODING: No se pudieron obtener coordenadas válidas');
     return null;
   };
 

@@ -18,6 +18,7 @@ import { useAlert } from '../context/AlertContext';
 import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import { validateEmail } from '../utils/addressValidators';
 
 export default function GuestCheckout() {
   const navigation = useNavigation();
@@ -134,10 +135,7 @@ export default function GuestCheckout() {
   );
 
   // Función para validar email
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  // Email validation moved to addressValidators.js utility
 
   // Validar paso actual
   const validateStep = (step) => {

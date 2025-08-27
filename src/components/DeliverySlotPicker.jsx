@@ -10,48 +10,38 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🆕 NUEVA LÓGICA: Mostrar TODOS los jueves y domingos disponibles
+  // 🆕 NUEVA LÓGICA: Mostrar TODOS los jueves y lunes disponibles
   useEffect(() => {
     const tempDays = [];
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
     
-    // Generar próximos 3-4 Jueves y Domingos, ordenados por proximidad
+    // Generar próximos 3-4 Jueves y Lunes, ordenados por proximidad
     const deliveryDates = [];
     
     // Obtener próximos 3 jueves
     const nextThursdays = getNextWeekdays(4, 3); // 4=Jueves
-    // Obtener próximos 3 domingos  
-    const nextSundays = getNextWeekdays(0, 3); // 0=Domingo
+    // Obtener próximos 3 lunes  
+    const nextMondays = getNextWeekdays(1, 3); // 1=Lunes
     
     // Combinar todas las fechas
-    deliveryDates.push(...nextThursdays, ...nextSundays);
+    deliveryDates.push(...nextThursdays, ...nextMondays);
     
     // Ordenar por fecha (más cercana primero)
     deliveryDates.sort((a, b) => a.getTime() - b.getTime());
     
-    // Determinar cuál es el día preferente según cuándo compra
-    let preferredDay = '';
-    if ([6, 0, 1].includes(dayOfWeek)) {
-      preferredDay = 'Jueves'; // Sábado, Domingo, Lunes → prefieren Jueves
-    } else {
-      preferredDay = 'Domingo'; // Martes, Miércoles, Jueves, Viernes → prefieren Domingo
-    }
-    
     // Tomar las primeras 4-5 fechas más cercanas
     const selectedDates = deliveryDates.slice(0, 5);
     
+    console.log('⭐ Generando días de entrega:', selectedDates.map(d => d.toLocaleDateString('es-MX')));
+    
     selectedDates.forEach((date, i) => {
-      const isThursday = date.getDay() === 4;
-      const isSunday = date.getDay() === 0;
-      const isPreferred = (isThursday && preferredDay === 'Jueves') || (isSunday && preferredDay === 'Domingo');
-      
       const dayObj = {
         date,
         label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
         isoDate: date.toISOString().split('T')[0],
-        isPreferred, // Para destacar visualmente la opción recomendada
+        isClosest: i === 0, // Solo el primer día (más cercano) tiene estrella
       };
+      
+      console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
       tempDays.push(dayObj);
     });
     
@@ -112,20 +102,21 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ];
       }
       
-      // 🆕 FILTRAR horarios pasados si es el día actual de compra
-      const today = new Date();
+      // 🆕 FILTRAR horarios según la hora actual (SIEMPRE aplicar filtro)
+      const now = new Date();
       const selectedDate = new Date(dateString);
-      const isToday = today.toDateString() === selectedDate.toDateString();
+      const isToday = now.toDateString() === selectedDate.toDateString();
+      const currentHour = now.getHours();
       
-      if (isToday) {
-        const currentHour = today.getHours();
-        const filteredSlots = slotsToProcess.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour);
-        });
-        setAvailableSlots(filteredSlots);
-      } else {
-        setAvailableSlots(slotsToProcess);
-      }
+      console.log('📅 Procesando slots para fecha:', dateString, 'Es hoy:', isToday);
+      console.log('🕰️ Hora actual:', currentHour, 'Slots encontrados:', slotsToProcess.length);
+      
+      // SIEMPRE aplicar filtro de horarios basado en hora actual
+      const filteredSlots = slotsToProcess.filter(slot => {
+        return !isSlotPassed(slot.value, currentHour);
+      });
+      console.log('✅ Slots disponibles después del filtro:', filteredSlots.length, filteredSlots);
+      setAvailableSlots(filteredSlots);
       
     } catch (error) {
       // Error fetching delivery slots - usar fallback con filtros
@@ -134,17 +125,17 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
       ];
       
-      // Aplicar filtro incluso al fallback si es hoy
-      const today = new Date();
-      const selectedDate = new Date(dateString);
-      const isToday = today.toDateString() === selectedDate.toDateString();
+      // Aplicar filtro SIEMPRE al fallback
+      const now = new Date();
+      const currentHour = now.getHours();
       
-      if (isToday) {
-        const currentHour = today.getHours();
-        fallbackSlots = fallbackSlots.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour);
-        });
-      }
+      console.log('⚠️ Error en API, usando fallback. Hora actual:', currentHour);
+      
+      // SIEMPRE aplicar filtro de horarios
+      fallbackSlots = fallbackSlots.filter(slot => {
+        return !isSlotPassed(slot.value, currentHour);
+      });
+      console.log('✅ Slots fallback disponibles:', fallbackSlots.length, fallbackSlots);
       
       setAvailableSlots(fallbackSlots);
     } finally {
@@ -154,31 +145,29 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   
   // Helper function para determinar si un horario ya pasó
   const isSlotPassed = (slotValue, currentHour) => {
-    // Parsear el horario para obtener la hora de fin
-    // Ejemplos: '9am-1pm' -> hora de fin: 13, '4pm-10pm' -> hora de fin: 22
-    const timeSlot = slotValue.toLowerCase();
-    let endHour = 0;
+    console.log('🕰️ Evaluando slot:', slotValue, 'Hora actual:', currentHour);
     
-    if (timeSlot.includes('1pm') || timeSlot.includes('13')) {
-      endHour = 13; // 1:00 PM
-    } else if (timeSlot.includes('10pm') || timeSlot.includes('22')) {
-      endHour = 22; // 10:00 PM
-    } else if (timeSlot.includes('pm')) {
-      // Para otros horarios PM, extraer el número
-      const match = timeSlot.match(/(\d+)pm/);
-      if (match) {
-        endHour = parseInt(match[1]) === 12 ? 12 : parseInt(match[1]) + 12;
-      }
-    } else if (timeSlot.includes('am')) {
-      // Para horarios AM
-      const match = timeSlot.match(/(\d+)am/);
-      if (match) {
-        endHour = parseInt(match[1]) === 12 ? 0 : parseInt(match[1]);
-      }
+    // Parsear el horario para obtener información del slot
+    const timeSlot = slotValue.toLowerCase();
+    
+    // Identificar slot matutino (9am-1pm)
+    const isMorningSlot = timeSlot.includes('9') && (timeSlot.includes('am') || timeSlot.includes('1pm'));
+    
+    // Si la hora actual es 18:00 (6 PM) o después, el slot matutino ya no está disponible
+    if (currentHour >= 18 && isMorningSlot) {
+      console.log('❌ Slot matutino bloqueado después de 6 PM');
+      return true;
     }
     
-    // Si la hora actual es mayor o igual a la hora de fin del slot, ya pasó
-    return currentHour >= endHour;
+    // Si es slot vespertino (4pm-10pm), verificar si aún está disponible
+    const isEveningSlot = timeSlot.includes('4') && timeSlot.includes('pm');
+    if (isEveningSlot && currentHour >= 22) {
+      console.log('❌ Slot vespertino ya terminó');
+      return true;
+    }
+    
+    console.log('✅ Slot disponible');
+    return false;
   };
 
   const handleConfirm = () => {
@@ -217,7 +206,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
             <View style={styles.deliveryDayHeader}>
               <Text style={styles.deliveryDayTitle}>📅 Elige tu día de entrega</Text>
               <View style={styles.deliveryDayInfo}>
-                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Jueves y Domingos</Text>
+                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Jueves y Lunes</Text>
                 <Text style={styles.recommendedHint}>⭐ Más cercano a tu compra</Text>
               </View>
             </View>
@@ -246,7 +235,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
                     styles.dayLabel,
                     selectedDateIndex === index && styles.dayLabelSelected,
                   ]}>
-                    {item.isPreferred && <Text style={styles.starIcon}>⭐️ </Text>}
+                    {item.isClosest && <Text style={styles.starIcon}>⭐️ </Text>}
                     {item.label}
                   </Text>
                 </View>

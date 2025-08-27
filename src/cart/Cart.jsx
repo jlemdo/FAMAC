@@ -32,6 +32,7 @@ import {
 } from '../utils/navigationCallbacks';
 import axios from 'axios';
 import Config from 'react-native-config';
+import { geocodeGuestAddress, convertToDriverCoords } from '../utils/geocodingUtils';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
@@ -250,66 +251,15 @@ export default function Cart() {
   // Ref para el scroll automático al botón de pagar
   const flatListRef = React.useRef(null);
 
-  // 🆕 FUNCIÓN: Geocoding para direcciones guardadas de Guest
+  // 🆕 FUNCIÓN: Geocoding para direcciones guardadas de Guest (usando utility)
   const handleGuestAddressGeocoding = async (addressString) => {
-    if (!addressString || addressString.trim().length < 15) {
-      console.log('⚠️ Dirección muy corta para geocoding:', addressString);
-      return;
-    }
-
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json`,
-        {
-          params: {
-            address: `${addressString}, México`,
-            key: Config.GOOGLE_DIRECTIONS_API_KEY,
-            language: 'es',
-            region: 'mx',
-            bounds: '19.048,-99.365|19.761,-98.877',
-          },
-        }
-      );
-
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const result = response.data.results[0];
-        const location = result.geometry.location;
-        
-        const coordinates = {
-          driver_lat: location.lat,
-          driver_long: location.lng,
-        };
-
-        // Verificar que esté dentro de bounds
-        const isWithinBounds = 
-          coordinates.driver_lat >= 19.048 && coordinates.driver_lat <= 19.761 &&
-          coordinates.driver_long >= -99.365 && coordinates.driver_long <= -98.877;
-
-        if (isWithinBounds) {
-          console.log('✅ GEOCODING GUEST EXITOSO - Guardando coordenadas:', coordinates);
-          setLatlong(coordinates);
-        } else {
-          console.log('⚠️ Coordenadas fuera de bounds - usando coordenadas por defecto');
-          setLatlong({
-            driver_lat: 19.4326,
-            driver_long: -99.1332,
-          });
-        }
-      } else {
-        console.log('⚠️ No se encontraron resultados - usando coordenadas por defecto');
-        setLatlong({
-          driver_lat: 19.4326,
-          driver_long: -99.1332,
-        });
-      }
-    } catch (error) {
-      console.warn('❌ Error en geocoding Guest:', error);
-      // Usar coordenadas por defecto en caso de error
-      setLatlong({
-        driver_lat: 19.4326,
-        driver_long: -99.1332,
-      });
-    }
+    console.log('🧠 Guest sin coordenadas - haciendo geocoding de dirección guardada...');
+    
+    const coordinates = await geocodeGuestAddress(addressString);
+    const driverCoords = convertToDriverCoords(coordinates);
+    
+    console.log('✅ GEOCODING GUEST EXITOSO - Guardando coordenadas:', driverCoords);
+    setLatlong(driverCoords);
   };
 
   // Función para formatear cantidad como en ProductDetails
