@@ -95,13 +95,21 @@ const Order = () => {
       
       const foundOrders = [];
       
-      // Búsqueda dinámica con pausas para evitar error 429
-      const searchIds = [185, 184, 186, 183, 187, 180, 190, 175, 195, 170]; // IDs prioritarios
-      let requestCount = 0;
-      const maxRequests = 10;
+      // Búsqueda ampliada: IDs desde 250 hacia abajo para capturar más pedidos recientes
+      const searchIds = [];
+      // Generar IDs desde 250 hasta 100 (150 IDs total)
+      for (let i = 250; i >= 100; i--) {
+        searchIds.push(i);
+      }
+      // Agregar algunos IDs específicos conocidos al inicio
+      const priorityIds = [185, 184, 186, 183, 187, 180, 190, 175, 195, 170];
+      const allSearchIds = [...priorityIds, ...searchIds.filter(id => !priorityIds.includes(id))];
       
-      for (const id of searchIds) {
-        if (foundOrders.length >= 3 || requestCount >= maxRequests) break;
+      let requestCount = 0;
+      const maxRequests = 50; // Aumentamos a 50 requests máximo
+      
+      for (const id of allSearchIds) {
+        if (requestCount >= maxRequests) break; // ✅ Removido límite de 3 pedidos
         
         try {
           requestCount++;
@@ -120,9 +128,9 @@ const Order = () => {
             // console.log(`✅ Orden ${id} encontrada para ${guestEmail}`);
           }
           
-          // Pausa entre requests para evitar 429
-          if (requestCount % 3 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+          // Rate limiting optimizado: pausa más corta pero más frecuente
+          if (requestCount % 5 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
           
         } catch (error) {
@@ -187,6 +195,17 @@ const Order = () => {
     }
   };
 
+  // ✅ Auto-carga de pedidos Guest cuando tiene email
+  useEffect(() => {
+    if (user && user.usertype === 'Guest' && 
+        user.email && typeof user.email === 'string' && user.email.trim() &&
+        !showingGuestOrders && !loading) {
+      // Console log para debug
+      console.log('🔄 Auto-cargando pedidos para Guest:', user.email);
+      handleViewGuestOrders(user.email);
+    }
+  }, [user?.email, user?.usertype, showingGuestOrders, loading]);
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -208,30 +227,27 @@ const Order = () => {
               {user && user.usertype === 'Guest' ? (
                 // Mensajes para Guest
                 (user.email && typeof user.email === 'string' && user.email.trim()) ? (
-                  // Guest que ya hizo pedidos (tiene email)
-                  <>
-                    <Text style={styles.userTitle}>📦 ¡Tienes pedidos esperándote!</Text>
-                    <Text style={styles.userText}>
-                      Hemos guardado tus pedidos con el email:{' '}
-                      <Text style={styles.userEmail}>{String(user.email)}</Text>
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      🎉 Regístrate ahora para ver todos tus pedidos y disfrutar de funciones exclusivas
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      ✨ Al registrarte, todos tus pedidos aparecerán automáticamente aquí
-                    </Text>
-                    
-                    {/* Botón para ver pedidos como Guest */}
-                    <TouchableOpacity
-                      style={styles.guestOrdersButton}
-                      onPress={() => handleViewGuestOrders(user.email)}
-                      activeOpacity={0.8}>
-                      <Ionicons name="eye-outline" size={20} color="#FFF" style={{marginRight: 8}} />
-                      <Text style={styles.guestOrdersButtonText}>Ver mis pedidos sin registrarme</Text>
-                    </TouchableOpacity>
-                    
-                  </>
+                  // Guest que ya hizo pedidos (tiene email) - Solo mostrar si NO hay pedidos después de la búsqueda
+                  showingGuestOrders && guestOrders.length === 0 ? (
+                    <>
+                      <Text style={styles.userTitle}>📭 No se encontraron pedidos</Text>
+                      <Text style={styles.userText}>
+                        No encontramos pedidos para el email:{' '}
+                        <Text style={styles.userEmail}>{String(user.email)}</Text>
+                      </Text>
+                      <Text style={styles.userSubtext}>
+                        Si acabas de hacer un pedido, puede tomar unos minutos en aparecer aquí
+                      </Text>
+                    </>
+                  ) : !showingGuestOrders ? (
+                    <>
+                      <Text style={styles.userTitle}>🔍 Buscando tus pedidos...</Text>
+                      <Text style={styles.userText}>
+                        Estamos cargando tus pedidos para{' '}
+                        <Text style={styles.userEmail}>{String(user.email)}</Text>
+                      </Text>
+                    </>
+                  ) : null
                 ) : (
                   // Guest que no ha hecho pedidos aún
                   <>

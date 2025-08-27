@@ -855,9 +855,27 @@ export default function Cart() {
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       
+      // Calcular precio con descuento simple
+      let finalPrice = totalPrice;
+      if (appliedCoupon && totalPrice >= appliedCoupon.minAmount) {
+        if (appliedCoupon.type === 'percentage') {
+          finalPrice = totalPrice - ((totalPrice * appliedCoupon.discount) / 100);
+        } else {
+          finalPrice = totalPrice - appliedCoupon.discount;
+        }
+      }
+      
+      // 🚨 DEBUG: Verificar qué se envía a Stripe
+      console.log('🚨 ENVIANDO A STRIPE:', {
+        totalPrice: totalPrice,
+        appliedCoupon: appliedCoupon,
+        finalPrice: finalPrice,
+        centavos: parseFloat(finalPrice) * 100
+      });
+      
       const {data} = await axios.post(
         'https://food.siliconsoft.pk/api/create-payment-intent',
-        {amount: parseFloat(totalPrice) * 100, currency: 'mxn', email: orderEmail},
+        {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
@@ -2032,7 +2050,11 @@ const CartFooter = ({
           <Text style={styles.checkoutText}>
             {loading ? '🔄 Procesando pago...' : 
              isRestoringDeliveryInfo ? '⏳ Cargando...' : 
-             `💳 Pagar ${totalPrice} MXN`}
+             `💳 Pagar ${appliedCoupon && totalPrice >= appliedCoupon.minAmount ? 
+               (appliedCoupon.type === 'percentage' ? 
+                 (totalPrice - ((totalPrice * appliedCoupon.discount) / 100)).toFixed(2) : 
+                 (totalPrice - appliedCoupon.discount).toFixed(2)
+               ) : totalPrice.toFixed(2)} MXN`}
           </Text>
         </TouchableOpacity>
       </View>
