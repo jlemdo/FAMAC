@@ -24,6 +24,7 @@ import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
 import {useAlert} from '../context/AlertContext';
 import DeliverySlotPicker from '../components/DeliverySlotPicker';
+import CouponInput from '../components/CouponInput';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { 
   generateCallbackId, 
@@ -66,6 +67,7 @@ export default function Cart() {
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [needInvoice, setNeedInvoice] = useState(false);
   const [taxDetails, setTaxDetails] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [upsellItems, setUpsellItems] = useState([]);
   const [loadingUpsell, setLoadingUpsell] = useState(true);
   const [latlong, setLatlong] = useState({
@@ -239,10 +241,115 @@ export default function Cart() {
       // console.error('❌ Error limpiando coordenadas:', error);
     }
   };
+
+  // 🎫 FUNCIONES DE CUPONES
+  const handleCouponApply = (couponData) => {
+    console.log('🎫 Aplicando cupón:', couponData);
+    setAppliedCoupon(couponData);
+    showAlert({
+      type: 'success',
+      title: 'Cupón aplicado',
+      message: `${couponData.description} aplicado correctamente`
+    });
+  };
+
+  const handleCouponRemove = () => {
+    console.log('🗑️ Removiendo cupón');
+    setAppliedCoupon(null);
+    showAlert({
+      type: 'info',
+      title: 'Cupón removido',
+      message: 'El descuento ha sido eliminado'
+    });
+  };
+
+  // 🧮 CÁLCULOS DINÁMICOS DE CUPONES
+  const getSubtotal = () => totalPrice;
+  
+  const getDiscountAmount = () => {
+    if (!appliedCoupon) return 0;
+    
+    const subtotal = getSubtotal();
+    
+    // Verificar si aún cumple el monto mínimo
+    if (subtotal < appliedCoupon.minAmount) {
+      return 0; // No aplica descuento si no cumple mínimo
+    }
+    
+    // Recalcular descuento basado en nuevo subtotal
+    let newDiscountAmount = 0;
+    if (appliedCoupon.type === 'percentage') {
+      newDiscountAmount = (subtotal * appliedCoupon.discount) / 100;
+    } else {
+      newDiscountAmount = appliedCoupon.discount;
+    }
+    
+    return Math.min(newDiscountAmount, subtotal); // No puede exceder subtotal
+  };
+  
+  const getFinalTotal = () => {
+    const subtotal = getSubtotal();
+    const discount = getDiscountAmount();
+    return Math.max(0, subtotal - discount);
+  };
+  
+  const isCouponStillValid = () => {
+    if (!appliedCoupon) return true;
+    return getSubtotal() >= appliedCoupon.minAmount;
+  };
+
+  // 🔄 MONITOREO DINÁMICO DE CUPONES
+  useEffect(() => {
+    if (!appliedCoupon) return;
+
+    const currentSubtotal = getSubtotal();
+    const currentDiscount = getDiscountAmount();
+    
+    // Si el subtotal cambió
+    if (lastSubtotal !== currentSubtotal && lastSubtotal > 0) {
+      const wasValid = lastSubtotal >= appliedCoupon.minAmount;
+      const isValid = currentSubtotal >= appliedCoupon.minAmount;
+      
+      // Caso 1: Cupón se volvió inválido
+      if (wasValid && !isValid) {
+        showAlert({
+          type: 'warning',
+          title: 'Cupón desactivado',
+          message: `El cupón "${appliedCoupon.code.toUpperCase()}" requiere un mínimo de $${appliedCoupon.minAmount}. Agrega más productos para reactivarlo.`
+        });
+      }
+      
+      // Caso 2: Cupón se reactivó
+      else if (!wasValid && isValid) {
+        showAlert({
+          type: 'success',
+          title: 'Cupón reactivado',
+          message: `¡El cupón "${appliedCoupon.code.toUpperCase()}" volvió a aplicarse! Descuento: $${currentDiscount.toFixed(2)}`
+        });
+      }
+      
+      // Caso 3: Descuento cambió (para porcentuales)
+      else if (isValid && appliedCoupon.type === 'percentage') {
+        const oldDiscount = (lastSubtotal * appliedCoupon.discount) / 100;
+        const difference = Math.abs(currentDiscount - oldDiscount);
+        
+        if (difference > 5) { // Solo notificar si el cambio es significativo (>$5)
+          showAlert({
+            type: 'info',
+            title: 'Descuento actualizado',
+            message: `Tu descuento del ${appliedCoupon.discount}% se actualizó: $${currentDiscount.toFixed(2)}`
+          });
+        }
+      }
+    }
+    
+    setLastSubtotal(currentSubtotal);
+  }, [totalPrice, appliedCoupon]); // Reacciona a cambios en precio total y cupón
   
   
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
+  const [lastSubtotal, setLastSubtotal] = useState(0); // Para detectar cambios en subtotal
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh falso
   const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
@@ -1271,12 +1378,17 @@ export default function Cart() {
           <View style={styles.stickyTotalContainer}>
             <View style={styles.stickyTotalContent}>
               <Text style={styles.stickyTotalLabel}>Total de tu compra:</Text>
-              <Text style={styles.stickyTotalPrice}>{formatPriceWithSymbol(totalPrice)}</Text>
+              <Text style={styles.stickyTotalPrice}>{formatPriceWithSymbol(getFinalTotal())}</Text>
             </View>
             <View style={styles.stickyTotalDetails}>
               <Text style={styles.stickyTotalItems}>
                 {cart.reduce((total, item) => total + item.quantity, 0)} {cart.reduce((total, item) => total + item.quantity, 0) === 1 ? 'producto' : 'productos'}
               </Text>
+              {appliedCoupon && (
+                <Text style={styles.stickyTotalDiscount}>
+                  🎫 Descuento: -{formatPriceWithSymbol(getDiscountAmount())}
+                </Text>
+              )}
             </View>
           </View>
           <FlatList
@@ -1364,13 +1476,19 @@ export default function Cart() {
                 isRestoringDeliveryInfo={isRestoringDeliveryInfo}
                 loading={loading}
                 setTaxDetails={setTaxDetails}
-                handleCheckout={handleCheckout}
+                handleCheckout={() => handleCheckout(getFinalTotal())}
                 setPickerVisible={setPickerVisible}
                 loadingUpsell={loadingUpsell}
                 upsellItems={upsellItems}
                 addToCart={addToCart}
                 user={user}
                 email={email}
+                appliedCoupon={appliedCoupon}
+                onCouponApply={handleCouponApply}
+                onCouponRemove={handleCouponRemove}
+                subtotal={getSubtotal()}
+                discountAmount={getDiscountAmount()}
+                finalTotal={getFinalTotal()}
                 address={address}
                 cart={cart}
                 latlong={latlong}
@@ -1612,6 +1730,12 @@ const CartFooter = ({
   setTaxDetails,
   handleCheckout,
   setPickerVisible,
+  appliedCoupon,
+  onCouponApply,
+  onCouponRemove,
+  subtotal,
+  discountAmount,
+  finalTotal,
   loadingUpsell,
   upsellItems,
   addToCart,
@@ -1693,6 +1817,15 @@ const CartFooter = ({
   
   return (
   <View>
+    {/* Cupón de descuento */}
+    <CouponInput
+      onCouponApply={onCouponApply}
+      onCouponRemove={onCouponRemove}
+      appliedCoupon={appliedCoupon}
+      subtotal={subtotal}
+      isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
+    />
+
     {/* Upsell */}
     <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
     {loadingUpsell ? (

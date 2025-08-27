@@ -482,6 +482,13 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.7)',
     textAlign: 'center',
   },
+  stickyTotalDiscount: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#33A744',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   savedAddressText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
