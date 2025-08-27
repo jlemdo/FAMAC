@@ -36,6 +36,35 @@ const Order = () => {
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
+  // Función para traducir estados de órdenes de inglés a español
+  const translateStatus = (status) => {
+    if (!status) return 'Desconocido';
+    
+    const translations = {
+      // Estados principales
+      'open': 'Abierto',
+      'pending': 'Pendiente',
+      'confirmed': 'Confirmado',
+      'preparing': 'Preparando',
+      'on the way': 'En camino',
+      'delivered': 'Entregado',
+      'completed': 'Completado',
+      'cancelled': 'Cancelado',
+      'rejected': 'Rechazado',
+      'failed': 'Fallido',
+      
+      // Estados adicionales
+      'processing': 'Procesando',
+      'ready': 'Listo',
+      'picked up': 'Recogido',
+      'out for delivery': 'En reparto',
+      'delayed': 'Retrasado',
+      'returned': 'Devuelto'
+    };
+    
+    return translations[status.toLowerCase()] || status;
+  };
+
   // Helper function para obtener estilo de status badge (incluye payment_status)
   const getStatusStyle = (status, paymentStatus) => {
     const statusLower = status?.toLowerCase() || '';
@@ -95,18 +124,16 @@ const Order = () => {
       
       const foundOrders = [];
       
-      // Búsqueda ampliada: IDs desde 250 hacia abajo para capturar más pedidos recientes
+      // Búsqueda reducida: IDs desde 220 hasta 190 para Guest orders
       const searchIds = [];
-      // Generar IDs desde 250 hasta 100 (150 IDs total)
-      for (let i = 250; i >= 100; i--) {
+      // Generar IDs desde 220 hasta 190 (31 IDs total)
+      for (let i = 220; i >= 190; i--) {
         searchIds.push(i);
       }
-      // Agregar algunos IDs específicos conocidos al inicio
-      const priorityIds = [185, 184, 186, 183, 187, 180, 190, 175, 195, 170];
-      const allSearchIds = [...priorityIds, ...searchIds.filter(id => !priorityIds.includes(id))];
+      const allSearchIds = searchIds;
       
       let requestCount = 0;
-      const maxRequests = 50; // Aumentamos a 50 requests máximo
+      const maxRequests = 31; // Limitamos a los 31 IDs del rango 190-220
       
       for (const id of allSearchIds) {
         if (requestCount >= maxRequests) break; // ✅ Removido límite de 3 pedidos
@@ -338,7 +365,7 @@ const Order = () => {
                 {/* Status Badge - Ahora incluye payment_status */}
                 <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
                   <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
-                    {paymentStatus === 'pending' ? `${itemStatus || 'Pendiente'} • Pago Pendiente` : (itemStatus || 'Pendiente')}
+                    {paymentStatus === 'pending' ? `${translateStatus(itemStatus) || 'Pendiente'} • Pago Pendiente` : (translateStatus(itemStatus) || 'Pendiente')}
                   </Text>
                 </View>
 
@@ -380,14 +407,14 @@ const Order = () => {
                   <TouchableOpacity
                     style={[
                       styles.detailsButton,
-                      itemStatus === 'Entregado' && styles.disabledButton,
+                      (itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') && styles.disabledButton,
                     ]}
-                    disabled={itemStatus === 'Entregado'}
+                    disabled={itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado'}
                     onPress={() =>
                       navigation.navigate('OrderDetails', {orderId: itemId})
                     }>
                     <Text style={styles.detailsText}>
-                      {itemStatus === 'Entregado' ? 'Entregado' : 'Ver detalles'}
+                      {(itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') ? 'Entregado' : 'Ver detalles'}
                     </Text>
                   </TouchableOpacity>
 
