@@ -699,7 +699,7 @@ export default function Cart() {
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
     
     // 1. Validar carrito no vacío
-    if (totalPrice <= 0) {
+    if (parseFloat(totalPrice) <= 0) {
       showAlert({
         type: 'error',
         title: 'Error',
@@ -856,12 +856,12 @@ export default function Cart() {
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       
       // Calcular precio con descuento simple
-      let finalPrice = totalPrice;
-      if (appliedCoupon && totalPrice >= appliedCoupon.minAmount) {
+      let finalPrice = parseFloat(totalPrice);
+      if (appliedCoupon && parseFloat(totalPrice) >= appliedCoupon.minAmount) {
         if (appliedCoupon.type === 'percentage') {
-          finalPrice = totalPrice - ((totalPrice * appliedCoupon.discount) / 100);
+          finalPrice = parseFloat(totalPrice) - ((parseFloat(totalPrice) * appliedCoupon.discount) / 100);
         } else {
-          finalPrice = totalPrice - appliedCoupon.discount;
+          finalPrice = parseFloat(totalPrice) - appliedCoupon.discount;
         }
       }
       
@@ -2050,11 +2050,11 @@ const CartFooter = ({
           <Text style={styles.checkoutText}>
             {loading ? '🔄 Procesando pago...' : 
              isRestoringDeliveryInfo ? '⏳ Cargando...' : 
-             `💳 Pagar ${appliedCoupon && totalPrice >= appliedCoupon.minAmount ? 
+             `💳 Pagar ${appliedCoupon && parseFloat(totalPrice) >= appliedCoupon.minAmount ? 
                (appliedCoupon.type === 'percentage' ? 
-                 (totalPrice - ((totalPrice * appliedCoupon.discount) / 100)).toFixed(2) : 
-                 (totalPrice - appliedCoupon.discount).toFixed(2)
-               ) : totalPrice.toFixed(2)} MXN`}
+                 (parseFloat(totalPrice) - ((parseFloat(totalPrice) * appliedCoupon.discount) / 100)).toFixed(2) : 
+                 (parseFloat(totalPrice) - appliedCoupon.discount).toFixed(2)
+               ) : parseFloat(totalPrice).toFixed(2)} MXN`}
           </Text>
         </TouchableOpacity>
       </View>
