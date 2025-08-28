@@ -7,6 +7,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -19,6 +20,7 @@ import {
   registerNavigationCallback, 
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
+import { isSmallScreen } from '../utils/responsiveUtils';
 
 const MapSelector = () => {
   const navigation = useNavigation();
@@ -148,6 +150,79 @@ const MapSelector = () => {
     };
   }, [callbackId]);
   
+  // Detectar si es pantalla pequeña para decidir si usar ScrollView
+  const needsScroll = isSmallScreen();
+
+  // Función que renderiza el contenido principal
+  const renderContent = () => (
+    <>
+      <Text style={styles.stepTitle}>Confirma tu ubicación exacta</Text>
+      <Text style={styles.stepSubtitle}>
+        Selecciona tu ubicación en el mapa para entregas precisas
+      </Text>
+      
+      {/* Dirección del usuario */}
+      <View style={styles.addressCard}>
+        <Ionicons name="location" size={24} color="#33A744" />
+        <View style={styles.addressContent}>
+          <Text style={styles.addressLabel}>Tu dirección:</Text>
+          <Text style={styles.addressText} numberOfLines={3}>
+            {userAddress}
+          </Text>
+        </View>
+      </View>
+      
+      {/* Estado del mapa */}
+      {selectedCoordinates ? (
+        <View style={styles.statusContainer}>
+          <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+          <Text style={styles.statusText}>
+            Ubicación confirmada en el mapa
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.statusContainer}>
+          <Ionicons name="location-outline" size={20} color="#D27F27" />
+          <Text style={styles.statusText}>
+            Selecciona tu ubicación en el mapa
+          </Text>
+        </View>
+      )}
+      
+      {/* Botón ir al mapa */}
+      <TouchableOpacity
+        style={[styles.mapButton, isGeocodingAddress && styles.mapButtonDisabled]}
+        onPress={handleGoToMap}
+        disabled={isGeocodingAddress}>
+        {isGeocodingAddress ? (
+          <>
+            <ActivityIndicator size="small" color="#FFF" />
+            <Text style={styles.mapButtonText}>Localizando dirección...</Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name="map" size={24} color="#FFF" />
+            <Text style={styles.mapButtonText}>
+              {selectedCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+      
+      {/* Botón confirmar */}
+      <TouchableOpacity
+        style={[
+          styles.confirmButton,
+          !selectedCoordinates && styles.confirmButtonDisabled
+        ]}
+        onPress={handleConfirm}
+        disabled={!selectedCoordinates}>
+        <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+        <Text style={styles.confirmButtonText}>Confirmar ubicación</Text>
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -161,73 +236,19 @@ const MapSelector = () => {
         <View style={styles.headerSpacer} />
       </View>
       
-      {/* Contenido */}
-      <View style={styles.content}>
-        <Text style={styles.stepTitle}>Confirma tu ubicación exacta</Text>
-        <Text style={styles.stepSubtitle}>
-          Selecciona tu ubicación en el mapa para entregas precisas
-        </Text>
-        
-        {/* Dirección del usuario */}
-        <View style={styles.addressCard}>
-          <Ionicons name="location" size={24} color="#33A744" />
-          <View style={styles.addressContent}>
-            <Text style={styles.addressLabel}>Tu dirección:</Text>
-            <Text style={styles.addressText} numberOfLines={3}>
-              {userAddress}
-            </Text>
-          </View>
+      {/* Contenido - Con ScrollView en pantallas pequeñas */}
+      {needsScroll ? (
+        <ScrollView 
+          style={styles.content}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}>
+          {renderContent()}
+        </ScrollView>
+      ) : (
+        <View style={styles.content}>
+          {renderContent()}
         </View>
-        
-        {/* Estado del mapa */}
-        {selectedCoordinates ? (
-          <View style={styles.statusContainer}>
-            <Ionicons name="checkmark-circle" size={20} color="#33A744" />
-            <Text style={styles.statusText}>
-              Ubicación confirmada en el mapa
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.statusContainer}>
-            <Ionicons name="location-outline" size={20} color="#D27F27" />
-            <Text style={styles.statusText}>
-              Selecciona tu ubicación en el mapa
-            </Text>
-          </View>
-        )}
-        
-        {/* Botón ir al mapa */}
-        <TouchableOpacity
-          style={[styles.mapButton, isGeocodingAddress && styles.mapButtonDisabled]}
-          onPress={handleGoToMap}
-          disabled={isGeocodingAddress}>
-          {isGeocodingAddress ? (
-            <>
-              <ActivityIndicator size="small" color="#FFF" />
-              <Text style={styles.mapButtonText}>Localizando dirección...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="map" size={24} color="#FFF" />
-              <Text style={styles.mapButtonText}>
-                {selectedCoordinates ? 'Ajustar ubicación' : 'Ir al mapa'}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
-        
-        {/* Botón confirmar */}
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            !selectedCoordinates && styles.confirmButtonDisabled
-          ]}
-          onPress={handleConfirm}
-          disabled={!selectedCoordinates}>
-          <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-          <Text style={styles.confirmButtonText}>Confirmar ubicación</Text>
-        </TouchableOpacity>
-      </View>
+      )}
     </View>
   );
 };
@@ -377,6 +398,11 @@ const styles = StyleSheet.create({
   confirmButtonDisabled: {
     backgroundColor: '#CCC',
     opacity: 0.6,
+  },
+  // ✅ ESTILO PARA SCROLLVIEW EN PANTALLAS PEQUEÑAS
+  scrollContentContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
 });
 

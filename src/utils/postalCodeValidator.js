@@ -64,6 +64,11 @@ const ALLOWED_POSTAL_CODES = {
   }
 };
 
+const POSTAL_CODE_RANGES = {
+  CDMX: [1000, 16999],     // Rango general para la Ciudad de México
+  EDOMEX: [50000, 57999],  // Rango general para el Estado de México
+};
+
 // 🎯 FUNCIÓN PRINCIPAL: Validar código postal
 export const validatePostalCode = (postalCode) => {
   // Validación básica
@@ -114,31 +119,55 @@ export const validatePostalCode = (postalCode) => {
 };
 
 // 📍 FUNCIÓN: Obtener información de un código postal
-export const getPostalCodeInfo = (postalCode) => {
-  const cleanCP = postalCode?.trim();
+// export const getPostalCodeInfo = (postalCode) => {
+//   const cleanCP = postalCode?.trim();
   
-  // Buscar en CDMX
-  if (ALLOWED_POSTAL_CODES.CDMX[cleanCP]) {
+//   // Buscar en CDMX
+//   if (ALLOWED_POSTAL_CODES.CDMX[cleanCP]) {
+//     return {
+//       state: 'CDMX',
+//       zone: 'Ciudad de México',
+//       description: ALLOWED_POSTAL_CODES.CDMX[cleanCP],
+//       deliveryAvailable: true
+//     };
+//   }
+  
+//   // Buscar en Estado de México
+//   if (ALLOWED_POSTAL_CODES.EDOMEX[cleanCP]) {
+//     return {
+//       state: 'Estado de México',
+//       zone: 'EdoMex',
+//       description: ALLOWED_POSTAL_CODES.EDOMEX[cleanCP],
+//       deliveryAvailable: true
+//     };
+//   }
+  
+//   return null; // No encontrado
+// };
+export const getPostalCodeInfo = (postalCode) => {
+  const cpNum = parseInt(postalCode, 10);
+
+  if (cpNum >= POSTAL_CODE_RANGES.CDMX[0] && cpNum <= POSTAL_CODE_RANGES.CDMX[1]) {
     return {
       state: 'CDMX',
       zone: 'Ciudad de México',
-      description: ALLOWED_POSTAL_CODES.CDMX[cleanCP],
+      description: `Cobertura en CDMX (CP ${postalCode})`,
       deliveryAvailable: true
     };
   }
-  
-  // Buscar en Estado de México
-  if (ALLOWED_POSTAL_CODES.EDOMEX[cleanCP]) {
+
+  if (cpNum >= POSTAL_CODE_RANGES.EDOMEX[0] && cpNum <= POSTAL_CODE_RANGES.EDOMEX[1]) {
     return {
       state: 'Estado de México',
-      zone: 'EdoMex',
-      description: ALLOWED_POSTAL_CODES.EDOMEX[cleanCP],
+      zone: 'Edomex',
+      description: `Cobertura en Estado de México (CP ${postalCode})`,
       deliveryAvailable: true
     };
   }
-  
-  return null; // No encontrado
+
+  return null;
 };
+
 
 // 📋 FUNCIÓN: Obtener todos los códigos postales permitidos
 export const getAllowedPostalCodes = () => {

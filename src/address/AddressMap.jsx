@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MapView, { Marker } from 'react-native-maps';
@@ -14,7 +15,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 import { useResponsive } from '../hooks/useResponsive';
-import { scaleSpacing, scaleFontSize, getButtonDimensions } from '../utils/responsiveUtils';
+import { scaleSpacing, scaleFontSize, getButtonDimensions, isSmallScreen } from '../utils/responsiveUtils';
 import { executeNavigationCallback } from '../utils/navigationCallbacks';
 import { 
   ALCALDIAS_CDMX, 
@@ -187,18 +188,12 @@ const AddressMap = () => {
     navigation.goBack();
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Ubicar en mapa</Text>
-      </View>
+  // Detectar si es pantalla pequeña para decidir si usar ScrollView
+  const needsScroll = isSmallScreen();
 
+  // Función que renderiza el contenido principal
+  const renderContent = () => (
+    <>
       {/* Instrucciones */}
       <View style={styles.instructionsContainer}>
         <Text style={styles.instructionsText}>
@@ -256,6 +251,34 @@ const AddressMap = () => {
           </Text>
         </TouchableOpacity>
       </View>
+    </>
+  );
+
+  return (
+    <View style={styles.container}>
+      {/* Header fijo */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Ubicar en mapa</Text>
+      </View>
+
+      {/* Contenido - Con ScrollView en pantallas pequeñas */}
+      {needsScroll ? (
+        <ScrollView 
+          style={styles.contentContainer}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}>
+          {renderContent()}
+        </ScrollView>
+      ) : (
+        <View style={styles.contentContainer}>
+          {renderContent()}
+        </View>
+      )}
     </View>
   );
 };
@@ -347,6 +370,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: scaleFontSize(fonts.size.medium),
     color: '#FFF',
+  },
+  
+  contentContainer: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+    paddingBottom: scaleSpacing(20),
   },
   
   // NUEVOS ESTILOS PARA CONTEXTO DE DIRECCIÓN
