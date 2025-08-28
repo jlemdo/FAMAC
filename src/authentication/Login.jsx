@@ -28,6 +28,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import NotificationService from '../services/NotificationService';
 
 export default function Login({ showGuest = true, onForgotPassword, onSignUp }) {
   const {login, loginAsGuest} = useContext(AuthContext);
@@ -54,6 +55,19 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       forceCodeForRefreshToken: true,
       accountName: '', // Esto fuerza el selector de cuenta
     });
+  }, []);
+
+  // 2️⃣ Solicitar permisos de notificaciones automáticamente al entrar a Login
+  useEffect(() => {
+    const requestNotificationPermissions = async () => {
+      try {
+        await NotificationService.requestPermission();
+      } catch (error) {
+        console.log('⚠️ Error solicitando permisos de notificaciones en Login:', error);
+      }
+    };
+
+    requestNotificationPermissions();
   }, []);
 
   // 2️⃣ Definimos el esquema de validación
