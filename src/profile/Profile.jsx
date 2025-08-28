@@ -151,6 +151,43 @@ export default function Profile({ navigation, route }) {
   const [showProfileSection, setShowProfileSection] = useState(false); // Colapsada por defecto
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showAddressSection, setShowAddressSection] = useState(false); // Nueva sección de direcciones
+
+  // ✅ FUNCIÓN: Comportamiento tipo acordeón - solo una sección abierta a la vez
+  const toggleSection = (sectionName) => {
+    switch (sectionName) {
+      case 'profile':
+        if (showProfileSection) {
+          // Si ya está abierta, cerrarla
+          setShowProfileSection(false);
+        } else {
+          // Cerrar todas las demás y abrir esta
+          setShowPasswordSection(false);
+          setShowAddressSection(false);
+          setShowProfileSection(true);
+        }
+        break;
+      case 'password':
+        if (showPasswordSection) {
+          setShowPasswordSection(false);
+        } else {
+          setShowProfileSection(false);
+          setShowAddressSection(false);
+          setShowPasswordSection(true);
+        }
+        break;
+      case 'address':
+        if (showAddressSection) {
+          setShowAddressSection(false);
+        } else {
+          setShowProfileSection(false);
+          setShowPasswordSection(false);
+          setShowAddressSection(true);
+        }
+        break;
+      default:
+        break;
+    }
+  };
   
   // Estado para modo edición
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -583,7 +620,7 @@ export default function Profile({ navigation, route }) {
       {/* Información del Perfil */}
       <TouchableOpacity 
         style={styles.sectionHeader}
-        onPress={() => setShowProfileSection(!showProfileSection)}
+        onPress={() => toggleSection('profile')}
         activeOpacity={0.8}>
         <View style={styles.sectionHeaderContent}>
           <Text style={styles.sectionHeaderTitle}>👤 Mi Información</Text>
@@ -1044,7 +1081,7 @@ export default function Profile({ navigation, route }) {
       {/* Sección de Direcciones */}
       <TouchableOpacity 
         style={styles.sectionHeader}
-        onPress={() => setShowAddressSection(!showAddressSection)}
+        onPress={() => toggleSection('address')}
         activeOpacity={0.8}>
         <View style={styles.sectionHeaderContent}>
           <Text style={styles.sectionHeaderTitle}>📍 Direcciones</Text>
@@ -1092,7 +1129,7 @@ export default function Profile({ navigation, route }) {
       {/* Sección de Contraseña */}
       <TouchableOpacity 
         style={styles.sectionHeader}
-        onPress={() => setShowPasswordSection(!showPasswordSection)}
+        onPress={() => toggleSection('password')}
         activeOpacity={0.8}>
         <View style={styles.sectionHeaderContent}>
           <Text style={styles.sectionHeaderTitle}>🔒 Seguridad</Text>
