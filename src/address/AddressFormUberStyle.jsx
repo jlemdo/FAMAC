@@ -23,6 +23,7 @@ import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
+import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import { 
   generateCallbackId, 
@@ -85,6 +86,10 @@ const AddressFormUberStyle = () => {
   const [userHasConfirmedLocation, setUserHasConfirmedLocation] = useState(false); // Usuario confirmó en mapa
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
+  
+  // 🆕 ESTADOS PARA VALIDACIÓN DE CÓDIGO POSTAL
+  const [postalCodeError, setPostalCodeError] = useState('');
+  const [postalCodeInfo, setPostalCodeInfo] = useState(null); // Información de la zona
   
   // Estados para modal de confirmación
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -238,6 +243,38 @@ const AddressFormUberStyle = () => {
     
     console.log('⚠️ GEOCODING: No se pudieron obtener coordenadas válidas');
     return null;
+  };
+
+  // 🆕 FUNCIÓN: Manejar cambios en código postal con validación
+  const handlePostalCodeChange = (value) => {
+    setPostalCode(value);
+    setPostalCodeError(''); // Limpiar error anterior
+    setPostalCodeInfo(null); // Limpiar información anterior
+    
+    // Solo validar si tiene 5 dígitos
+    if (value.length === 5) {
+      const validation = validatePostalCode(value);
+      
+      if (!validation.isValid) {
+        setPostalCodeError(validation.message);
+        
+        // Mostrar sugerencia si está disponible
+        if (validation.suggestion) {
+          setPostalCodeError(`${validation.message}\n${validation.suggestion}`);
+        }
+      } else {
+        // CP válido - mostrar información de la zona
+        setPostalCodeInfo(validation.location);
+        console.log('✅ CP válido:', validation.location);
+        
+        // Auto-completar estado basado en la zona
+        if (validation.location.state === 'CDMX') {
+          setState('CDMX');
+        } else {
+          setState('Estado de México');
+        }
+      }
+    }
   };
 
   // ✅ NUEVA: Función para parsear dirección legacy del perfil y pre-llenar campos
@@ -635,7 +672,7 @@ const AddressFormUberStyle = () => {
     
     navigation.navigate('AddressMap', {
       addressForm: {},
-      selectedLocation: mapCoordinates || mapCenter, // USAR COORDENADAS DE GEOCODING SI EXISTEN
+      selectedLocation: mapCenter, // ✅ USAR mapCenter (ya incluye lógica completa de geocoding)
       pickerId,
       callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
@@ -1028,7 +1065,9 @@ const AddressFormUberStyle = () => {
       exteriorNumber?.trim() &&
       neighborhood?.trim() &&
       postalCode?.trim() &&
-      municipality?.trim();
+      municipality?.trim() &&
+      !postalCodeError && // 🆕 CP debe ser válido (sin errores)
+      postalCodeInfo; // 🆕 CP debe tener información de zona válida
 
     if (isAddressComplete && currentStep === 2) {
       const finalAddress = buildFinalAddress();
@@ -1046,7 +1085,7 @@ const AddressFormUberStyle = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, currentStep]);
+  }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, postalCodeError, postalCodeInfo, currentStep]);
 
   // Renderizar paso 1: Búsqueda
   const renderSearchStep = () => (
@@ -1155,8 +1194,8 @@ const AddressFormUberStyle = () => {
 
   // Renderizar paso 2: Dirección Manual con Campos Estructurados
   const renderManualAddressStep = () => {
-    // Verificar si hay campos requeridos llenos
-    const hasRequiredFields = streetName.trim() && exteriorNumber.trim() && neighborhood.trim();
+    // Verificar si hay campos requeridos llenos (incluye validación CP)
+    const hasRequiredFields = streetName.trim() && exteriorNumber.trim() && neighborhood.trim() && postalCode.trim() && municipality.trim() && !postalCodeError && postalCodeInfo;
     
     return (
       <View style={styles.stepContainer}>
@@ -1225,18 +1264,36 @@ const AddressFormUberStyle = () => {
         {/* Fila 3: Código Postal y Alcaldía/Municipio */}
         <View style={styles.addressRow}>
           <View style={[styles.addressField, {flex: 1}]}>
-            <Text style={styles.fieldLabel}>CP</Text>
+            <Text style={styles.fieldLabel}>CP *</Text>
             <TextInput
               ref={(ref) => registerInput('postalCode', ref)}
-              style={styles.addressInput}
+              style={[
+                styles.addressInput,
+                postalCodeError && styles.addressInputError
+              ]}
               placeholder="5 dígitos"
               value={postalCode}
-              onChangeText={setPostalCode}
+              onChangeText={handlePostalCodeChange}
               onFocus={createFocusHandler('postalCode')}
               placeholderTextColor="#999"
               keyboardType="numeric"
               maxLength={5}
             />
+            
+            {/* Error de código postal */}
+            {postalCodeError ? (
+              <Text style={styles.errorText}>{postalCodeError}</Text>
+            ) : null}
+            
+            {/* Información de zona válida */}
+            {postalCodeInfo ? (
+              <View style={styles.postalCodeInfo}>
+                <Ionicons name="checkmark-circle" size={16} color="#33A744" />
+                <Text style={styles.postalCodeInfoText}>
+                  ✅ {postalCodeInfo.description}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Alcaldía/Municipio</Text>
@@ -2119,6 +2176,37 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     textAlign: 'center',
+  },
+
+  // 🆕 ESTILOS PARA VALIDACIÓN DE CÓDIGO POSTAL  
+  addressInputError: {
+    borderColor: '#E53935',
+    borderWidth: 2,
+    backgroundColor: 'rgba(229, 57, 53, 0.05)',
+  },
+  errorText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular, 
+    color: '#E53935',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  postalCodeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderRadius: 6,
+  },
+  postalCodeInfoText: {
+    flex: 1,
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#33A744',
+    marginLeft: 4,
+    lineHeight: 16,
   },
 });
 

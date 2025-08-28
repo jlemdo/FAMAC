@@ -907,6 +907,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(51, 167, 68, 0.05)',
     marginVertical: 16,
   },
+  
+  // ✅ NUEVOS ESTILOS PARA GEOCODING INTELIGENTE
+  geocodingInfoContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  geocodingInfoText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47, 47, 47, 0.7)',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
 });
 
 export default styles;

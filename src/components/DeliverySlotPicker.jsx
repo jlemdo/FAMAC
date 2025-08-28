@@ -98,7 +98,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         // Fallback slots si el API falla
         slotsToProcess = [
           { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
-          { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
+          { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
         ];
       }
       
@@ -122,7 +122,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       // Error fetching delivery slots - usar fallback con filtros
       let fallbackSlots = [
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
-        { label: '4:00 PM - 10:00 PM', value: '4pm-10pm' }
+        { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
       ];
       
       // Aplicar filtro SIEMPRE al fallback
@@ -154,7 +154,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     const isMorningSlot = timeSlot.includes('9') && (timeSlot.includes('am') || timeSlot.includes('1pm'));
     
     // Si la hora actual es 18:00 (6 PM) o después, el slot matutino ya no está disponible
-    if (currentHour >= 18 && isMorningSlot) {
+    if (currentHour >= 24 && isMorningSlot) {
       console.log('❌ Slot matutino bloqueado después de 6 PM');
       return true;
     }

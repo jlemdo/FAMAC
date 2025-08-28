@@ -22,6 +22,7 @@ import {
   registerNavigationCallback, 
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
+import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 
 const AddressForm = () => {
   const navigation = useNavigation();
@@ -197,17 +198,11 @@ const AddressForm = () => {
     }
   };
 
-  // Validar Código Postal - RANGOS CORRECTOS
-  const validatePostalCode = (cp, city) => {
-    const cpNum = parseInt(cp);
-    if (city === 'CDMX') {
-      return cpNum >= 1000 && cpNum <= 16999;
-    } else if (city === 'Estado de México') {
-      // Estado de México tiene múltiples rangos
-      return (cpNum >= 50000 && cpNum <= 56999) || 
-             (cpNum >= 52000 && cpNum <= 54999);
-    }
-    return false;
+  // ✅ VALIDACIÓN DE CÓDIGO POSTAL POR ZONAS ESPECÍFICAS
+  const validatePostalCodeForForm = (cp) => {
+    if (!cp || cp.length !== 5) return false;
+    const validation = validatePostalCode(cp);
+    return validation.isValid;
   };
 
   // 🚀 NUEVA: Validación inteligente con Google
@@ -222,15 +217,13 @@ const AddressForm = () => {
       return;
     }
 
-    // 2. Validar CP básico
-    if (!validatePostalCode(addressForm.postalCode, addressForm.city)) {
-      const range = addressForm.city === 'CDMX' 
-        ? '01000-16999' 
-        : '50000-56999 ó 52000-54999';
+    // 2. Validar CP por zonas específicas
+    const cpValidation = validatePostalCode(addressForm.postalCode);
+    if (!cpValidation.isValid) {
       showCustomAlert(
         'error',
-        'Código Postal incorrecto',
-        `El CP ${addressForm.postalCode} no es válido para ${addressForm.city}.\n\nRangos válidos: ${range}`
+        'Zona de entrega no disponible',
+        cpValidation.message + '\n\n' + (cpValidation.suggestion || 'Verifica tu código postal o usa otra dirección.')
       );
       return;
     }

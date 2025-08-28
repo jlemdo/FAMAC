@@ -33,24 +33,27 @@ export const MUNICIPIOS_EDOMEX = [
 ];
 
 /**
- * Validar código postal según ciudad
+ * ✅ Validar código postal por zonas específicas de entrega
  * @param {string} postalCode - Código postal
- * @param {string} city - 'CDMX' o 'Estado de México'
- * @returns {boolean} - true si es válido
+ * @param {string} [city] - Parámetro opcional para mantener compatibilidad
+ * @returns {boolean} - true si está en zona de entrega permitida
  */
-export const validatePostalCode = (postalCode, city) => {
-  if (!postalCode || !city) return false;
-  
-  const cp = postalCode.trim();
-  if (!/^\d{5}$/.test(cp)) return false; // Debe ser 5 dígitos
-  
-  if (city === 'CDMX') {
-    return cp >= '01000' && cp <= '16999';
-  } else if (city === 'Estado de México') {
-    return cp >= '50000' && cp <= '56999';
+export const validatePostalCode = (postalCode, city = null) => {
+  // Import dinámico para evitar dependencias circulares
+  try {
+    const { validatePostalCode: validateCP } = require('./postalCodeValidator');
+    const result = validateCP(postalCode);
+    return result.isValid;
+  } catch (error) {
+    console.warn('Error validating postal code:', error);
+    // Fallback al método anterior si hay error
+    if (!postalCode || postalCode.length !== 5) return false;
+    const cp = postalCode.trim();
+    if (!/^\d{5}$/.test(cp)) return false;
+    
+    // Rangos básicos como fallback
+    return (cp >= '01000' && cp <= '16999') || (cp >= '50000' && cp <= '56999');
   }
-  
-  return false;
 };
 
 /**
@@ -198,11 +201,21 @@ export const parseAddressComponents = (components, fullAddress, existingData = {
     } else if (types.includes('postal_code')) {
       addressData.postalCode = component.long_name;
       
-      // Auto-detectar ciudad por código postal
-      if (validatePostalCode(component.long_name, 'CDMX')) {
-        addressData.city = 'CDMX';
-      } else if (validatePostalCode(component.long_name, 'Estado de México')) {
-        addressData.city = 'Estado de México';
+      // Auto-detectar ciudad por código postal usando nueva validación
+      try {
+        const { getPostalCodeInfo } = require('./postalCodeValidator');
+        const cpInfo = getPostalCodeInfo(component.long_name);
+        if (cpInfo) {
+          addressData.city = cpInfo.state === 'CDMX' ? 'CDMX' : 'Estado de México';
+        }
+      } catch (error) {
+        // Fallback al método anterior
+        const cp = component.long_name;
+        if (cp >= '01000' && cp <= '16999') {
+          addressData.city = 'CDMX';
+        } else if (cp >= '50000' && cp <= '56999') {
+          addressData.city = 'Estado de México';
+        }
       }
     } else if (
       types.includes('sublocality') || 

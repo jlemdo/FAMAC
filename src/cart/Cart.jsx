@@ -33,12 +33,13 @@ import {
 } from '../utils/navigationCallbacks';
 import axios from 'axios';
 import Config from 'react-native-config';
-import { geocodeGuestAddress, convertToDriverCoords } from '../utils/geocodingUtils';
+import { geocodeGuestAddress, convertToDriverCoords, geocodeAddress } from '../utils/geocodingUtils';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addressService } from '../services/addressService';
+import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import styles from './Cart.styles';
 
 export default function Cart() {
@@ -369,6 +370,29 @@ export default function Cart() {
     setLatlong(driverCoords);
   };
 
+  // 🆕 FUNCIÓN: Geocoding inteligente para usuarios registrados
+  const handleUserAddressGeocoding = async (addressString) => {
+    console.log('🧠 Usuario registrado: Aplicando geocoding inteligente a dirección:', addressString?.substring(0, 50) + '...');
+    
+    const coordinates = await geocodeAddress(addressString, {
+      strictValidation: false, // Menos restrictivo para direcciones guardadas
+      requireHighPrecision: false, // Permitir precisión media
+      useDefaultOnError: true, // Usar coordenadas por defecto si falla
+    });
+    
+    const driverCoords = convertToDriverCoords(coordinates);
+    
+    console.log('✅ GEOCODING USER EXITOSO - Guardando coordenadas:', driverCoords);
+    setLatlong(driverCoords);
+    
+    // Guardar coordenadas inmediatamente para futuras sesiones
+    if (user?.id && driverCoords) {
+      saveCoordinates(driverCoords, user.id);
+    }
+    
+    return driverCoords;
+  };
+
   // Función para formatear cantidad como en ProductDetails
   const formatQuantity = (units) => {
     const grams = units * 250; // cada unidad = 250g
@@ -381,6 +405,40 @@ export default function Cart() {
 
 
   const {showAlert} = useAlert();
+
+  // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal
+  const validateDeliveryZone = (addressString) => {
+    if (!addressString) return { isValid: false, error: 'Dirección vacía' };
+    
+    // Extraer código postal de la dirección usando regex
+    const cpMatch = addressString.match(/\b(\d{5})\b/);
+    
+    if (!cpMatch) {
+      return {
+        isValid: false,
+        error: 'No se encontró código postal en la dirección',
+        suggestion: 'Asegúrate de que tu dirección incluya un código postal de 5 dígitos'
+      };
+    }
+    
+    const postalCode = cpMatch[1];
+    const validation = validatePostalCode(postalCode);
+    
+    if (!validation.isValid) {
+      return {
+        isValid: false,
+        error: validation.message,
+        suggestion: validation.suggestion,
+        postalCode: postalCode
+      };
+    }
+    
+    return {
+      isValid: true,
+      postalCode: postalCode,
+      location: validation.location
+    };
+  };
 
   // Función para obtener el perfil completo del usuario (con dirección actualizada)
   const fetchUserProfile = async () => {
@@ -498,6 +556,20 @@ export default function Cart() {
             if (!latlong?.driver_lat || !latlong?.driver_long) {
               const restoredCoords = await restoreCoordinates(user.id);
               // console.log('🔄 COORDENADAS RESTAURADAS:', restoredCoords);
+              
+              // 🆕 Si no hay coordenadas guardadas, aplicar geocoding inteligente
+              if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
+                // Esperar a que el perfil se cargue para tener la dirección actualizada
+                setTimeout(async () => {
+                  const currentProfile = userProfile; // Usar perfil actual o esperar al siguiente render
+                  const userAddress = currentProfile?.address || user?.address;
+                  
+                  if (userAddress && userAddress.trim().length > 10) {
+                    console.log('🧠 Auto-aplicando geocoding inteligente al cargar carrito...');
+                    await handleUserAddressGeocoding(userAddress);
+                  }
+                }, 1000); // Delay para asegurar que el perfil se haya cargado
+              }
             }
           } else {
             // console.log('⚠️ Carrito vacío - no se restauran datos');
@@ -788,6 +860,18 @@ export default function Cart() {
         });
         return;
       }
+
+      // ✅ VALIDAR ZONA DE ENTREGA para Guest
+      const zoneValidation = validateDeliveryZone(address);
+      if (!zoneValidation.isValid) {
+        showAlert({
+          type: 'error',
+          title: 'Zona de entrega no disponible',
+          message: `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Verifica tu dirección o contacta soporte.'}`,
+          confirmText: 'Entendido',
+        });
+        return;
+      }
       
       // Guest también necesita coordenadas del mapa
       if (!latlong?.driver_lat || !latlong?.driver_long) {
@@ -819,13 +903,86 @@ export default function Cart() {
         });
         return;
       }
+
+      // ✅ VALIDAR ZONA DE ENTREGA para Usuario registrado
+      const userAddress = address?.trim() || savedAddress?.trim();
+      if (userAddress) {
+        const zoneValidation = validateDeliveryZone(userAddress);
+        if (!zoneValidation.isValid) {
+          showAlert({
+            type: 'error',
+            title: 'Zona de entrega no disponible',
+            message: `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Actualiza tu dirección o contacta soporte.'}`,
+            confirmText: 'Entendido',
+          });
+          return;
+        }
+      }
       
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        // Intentar restaurar coordenadas antes de fallar
-        // console.log('⚠️ Coordenadas faltantes, intentando restaurar...');
+        console.log('⚠️ Usuario registrado sin coordenadas - aplicando geocoding inteligente...');
+        
+        // 🆕 PASO 1: Intentar restaurar coordenadas guardadas
+        let restoredCoords = null;
         if (user?.id) {
-          const restoredCoords = await restoreCoordinates(user.id);
-          if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
+          restoredCoords = await restoreCoordinates(user.id);
+          if (restoredCoords && restoredCoords.driver_lat && restoredCoords.driver_long) {
+            console.log('✅ Coordenadas restauradas de AsyncStorage:', restoredCoords);
+            // Las coordenadas ya se establecieron en el estado por restoreCoordinates()
+            // Continuar con el flujo de pago
+          }
+        }
+        
+        // 🆕 PASO 2: Si no hay coordenadas restauradas, aplicar geocoding inteligente
+        if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
+          const userAddress = savedAddress?.trim();
+          if (userAddress && userAddress.length > 10) {
+            console.log('🧠 Aplicando geocoding inteligente a dirección del usuario...');
+            
+            try {
+              const geocodedCoords = await handleUserAddressGeocoding(userAddress);
+              if (geocodedCoords && geocodedCoords.driver_lat && geocodedCoords.driver_long) {
+                console.log('✅ Geocoding exitoso - continuando con pago automáticamente');
+                // Las coordenadas ya se establecieron, continuar con el flujo
+                // No hacer return aquí, dejar que continúe el flujo normal
+              } else {
+                console.log('⚠️ Geocoding falló - mostrando opción manual');
+                showAlert({
+                  type: 'info',
+                  title: 'Confirmar ubicación',
+                  message: 'Para mayor precisión en la entrega, ¿deseas confirmar tu ubicación en el mapa?',
+                  confirmText: 'Confirmar en mapa',
+                  cancelText: 'Continuar con dirección',
+                  showCancel: true,
+                  onConfirm: () => {
+                    // Ir al mapa para confirmar ubicación manualmente
+                    navigation.navigate('MapSelector', {
+                      userAddress: userAddress,
+                      title: 'Confirmar ubicación para entrega',
+                    });
+                  },
+                  onCancel: () => {
+                    // Continuar sin coordenadas precisas (usar coordenadas por defecto)
+                    setLatlong({
+                      driver_lat: '19.4326', // Coordenadas por defecto CDMX
+                      driver_long: '-99.1332',
+                    });
+                    // Reintentar pago con coordenadas por defecto
+                    setTimeout(() => completeOrder(), 100);
+                  }
+                });
+                return;
+              }
+            } catch (error) {
+              console.log('❌ Error en geocoding:', error);
+              // Fallback: usar coordenadas por defecto
+              setLatlong({
+                driver_lat: '19.4326',
+                driver_long: '-99.1332',
+              });
+            }
+          } else {
+            // Dirección muy corta o inválida - requiere confirmación manual
             showAlert({
               type: 'error',
               title: 'Ubicación requerida',
@@ -834,15 +991,6 @@ export default function Cart() {
             });
             return;
           }
-          // console.log('✅ Coordenadas restauradas en validación:', restoredCoords);
-        } else {
-          showAlert({
-            type: 'error',
-            title: 'Ubicación requerida',
-            message: 'Por favor confirma tu ubicación exacta en el mapa.',
-            confirmText: 'Cerrar',
-          });
-          return;
         }
       }
     }
@@ -1237,6 +1385,31 @@ export default function Cart() {
   const goToMapFromCart = async () => {
     const userAddress = userProfile?.address || user?.address || '';
     
+    // 🎯 PASO 1: Aplicar geocoding inteligente para centrar mapa correctamente
+    let mapCenter = { latitude: 19.4326, longitude: -99.1332 }; // Fallback CDMX
+    
+    if (userAddress && userAddress.trim().length > 10) {
+      console.log('🧠 Cart: Aplicando geocoding inteligente para centrar mapa en:', userAddress);
+      
+      try {
+        const geocodedCoords = await handleUserAddressGeocoding(userAddress);
+        if (geocodedCoords && geocodedCoords.driver_lat && geocodedCoords.driver_long) {
+          mapCenter = {
+            latitude: parseFloat(geocodedCoords.driver_lat),
+            longitude: parseFloat(geocodedCoords.driver_long)
+          };
+          console.log('✅ Cart: Geocoding exitoso - mapa centrado en:', mapCenter);
+        } else {
+          console.log('⚠️ Cart: Geocoding falló - usando centro CDMX');
+        }
+      } catch (error) {
+        console.warn('❌ Cart: Error en geocoding:', error);
+        console.log('⚠️ Cart: Usando centro CDMX como fallback');
+      }
+    } else {
+      console.log('⚠️ Cart: Dirección muy corta - usando centro CDMX');
+    }
+    
     // ✅ REGISTRAR CALLBACK para recibir coordenadas del mapa
     const handleLocationReturn = (coordinates) => {
       setLatlong({
@@ -1249,7 +1422,7 @@ export default function Cart() {
     
     navigation.navigate('AddressMap', {
       addressForm: {},
-      selectedLocation: { latitude: 19.4326, longitude: -99.1332 }, // Centro CDMX por defecto
+      selectedLocation: mapCenter, // ✅ USAR coordenadas geocodificadas o fallback CDMX
       callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
       userWrittenAddress: userAddress, // Pasar dirección del usuario para contexto
       fromGuestCheckout: false, // Es un usuario registrado
@@ -2002,7 +2175,7 @@ const CartFooter = ({
           </View>
         )}
 
-        {/* ✅ NUEVA SECCIÓN: Ubicación opcional para usuarios registrados */}
+        {/* ✅ MEJORADO: Ubicación con geocoding inteligente para usuarios registrados */}
         {user && user.usertype !== 'Guest' && deliveryInfo && userProfile?.address && (
           <View style={styles.registeredUserLocationSection}>
             <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
@@ -2010,35 +2183,20 @@ const CartFooter = ({
               {userProfile.address}
             </Text>
             
-            {/* Estado de la ubicación en mapa */}
+            {/* Estado de la ubicación en mapa - Mensaje único y consistente */}
             <View style={styles.locationStatusContainer}>
-              {latlong?.driver_lat && latlong?.driver_long ? (
-                <View style={styles.locationStatusRow}>
-                  <Ionicons name="checkmark-circle" size={20} color="#33A744" />
-                  <Text style={styles.locationStatusText}>
-                    Ubicación confirmada en el mapa
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.adjustLocationButton}
-                    onPress={goToMapFromCart}>
-                    <Ionicons name="map-outline" size={16} color="#8B5E3C" />
-                    <Text style={styles.adjustLocationButtonText}>Ajustar</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.locationStatusRow}>
-                  <Ionicons name="location-outline" size={20} color="#D27F27" />
-                  <Text style={styles.locationStatusText}>
-                    Para mayor precisión, puedes confirmar tu ubicación
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.selectLocationButton}
-                    onPress={goToMapFromCart}>
-                    <Ionicons name="map" size={16} color="#FFF" />
-                    <Text style={styles.selectLocationButtonText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={styles.locationStatusRow}>
+                <Ionicons name="location-outline" size={20} color="#D27F27" />
+                <Text style={styles.locationStatusText}>
+                  Para mayor precisión en la entrega, puedes ajustar tu ubicación exacta
+                </Text>
+                <TouchableOpacity
+                  style={styles.selectLocationButton}
+                  onPress={goToMapFromCart}>
+                  <Ionicons name="map" size={16} color="#FFF" />
+                  <Text style={styles.selectLocationButtonText}>Ajustar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
