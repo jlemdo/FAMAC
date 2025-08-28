@@ -20,6 +20,35 @@ import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil } from '../../utils/locationUtils';
 
+// ✅ FUNCIÓN: Traducir estados de órdenes a español para drivers
+const translateStatus = (status) => {
+  if (!status) return 'Desconocido';
+  
+  const translations = {
+    // Estados principales
+    'open': 'Abierto',
+    'pending': 'Pendiente', 
+    'confirmed': 'Confirmado',
+    'preparing': 'Preparando',
+    'on the way': 'En camino',
+    'delivered': 'Entregado',
+    'completed': 'Completado',
+    'cancelled': 'Cancelado',
+    'rejected': 'Rechazado',
+    'failed': 'Fallido',
+    
+    // Estados adicionales
+    'processing': 'Procesando',
+    'ready': 'Listo',
+    'picked up': 'Recogido',
+    'out for delivery': 'En reparto',
+    'delayed': 'Retrasado',
+    'returned': 'Devuelto'
+  };
+  
+  return translations[status.toLowerCase()] || status;
+};
+
 const OrderDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -284,7 +313,7 @@ const OrderDetails = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.orderInfo}>
           <Text style={styles.orderText}>Order ID: #{order?.id}</Text>
-          <Text style={styles.orderText}>Status: {orderStatus}</Text>
+          <Text style={styles.orderText}>Estado: {translateStatus(orderStatus)}</Text>
           <Text style={styles.orderText}>
             Total Price: ${order?.total_price}
           </Text>
@@ -385,7 +414,7 @@ const OrderDetails = () => {
             <TouchableOpacity
               style={styles.rescheduleButton}
               onPress={handleDriverLocation}>
-              <Text style={styles.rescheduleText}>{currentStatus}</Text>
+              <Text style={styles.rescheduleText}>{translateStatus(currentStatus)}</Text>
             </TouchableOpacity>
           </>
         )}

@@ -33,6 +33,52 @@ import {useAlert} from '../context/AlertContext';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 
+// ✅ FUNCIÓN: Traducir estados de órdenes a español
+const translateStatus = (status) => {
+  if (!status) return 'Desconocido';
+  
+  const translations = {
+    // Estados principales
+    'open': 'Abierto',
+    'pending': 'Pendiente', 
+    'confirmed': 'Confirmado',
+    'preparing': 'Preparando',
+    'on the way': 'En camino',
+    'delivered': 'Entregado',
+    'completed': 'Completado',
+    'cancelled': 'Cancelado',
+    'rejected': 'Rechazado',
+    'failed': 'Fallido',
+    
+    // Estados adicionales
+    'processing': 'Procesando',
+    'ready': 'Listo',
+    'picked up': 'Recogido',
+    'out for delivery': 'En reparto',
+    'delayed': 'Retrasado',
+    'returned': 'Devuelto'
+  };
+  
+  return translations[status.toLowerCase()] || status;
+};
+
+// ✅ FUNCIÓN: Traducir estados de pago a español
+const translatePaymentStatus = (paymentStatus) => {
+  if (!paymentStatus) return 'Desconocido';
+  
+  const translations = {
+    'pending': 'Pendiente',
+    'completed': 'Completado', 
+    'paid': 'Pagado',
+    'failed': 'Fallido',
+    'cancelled': 'Cancelado',
+    'refunded': 'Reembolsado',
+    'processing': 'Procesando'
+  };
+  
+  return translations[paymentStatus.toLowerCase()] || paymentStatus;
+};
+
 const OrderDetails = () => {
   const {user} = useContext(AuthContext);
   const {showAlert} = useAlert();
@@ -135,7 +181,7 @@ const OrderDetails = () => {
               <Text style={styles.orderIdText}>{formatOrderId(order?.created_at)}</Text>
             </View>
             <View style={styles.statusSection}>
-              <Text style={styles.statusText}>Estado: {order?.status}</Text>
+              <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
               {/* 🆕 Nuevo: Payment Status */}
               <Text style={[
                 styles.paymentStatusText,
@@ -143,9 +189,7 @@ const OrderDetails = () => {
                 order?.payment_status === 'completed' && styles.paymentStatusCompleted,
                 order?.payment_status === 'failed' && styles.paymentStatusFailed
               ]}>
-                Pago: {order?.payment_status === 'pending' ? 'Pendiente' : 
-                       order?.payment_status === 'completed' ? 'Completado' :
-                       order?.payment_status === 'failed' ? 'Fallido' : 'Desconocido'}
+                Pago: {translatePaymentStatus(order?.payment_status)}
               </Text>
             </View>
           </View>

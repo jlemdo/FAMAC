@@ -152,8 +152,32 @@ export default function Profile({ navigation, route }) {
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showAddressSection, setShowAddressSection] = useState(false); // Nueva sección de direcciones
 
+  // ✅ FUNCIÓN: Detectar si es usuario de Gmail/Google
+  const isGoogleUser = () => {
+    if (!user?.email) return false;
+    
+    // Verificar si el email es de Gmail
+    const isGmailUser = user.email.toLowerCase().endsWith('@gmail.com');
+    
+    // Verificar si hay algún indicador adicional de Google Auth
+    // (esto podría incluir campos específicos del backend como 'google_id', 'provider', etc.)
+    const hasGoogleProvider = user.provider === 'google' || user.auth_provider === 'google';
+    
+    return isGmailUser || hasGoogleProvider;
+  };
+
   // ✅ FUNCIÓN: Comportamiento tipo acordeón - solo una sección abierta a la vez
   const toggleSection = (sectionName) => {
+    // Bloquear sección de contraseña para usuarios de Google
+    if (sectionName === 'password' && isGoogleUser()) {
+      showAlert({
+        type: 'info',
+        title: 'Cuenta de Google',
+        message: 'Tu cuenta está vinculada con Google. La contraseña se gestiona directamente en tu cuenta de Google.',
+        confirmText: 'Entendido'
+      });
+      return;
+    }
     switch (sectionName) {
       case 'profile':
         if (showProfileSection) {
@@ -1128,17 +1152,36 @@ export default function Profile({ navigation, route }) {
 
       {/* Sección de Contraseña */}
       <TouchableOpacity 
-        style={styles.sectionHeader}
+        style={[
+          styles.sectionHeader,
+          isGoogleUser() && styles.sectionHeaderDisabled
+        ]}
         onPress={() => toggleSection('password')}
-        activeOpacity={0.8}>
+        activeOpacity={isGoogleUser() ? 0.5 : 0.8}>
         <View style={styles.sectionHeaderContent}>
-          <Text style={styles.sectionHeaderTitle}>🔒 Seguridad</Text>
-          <Text style={styles.sectionHeaderIcon}>
-            {showPasswordSection ? '▲' : '▼'}
+          <Text style={[
+            styles.sectionHeaderTitle,
+            isGoogleUser() && styles.sectionHeaderTitleDisabled
+          ]}>
+            🔒 Seguridad {isGoogleUser() && '(Google)'}
           </Text>
+          {!isGoogleUser() && (
+            <Text style={styles.sectionHeaderIcon}>
+              {showPasswordSection ? '▲' : '▼'}
+            </Text>
+          )}
+          {isGoogleUser() && (
+            <Text style={styles.sectionHeaderIconDisabled}>🔒</Text>
+          )}
         </View>
-        <Text style={styles.sectionHeaderSubtitle}>
-          Cambiar contraseña de acceso
+        <Text style={[
+          styles.sectionHeaderSubtitle,
+          isGoogleUser() && styles.sectionHeaderSubtitleDisabled
+        ]}>
+          {isGoogleUser() 
+            ? 'Contraseña gestionada por Google' 
+            : 'Cambiar contraseña de acceso'
+          }
         </Text>
       </TouchableOpacity>
 
@@ -1710,6 +1753,25 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sectionHeaderSubtitle: typography.subtitle,
+  
+  // ✅ ESTILOS PARA SECCIÓN DESHABILITADA (USUARIOS DE GOOGLE)
+  sectionHeaderDisabled: {
+    opacity: 0.6,
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+  },
+  sectionHeaderTitleDisabled: {
+    color: colors.textSecondary,
+  },
+  sectionHeaderIconDisabled: {
+    fontSize: fonts.size.small,
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  sectionHeaderSubtitleDisabled: {
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  
   quickActions: {
     marginBottom: 16,
   },
