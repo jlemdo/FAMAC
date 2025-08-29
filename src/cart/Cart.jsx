@@ -72,6 +72,7 @@ export default function Cart() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [upsellItems, setUpsellItems] = useState([]);
   const [loadingUpsell, setLoadingUpsell] = useState(true);
+  const [showLoadingContent, setShowLoadingContent] = useState(true); // 🆕 Controlar si mostrar el cuadro o solo el overlay
   const [latlong, setLatlong] = useState({
     driver_lat: '',
     driver_long: '',
@@ -997,6 +998,13 @@ export default function Cart() {
     }
 
     setLoading(true);
+    setShowLoadingContent(true); // 🆕 Mostrar el cuadro al inicio
+    
+    // 🆕 Después de 2 segundos, ocultar el cuadro pero mantener el bloqueo
+    setTimeout(() => {
+      setShowLoadingContent(false);
+    }, 2000);
+    
     try {
       // Las coordenadas ya fueron confirmadas por el usuario en el mapa
       // No necesitamos pedir permisos de ubicación nuevamente
@@ -1227,6 +1235,7 @@ export default function Cart() {
       });
     } finally {
       setLoading(false);
+      setShowLoadingContent(true); // 🆕 Resetear para próximo uso
     }
   };
 
@@ -1518,11 +1527,13 @@ export default function Cart() {
       {/* Overlay de loading que bloquea toda la pantalla */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#33A744" />
-            <Text style={styles.loadingText}>🔄 Procesando pago...</Text>
-            <Text style={styles.loadingSubtext}>Por favor no cierres la aplicación</Text>
-          </View>
+          {showLoadingContent && (
+            <View style={styles.loadingContent}>
+              <ActivityIndicator size="large" color="#33A744" />
+              <Text style={styles.loadingText}>🔄 Cargando métodos de pago...</Text>
+              <Text style={styles.loadingSubtext}>Por favor espera un momento</Text>
+            </View>
+          )}
         </View>
       )}
       
@@ -2005,15 +2016,6 @@ const CartFooter = ({
   
   return (
   <View>
-    {/* Cupón de descuento */}
-    <CouponInput
-      onCouponApply={onCouponApply}
-      onCouponRemove={onCouponRemove}
-      appliedCoupon={appliedCoupon}
-      subtotal={subtotal}
-      isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
-    />
-
     {/* Upsell */}
     <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
     {loadingUpsell ? (
@@ -2095,6 +2097,15 @@ const CartFooter = ({
         </Text>
       )}
     </View>
+
+    {/* Cupón de descuento */}
+    <CouponInput
+      onCouponApply={onCouponApply}
+      onCouponRemove={onCouponRemove}
+      appliedCoupon={appliedCoupon}
+      subtotal={subtotal}
+      isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
+    />
 
     {/* Facturación (solo si hay deliveryInfo) */}
     {deliveryInfo && (

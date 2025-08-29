@@ -1333,13 +1333,15 @@ const AddressFormUberStyle = () => {
           </View>
         </View>
 
-        {/* Vista previa de dirección construida */}
-        <View style={styles.addressPreview}>
-          <Text style={styles.previewLabel}>Vista previa:</Text>
-          <Text style={styles.previewText}>
-            {buildFinalAddress() || 'Completa los campos requeridos (*)'}
-          </Text>
-        </View>
+        {/* Vista previa de dirección construida - OCULTADA POR SOLICITUD */}
+        {false && (
+          <View style={styles.addressPreview}>
+            <Text style={styles.previewLabel}>Vista previa:</Text>
+            <Text style={styles.previewText}>
+              {buildFinalAddress() || 'Completa los campos requeridos (*)'}
+            </Text>
+          </View>
+        )}
 
         {/* Mensaje informativo */}
         <View style={styles.loadingContainer}>

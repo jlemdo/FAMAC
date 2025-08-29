@@ -29,6 +29,7 @@ const CouponInput = ({
   const [couponCode, setCouponCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false); // 🆕 Estado para colapsar/expandir
 
   // 🧪 CUPONES DE PRUEBA - Remover cuando el backend esté listo
   const TEST_COUPONS = {
@@ -123,13 +124,28 @@ const CouponInput = ({
 
   return (
     <View style={styles.container}>
-      {/* Título */}
-      <View style={styles.header}>
-        <Ionicons name="pricetag-outline" size={20} color="#8B5E3C" />
-        <Text style={styles.title}>Cupón de descuento</Text>
-      </View>
-
       {!appliedCoupon ? (
+        // Estado: Sin cupón aplicado
+        <View>
+          {/* Header colapsable */}
+          <TouchableOpacity 
+            style={styles.collapsibleHeader} 
+            onPress={() => setIsExpanded(!isExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.headerLeft}>
+              <Ionicons name="pricetag-outline" size={20} color="#8B5E3C" />
+              <Text style={styles.title}>¿Tienes un cupón?</Text>
+            </View>
+            <Ionicons 
+              name={isExpanded ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#8B5E3C" 
+            />
+          </TouchableOpacity>
+
+          {/* Contenido expandible */}
+          {isExpanded && (
         /* Input para nuevo cupón */
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
@@ -172,6 +188,8 @@ const CouponInput = ({
             <Text style={styles.hintText}>• envio50 - $50 de descuento</Text>
             <Text style={styles.hintText}>• bienvenido10 - 10% de descuento</Text>
           </View>
+        </View>
+          )}
         </View>
       ) : (
         /* Cupón aplicado */
@@ -227,7 +245,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: scaleSpacing(12),
     padding: scaleSpacing(16),
-    marginVertical: scaleSpacing(8),
+    marginVertical: scaleSpacing(16), // 🔧 Aumentado de 8 a 16 para mejor espaciado
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.2)',
     shadowColor: '#000',
@@ -247,8 +265,20 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     marginLeft: scaleSpacing(8),
   },
+  // 🆕 Estilos para header colapsable
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: scaleSpacing(4),
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   inputContainer: {
     gap: scaleSpacing(8),
+    marginTop: scaleSpacing(12), // 🆕 Espacio después del header colapsable
   },
   inputWrapper: {
     flexDirection: 'row',
