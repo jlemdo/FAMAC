@@ -19,6 +19,7 @@ import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import { validateEmail } from '../utils/addressValidators';
+import { navigateToGuestCheckout, navigateToGuestEdit } from '../utils/addressNavigation';
 
 export default function GuestCheckout() {
   const navigation = useNavigation();
@@ -76,11 +77,8 @@ export default function GuestCheckout() {
     if (editingAddress && currentEmail && currentEmail.trim() !== '') {
       // Ir directo a selección de dirección, saltando todo el flow de GuestCheckout
       setTimeout(() => {
-        navigation.navigate('AddressFormUberStyle', {
+        navigateToGuestEdit(navigation, {
           initialAddress: currentAddress || '',
-          title: 'Cambiar Dirección de Entrega',
-          returnToCart: true, // 🔧 USAR FLAG CORRECTO
-          fromGuestCheckout: true,
           guestEmail: currentEmail,
           currentEmail: currentEmail, // ✅ REQUERIDO por AddressFormUberStyle
           totalPrice: totalPrice, // ✅ REQUERIDO por validación
@@ -173,13 +171,11 @@ export default function GuestCheckout() {
     }
 
     if (currentStep === 1) {
-      // Ir directamente al AddressFormUberStyle en lugar del paso 2
-      navigation.navigate('AddressFormUberStyle', {
+      // Ir directamente al AddressFormUberStyle usando helper unificado
+      navigateToGuestCheckout(navigation, {
         initialAddress: address,
-        title: 'Dirección de Entrega',
         returnScreen: 'GuestCheckout',
         pickerId: null,
-        fromGuestCheckout: true,
         totalPrice: totalPrice,
         itemCount: itemCount,
         returnToCart: returnToCart,

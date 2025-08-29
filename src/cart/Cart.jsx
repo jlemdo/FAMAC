@@ -40,6 +40,7 @@ import {formatOrderId} from '../utils/orderIdFormatter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addressService } from '../services/addressService';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
+import { navigateToCartNew } from '../utils/addressNavigation';
 import styles from './Cart.styles';
 
 export default function Cart() {
@@ -1881,11 +1882,7 @@ export default function Cart() {
                         style={styles.modalButtonSecondary}
                         onPress={() => {
                           setShowAddressModal(false);
-                          navigation.navigate('AddressFormUberStyle', {
-                            title: 'Agregar Dirección',
-                            editMode: false,
-                            fromCart: true,
-                          });
+                          navigateToCartNew(navigation);
                         }}>
                         <Text style={styles.modalButtonSecondaryText}>➕ Agregar Dirección</Text>
                       </TouchableOpacity>

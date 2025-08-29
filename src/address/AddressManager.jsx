@@ -16,6 +16,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { addressService } from '../services/addressService';
+import { navigateToAddressManagerNew, navigateToAddressManagerEdit, navigateToProfileEdit } from '../utils/addressNavigation';
 import axios from 'axios';
 
 const AddressManager = () => {
@@ -241,24 +242,17 @@ const AddressManager = () => {
   };
 
 
-  // Navegar para editar dirección
+  // Navegar para editar dirección usando helper unificado
   const handleEditAddress = (address) => {
-    navigation.navigate('AddressFormUberStyle', {
-      title: 'Editar Dirección',
-      editMode: true,
+    navigateToAddressManagerEdit(navigation, {
       addressData: address,
-      fromAddressManager: true,
     });
   };
 
-  // Navegar para editar dirección legacy (del perfil)
+  // Navegar para editar dirección legacy (del perfil) usando helper
   const handleEditLegacyAddress = (profileAddr) => {
-    navigation.navigate('AddressFormUberStyle', {
-      title: 'Editar Dirección Principal',
-      editMode: true,
-      fromProfile: true, // Usar el flujo del perfil para actualizar perfil
+    navigateToProfileEdit(navigation, {
       userId: user.id,
-      skipMapStep: true, // Sin mapa para direcciones de perfil
       initialAddress: profileAddr.address, // Dirección completa para parsear
       fromAddressManager: true, // Para saber que debe regresar aquí
       isLegacyEdit: true, // Flag para indicar que es edición de dirección legacy
@@ -277,11 +271,7 @@ const AddressManager = () => {
       return;
     }
 
-    navigation.navigate('AddressFormUberStyle', {
-      title: 'Agregar Nueva Dirección',
-      editMode: false,
-      fromAddressManager: true,
-    });
+    navigateToAddressManagerNew(navigation);
   };
 
   // Renderizar item de dirección

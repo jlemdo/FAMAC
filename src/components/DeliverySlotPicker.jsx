@@ -10,30 +10,16 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🆕 NUEVA LÓGICA: Mostrar TODOS los jueves y lunes disponibles
+  // 🆕 NUEVA LÓGICA: Mostrar MIÉRCOLES y LUNES según reglas de negocio
   useEffect(() => {
     const tempDays = [];
     
-    // Generar próximos 3-4 Jueves y Lunes, ordenados por proximidad
-    const deliveryDates = [];
+    // Generar fechas de entrega basadas en lógica de negocio
+    const deliveryDates = getDeliveryDatesBasedOnLogic();
     
-    // Obtener próximos 3 jueves
-    const nextThursdays = getNextWeekdays(4, 3); // 4=Jueves
-    // Obtener próximos 3 lunes  
-    const nextMondays = getNextWeekdays(1, 3); // 1=Lunes
+    console.log('⭐ Generando días de entrega según nueva lógica:', deliveryDates.map(d => d.toLocaleDateString('es-MX')));
     
-    // Combinar todas las fechas
-    deliveryDates.push(...nextThursdays, ...nextMondays);
-    
-    // Ordenar por fecha (más cercana primero)
-    deliveryDates.sort((a, b) => a.getTime() - b.getTime());
-    
-    // Tomar las primeras 4-5 fechas más cercanas
-    const selectedDates = deliveryDates.slice(0, 5);
-    
-    console.log('⭐ Generando días de entrega:', selectedDates.map(d => d.toLocaleDateString('es-MX')));
-    
-    selectedDates.forEach((date, i) => {
+    deliveryDates.forEach((date, i) => {
       const dayObj = {
         date,
         label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
@@ -52,6 +38,83 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       setSelectedDateIndex(0);
     }
   }, []);
+
+  // 🆕 FUNCIÓN PRINCIPAL: Obtener fechas de entrega según lógica de negocio
+  const getDeliveryDatesBasedOnLogic = () => {
+    const now = new Date();
+    const currentDay = now.getDay(); // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+    const currentHour = now.getHours();
+    
+    console.log('🕰️ Análisis actual - Día:', currentDay, 'Hora:', currentHour);
+    
+    let nextDeliveryDay;
+    
+    // LÓGICA DE ENTREGA:
+    // Días de entrega: MIÉRCOLES (3) y LUNES (1)
+    
+    if (currentDay === 0 || currentDay === 6 || currentDay === 1 || 
+        (currentDay === 2 && currentHour < 12)) {
+      // Domingo, Sábado, Lunes, o Martes antes de mediodía → MIÉRCOLES
+      nextDeliveryDay = getNextWednesday();
+      console.log('📅 Caso 1: Entrega el próximo MIÉRCOLES');
+    } 
+    else if ((currentDay === 2 && currentHour >= 12) || currentDay === 3 || currentDay === 4) {
+      // Martes después de mediodía, Miércoles, o Jueves → LUNES siguiente  
+      nextDeliveryDay = getNextMonday();
+      console.log('📅 Caso 2: Entrega el próximo LUNES');
+    }
+    else if (currentDay === 2 && currentHour >= 12 || currentDay === 3 || 
+             currentDay === 4 || currentDay === 5 || (currentDay === 6 && currentHour < 12)) {
+      // Martes PM, Miércoles, Jueves, Viernes, o Sábado AM → LUNES siguiente
+      nextDeliveryDay = getNextMonday();
+      console.log('📅 Caso 3: Entrega el próximo LUNES'); 
+    }
+    else {
+      // Fallback - siguiente miércoles
+      nextDeliveryDay = getNextWednesday();
+      console.log('📅 Fallback: Entrega el próximo MIÉRCOLES');
+    }
+    
+    // Obtener 3 opciones alternando miércoles y lunes
+    const deliveryOptions = [];
+    
+    if (nextDeliveryDay.getDay() === 3) { // Si empieza con miércoles
+      deliveryOptions.push(nextDeliveryDay); // Este miércoles
+      deliveryOptions.push(getDateAfterDays(nextDeliveryDay, 5)); // Lunes siguiente
+      deliveryOptions.push(getDateAfterDays(nextDeliveryDay, 7)); // Miércoles siguiente
+    } else { // Si empieza con lunes
+      deliveryOptions.push(nextDeliveryDay); // Este lunes
+      deliveryOptions.push(getDateAfterDays(nextDeliveryDay, 2)); // Miércoles siguiente  
+      deliveryOptions.push(getDateAfterDays(nextDeliveryDay, 7)); // Lunes siguiente
+    }
+    
+    return deliveryOptions;
+  };
+
+  // Helper: Obtener próximo miércoles
+  const getNextWednesday = () => {
+    const today = new Date();
+    const daysUntilWednesday = (3 - today.getDay() + 7) % 7;
+    const nextWed = new Date(today);
+    nextWed.setDate(today.getDate() + (daysUntilWednesday === 0 ? 7 : daysUntilWednesday));
+    return nextWed;
+  };
+
+  // Helper: Obtener próximo lunes  
+  const getNextMonday = () => {
+    const today = new Date();
+    const daysUntilMonday = (1 - today.getDay() + 7) % 7;
+    const nextMon = new Date(today);
+    nextMon.setDate(today.getDate() + (daysUntilMonday === 0 ? 7 : daysUntilMonday));
+    return nextMon;
+  };
+
+  // Helper: Agregar días a una fecha
+  const getDateAfterDays = (date, days) => {
+    const newDate = new Date(date);
+    newDate.setDate(date.getDate() + days);
+    return newDate;
+  };
   
   // Helper function para obtener próximos días específicos de la semana
   const getNextWeekdays = (targetDay, count) => {
@@ -102,7 +165,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ];
       }
       
-      // 🆕 FILTRAR horarios según la hora actual (SIEMPRE aplicar filtro)
+      // 🆕 FILTRAR horarios según la hora actual y disponibilidad del día
       const now = new Date();
       const selectedDate = new Date(dateString);
       const isToday = now.toDateString() === selectedDate.toDateString();
@@ -111,10 +174,20 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       console.log('📅 Procesando slots para fecha:', dateString, 'Es hoy:', isToday);
       console.log('🕰️ Hora actual:', currentHour, 'Slots encontrados:', slotsToProcess.length);
       
-      // SIEMPRE aplicar filtro de horarios basado en hora actual
-      const filteredSlots = slotsToProcess.filter(slot => {
-        return !isSlotPassed(slot.value, currentHour);
-      });
+      // Si es hoy, aplicar filtros dinámicos de horarios
+      let filteredSlots = slotsToProcess;
+      if (isToday) {
+        filteredSlots = slotsToProcess.filter(slot => {
+          return !isSlotPassed(slot.value, currentHour, isToday);
+        });
+        
+        // Si ya pasaron las 9pm, este día ya no está disponible
+        if (currentHour >= 21) {
+          console.log('🚫 Día ya no disponible - pasaron las 9pm');
+          filteredSlots = []; // No hay slots disponibles
+        }
+      }
+      
       console.log('✅ Slots disponibles después del filtro:', filteredSlots.length, filteredSlots);
       setAvailableSlots(filteredSlots);
       
@@ -125,16 +198,27 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
       ];
       
-      // Aplicar filtro SIEMPRE al fallback
+      // Aplicar filtro al fallback usando nueva lógica
       const now = new Date();
+      const selectedDate = new Date(dateString);
+      const isToday = now.toDateString() === selectedDate.toDateString();
       const currentHour = now.getHours();
       
-      console.log('⚠️ Error en API, usando fallback. Hora actual:', currentHour);
+      console.log('⚠️ Error en API, usando fallback. Hora actual:', currentHour, 'Es hoy:', isToday);
       
-      // SIEMPRE aplicar filtro de horarios
-      fallbackSlots = fallbackSlots.filter(slot => {
-        return !isSlotPassed(slot.value, currentHour);
-      });
+      // Aplicar filtros dinámicos al fallback
+      if (isToday) {
+        fallbackSlots = fallbackSlots.filter(slot => {
+          return !isSlotPassed(slot.value, currentHour, isToday);
+        });
+        
+        // Si ya pasaron las 9pm, no hay slots disponibles
+        if (currentHour >= 21) {
+          console.log('🚫 Día fallback ya no disponible - pasaron las 9pm');
+          fallbackSlots = [];
+        }
+      }
+      
       console.log('✅ Slots fallback disponibles:', fallbackSlots.length, fallbackSlots);
       
       setAvailableSlots(fallbackSlots);
@@ -143,26 +227,30 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     }
   };
   
-  // Helper function para determinar si un horario ya pasó
-  const isSlotPassed = (slotValue, currentHour) => {
-    console.log('🕰️ Evaluando slot:', slotValue, 'Hora actual:', currentHour);
+  // 🆕 Helper function mejorada para determinar si un horario ya pasó
+  const isSlotPassed = (slotValue, currentHour, isToday) => {
+    console.log('🕰️ Evaluando slot:', slotValue, 'Hora actual:', currentHour, 'Es hoy:', isToday);
     
-    // Parsear el horario para obtener información del slot
+    if (!isToday) {
+      console.log('✅ Fecha futura - todos los slots disponibles');
+      return false; // Fechas futuras siempre tienen todos los slots disponibles
+    }
+    
     const timeSlot = slotValue.toLowerCase();
     
-    // Identificar slot matutino (9am-1pm)
+    // Identificar slots
     const isMorningSlot = timeSlot.includes('9') && (timeSlot.includes('am') || timeSlot.includes('1pm'));
+    const isEveningSlot = timeSlot.includes('4') && timeSlot.includes('pm');
     
-    // Si la hora actual es 18:00 (6 PM) o después, el slot matutino ya no está disponible
-    if (currentHour >= 24 && isMorningSlot) {
-      console.log('❌ Slot matutino bloqueado después de 6 PM');
+    // REGLA 1: Si ya pasó la 1pm, el horario de mañana (9am-1pm) desaparece
+    if (isMorningSlot && currentHour >= 13) {
+      console.log('❌ Slot matutino (9am-1pm) ya no disponible - pasó la 1pm');
       return true;
     }
     
-    // Si es slot vespertino (4pm-10pm), verificar si aún está disponible
-    const isEveningSlot = timeSlot.includes('4') && timeSlot.includes('pm');
-    if (isEveningSlot && currentHour >= 22) {
-      console.log('❌ Slot vespertino ya terminó');
+    // REGLA 2: Si ya pasaron las 4pm, el horario vespertino (4pm-9pm) desaparece
+    if (isEveningSlot && currentHour >= 16) {
+      console.log('❌ Slot vespertino (4pm-9pm) ya no disponible - pasaron las 4pm');
       return true;
     }
     
@@ -206,7 +294,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
             <View style={styles.deliveryDayHeader}>
               <Text style={styles.deliveryDayTitle}>📅 Elige tu día de entrega</Text>
               <View style={styles.deliveryDayInfo}>
-                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Jueves y Lunes</Text>
+                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Miércoles y Lunes</Text>
                 <Text style={styles.recommendedHint}>⭐ Más cercano a tu compra</Text>
               </View>
             </View>

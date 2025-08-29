@@ -65,7 +65,8 @@ const AddressFormUberStyle = () => {
   const callbacks = pickerId ? getAddressPickerCallbacks(pickerId) : null;
 
   // Estados principales
-  const [currentStep, setCurrentStep] = useState(1); // 1: Búsqueda, 2: Dirección Manual con Mapa Opcional
+  // 🔇 OCULTADO: Paso 1 deshabilitado - ir directo al formulario manual
+  const [currentStep, setCurrentStep] = useState(2); // 1: Búsqueda (OCULTADO), 2: Dirección Manual con Mapa Opcional
   const [searchQuery, setSearchQuery] = useState(initialAddress);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -1025,16 +1026,15 @@ const AddressFormUberStyle = () => {
     }
   }, [selectedLocationFromMap]);
 
-  // Efecto para buscar cuando cambia la query
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchQuery && currentStep === 1) {
-        searchAddresses(searchQuery);
-      }
-    }, 300); // Debounce de 300ms
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, currentStep]);
+  // 🔇 OCULTADO: Efecto para buscar cuando cambia la query (no necesario con paso 1 oculto)
+  // useEffect(() => {
+  //   const timeoutId = setTimeout(() => {
+  //     if (searchQuery && currentStep === 1) {
+  //       searchAddresses(searchQuery);
+  //     }
+  //   }, 300); // Debounce de 300ms
+  //   return () => clearTimeout(timeoutId);
+  // }, [searchQuery, currentStep]);
 
   // ✅ NUEVO: Inicializar campos cuando es edición legacy
   useEffect(() => {
@@ -1087,7 +1087,8 @@ const AddressFormUberStyle = () => {
     }
   }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, postalCodeError, postalCodeInfo, currentStep]);
 
-  // Renderizar paso 1: Búsqueda
+  // 🔇 OCULTADO TEMPORALMENTE: Renderizar paso 1: Búsqueda  
+  // Mantener código comentado para uso futuro si es necesario
   const renderSearchStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>¿Dónde quieres recibir tu pedido?</Text>
@@ -1379,8 +1380,8 @@ const AddressFormUberStyle = () => {
               Para mayor precisión en la entrega, puedes ajustar tu ubicación exacta
             </Text>
             
-            {/* Estado del geocoding inteligente o ubicación manual */}
-            {mapCoordinates ? (
+            {/* 🔇 OCULTADO PARA GUEST: Estado del geocoding inteligente (mostrar solo texto estático) */}
+            {/* {mapCoordinates ? (
               <View style={styles.coordinatesStatus}>
                 <Ionicons name="checkmark-circle" size={20} color="#33A744" />
                 <Text style={styles.coordinatesStatusText}>
@@ -1393,33 +1394,40 @@ const AddressFormUberStyle = () => {
                   <Text style={styles.adjustLocationButtonText}>Ajustar</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              <View style={styles.coordinatesStatus}>
-                <Ionicons name="location-outline" size={20} color="#D27F27" />
-                <Text style={styles.coordinatesStatusText}>
-                  Puedes seleccionar ubicación para mayor precisión
+            */}
+            
+            {/* Siempre mostrar texto estático sin indicadores de geocoding */}
+            <View style={styles.coordinatesStatus}>
+              <Ionicons name="location-outline" size={20} color="#D27F27" />
+              <Text style={styles.coordinatesStatusText}>
+                Puedes seleccionar ubicación para mayor precisión
+              </Text>
+              <TouchableOpacity
+                style={userHasConfirmedLocation ? styles.adjustLocationButton : styles.selectLocationButton}
+                onPress={async () => {
+                  // Construir dirección y hacer geocoding antes de ir al mapa
+                  const finalAddress = buildFinalAddress();
+                  console.log('🎯 BOTÓN IR AL MAPA presionado - Dirección construida:', finalAddress);
+                  setUserWrittenAddress(finalAddress);
+                  console.log('🧠 Ejecutando geocoding...');
+                  const geocodedCoordinates = await handleIntelligentGeocoding(finalAddress);
+                  
+                  // 🔧 TIMING FIX: Pequeño delay para asegurar que el estado se actualice
+                  setTimeout(() => {
+                    console.log('🚀 Ir al mapa después del geocoding y delay');
+                    goToMap();
+                  }, 200);
+                }}>
+                <Ionicons 
+                  name={userHasConfirmedLocation ? "map-outline" : "map"} 
+                  size={16} 
+                  color={userHasConfirmedLocation ? "#8B5E3C" : "#FFF"} 
+                />
+                <Text style={userHasConfirmedLocation ? styles.adjustLocationButtonText : styles.selectLocationButtonText}>
+                  {userHasConfirmedLocation ? 'Ajustar' : 'Ir al mapa'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.selectLocationButton}
-                  onPress={async () => {
-                    // Construir dirección y hacer geocoding antes de ir al mapa
-                    const finalAddress = buildFinalAddress();
-                    console.log('🎯 BOTÓN IR AL MAPA presionado - Dirección construida:', finalAddress);
-                    setUserWrittenAddress(finalAddress);
-                    console.log('🧠 Ejecutando geocoding...');
-                    const geocodedCoordinates = await handleIntelligentGeocoding(finalAddress);
-                    
-                    // 🔧 TIMING FIX: Pequeño delay para asegurar que el estado se actualice
-                    setTimeout(() => {
-                      console.log('🚀 Ir al mapa después del geocoding y delay');
-                      goToMap();
-                    }, 200);
-                  }}>
-                  <Ionicons name="map" size={16} color="#FFF" />
-                  <Text style={styles.selectLocationButtonText}>Ir al mapa</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -1450,12 +1458,12 @@ const AddressFormUberStyle = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Botón regresar */}
-        <TouchableOpacity
+        {/* 🔇 OCULTADO: Botón regresar a búsqueda (paso 1 oculto) */}
+        {/* <TouchableOpacity
           style={styles.backStepButton}
           onPress={() => setCurrentStep(1)}>
           <Text style={styles.backStepButtonText}>← Regresar a búsqueda</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     );
   };
@@ -1470,11 +1478,14 @@ const AddressFormUberStyle = () => {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
-            if (currentStep === 1) {
-              navigation.goBack();
-            } else {
-              setCurrentStep(currentStep - 1);
-            }
+            // 🔇 SIMPLIFICADO: Con paso 1 oculto, siempre regresar navegación
+            navigation.goBack();
+            // Lógica anterior comentada:
+            // if (currentStep === 1) {
+            //   navigation.goBack();
+            // } else {
+            //   setCurrentStep(currentStep - 1);
+            // }
           }}
           style={styles.backIcon}>
           <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
@@ -1483,7 +1494,8 @@ const AddressFormUberStyle = () => {
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.stepsIndicator}>
+      {/* 🔇 OCULTADO: Indicador de pasos (ya no necesario con un solo paso) */}
+      {/* <View style={styles.stepsIndicator}>
         {[1, 2].map((step) => (
           <View key={step} style={styles.stepIndicatorContainer}>
             <View
@@ -1500,7 +1512,7 @@ const AddressFormUberStyle = () => {
             {step < 2 && <View style={styles.stepLine} />}
           </View>
         ))}
-      </View>
+      </View> */}
       
       {/* Contenido scrolleable */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -1514,7 +1526,7 @@ const AddressFormUberStyle = () => {
 
           {/* Contenido del paso actual */}
           <View style={styles.content}>
-            {currentStep === 1 && renderSearchStep()}
+            {/* 🔇 OCULTADO: {currentStep === 1 && renderSearchStep()} */}
             {currentStep === 2 && renderManualAddressStep()}
           </View>
           
