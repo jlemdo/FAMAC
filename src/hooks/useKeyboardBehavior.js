@@ -16,40 +16,83 @@ export const useKeyboardBehavior = () => {
     inputRefs.current[inputId] = ref;
   }, []);
 
-  // Función para hacer scroll automático al input activo
+  // Función para hacer scroll automático al input activo (MEJORADA para iOS)
   const scrollToInput = useCallback((inputId, additionalOffset = 0) => {
     const inputRef = inputRefs.current[inputId];
     const scrollRef = scrollViewRef.current;
     
     if (!inputRef || !scrollRef) return;
     
+    // 🛡️ PROTECCIÓN iOS: Evitar loops infinitos con flag de ejecución
+    if (Platform.OS === 'ios') {
+      const currentTime = Date.now();
+      const lastExecutionKey = `scroll_${inputId}`;
+      
+      // Si se ejecutó recientemente (menos de 1 segundo), ignorar
+      if (inputRef._lastScrollTime && (currentTime - inputRef._lastScrollTime) < 1000) {
+        return;
+      }
+      
+      inputRef._lastScrollTime = currentTime;
+    }
+    
     // Delay para asegurar que el teclado se haya mostrado
-    setTimeout(() => {
-      inputRef.measureInWindow((x, y, width, height) => {
-        const { height: screenHeight } = Dimensions.get('window');
-        const keyboardOffset = keyboardHeight.current || 300; // Fallback a 300px
-        const visibleScreenHeight = screenHeight - keyboardOffset;
-        
-        // Calcular posición ideal: input en el tercio superior de la pantalla visible
-        const idealY = visibleScreenHeight * 0.25; // 25% desde arriba de la pantalla visible
-        const currentInputY = y;
-        
-        // Solo hacer scroll si el input está por debajo de la posición ideal
-        if (currentInputY > idealY) {
-          const scrollOffset = currentInputY - idealY + additionalOffset;
+    const scrollTimeout = setTimeout(() => {
+      try {
+        inputRef.measureInWindow((x, y, width, height) => {
+          // 🛡️ VALIDACIÓN: Verificar que las coordenadas son válidas
+          if (typeof y !== 'number' || y < 0 || isNaN(y)) {
+            console.log('⚠️ KEYBOARD BEHAVIOR: Coordenadas inválidas, ignorando scroll');
+            return;
+          }
           
-          scrollRef.scrollTo({
-            y: scrollOffset,
-            animated: true,
-          });
-        }
-      });
-    }, Platform.OS === 'ios' ? 250 : 100); // iOS necesita más tiempo
+          const { height: screenHeight } = Dimensions.get('window');
+          const keyboardOffset = keyboardHeight.current || 300; // Fallback a 300px
+          const visibleScreenHeight = screenHeight - keyboardOffset;
+          
+          // Calcular posición ideal: input en el tercio superior de la pantalla visible
+          const idealY = visibleScreenHeight * 0.25; // 25% desde arriba de la pantalla visible
+          const currentInputY = y;
+          
+          // Solo hacer scroll si el input está por debajo de la posición ideal
+          if (currentInputY > idealY) {
+            const scrollOffset = currentInputY - idealY + additionalOffset;
+            
+            // 🛡️ VALIDACIÓN: Verificar que el scroll offset es razonable
+            if (scrollOffset > 0 && scrollOffset < screenHeight * 2) {
+              scrollRef.scrollTo({
+                y: scrollOffset,
+                animated: true,
+              });
+            }
+          }
+        });
+      } catch (error) {
+        console.log('⚠️ KEYBOARD BEHAVIOR: Error en measureInWindow, ignorando:', error.message);
+      }
+    }, Platform.OS === 'ios' ? 400 : 150); // iOS necesita más tiempo para estabilizarse
+    
+    // 🛡️ CLEANUP: Asegurar que el timeout se limpia si el componente se desmonta
+    return () => clearTimeout(scrollTimeout);
   }, []);
 
-  // Función helper para crear onFocus handler
-  const createFocusHandler = useCallback((inputId, additionalOffset = 0) => {
-    return () => scrollToInput(inputId, additionalOffset);
+  // Función helper para crear onFocus handler (MEJORADA)
+  const createFocusHandler = useCallback((inputId, additionalOffset = 0, options = {}) => {
+    return () => {
+      // 🛡️ PROTECCIÓN: Permitir desactivar en iOS si hay problemas
+      if (options.disableOnIOS && Platform.OS === 'ios') {
+        return;
+      }
+      
+      // 🛡️ DEBOUNCE: Evitar múltiples ejecuciones muy rápidas
+      const currentTime = Date.now();
+      if (createFocusHandler._lastExecution && (currentTime - createFocusHandler._lastExecution) < 200) {
+        return;
+      }
+      createFocusHandler._lastExecution = currentTime;
+      
+      scrollToInput(inputId, additionalOffset);
+    };
   }, [scrollToInput]);
 
   // Listener para detectar altura del teclado (útil para cálculos precisos)

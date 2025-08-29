@@ -77,13 +77,13 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .matches(/^[0-9+]+$/, 'Teléfono inválido')
       .required('Teléfono es obligatorio'),
     birthDate: Yup.date()
-      .nullable()
-      .required('Fecha de cumpleaños es obligatoria')
+      .nullable() // DOB ahora es opcional
       .test(
         'age',
         'Debes tener al menos 13 años para registrarte',
         function(value) {
-          if (!value) return false;
+          // Si no hay valor (opcional), es válido
+          if (!value) return true;
           const today = new Date();
           const birthDate = new Date(value);
           const age = today.getFullYear() - birthDate.getFullYear();
@@ -100,7 +100,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         'reasonable-year',
         'Por favor verifica el año de nacimiento',
         function(value) {
-          if (!value) return false;
+          // Si no hay valor (opcional), es válido
+          if (!value) return true;
           const currentYear = new Date().getFullYear();
           const birthYear = value.getFullYear();
           return birthYear >= 1900 && birthYear <= currentYear;
@@ -111,7 +112,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .required('Email es obligatorio'),
     password: Yup.string()
       .min(6, 'Mínimo 6 caracteres')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]+$/, 'Debe contener al menos: 1 minúscula, 1 mayúscula y 1 número')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -401,7 +401,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                         month: 'long',
                         year: 'numeric',
                       })
-                    : 'Mes y año de nacimiento'}
+                    : 'Mes y año de nacimiento (opcional)'}
                 </Text>
                 <Ionicons
                   name="calendar-outline"
@@ -559,9 +559,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 </Modal>
               )}
               
-              {/* Leyenda motivacional para fecha de cumpleaños */}
+              {/* Leyenda motivacional para fecha de cumpleaños opcional */}
               <Text style={styles.birthdayMotivationalText}>
-                🎉 Recibe sorpresas en tu cumpleaños
+                🎉 Recibe sorpresas en tu cumpleaños (opcional)
               </Text>
             </View>
 
@@ -612,7 +612,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña (mínimo 6 caracteres)"
+                placeholder="Contraseña (6 caracteres mínimo)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
@@ -621,7 +621,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 onFocus={createFocusHandler('password', 30)}
                 returnKeyType="next"
               />
-              {/* Mostrar requisitos de password */}
+              {/* Mostrar requisito simple de password */}
               {values.password && values.password.length > 0 && (
                 <View style={styles.passwordRequirements}>
                   <Text style={[
@@ -629,24 +629,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                     values.password.length >= 6 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
                     {values.password.length >= 6 ? '✓' : '×'} Mínimo 6 caracteres
-                  </Text>
-                  <Text style={[
-                    styles.passwordRequirement,
-                    /[a-z]/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
-                  ]}>
-                    {/[a-z]/.test(values.password) ? '✓' : '×'} Una minúscula (a-z)
-                  </Text>
-                  <Text style={[
-                    styles.passwordRequirement,
-                    /[A-Z]/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
-                  ]}>
-                    {/[A-Z]/.test(values.password) ? '✓' : '×'} Una mayúscula (A-Z)
-                  </Text>
-                  <Text style={[
-                    styles.passwordRequirement,
-                    /\d/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
-                  ]}>
-                    {/\d/.test(values.password) ? '✓' : '×'} Un número (0-9)
                   </Text>
                 </View>
               )}

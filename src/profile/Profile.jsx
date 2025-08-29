@@ -391,8 +391,7 @@ export default function Profile({ navigation, route }) {
   const PasswordSchema = Yup.object().shape({
     current_password:      Yup.string().required('Requerido'),
     password:              Yup.string()
-                            .min(8, 'Mínimo 8 caracteres')
-                            .matches(/^[a-zA-Z0-9]+$/, 'Solo letras y números, sin caracteres especiales')
+                            .min(6, 'Mínimo 6 caracteres')
                             .required('Obligatorio'),
     password_confirmation: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
