@@ -60,7 +60,7 @@ export default function Cart() {
   const {refreshOrders} = useContext(OrderContext);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const {initPaymentSheet, presentPaymentSheet} = useStripe();
+  const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
   const [timers, setTimers] = useState({});
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
   const [address, setAddress] = useState('');
@@ -1102,6 +1102,25 @@ export default function Cart() {
         }
         return;
       }
+      // 🏪 CAPTURAR INFORMACIÓN DE VOUCHER OXXO
+      let oxxoInfo = null;
+      try {
+        const paymentIntentResult = await retrievePaymentIntent(clientSecret);
+        const nextAction = paymentIntentResult?.paymentIntent?.nextAction;
+        
+        if (nextAction?.type === 'oxxoVoucher') {
+          oxxoInfo = {
+            voucherNumber: nextAction.voucherNumber,
+            voucherURL: nextAction.voucherURL,
+            expiration: nextAction.expiration,
+            amount: finalPrice
+          };
+          console.log('🎫 INFORMACIÓN OXXO CAPTURADA:', oxxoInfo);
+        }
+      } catch (error) {
+        console.log('⚠️ Error obteniendo info OXXO:', error);
+      }
+      
       // 1.4) Pago exitoso: enviar la orden
       const orderData = await completeOrderFunc();
       
@@ -1182,7 +1201,8 @@ export default function Cart() {
         itemCount: itemCount,
         deliveryText: deliveryText,
         needInvoice: needInvoice,
-        orderId: isValidOrderId ? orderNumber.toString() : null
+        orderId: isValidOrderId ? orderNumber.toString() : null,
+        oxxoInfo: oxxoInfo // 🏪 Información del voucher OXXO si existe
       };
       
       console.log('🔍 MODAL DATA CONSTRUIDO:', modalData);
