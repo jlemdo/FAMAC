@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import { useAlert } from '../context/AlertContext';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
-import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+// import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior'; // 🚫 DESHABILITADO: Problemático en iOS
 import { 
   generateCallbackId, 
   registerNavigationCallback, 
@@ -39,14 +39,17 @@ const AddressFormUberStyle = () => {
   const { user } = useContext(AuthContext);
   const { showAlert } = useAlert();
   
-  // 🔧 Hook para manejo profesional del teclado
-  const { 
-    scrollViewRef, 
-    registerInput, 
-    createFocusHandler, 
-    keyboardAvoidingViewProps, 
-    scrollViewProps 
-  } = useKeyboardBehavior();
+  // 🔧 TEMPORALMENTE DESHABILITADO: Hook problemático en iOS
+  // const { 
+  //   scrollViewRef, 
+  //   registerInput, 
+  //   createFocusHandler, 
+  //   keyboardAvoidingViewProps, 
+  //   scrollViewProps 
+  // } = useKeyboardBehavior();
+  
+  // 🆕 FIX TEMPORAL PARA iOS: Configuración simple sin hooks complejos
+  const scrollViewRef = useRef(null);
   
   // Parámetros de navegación
   const { 
@@ -1136,12 +1139,10 @@ const AddressFormUberStyle = () => {
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
-          ref={(ref) => registerInput('searchQuery', ref)}
           style={styles.searchInput}
           placeholder="Calle, colonia, código postal..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          onFocus={createFocusHandler('searchQuery')}
           placeholderTextColor="#999"
           autoFocus={false}
           returnKeyType="search"
@@ -1210,24 +1211,20 @@ const AddressFormUberStyle = () => {
           <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Calle *</Text>
             <TextInput
-              ref={(ref) => registerInput('street', ref)}
               style={styles.addressInput}
               placeholder="Calle o avenida"
               value={streetName}
               onChangeText={setStreetName}
-              onFocus={createFocusHandler('street')}
               placeholderTextColor="#999"
             />
           </View>
           <View style={[styles.addressField, {flex: 1}]}>
             <Text style={styles.fieldLabel}>No. Ext *</Text>
             <TextInput
-              ref={(ref) => registerInput('extNum', ref)}
               style={styles.addressInput}
               placeholder="Número"
               value={exteriorNumber}
               onChangeText={setExteriorNumber}
-              onFocus={createFocusHandler('extNum')}
               placeholderTextColor="#999"
               keyboardType="numeric"
             />
@@ -1239,24 +1236,20 @@ const AddressFormUberStyle = () => {
           <View style={[styles.addressField, {flex: 1}]}>
             <Text style={styles.fieldLabel}>No. Int</Text>
             <TextInput
-              ref={(ref) => registerInput('intNum', ref)}
               style={styles.addressInput}
               placeholder="Opcional"
               value={interiorNumber}
               onChangeText={setInteriorNumber}
-              onFocus={createFocusHandler('intNum')}
               placeholderTextColor="#999"
             />
           </View>
           <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Colonia *</Text>
             <TextInput
-              ref={(ref) => registerInput('colony', ref)}
               style={styles.addressInput}
               placeholder="Colonia"
               value={neighborhood}
               onChangeText={setNeighborhood}
-              onFocus={createFocusHandler('colony')}
               placeholderTextColor="#999"
             />
           </View>
@@ -1267,7 +1260,6 @@ const AddressFormUberStyle = () => {
           <View style={[styles.addressField, {flex: 1}]}>
             <Text style={styles.fieldLabel}>CP *</Text>
             <TextInput
-              ref={(ref) => registerInput('postalCode', ref)}
               style={[
                 styles.addressInput,
                 postalCodeError && styles.addressInputError
@@ -1275,7 +1267,6 @@ const AddressFormUberStyle = () => {
               placeholder="5 dígitos"
               value={postalCode}
               onChangeText={handlePostalCodeChange}
-              onFocus={createFocusHandler('postalCode')}
               placeholderTextColor="#999"
               keyboardType="numeric"
               maxLength={5}
@@ -1299,12 +1290,10 @@ const AddressFormUberStyle = () => {
           <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Alcaldía/Municipio</Text>
             <TextInput
-              ref={(ref) => registerInput('municipality', ref)}
               style={styles.addressInput}
               placeholder="Alcaldía"
               value={municipality}
               onChangeText={setMunicipality}
-              onFocus={createFocusHandler('municipality')}
               placeholderTextColor="#999"
             />
           </View>
@@ -1355,12 +1344,10 @@ const AddressFormUberStyle = () => {
         <View style={styles.addressField}>
           <Text style={styles.fieldLabel}>Referencias (Opcional)</Text>
           <TextInput
-            ref={(ref) => registerInput('references', ref)}
             style={[styles.addressInput, styles.referencesInput]}
             placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
             value={references}
             onChangeText={setReferences}
-            onFocus={createFocusHandler('references', 30)}
             multiline
             numberOfLines={3}
             placeholderTextColor="#999"
@@ -1474,7 +1461,8 @@ const AddressFormUberStyle = () => {
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
-      {...keyboardAvoidingViewProps}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
       
       {/* Header estático */}
       <View style={styles.header}>
@@ -1519,7 +1507,7 @@ const AddressFormUberStyle = () => {
       {/* Contenido scrolleable */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
-          {...scrollViewProps}
+          ref={scrollViewRef}
           style={styles.containerInner}
           contentContainerStyle={styles.scrollContentContainer}
           showsVerticalScrollIndicator={false}
