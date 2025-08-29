@@ -94,15 +94,15 @@ export const validatePostalCode = (postalCode) => {
     };
   }
   
-  // Verificar si está en zonas permitidas
+  // Verificar si está en zonas permitidas (CDMX o EdoMex)
   const locationInfo = getPostalCodeInfo(cleanCP);
   
   if (!locationInfo) {
     return {
       isValid: false,
       error: 'DELIVERY_NOT_AVAILABLE',
-      message: 'Lo sentimos, aún no entregamos en esta zona',
-      suggestion: 'Revisa si tienes otra dirección en CDMX o Estado de México'
+      message: 'Lo sentimos, solo entregamos en CDMX y Estado de México',
+      suggestion: 'Códigos postales válidos: CDMX (01000-16999) o EdoMex (50000-57999)'
     };
   }
   
@@ -113,7 +113,7 @@ export const validatePostalCode = (postalCode) => {
   };
 };
 
-// 📍 FUNCIÓN: Obtener información de un código postal (LÓGICA DE PRUEBA AMPLIA)
+// 📍 FUNCIÓN: Obtener información de un código postal (LÓGICA SIMPLIFICADA)
 export const getPostalCodeInfo = (postalCode) => {
   const cleanCP = postalCode?.trim();
   
@@ -129,7 +129,7 @@ export const getPostalCodeInfo = (postalCode) => {
     return {
       state: 'CDMX',
       zone: 'Ciudad de México',
-      description: 'Zona de entrega válida en CDMX (Prueba)',
+      description: 'Zona de entrega válida en CDMX',
       deliveryAvailable: true
     };
   }
@@ -139,12 +139,12 @@ export const getPostalCodeInfo = (postalCode) => {
     return {
       state: 'Estado de México',
       zone: 'EdoMex',
-      description: 'Zona de entrega válida en EdoMex (Prueba)',
+      description: 'Zona de entrega válida en EdoMex',
       deliveryAvailable: true
     };
   }
 
-  return null; // No encontrado en los rangos de prueba
+  return null; // No encontrado en los rangos válidos
 };
 
 // 📋 FUNCIÓN: Obtener todos los códigos postales permitidos

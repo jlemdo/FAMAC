@@ -51,8 +51,8 @@ export const validatePostalCode = (postalCode, city = null) => {
     const cp = postalCode.trim();
     if (!/^\d{5}$/.test(cp)) return false;
     
-    // Rangos básicos como fallback
-    return (cp >= '01000' && cp <= '16999') || (cp >= '50000' && cp <= '56999');
+    // Rangos básicos como fallback (CDMX: 01000-16999, EdoMex: 50000-57999)
+    return (cp >= '01000' && cp <= '16999') || (cp >= '50000' && cp <= '57999');
   }
 };
 
@@ -213,7 +213,7 @@ export const parseAddressComponents = (components, fullAddress, existingData = {
         const cp = component.long_name;
         if (cp >= '01000' && cp <= '16999') {
           addressData.city = 'CDMX';
-        } else if (cp >= '50000' && cp <= '56999') {
+        } else if (cp >= '50000' && cp <= '57999') {
           addressData.city = 'Estado de México';
         }
       }
