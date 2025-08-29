@@ -234,6 +234,65 @@ const OrderDetails = () => {
           </View>
         </View>
 
+         {/* 🆕 Sección de información de entrega */}
+          <View style={styles.deliveryInfoSection}>
+            <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
+            
+            {/* Fecha y horario programado */}
+            {(order?.delivery_date || order?.delivery_slot) && (
+              <View style={styles.deliveryScheduleContainer}>
+                <View style={styles.deliveryScheduleHeader}>
+                  <Ionicons name="calendar-outline" size={20} color="#33A744" />
+                  <Text style={styles.deliveryScheduleTitle}>Entrega programada</Text>
+                </View>
+                
+                <View style={styles.deliveryScheduleInfo}>
+                  {order?.delivery_date && (
+                    <Text style={styles.deliveryDate}>
+                      📅 {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long', 
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  )}
+                  
+                  {order?.delivery_slot && (
+                    <Text style={styles.deliverySlot}>
+                      ⏰ Horario: {order.delivery_slot}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Estado del repartidor y mensaje informativo */}
+            {/* <View style={styles.driverStatusContainer}>
+              {order.driver ? (
+                <View style={styles.driverAssignedInfo}>
+                  <Ionicons name="person-circle" size={20} color="#33A744" />
+                  <Text style={styles.driverAssignedText}>
+                    Repartidor asignado: {order.driver.name || 'Conductor'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.driverPendingInfo}>
+                  <Ionicons name="hourglass-outline" size={20} color="#D27F27" />
+                  <View style={styles.driverPendingTextContainer}>
+                    <Text style={styles.driverPendingTitle}>Buscando repartidor</Text>
+                    <Text style={styles.driverPendingMessage}>
+                      {(order?.delivery_date || order?.delivery_slot) 
+                        ? `Tu pedido será enviado ${order?.delivery_date ? 'el ' + new Date(order.delivery_date).toLocaleDateString('es-MX') : ''} ${order?.delivery_slot ? 'en el horario ' + order.delivery_slot : ''}. Te avisaremos en cuanto te asignemos un repartidor.`
+                        : 'Te avisaremos en cuanto te asignemos un repartidor y confirmemos la hora de entrega.'
+                      }
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View> */}
+          </View>
+
         {user.usertype === 'driver' ? (
           // 2. Los drivers siempre ven todo
           <>
@@ -691,6 +750,89 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+
+  // 🆕 Estilos para sección de información de entrega
+  deliveryInfoSection: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+  },
+  deliveryScheduleContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 167, 68, 0.2)',
+  },
+  deliveryScheduleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deliveryScheduleTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+    marginLeft: 8,
+  },
+  deliveryScheduleInfo: {
+    paddingLeft: 28,
+  },
+  deliveryDate: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  deliverySlot: {
+    fontFamily: fonts.numeric,
+    fontSize: fonts.size.medium,
+    color: '#D27F27',
+    fontWeight: '600',
+  },
+  driverStatusContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+  },
+  driverAssignedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  driverAssignedText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+    marginLeft: 8,
+  },
+  driverPendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  driverPendingTextContainer: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  driverPendingTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#D27F27',
+    marginBottom: 4,
+  },
+  driverPendingMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    lineHeight: 20,
   },
 });
 
