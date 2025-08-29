@@ -113,7 +113,7 @@ export const validatePostalCode = (postalCode) => {
   };
 };
 
-// 📍 FUNCIÓN: Obtener información de un código postal (LÓGICA SIMPLIFICADA)
+// 📍 FUNCIÓN: Obtener información de un código postal (LÓGICA SIMPLIFICADA - VALIDACIÓN DE ZONA DESACTIVADA)
 export const getPostalCodeInfo = (postalCode) => {
   const cleanCP = postalCode?.trim();
   
@@ -122,29 +122,13 @@ export const getPostalCodeInfo = (postalCode) => {
     return null;
   }
 
-  const cpNumber = parseInt(cleanCP, 10);
-
-  // Rango de códigos postales para CDMX (01000 a 16999)
-  if (cpNumber >= 1000 && cpNumber <= 16999) {
-    return {
-      state: 'CDMX',
-      zone: 'Ciudad de México',
-      description: 'Zona de entrega válida en CDMX',
-      deliveryAvailable: true
-    };
-  }
-
-  // Rango de códigos postales para Estado de México (50000 a 57999)
-  if (cpNumber >= 50000 && cpNumber <= 57999) {
-    return {
-      state: 'Estado de México',
-      zone: 'EdoMex',
-      description: 'Zona de entrega válida en EdoMex',
-      deliveryAvailable: true
-    };
-  }
-
-  return null; // No encontrado en los rangos válidos
+  // Devolver una respuesta genérica exitosa para cualquier CP de 5 dígitos
+  return {
+    state: 'CDMX', // Se mantiene un valor por defecto para compatibilidad
+    zone: 'Zona General',
+    description: 'Zona de entrega válida',
+    deliveryAvailable: true
+  };
 };
 
 // 📋 FUNCIÓN: Obtener todos los códigos postales permitidos
