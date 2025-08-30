@@ -32,6 +32,7 @@ import {
 } from '../utils/navigationCallbacks';
 import { addressService } from '../services/addressService';
 import { AuthContext } from '../context/AuthContext';
+// Debugging removido para producción
 
 const AddressFormUberStyle = () => {
   const navigation = useNavigation();
@@ -47,6 +48,8 @@ const AddressFormUberStyle = () => {
     keyboardAvoidingViewProps, 
     scrollViewProps 
   } = useKeyboardBehavior();
+
+  // Debugging removido para producción
   
   // Parámetros de navegación
   const { 
@@ -229,19 +232,24 @@ const AddressFormUberStyle = () => {
     return parts.join(', ');
   };
 
-  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual (MEJORADO - MÁS ESTRICTO)
-  // Geocoding inteligente usando utility unificada
+  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual
   const handleIntelligentGeocoding = async (addressString) => {
-    const coordinates = await geocodeFormAddress(addressString);
-    
-    if (coordinates) {
-      console.log('✅ GEOCODING EXITOSO - Guardando coordenadas:', coordinates);
-      setMapCoordinates(coordinates);
-      return coordinates;
+    try {
+      const coordinates = await geocodeFormAddress(addressString);
+      
+      if (coordinates) {
+        console.log('✅ GEOCODING EXITOSO - Guardando coordenadas:', coordinates);
+        setMapCoordinates(coordinates);
+        return coordinates;
+      }
+      
+      console.log('⚠️ GEOCODING: No se pudieron obtener coordenadas válidas');
+      return null;
+
+    } catch (error) {
+      console.error('🚨 ERROR en handleIntelligentGeocoding:', error);
+      return null;
     }
-    
-    console.log('⚠️ GEOCODING: No se pudieron obtener coordenadas válidas');
-    return null;
   };
 
   // 🆕 FUNCIÓN: Manejar cambios en código postal (SIN VALIDACIÓN)
@@ -657,14 +665,15 @@ const AddressFormUberStyle = () => {
 
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
   const handleConfirm = async (providedAddress = null) => {
-    console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
-      fromAddressManager: route.params?.fromAddressManager,
-      fromCart: route.params?.fromCart,
-      fromProfile: route.params?.fromProfile,
-      userId: user?.id,
-      usertype: user?.usertype,
-      editMode: route.params?.editMode
-    });
+    try {
+      console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
+        fromAddressManager: route.params?.fromAddressManager,
+        fromCart: route.params?.fromCart,
+        fromProfile: route.params?.fromProfile,
+        userId: user?.id,
+        usertype: user?.usertype,
+        editMode: route.params?.editMode
+      });
 
     // VALIDACIONES EXACTAS DE PROFILE - NO CAMBIAR
     // Usar providedAddress si se pasó, sino userWrittenAddress del estado
@@ -969,6 +978,20 @@ const AddressFormUberStyle = () => {
     else {
       navigation.goBack();
     }
+
+    } catch (error) {
+      console.error('🚨 ERROR CRÍTICO en handleConfirm:', error);
+      
+      // Alert de emergencia para el usuario
+      Alert.alert(
+        '⚠️ Error Crítico',
+        `Error en handleConfirm: ${error.message}. Por favor reporta este error.`,
+        [
+          { text: 'Reintentar', onPress: () => navigation.goBack(), style: 'default' },
+          { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
+        ]
+      );
+    }
   };
 
   // Manejar coordenadas seleccionadas del mapa (PRESERVANDO dirección y referencias)
@@ -1233,7 +1256,7 @@ const AddressFormUberStyle = () => {
         {/* Fila 3: Código Postal y Alcaldía/Municipio */}
         <View style={styles.addressRow}>
           <View style={[styles.addressField, {flex: 1}]}>
-            <Text style={styles.fieldLabel}>CP *</Text>
+            <Text style={styles.fieldLabel}>CP</Text>
             <TextInput
               ref={(ref) => registerInput('postalCode', ref)}
               style={styles.addressInput}
@@ -1383,25 +1406,35 @@ const AddressFormUberStyle = () => {
           </View>
         )}
 
-        {/* Botón completar dirección - ahora incluye geocoding automático */}
+        {/* Botón completar dirección - CON DEBUGGING COMPLETO */}
         <TouchableOpacity
           style={[
             styles.confirmButton, 
             !hasRequiredFields && styles.confirmButtonDisabled
           ]}
-          onPress={async () => {
-            // Construir dirección final y guardarla
-            const finalAddress = buildFinalAddress();
-            setUserWrittenAddress(finalAddress);
-            
-            // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente si no las tiene
-            if (!mapCoordinates) {
-              await handleIntelligentGeocoding(finalAddress);
-            }
-            
-            // Completar dirección directamente (sin ir a paso 3)
-            // 🔧 TIMING FIX: Pasar finalAddress directamente en lugar de esperar setState
-            handleConfirm(finalAddress);
+          onPress={() => {
+            // Fix crítico para iOS: Ejecutar en próximo tick para evitar UI freeze
+            setTimeout(async () => {
+              try {
+                // Construir dirección final y guardarla
+                const finalAddress = buildFinalAddress();
+                setUserWrittenAddress(finalAddress);
+                
+                // Geocoding inteligente: Obtener coordenadas automáticamente si no las tiene
+                if (!mapCoordinates) {
+                  await handleIntelligentGeocoding(finalAddress);
+                }
+                
+                // Fix iOS: Delay adicional antes de navegación para liberar UI thread
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Completar dirección directamente
+                await handleConfirm(finalAddress);
+                
+              } catch (error) {
+                console.error('ERROR en completar dirección:', error);
+              }
+            }, 0);
           }}
           disabled={!hasRequiredFields}>
           <Ionicons name="checkmark-circle" size={24} color="#FFF" />
@@ -2139,37 +2172,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     textAlign: 'center',
-  },
-
-  // 🆕 ESTILOS PARA VALIDACIÓN DE CÓDIGO POSTAL  
-  addressInputError: {
-    borderColor: '#E53935',
-    borderWidth: 2,
-    backgroundColor: 'rgba(229, 57, 53, 0.05)',
-  },
-  errorText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular, 
-    color: '#E53935',
-    marginTop: 4,
-    lineHeight: 16,
-  },
-  postalCodeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    borderRadius: 6,
-  },
-  postalCodeInfoText: {
-    flex: 1,
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#33A744',
-    marginLeft: 4,
-    lineHeight: 16,
   },
 });
 
