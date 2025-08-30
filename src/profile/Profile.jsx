@@ -110,6 +110,31 @@ const parseFlexibleDate = (dateValue) => {
   return null;
 };
 
+// Helper function para formatear teléfono mexicano visualmente
+const formatMexicanPhone = (phone) => {
+  if (!phone) return '';
+  
+  // Remover todo lo que no sean números
+  const numbers = phone.replace(/\D/g, '');
+  
+  // Formatear según longitud
+  if (numbers.length <= 2) {
+    return numbers;
+  } else if (numbers.length <= 6) {
+    return `${numbers.slice(0, 2)} ${numbers.slice(2)}`;
+  } else if (numbers.length <= 10) {
+    return `${numbers.slice(0, 2)} ${numbers.slice(2, 6)} ${numbers.slice(6)}`;
+  } else {
+    // Para números con lada (11+ dígitos)
+    return `${numbers.slice(0, 2)} ${numbers.slice(2, 6)} ${numbers.slice(6, 10)}`;
+  }
+};
+
+// Helper function para obtener solo números (para backend)
+const getPlainPhone = (phone) => {
+  return phone ? phone.replace(/\D/g, '') : '';
+};
+
 export default function Profile({ navigation, route }) {
   const { user, logout } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
@@ -223,6 +248,9 @@ export default function Profile({ navigation, route }) {
     address: '',
     birthDate: null,
   });
+  
+  // Estado para el teléfono formateado visualmente
+  const [formattedPhone, setFormattedPhone] = useState('');
 
   // Función para obtener el label de la orden seleccionada
   const getSelectedOrderLabel = useCallback((orderno) => {
@@ -262,6 +290,9 @@ export default function Profile({ navigation, route }) {
         promotional_discount: data.promotional_discount // Agregar promotional_discount
       };
       setProfile(profileData);
+      
+      // Formatear teléfono para mostrar visualmente
+      setFormattedPhone(formatMexicanPhone(profileData.phone));
       
       // En la carga inicial está bien pasar todo porque son datos frescos del servidor
       updateProfile(profileData); // Notificar al contexto
@@ -383,7 +414,7 @@ export default function Profile({ navigation, route }) {
     first_name: Yup.string().required('Nombre es obligatorio'),
     last_name:  Yup.string().required('Apellido es obligatorio'),
     phone:      Yup.string()
-      .matches(/^[0-9+]+$/, 'Teléfono inválido')
+      .matches(/^[0-9+\s()-]+$/, 'Teléfono inválido (solo números, espacios, + y paréntesis)')
       .required('Teléfono es obligatorio'),
     birthDate:  Yup.date().nullable(), // opcional
   });
@@ -617,7 +648,7 @@ export default function Profile({ navigation, route }) {
         initialValues={{
           first_name: profile.first_name,
           last_name:  profile.last_name,
-          phone:      profile.phone,
+          phone:      formattedPhone, // Usar teléfono formateado para mostrar
           birthDate:  profile.birthDate || null, // Sin fecha inicial - mostrar placeholder
         }}
         enableReinitialize
@@ -655,7 +686,7 @@ export default function Profile({ navigation, route }) {
               userid:      user.id,
               first_name:  values.first_name,
               last_name:   values.last_name,
-              phone:       values.phone,
+              phone:       getPlainPhone(values.phone), // Enviar solo números al backend
               email:       profile.email,        // Preservar email
               address:     profile.address,      // Preservar dirección actual
             };
@@ -827,11 +858,14 @@ export default function Profile({ navigation, route }) {
                 submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
                 !isEditingProfile && styles.disabledInput
               ]}
-              placeholder="Teléfono"
+              placeholder="Teléfono (ej: 55 1234 5678)"
               placeholderTextColor="rgba(47,47,47,0.6)"
               keyboardType="phone-pad"
               value={values.phone}
-              onChangeText={handleChange('phone')}
+              onChangeText={(text) => {
+                const formatted = formatMexicanPhone(text);
+                handleChange('phone')(formatted);
+              }}
               onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
               editable={isEditingProfile}
               returnKeyType="done"

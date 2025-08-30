@@ -32,6 +32,31 @@ import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 
+// Helper function para formatear teléfono mexicano visualmente
+const formatMexicanPhone = (phone) => {
+  if (!phone) return '';
+  
+  // Remover todo lo que no sean números
+  const numbers = phone.replace(/\D/g, '');
+  
+  // Formatear según longitud
+  if (numbers.length <= 2) {
+    return numbers;
+  } else if (numbers.length <= 6) {
+    return `${numbers.slice(0, 2)} ${numbers.slice(2)}`;
+  } else if (numbers.length <= 10) {
+    return `${numbers.slice(0, 2)} ${numbers.slice(2, 6)} ${numbers.slice(6)}`;
+  } else {
+    // Para números con lada (11+ dígitos)
+    return `${numbers.slice(0, 2)} ${numbers.slice(2, 6)} ${numbers.slice(6, 10)}`;
+  }
+};
+
+// Helper function para obtener solo números (para backend)
+const getPlainPhone = (phone) => {
+  return phone ? phone.replace(/\D/g, '') : '';
+};
+
 export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const navigation = useNavigation();
   const {user, login} = useContext(AuthContext);
@@ -74,7 +99,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     last_name: Yup.string().trim().required('Apellido es obligatorio'),
     phone: Yup.string()
       .trim()
-      .matches(/^[0-9+]+$/, 'Teléfono inválido')
+      .matches(/^[0-9+\s()-]+$/, 'Teléfono inválido (solo números, espacios, + y paréntesis)')
       .required('Teléfono es obligatorio'),
     birthDate: Yup.date()
       .nullable() // DOB ahora es opcional
@@ -111,7 +136,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
-      .min(6, 'Mínimo 6 caracteres')
+      .min(8, 'Mínimo 8 caracteres')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -227,18 +252,25 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
 
   // 4️⃣ Envío de formulario
   const onSubmit = async (values, {setSubmitting}) => {
-    const opts = {month: 'long', year: 'numeric'};
-    const dob = values.birthDate.toLocaleDateString('es-ES', opts);
+    let dob = null;
+    if (values.birthDate) {
+      const opts = {month: 'long', year: 'numeric'};
+      dob = values.birthDate.toLocaleDateString('es-ES', opts);
+    }
 
     const payload = {
       first_name: values.first_name,
       last_name: values.last_name,
-      contact_number: values.phone,
-      dob,
+      contact_number: getPlainPhone(values.phone), // Enviar solo números al backend
       email: values.email,
       password: values.password,
       password_confirmation: values.confirmPassword,
     };
+
+    // Solo agregar dob si existe
+    if (dob) {
+      payload.dob = dob;
+    }
 
     try {
       const {status, data} = await axios.post(
@@ -314,6 +346,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           errors,
           touched,
           isSubmitting,
+          isValid,
+          dirty,
           setFieldValue,
           setFieldTouched,
         }) => (
@@ -368,11 +402,14 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.phone && errors.phone && styles.inputError,
                 ]}
-                placeholder="Teléfono"
+                placeholder="Teléfono (ej: 55 1234 5678)"
                 placeholderTextColor="#999"
                 keyboardType="phone-pad"
                 value={values.phone}
-                onChangeText={handleChange('phone')}
+                onChangeText={(text) => {
+                  const formatted = formatMexicanPhone(text);
+                  handleChange('phone')(formatted);
+                }}
                 onBlur={handleBlur('phone')}
                 onFocus={createFocusHandler('phone')}
                 returnKeyType="next"
@@ -612,7 +649,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña (6 caracteres mínimo)"
+                placeholder="Contraseña (8 caracteres mínimo)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
@@ -626,9 +663,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 <View style={styles.passwordRequirements}>
                   <Text style={[
                     styles.passwordRequirement,
-                    values.password.length >= 6 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                    values.password.length >= 8 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
-                    {values.password.length >= 6 ? '✓' : '×'} Mínimo 6 caracteres
+                    {values.password.length >= 8 ? '✓' : '×'} Mínimo 8 caracteres
                   </Text>
                 </View>
               )}
@@ -676,9 +713,12 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
 
             {/* Registrar */}
             <TouchableOpacity
-              style={styles.primaryBtn}
+              style={[
+                styles.primaryBtn,
+                (!isValid || !dirty || isSubmitting) && styles.buttonDisabled
+              ]}
               onPress={handleSubmit}
-              disabled={isSubmitting}>
+              disabled={!isValid || !dirty || isSubmitting}>
               {isSubmitting ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
