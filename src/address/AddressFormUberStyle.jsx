@@ -868,7 +868,9 @@ const AddressFormUberStyle = () => {
     }
     // Si viene de GuestCheckout
     else if (route.params?.fromGuestCheckout) {
-      try {
+      // 🛡️ iOS FIX: Envolver toda la lógica de Guest con setTimeout para liberar UI Thread
+      setTimeout(async () => {
+        try {
         // USAR EXACTAMENTE EL MISMO FORMATO QUE PROFILE.JSX
         const addressToSend = `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`;
         
@@ -973,6 +975,7 @@ const AddressFormUberStyle = () => {
         );
         return;
       }
+      }, 0); // Cierre del setTimeout de iOS fix
     }
     // Fallback
     else {
