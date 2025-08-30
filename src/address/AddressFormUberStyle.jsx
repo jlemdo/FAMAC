@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Config from 'react-native-config';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { geocodeFormAddress } from '../utils/geocodingUtils';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
@@ -886,34 +887,49 @@ const AddressFormUberStyle = () => {
         }
         
         // Si returnToCart es true, ir directamente al Cart
-        // ✅ FIX: Evitar regreso a GuestCheckout, ir directo al carrito
+        // ✅ FIX iOS: Usar AsyncStorage para objetos complejos, navigation simple
         if (route.params?.returnToCart) {
-          // console.log('✅ FIX: Yendo directo al carrito con datos completos');
+          // console.log('✅ FIX: Guardando datos en AsyncStorage y navegando simple');
           
-          // Navegar directo al carrito con todos los datos necesarios
+          // 1. PRE-PROCESAR fechas ANTES de guardar (evitar toISOString en main thread)
+          let processedDeliveryInfo = route.params?.preservedDeliveryInfo;
+          if (processedDeliveryInfo?.date && typeof processedDeliveryInfo.date !== 'string') {
+            processedDeliveryInfo = {
+              ...processedDeliveryInfo,
+              date: processedDeliveryInfo.date.toISOString()
+            };
+          }
+          
+          // 2. GUARDAR datos complejos en AsyncStorage temporal
+          const tempGuestData = {
+            email: route.params?.currentEmail || '',
+            address: addressToSend,
+            preservedDeliveryInfo: processedDeliveryInfo,
+            preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
+            preservedTaxDetails: route.params?.preservedTaxDetails || null,
+            preservedCoordinates: finalAddress.coordinates ? {
+              driver_lat: finalAddress.coordinates.latitude,
+              driver_long: finalAddress.coordinates.longitude
+            } : null,
+            mapCoordinates: finalAddress.coordinates ? {
+              driver_lat: finalAddress.coordinates.latitude,
+              driver_long: finalAddress.coordinates.longitude
+            } : null,
+            timestamp: Date.now()
+          };
+          
+          await AsyncStorage.setItem('tempGuestData', JSON.stringify(tempGuestData));
+          
+          // 3. NAVEGACIÓN SIMPLE - solo flag indicando que hay datos en AsyncStorage
           navigation.navigate('MainTabs', {
             screen: 'Carrito',
             params: {
-              guestData: {
-                email: route.params?.currentEmail || '',
-                address: addressToSend,
-                // Datos preservados del formulario de Cart
-                preservedDeliveryInfo: route.params?.preservedDeliveryInfo,
-                preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
-                preservedTaxDetails: route.params?.preservedTaxDetails || null,
-                preservedCoordinates: finalAddress.coordinates ? {
-                  latitude: finalAddress.coordinates.latitude,
-                  longitude: finalAddress.coordinates.longitude
-                } : null,
-              },
-              mapCoordinates: finalAddress.coordinates ? {
-                latitude: finalAddress.coordinates.latitude,
-                longitude: finalAddress.coordinates.longitude
-              } : null
+              hasGuestDataInStorage: true,
+              guestDataTimestamp: Date.now()
             }
           });
           
-          // console.log('✓ Navegación directa a Cart con datos completos');
+          // console.log('✓ Navegación simple a Cart - datos en AsyncStorage');
           return;
         }
         

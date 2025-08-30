@@ -23,6 +23,7 @@ import {OrderContext} from '../context/OrderContext';
 import {useStripe} from '@stripe/stripe-react-native';
 import {useNotification} from '../context/NotificationContext';
 import {useAlert} from '../context/AlertContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeliverySlotPicker from '../components/DeliverySlotPicker';
 import CouponInput from '../components/CouponInput';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -37,7 +38,6 @@ import { geocodeGuestAddress, convertToDriverCoords, geocodeAddress } from '../u
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addressService } from '../services/addressService';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
@@ -604,6 +604,69 @@ export default function Cart() {
         // hasGuestData: !!params?.guestData
       // });
       
+      // ✅ NUEVO: Leer datos de AsyncStorage si vienen de AddressForm simplificado
+      if (params?.hasGuestDataInStorage && user?.usertype === 'Guest') {
+        // Función async interna para manejar AsyncStorage
+        const handleGuestDataFromStorage = async () => {
+          try {
+            const tempGuestDataStr = await AsyncStorage.getItem('tempGuestData');
+          if (tempGuestDataStr) {
+            const tempGuestData = JSON.parse(tempGuestDataStr);
+            // console.log('✅ DATOS GUEST RECUPERADOS de AsyncStorage');
+            
+            // Usar los datos recuperados (misma lógica que antes)
+            setEmail(tempGuestData.email);
+            setAddress(tempGuestData.address);
+            
+            if (tempGuestData.preservedDeliveryInfo) {
+              const deliveryInfoToRestore = {
+                ...tempGuestData.preservedDeliveryInfo,
+                date: new Date(tempGuestData.preservedDeliveryInfo.date),
+              };
+              setDeliveryInfo(deliveryInfoToRestore);
+            }
+            if (tempGuestData.preservedNeedInvoice !== undefined) {
+              setNeedInvoice(tempGuestData.preservedNeedInvoice);
+            }
+            if (tempGuestData.preservedTaxDetails !== undefined) {
+              setTaxDetails(tempGuestData.preservedTaxDetails);
+            }
+            // Restaurar coordenadas (usar mapCoordinates con prioridad, fallback a preservedCoordinates)
+            const coordinatesToUse = tempGuestData.mapCoordinates || tempGuestData.preservedCoordinates;
+            if (coordinatesToUse) {
+              setLatlong(coordinatesToUse);
+              console.log('✅ Coordenadas Guest restauradas:', coordinatesToUse);
+            }
+            
+            // Limpiar AsyncStorage después de usar
+            await AsyncStorage.removeItem('tempGuestData');
+            
+            // Scroll automático igual que antes
+            setTimeout(() => {
+              if (tempGuestData.preservedDeliveryInfo) {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              } else {
+                if (deliverySlotRef.current?.scrollToView) {
+                  deliverySlotRef.current.scrollToView();
+                } else {
+                  console.log('⚠️ deliverySlotRef.current.scrollToView no disponible');
+                }
+              }
+            }, 600);
+            
+            return; // No procesar el flujo antiguo
+          }
+          } catch (error) {
+            console.error('❌ Error leyendo tempGuestData:', error);
+            // Continuar con flujo normal si hay error
+          }
+        };
+        
+        // Ejecutar la función async
+        handleGuestDataFromStorage();
+      }
+      
+      // FLUJO ORIGINAL: params.guestData directo (mantener compatibilidad)
       if (params?.guestData && user?.usertype === 'Guest') {
         // Usar los datos del guest checkout
         setEmail(params.guestData.email);
