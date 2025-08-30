@@ -61,7 +61,8 @@ export default function Cart() {
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
-  const [timers, setTimers] = useState({});
+  // TEMPORALMENTE COMENTADO - Sistema de temporizadores de productos
+  // const [timers, setTimers] = useState({});
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
   const [address, setAddress] = useState('');
   const [selectedAddress, setSelectedAddress] = useState(null); // Nueva dirección seleccionada
@@ -777,7 +778,8 @@ export default function Cart() {
   // ✅ OPTIMIZACIÓN: Ya no pedimos ubicación al cargar Cart
   // La ubicación se obtiene justo antes del checkout en completeOrder()
 
-  // Efecto para limpiar timers cuando cambia el usuario (CartContext ya maneja la limpieza del carrito)
+  // TEMPORALMENTE COMENTADO - Efecto para limpiar timers cuando cambia el usuario
+  /*
   useEffect(() => {
     const userId = user?.id || null;
     
@@ -789,6 +791,7 @@ export default function Cart() {
     // Actualizar el ID del usuario actual
     setCurrentUserId(userId);
   }, [user?.id, currentUserId]);
+  */
 
   // 🚀 AUTO-PAGO GUEST: Solo cuando acaba de completar su dirección por primera vez
   useEffect(() => {
@@ -1554,6 +1557,8 @@ export default function Cart() {
     fetchUpsellItems();
   }, []);
 
+  // TEMPORALMENTE COMENTADO - Sistema de temporizadores de productos
+  /*
   useEffect(() => {
     const initialTimers = {};
     cart.forEach(item => {
@@ -1606,6 +1611,7 @@ export default function Cart() {
 
     return () => clearInterval(interval);
   }, [addNotification, removeFromCart]);
+  */
 
   // Ya no necesitamos limpiar timeouts
 
@@ -1707,6 +1713,8 @@ export default function Cart() {
                   <View style={styles.info}>
                     <View style={styles.row}>
                       <Text style={styles.name}>{item.name}</Text>
+                      {/* TEMPORALMENTE COMENTADO - Temporizador visual de productos */}
+                      {/* 
                       <Text style={styles.timer}>
                         {timers[item.id] > 0
                           ? `${Math.floor(timers[item.id] / 60)}:${
@@ -1714,6 +1722,7 @@ export default function Cart() {
                             }`
                           : 'Expirado'}
                       </Text>
+                      */}
                     </View>
                     
                     {/* Display de precios corregido */}
