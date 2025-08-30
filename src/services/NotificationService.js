@@ -23,14 +23,14 @@ class NotificationService {
     if (enabled) {
       console.log('✅ Permisos de notificación otorgados:', authStatus);
       
-      // 🔥 DEBUG iOS: Verificar estado específico
-      if (Platform.OS === 'ios') {
-        Alert.alert(
-          '✅ Permisos iOS Otorgados', 
-          `Estado: ${authStatus}\n\nSi no recibes notificaciones:\n1. Verifica APNs en Firebase Console\n2. Verifica certificados de producción\n3. Prueba desde Firebase Console`,
-          [{text: 'Entendido'}]
-        );
-      }
+      // 🔥 DEBUG iOS: Verificar estado específico (DISABLED for production)
+      // if (Platform.OS === 'ios') {
+      //   Alert.alert(
+      //     '✅ Permisos iOS Otorgados', 
+      //     `Estado: ${authStatus}\n\nSi no recibes notificaciones:\n1. Verifica APNs en Firebase Console\n2. Verifica certificados de producción\n3. Prueba desde Firebase Console`,
+      //     [{text: 'Entendido'}]
+      //   );
+      // }
       
       return true;
     } else {
@@ -78,30 +78,30 @@ class NotificationService {
       // Guardar token localmente
       await AsyncStorage.setItem('fcm_token', token);
       
-      // TEMPORAL: Mostrar token en alerta para testing iOS
-      if (Platform.OS === 'ios') {
-        Alert.alert(
-          '🔑 FCM Token (iOS)', 
-          token,
-          [
-            {text: 'Copiar', onPress: () => console.log('Token:', token)},
-            {text: 'OK'}
-          ]
-        );
-      }
+      // TEMPORAL: Mostrar token en alerta para testing iOS (DISABLED for production)
+      // if (Platform.OS === 'ios') {
+      //   Alert.alert(
+      //     '🔑 FCM Token (iOS)', 
+      //     token,
+      //     [
+      //       {text: 'Copiar', onPress: () => console.log('Token:', token)},
+      //       {text: 'OK'}
+      //     ]
+      //   );
+      // }
       
       return token;
     } catch (error) {
       console.error('❌ Error obteniendo token FCM:', error);
       
-      // MOSTRAR ERROR EN PANTALLA para debug sin Mac
-      if (Platform.OS === 'ios') {
-        Alert.alert(
-          '❌ Firebase Error',
-          `Error getting FCM token: ${error.message}\n\nThis means Firebase is not properly initialized on iOS.`,
-          [{text: 'OK'}]
-        );
-      }
+      // MOSTRAR ERROR EN PANTALLA para debug sin Mac (DISABLED for production)
+      // if (Platform.OS === 'ios') {
+      //   Alert.alert(
+      //     '❌ Firebase Error',
+      //     `Error getting FCM token: ${error.message}\n\nThis means Firebase is not properly initialized on iOS.`,
+      //     [{text: 'OK'}]
+      //   );
+      // }
       
       return null;
     }

@@ -702,43 +702,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Estilos para botón crear guest test
-  createTestGuestButton: {
-    backgroundColor: '#4CAF50',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    marginTop: 12,
-    opacity: 0.9,
-  },
-  createTestGuestButtonText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#FFF',
-    textAlign: 'center',
-  },
-  
-  // Estilos para botón de limpieza temporal
-  debugCleanButton: {
-    backgroundColor: '#FF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    marginTop: 12,
-    opacity: 0.8,
-  },
-  debugCleanButtonText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#FFF',
-    textAlign: 'center',
-  },
 });
 
 export default Order;

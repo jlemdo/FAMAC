@@ -593,51 +593,6 @@ export default function Profile({ navigation, route }) {
           <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity
-          style={styles.fcmTestButton}
-          onPress={async () => {
-            try {
-              // 🆕 Usar el nuevo método de test completo para iOS
-              if (Platform.OS === 'ios') {
-                await NotificationService.testIOSNotifications();
-              } else {
-                // Android - método original
-                showAlert({
-                  type: 'info',
-                  title: '🔥 Firebase Test',
-                  message: 'Iniciando prueba de Firebase FCM...',
-                  confirmText: 'OK'
-                });
-                
-                const success = await NotificationService.initialize(user?.id);
-                if (success) {
-                  showAlert({
-                    type: 'success',
-                    title: '✅ Firebase Exitoso',
-                    message: 'Token FCM generado correctamente. Revisa los logs y alerts.',
-                    confirmText: 'Perfecto'
-                  });
-                } else {
-                  showAlert({
-                    type: 'error',
-                    title: '❌ Firebase Error',
-                    message: 'No se pudo generar el token FCM. Revisa logs para detalles.',
-                    confirmText: 'OK'
-                  });
-                }
-              }
-            } catch (error) {
-              showAlert({
-                type: 'error',
-                title: '❌ Error Crítico',
-                message: `Error: ${error.message}`,
-                confirmText: 'OK'
-              });
-            }
-          }}
-          activeOpacity={0.8}>
-          <Text style={styles.fcmTestButtonText}>🧪 Test iOS Notificaciones</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Información del Perfil */}
@@ -1713,24 +1668,6 @@ const styles = StyleSheet.create({
   },
   supportButtonText: buttonText.secondary,
   
-  fcmTestButton: {
-    backgroundColor: '#FF6B35', // Color naranja Firebase
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  fcmTestButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: fonts.bold,
-    textAlign: 'center',
-  },
   logoutButton: {
     ...buttons.logout,
     marginBottom: 24, // Mantener espaciado original
