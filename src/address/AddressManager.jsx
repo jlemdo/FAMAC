@@ -16,7 +16,6 @@ import { AuthContext } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { addressService } from '../services/addressService';
-import { navigateToAddressManagerNew, navigateToAddressManagerEdit, navigateToProfileEdit } from '../utils/addressNavigation';
 import axios from 'axios';
 
 const AddressManager = () => {
@@ -183,58 +182,91 @@ const AddressManager = () => {
       
       showAlert({
         type: 'info',
-        title: '🏠 Cambiar Dirección Principal',
+        title: 'Hacer Principal',
         message: `¿Quieres hacer esta dirección tu dirección principal para entregas?`,
         cancelText: 'Cancelar',
-        confirmText: 'Sí, cambiar',
+        confirmText: 'Sí, hacer principal',
         onConfirm: async () => {
           try {
-            // ✅ LÓGICA SIMPLIFICADA: Solo cambiar cual dirección es predeterminada
-            console.log('🏠 Cambiando dirección predeterminada a:', address.address);
+            if (profileAddress && profileAddress.address) {
+              // CASO 1: Ya hay dirección principal - Hacer intercambio
+              const currentProfileAddress = profileAddress.address;
+              const currentProfilePhone = profileAddress.phone || '';
+              const newPredeterminadaAddress = address.address;
+              const newPredeterminadaPhone = address.phone || '';
 
-            // PASO 1: Desmarcar TODAS las direcciones como predeterminadas
-            // Esto evita duplicaciones y conflictos
-            const allAddresses = addresses || [];
-            for (const addr of allAddresses) {
-              if (addr.is_default === "1" || addr.is_default === 1) {
-                await addressService.updateAddress({
-                  addressId: addr.id,
-                  userId: user.id,
-                  address: addr.address,
-                  phone: addr.phone || '',
-                  isDefault: false // ❌ Ya no es predeterminada
-                });
-              }
+              // Actualizar la dirección seleccionada con los datos del perfil
+              await addressService.updateAddress({
+                addressId: address.id,
+                userId: user.id,
+                address: currentProfileAddress,
+                phone: currentProfilePhone,
+                isDefault: false
+              });
+
+              // PASO 1: Actualizar user.address en el backend
+              await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
+                userid: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                phone: user.phone,
+                email: user.email,
+                address: newPredeterminadaAddress
+              });
+
+              // PASO 2: Actualizar contexto local
+              await updateUser({
+                address: newPredeterminadaAddress,
+                phone: newPredeterminadaPhone || user.phone
+              });
+
+              // Actualizar estado local
+              setProfileAddress({
+                address: newPredeterminadaAddress,
+                phone: newPredeterminadaPhone || user.phone || ''
+              });
+            } else {
+              // CASO 2: No hay dirección principal - Hacer esta la primera principal
+              
+              // PASO 1: Actualizar user.address en el backend
+              await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
+                userid: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                phone: user.phone,
+                email: user.email,
+                address: address.address
+              });
+
+              // PASO 2: Marcar dirección como predeterminada
+              await addressService.updateAddress({
+                addressId: address.id,
+                userId: user.id,
+                address: address.address,
+                phone: address.phone || '',
+                isDefault: true
+              });
+
+              // PASO 3: Actualizar contexto local
+              await updateUser({
+                address: address.address,
+                phone: address.phone || user.phone
+              });
+
+              // Actualizar estado local
+              setProfileAddress({
+                address: address.address,
+                phone: address.phone || user.phone || ''
+              });
             }
-
-            // PASO 2: Actualizar el perfil del usuario con la nueva dirección predeterminada  
-            await updateUser({
-              address: address.address,
-              phone: address.phone || user.phone
-            });
-
-            // PASO 3: Marcar SOLO la dirección seleccionada como predeterminada
-            await addressService.updateAddress({
-              addressId: address.id,
-              userId: user.id,
-              address: address.address,
-              phone: address.phone || '',
-              isDefault: true // ✅ Esta es ahora la ÚNICA predeterminada
-            });
-
-            // PASO 3: Actualizar el estado local
-            setProfileAddress({
-              address: address.address,
-              phone: address.phone || user.phone || ''
-            });
 
             showAlert({
               type: 'success',
-              title: '🏠 Dirección Principal Actualizada',
+              title: 'Dirección Principal Actualizada',
               message: 'Esta dirección es ahora tu dirección principal para entregas.'
             });
 
-            // PASO 4: Recargar lista para mostrar cambios
+            // Recargar lista para mostrar cambios
             fetchAddresses();
           } catch (error) {
             console.error('❌ Error intercambiando direcciones:', error);
@@ -254,17 +286,24 @@ const AddressManager = () => {
   };
 
 
-  // Navegar para editar dirección usando helper unificado
+  // Navegar para editar dirección
   const handleEditAddress = (address) => {
-    navigateToAddressManagerEdit(navigation, {
+    navigation.navigate('AddressFormUberStyle', {
+      title: 'Editar Dirección',
+      editMode: true,
       addressData: address,
+      fromAddressManager: true,
     });
   };
 
-  // Navegar para editar dirección legacy (del perfil) usando helper
+  // Navegar para editar dirección legacy (del perfil)
   const handleEditLegacyAddress = (profileAddr) => {
-    navigateToProfileEdit(navigation, {
+    navigation.navigate('AddressFormUberStyle', {
+      title: 'Editar Dirección Principal',
+      editMode: true,
+      fromProfile: true, // Usar el flujo del perfil para actualizar perfil
       userId: user.id,
+      skipMapStep: true, // Sin mapa para direcciones de perfil
       initialAddress: profileAddr.address, // Dirección completa para parsear
       fromAddressManager: true, // Para saber que debe regresar aquí
       isLegacyEdit: true, // Flag para indicar que es edición de dirección legacy
@@ -283,7 +322,11 @@ const AddressManager = () => {
       return;
     }
 
-    navigateToAddressManagerNew(navigation);
+    navigation.navigate('AddressFormUberStyle', {
+      title: 'Agregar Nueva Dirección',
+      editMode: false,
+      fromAddressManager: true,
+    });
   };
 
   // Renderizar item de dirección
