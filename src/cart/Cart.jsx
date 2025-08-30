@@ -1844,8 +1844,8 @@ export default function Cart() {
                     <ActivityIndicator size="large" color="#8B5E3C" />
                     <Text style={styles.loadingText}>Cargando direcciones...</Text>
                   </View>
-                ) : userAddresses.length > 1 ? (
-                  // Usuario CON MÚLTIPLES direcciones guardadas - Mostrar selector
+                ) : userAddresses.length > 0 && !userAddresses.find(addr => addr.is_default === "1" || addr.is_default === 1) ? (
+                  // Usuario CON direcciones guardadas PERO SIN predeterminada - Mostrar selector
                   <>
                     <Text style={styles.modalMessage}>
                       Selecciona la dirección donde quieres recibir tu pedido:
@@ -1978,28 +1978,19 @@ export default function Cart() {
                     </View>
                   </>
                 ) : (
-                  // Usuario SIN direcciones guardadas
+                  // Usuario SIN direcciones guardadas - Solo agregar dirección
                   <>
                     <Text style={styles.modalMessage}>
-                      Aún no tienes direcciones guardadas.{'\n\n'}
-                      Puedes agregar una nueva dirección o usar tu ubicación actual para esta compra.
+                      Necesitas agregar una dirección de entrega para completar tu pedido.
                     </Text>
                     <View style={styles.modalActions}>
-                      <TouchableOpacity
-                        style={styles.modalButtonSecondary}
-                        onPress={() => {
-                          setShowAddressModal(false);
-                          navigateToCartNew(navigation);
-                        }}>
-                        <Text style={styles.modalButtonSecondaryText}>➕ Agregar Dirección</Text>
-                      </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.modalButtonPrimary}
                         onPress={() => {
                           setShowAddressModal(false);
-                          completeOrder(); // Proceder con ubicación actual
+                          navigateToCartNew(navigation);
                         }}>
-                        <Text style={styles.modalButtonPrimaryText}>🗺️ Usar Mi Ubicación</Text>
+                        <Text style={styles.modalButtonPrimaryText}>➕ Agregar Mi Dirección</Text>
                       </TouchableOpacity>
                     </View>
                   </>

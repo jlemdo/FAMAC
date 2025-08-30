@@ -177,18 +177,23 @@ export default function Profile({ navigation, route }) {
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showAddressSection, setShowAddressSection] = useState(false); // Nueva sección de direcciones
 
-  // ✅ FUNCIÓN: Detectar si es usuario de Gmail/Google
+  // ✅ Cerrar todos los acordeones cuando la pantalla no esté en foco
+  useFocusEffect(
+    useCallback(() => {
+      // Función que se ejecuta cuando la pantalla pierde el foco
+      return () => {
+        setShowProfileSection(false);
+        setShowPasswordSection(false);
+        setShowAddressSection(false);
+      };
+    }, [])
+  );
+
+  // ✅ FUNCIÓN: Detectar si es usuario registrado VÍA Google OAuth 
   const isGoogleUser = () => {
-    if (!user?.email) return false;
-    
-    // Verificar si el email es de Gmail
-    const isGmailUser = user.email.toLowerCase().endsWith('@gmail.com');
-    
-    // Verificar si hay algún indicador adicional de Google Auth
-    // (esto podría incluir campos específicos del backend como 'google_id', 'provider', etc.)
-    const hasGoogleProvider = user.provider === 'google' || user.auth_provider === 'google';
-    
-    return isGmailUser || hasGoogleProvider;
+    // DESHABILITADO: No hay campos en el backend que distingan Google OAuth de registro normal
+    // Todos los usuarios pueden cambiar su contraseña
+    return false;
   };
 
   // ✅ FUNCIÓN: Comportamiento tipo acordeón - solo una sección abierta a la vez
