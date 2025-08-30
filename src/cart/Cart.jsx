@@ -638,6 +638,10 @@ export default function Cart() {
               console.log('✅ Coordenadas Guest restauradas:', coordinatesToUse);
             }
             
+            // 🚀 CRÍTICO: Activar flag de auto-pago para Guest que acaba de completar dirección
+            setGuestJustCompletedAddress(true);
+            console.log('🎯 Flag auto-pago Guest activado');
+            
             // Limpiar AsyncStorage después de usar
             await AsyncStorage.removeItem('tempGuestData');
             

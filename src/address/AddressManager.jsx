@@ -183,46 +183,58 @@ const AddressManager = () => {
       
       showAlert({
         type: 'info',
-        title: 'Intercambiar Direcciones',
-        message: `¿Quieres hacer predeterminada esta dirección? Se intercambiará con tu dirección del perfil actual.`,
+        title: '🏠 Cambiar Dirección Principal',
+        message: `¿Quieres hacer esta dirección tu dirección principal para entregas?`,
         cancelText: 'Cancelar',
-        confirmText: 'Intercambiar',
+        confirmText: 'Sí, cambiar',
         onConfirm: async () => {
           try {
-            // PASO 1: Guardar datos actuales antes del intercambio
-            const currentProfileAddress = profileAddress.address;
-            const currentProfilePhone = profileAddress.phone || '';
-            const newPredeterminadaAddress = address.address;
-            const newPredeterminadaPhone = address.phone || '';
+            // ✅ LÓGICA SIMPLIFICADA: Solo cambiar cual dirección es predeterminada
+            console.log('🏠 Cambiando dirección predeterminada a:', address.address);
 
-            // PASO 2: Actualizar la dirección seleccionada con los datos del perfil
+            // PASO 1: Desmarcar TODAS las direcciones como predeterminadas
+            // Esto evita duplicaciones y conflictos
+            const allAddresses = addresses || [];
+            for (const addr of allAddresses) {
+              if (addr.is_default === "1" || addr.is_default === 1) {
+                await addressService.updateAddress({
+                  addressId: addr.id,
+                  userId: user.id,
+                  address: addr.address,
+                  phone: addr.phone || '',
+                  isDefault: false // ❌ Ya no es predeterminada
+                });
+              }
+            }
+
+            // PASO 2: Actualizar el perfil del usuario con la nueva dirección predeterminada  
+            await updateUser({
+              address: address.address,
+              phone: address.phone || user.phone
+            });
+
+            // PASO 3: Marcar SOLO la dirección seleccionada como predeterminada
             await addressService.updateAddress({
               addressId: address.id,
               userId: user.id,
-              address: currentProfileAddress,
-              phone: currentProfilePhone,
-              isDefault: false // Ya no será predeterminada
+              address: address.address,
+              phone: address.phone || '',
+              isDefault: true // ✅ Esta es ahora la ÚNICA predeterminada
             });
 
-            // PASO 3: Actualizar el perfil del usuario con la nueva dirección predeterminada
-            await updateUser({
-              address: newPredeterminadaAddress,
-              phone: newPredeterminadaPhone || user.phone
-            });
-
-            // PASO 4: Actualizar el estado local de profileAddress inmediatamente
+            // PASO 3: Actualizar el estado local
             setProfileAddress({
-              address: newPredeterminadaAddress,
-              phone: newPredeterminadaPhone || user.phone || ''
+              address: address.address,
+              phone: address.phone || user.phone || ''
             });
 
             showAlert({
               type: 'success',
-              title: 'Direcciones Intercambiadas',
-              message: 'Las direcciones se intercambiaron correctamente. Tu nueva dirección predeterminada está activa.'
+              title: '🏠 Dirección Principal Actualizada',
+              message: 'Esta dirección es ahora tu dirección principal para entregas.'
             });
 
-            // PASO 5: Recargar lista para mostrar cambios
+            // PASO 4: Recargar lista para mostrar cambios
             fetchAddresses();
           } catch (error) {
             console.error('❌ Error intercambiando direcciones:', error);
