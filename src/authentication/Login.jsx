@@ -115,22 +115,65 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     if (!appleAuth || appleLoading) return;
     
     setAppleLoading(true);
+    
+    // 📱 DEBUG VISUAL: Paso 1
+    showAlert({
+      type: 'info',
+      title: '🍎 DEBUG - Paso 1',
+      message: 'Iniciando Apple Sign-In...',
+      confirmText: 'Continuar',
+    });
+    
     try {
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
+      
+      // 📱 DEBUG VISUAL: Paso 2
+      showAlert({
+        type: 'info',
+        title: '🍎 DEBUG - Paso 2',
+        message: `Respuesta Apple recibida:\nUser ID: ${appleAuthRequestResponse.user}\nTiene Token: ${!!appleAuthRequestResponse.identityToken ? 'SÍ' : 'NO'}\nTiene Email: ${!!appleAuthRequestResponse.email ? 'SÍ' : 'NO'}`,
+        confirmText: 'Continuar',
+      });
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
+      
+      // 📱 DEBUG VISUAL: Paso 3
+      showAlert({
+        type: 'info',
+        title: '🍎 DEBUG - Paso 3',
+        message: `Estado de credencial: ${credentialState}\n(Debe ser: ${appleAuth.State.AUTHORIZED})`,
+        confirmText: 'Continuar',
+      });
 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
-        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', {
+        const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
           email: email,
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
+        };
+        
+        // 📱 DEBUG VISUAL: Paso 4
+        showAlert({
+          type: 'info',
+          title: '🍎 DEBUG - Paso 4',
+          message: `Enviando al servidor:\nURL: https://occr.pixelcrafters.digital/api/auth/apple\nUser ID: ${appleUserId}`,
+          confirmText: 'Continuar',
+        });
+        
+        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
+        
+        // 📱 DEBUG VISUAL: Paso 5 - ÉXITO
+        showAlert({
+          type: 'success',
+          title: '🍎 DEBUG - ÉXITO',
+          message: `¡Backend respondió correctamente!\nMensaje: ${data.message}`,
+          confirmText: 'Continuar',
         });
 
         await login(data.user);
@@ -144,22 +187,33 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             confirmText: 'Continuar',
           });
         }, 500);
-      }
-    } catch (error) {
-      if (appleAuth && error.code === appleAuth.Error.CANCELED) {
-        showAlert({
-          type: 'warning',
-          title: 'Cancelado',
-          message: 'Has cancelado el login con Apple.',
-          confirmText: 'OK',
-        });
       } else {
+        // 📱 DEBUG VISUAL: Error de credencial
         showAlert({
           type: 'error',
-          title: 'Error',
-          message: 'Error al iniciar sesión con Apple. Inténtalo de nuevo.',
+          title: '🍎 DEBUG - ERROR CREDENCIAL',
+          message: `Estado no autorizado: ${credentialState}\nEsperado: ${appleAuth.State.AUTHORIZED}\n\nPosibles causas:\n- Bundle ID incorrecto\n- Service ID mal configurado`,
           confirmText: 'OK',
         });
+      }
+    } catch (error) {
+      // 📱 DEBUG VISUAL: Error completo
+      showAlert({
+        type: 'error',
+        title: '🍎 DEBUG - ERROR COMPLETO',
+        message: `Tipo: ${error.code || 'Sin código'}\nMensaje: ${error.message || 'Sin mensaje'}\nDetalles: ${JSON.stringify(error, null, 2).substring(0, 200)}`,
+        confirmText: 'OK',
+      });
+      
+      if (appleAuth && error.code === appleAuth.Error.CANCELED) {
+        setTimeout(() => {
+          showAlert({
+            type: 'warning',
+            title: 'Usuario canceló',
+            message: 'Has cancelado el login con Apple.',
+            confirmText: 'OK',
+          });
+        }, 1000);
       }
     } finally {
       setAppleLoading(false);
