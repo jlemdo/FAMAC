@@ -29,7 +29,7 @@ platform :ios do
     update_code_signing_settings(
       use_automatic_signing: false,
       path:                  "ios/MyNewApp.xcodeproj",
-      teamid:               ENV["DEVELOPMENT_TEAM"],
+      team_id:               ENV["DEVELOPMENT_TEAM"],
       targets:               ["MyNewApp"],
       build_configurations:  ["Release"],
       code_sign_identity:    "Apple Distribution",
