@@ -666,23 +666,25 @@ export default function Profile({ navigation, route }) {
             // DOB Logic: Solo establecer UNA VEZ, nunca actualizar
             // Verificar si el usuario YA tiene DOB establecido desde el backend
             let dobFormatted = null;
-            const shouldUpdateBirthDate = !profile.birthDate || isNaN(profile.birthDate.getTime());
+            const hasExistingBirthDate = profile.birthDate && !isNaN(profile.birthDate.getTime());
+            const isUserTryingToChangeBirthDate = values.birthDate && (!profile.birthDate || values.birthDate.getTime() !== profile.birthDate.getTime());
             
-            if (!shouldUpdateBirthDate) {
-              // Usuario ya tiene DOB establecido - mostrar mensaje
+            // Solo bloquear si el usuario TIENE fecha y está INTENTANDO cambiarla
+            if (hasExistingBirthDate && isUserTryingToChangeBirthDate) {
               showAlert({
                 type: 'info',
                 title: 'Fecha de nacimiento',
                 message: 'Tu fecha de nacimiento ya está establecida y no puede modificarse por seguridad.',
                 confirmText: 'Entendido',
               });
-              return; // Salir sin hacer el update
+              return; // Solo salir si está intentando cambiar la fecha existente
             }
             
-            if (shouldUpdateBirthDate && values.birthDate) {
+            // Si el usuario está estableciendo una fecha por primera vez
+            if (!hasExistingBirthDate && values.birthDate) {
               const opts = {month: 'long', year: 'numeric'};
               dobFormatted = values.birthDate.toLocaleDateString('es-ES', opts);
-              // console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
+              console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
             }
             
             
@@ -696,10 +698,10 @@ export default function Profile({ navigation, route }) {
               address:     profile.address,      // Preservar dirección actual
             };
             
-            // Solo agregar/actualizar dob si debe actualizarse O si ya existe
-            if (shouldUpdateBirthDate && dobFormatted) {
+            // Solo agregar/actualizar dob si es primera vez O preservar existente
+            if (dobFormatted) {
               payload.dob = dobFormatted;
-            } else if (profile.birthDate && !isNaN(profile.birthDate.getTime())) {
+            } else if (hasExistingBirthDate) {
               // Preservar fecha existente en formato backend
               const monthNames = [
                 'January', 'February', 'March', 'April', 'May', 'June',
