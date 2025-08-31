@@ -188,7 +188,7 @@ class NotificationService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: userId,
+          userid: userId,
           fcm_token: this.token,
         }),
       });
