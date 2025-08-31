@@ -27,6 +27,16 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+
+// Apple Authentication solo disponible en iOS
+let appleAuth = null;
+if (Platform.OS === 'ios') {
+  try {
+    appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
+  } catch (error) {
+    console.log('Apple Auth no disponible:', error.message);
+  }
+}
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import NotificationService from '../services/NotificationService';
 
@@ -35,6 +45,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   const navigation = useNavigation();
   const {showAlert} = useAlert();
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -99,7 +110,63 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     }
   };
 
-  // 4️⃣ Función para login con Google
+  // 4️⃣ Función para login con Apple
+  const handleAppleLogin = async () => {
+    if (!appleAuth || appleLoading) return;
+    
+    setAppleLoading(true);
+    try {
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
+
+      if (credentialState === appleAuth.State.AUTHORIZED) {
+        const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
+        
+        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', {
+          identity_token: identityToken,
+          user_id: appleUserId,
+          email: email,
+          full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
+        });
+
+        await login(data.user);
+        
+        setTimeout(() => {
+          const userName = data.user.first_name || fullName?.givenName || 'Usuario';
+          showAlert({
+            type: 'success',
+            title: 'Bienvenido',
+            message: `¡Hola ${userName}!`,
+            confirmText: 'Continuar',
+          });
+        }, 500);
+      }
+    } catch (error) {
+      if (appleAuth && error.code === appleAuth.Error.CANCELED) {
+        showAlert({
+          type: 'warning',
+          title: 'Cancelado',
+          message: 'Has cancelado el login con Apple.',
+          confirmText: 'OK',
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Error al iniciar sesión con Apple. Inténtalo de nuevo.',
+          confirmText: 'OK',
+        });
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
+  // 5️⃣ Función para login con Google
   const handleGoogleLogin = async () => {
     if (googleLoading) return;
     
@@ -305,6 +372,24 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   <Text style={styles.separatorText}>o continúa con</Text>
                   <View style={styles.separatorLine} />
                 </View>
+
+                {/* Botón Apple Sign-In - Solo iOS */}
+                {Platform.OS === 'ios' && appleAuth && (
+                  <TouchableOpacity
+                    style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
+                    onPress={handleAppleLogin}
+                    disabled={isSubmitting || appleLoading}
+                    activeOpacity={0.8}>
+                    {appleLoading ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.appleIcon}>🍎</Text>
+                        <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
 
                 {/* Botón Google Sign-In */}
                 <TouchableOpacity
@@ -517,5 +602,29 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  appleIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  appleButtonText: {
+    color: '#FFF',
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
   },
 });
