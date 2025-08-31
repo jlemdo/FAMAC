@@ -95,7 +95,7 @@ const AddressManager = () => {
     if (!user?.id) return;
     
     try {
-      const response = await axios.get(`https://food.siliconsoft.pk/api/userdetails/${user.id}`);
+      const response = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
       const userData = response.data?.data?.[0];
       
       if (userData?.address && userData.address.trim() !== '') {
@@ -205,7 +205,7 @@ const AddressManager = () => {
               });
 
               // PASO 1: Actualizar user.address en el backend
-              await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
+              await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
                 userid: user.id,
                 first_name: user.first_name,
                 last_name: user.last_name,
@@ -229,7 +229,7 @@ const AddressManager = () => {
               // CASO 2: No hay dirección principal - Hacer esta la primera principal
               
               // PASO 1: Actualizar user.address en el backend
-              await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', {
+              await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
                 userid: user.id,
                 first_name: user.first_name,
                 last_name: user.last_name,

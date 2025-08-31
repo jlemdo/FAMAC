@@ -94,7 +94,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/orderdetails/${orderId}`,
+        `https://occr.pixelcrafters.digital/api/orderdetails/${orderId}`,
       );
       setOrder(res.data.order); // adjust according to your response shape
     } catch (err) {
@@ -118,7 +118,7 @@ const OrderDetails = () => {
     setSupportLoading(true);
     try {
       const response = await axios.post(
-        'https://food.siliconsoft.pk/api/compsubmit',
+        'https://occr.pixelcrafters.digital/api/compsubmit',
         {
           orderno: order?.id?.toString() || '',
           message: values.message,
@@ -178,7 +178,7 @@ const OrderDetails = () => {
           <View style={styles.infoHeader}>
             <View style={styles.orderIdSection}>
               <Text style={styles.orderIdLabel}>Pedido:</Text>
-              <Text style={styles.orderIdText}>{formatOrderId(order?.created_at)}</Text>
+              <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
             </View>
             <View style={styles.statusSection}>
               <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
@@ -371,7 +371,7 @@ const OrderDetails = () => {
                           <Text style={styles.modalLabel}>Orden seleccionada</Text>
                           <View style={styles.orderInfoBox}>
                             <Text style={styles.orderInfoText}>
-                              Pedido {formatOrderId(order?.created_at)} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
+                              Pedido {order?.order_number || formatOrderId(order?.created_at)} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric'

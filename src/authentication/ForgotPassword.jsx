@@ -48,7 +48,7 @@ export default function ForgotPassword({ onBackToLogin }) {
     setSubmitting(true);
     try {
       const { status } = await axios.post(
-        'https://food.siliconsoft.pk/api/forgetpasswordlink',
+        'https://occr.pixelcrafters.digital/api/forgetpasswordlink',
         { email: values.email.trim() }
       );
       if (status === 200) {

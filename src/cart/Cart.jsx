@@ -450,7 +450,7 @@ export default function Cart() {
     setLoadingProfile(true);
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/userdetails/${user.id}`
+        `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
       const profileData = res.data?.data?.[0] || {};
       setUserProfile(profileData);
@@ -1101,7 +1101,7 @@ export default function Cart() {
       });
       
       const {data} = await axios.post(
-        'https://food.siliconsoft.pk/api/create-payment-intent',
+        'https://occr.pixelcrafters.digital/api/create-payment-intent',
         {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail},
       );
       const clientSecret = data.clientSecret;
@@ -1401,7 +1401,7 @@ export default function Cart() {
         delivery_slot: deliveryInfo?.slot || '',
       };
       
-      const response = await axios.post('https://food.siliconsoft.pk/api/ordersubmit', payload);
+      const response = await axios.post('https://occr.pixelcrafters.digital/api/ordersubmit', payload);
       return response.data;
     } catch (err) {
       
@@ -1540,7 +1540,7 @@ export default function Cart() {
     const fetchUpsellItems = async () => {
       try {
         const response = await fetch(
-          'https://food.siliconsoft.pk/api/products/sugerencias',
+          'https://occr.pixelcrafters.digital/api/products/sugerencias',
         );
         const json = await response.json();
 

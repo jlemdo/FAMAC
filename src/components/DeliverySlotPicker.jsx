@@ -147,7 +147,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const fetchDeliverySlots = async (dateString) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://food.siliconsoft.pk/api/fetch_ddates/${dateString}`);
+      const response = await axios.get(`https://occr.pixelcrafters.digital/api/fetch_ddates/${dateString}`);
       
       let slotsToProcess = [];
       

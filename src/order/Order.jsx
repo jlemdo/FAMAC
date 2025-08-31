@@ -88,7 +88,7 @@ const Order = () => {
   };
 
   const handleInvoices = order => {
-    const invoiceURL = `https://food.siliconsoft.pk/invoices/${order.invoice}`;
+    const invoiceURL = `https://occr.pixelcrafters.digital/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
       alert('Unable to open invoice. Please try again.');
     });
@@ -143,7 +143,7 @@ const Order = () => {
           // console.log(`🎯 Probando ID ${id}...`); // Debug opcional
           
           const response = await axios.get(
-            `https://food.siliconsoft.pk/api/orderdetails/${id}`,
+            `https://occr.pixelcrafters.digital/api/orderdetails/${id}`,
             { timeout: 5000 }
           );
           
@@ -340,8 +340,8 @@ const Order = () => {
             const itemStatus = item.status || 'Pendiente';
             const paymentStatus = item.payment_status || 'pending'; // 🆕 Nuevo campo
             
-            // Generar ID de orden formateado (siempre usar fecha/hora)
-            const formattedOrderId = formatOrderId(createdAt);
+            // Usar order_number del backend o fallback a formatOrderId
+            const formattedOrderId = item.order_number || formatOrderId(createdAt);
 
             return (
               <View style={styles.orderCard}>

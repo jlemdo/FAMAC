@@ -275,7 +275,7 @@ export default function Profile({ navigation, route }) {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/userdetails/${user.id}`
+        `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       
@@ -481,8 +481,8 @@ export default function Profile({ navigation, route }) {
     // Estado
     const status = order.status || order.state || '';
     
-    // Generar ID formateado visual usando la nueva función
-    const formattedOrderId = formatOrderId(date);
+    // Usar order_number del backend o generar con fecha
+    const formattedOrderId = order.order_number || formatOrderId(date);
     
     // Construir texto display con el nuevo formato
     let displayText = `Pedido ${formattedOrderId}`;
@@ -503,7 +503,7 @@ export default function Profile({ navigation, route }) {
     setSupportLoading(true);
     try {
       const response = await axios.post(
-        'https://food.siliconsoft.pk/api/compsubmit',
+        'https://occr.pixelcrafters.digital/api/compsubmit',
         {
           orderno: values.orderno || '',
           message: values.message,
@@ -721,7 +721,7 @@ export default function Profile({ navigation, route }) {
                   dob: dobFormatted
                 };
                 const dobRes = await axios.post(
-                  'https://food.siliconsoft.pk/api/updatedob', // Intentar endpoint específico para DOB
+                  'https://occr.pixelcrafters.digital/api/updatedob', // Intentar endpoint específico para DOB
                   dobPayload
                 );
                 // console.log('🐛 DOB UPDATE RESPONSE:', dobRes.data);
@@ -731,7 +731,7 @@ export default function Profile({ navigation, route }) {
             }
             
             const res = await axios.post(
-              'https://food.siliconsoft.pk/api/updateuserprofile',
+              'https://occr.pixelcrafters.digital/api/updateuserprofile',
               payload
             );
             // console.log('🐛 BACKEND RESPONSE:', res.data);
@@ -1190,7 +1190,7 @@ export default function Profile({ navigation, route }) {
           setLoading(true);
           try {
             const res = await axios.post(
-              'https://food.siliconsoft.pk/api/updateusepassword',
+              'https://occr.pixelcrafters.digital/api/updateusepassword',
               {
                 userid:                user.id,
                 current_password:      values.current_password,

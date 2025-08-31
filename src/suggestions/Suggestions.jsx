@@ -25,7 +25,7 @@ export default function Suggestions() {
     const fetchSuggestions = async () => {
       try {
         const response = await fetch(
-          'https://food.siliconsoft.pk/api/products/sugerencias',
+          'https://occr.pixelcrafters.digital/api/products/sugerencias',
         );
         const json = await response.json();
 

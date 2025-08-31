@@ -183,7 +183,7 @@ class NotificationService {
 
     try {
       // Reemplaza con tu endpoint real
-      await fetch('https://food.siliconsoft.pk/api/save-fcm-token', {
+      await fetch('https://occr.pixelcrafters.digital/api/save-fcm-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

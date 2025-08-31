@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://food.siliconsoft.pk/api';
+const BASE_URL = 'https://occr.pixelcrafters.digital/api';
 
 // Servicio completo para gestión de direcciones múltiples
 export const addressService = {

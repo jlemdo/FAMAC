@@ -56,7 +56,7 @@ const DriverTracking = ({order}) => {
 
     try {
       const response = await axios.post(
-        'https://food.siliconsoft.pk/api/driverlocsubmit',
+        'https://occr.pixelcrafters.digital/api/driverlocsubmit',
         payload,
       );
       if (response.status == 201) {
@@ -69,7 +69,7 @@ const DriverTracking = ({order}) => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/orderdetails/${order.id}`,
+        `https://occr.pixelcrafters.digital/api/orderdetails/${order.id}`,
       );
       setCurrentStatus(res?.data?.order?.status);
       // if (res?.data?.order?.status == "On the Way") {
@@ -84,7 +84,7 @@ const DriverTracking = ({order}) => {
   const completeOrderFromDriver = async () => {
     try {
       const response = await axios.post(
-        'https://food.siliconsoft.pk/api/orderdel',
+        'https://occr.pixelcrafters.digital/api/orderdel',
         {
           orderid: order.id,
         },
@@ -145,7 +145,7 @@ const DriverTracking = ({order}) => {
   const getDriverLocaton = useCallback(async () => {
     try {
       const response = await axios.get(
-        `https://food.siliconsoft.pk/api/driverlocationsagainstorder/${order.id}`,
+        `https://occr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
       );
 
       const locations = response.data.data;

@@ -19,7 +19,7 @@ export default function Chat({ orderId }) {
                 sender: user.usertype,
                 message: newMessage,
             };
-            const response = await axios.post('https://food.siliconsoft.pk/api/msgsubmit', payload);
+            const response = await axios.post('https://occr.pixelcrafters.digital/api/msgsubmit', payload);
 
             if (response) {
                 setNewMessage('');
@@ -31,7 +31,7 @@ export default function Chat({ orderId }) {
 
     const fetchMessages = useCallback(async () => {
         try {
-            const response = await axios.get(`https://food.siliconsoft.pk/api/msgfetch/${orderId}`);
+            const response = await axios.get(`https://occr.pixelcrafters.digital/api/msgfetch/${orderId}`);
             if (response.data) {
                 const formattedMessages = response.data.data.reverse().map(msg => ({
                     sender: msg.sender,

@@ -111,7 +111,7 @@ export const ProfileProvider = ({ children }) => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/userdetails/${user.id}`
+        `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       

@@ -717,7 +717,7 @@ const AddressFormUberStyle = () => {
         
         // Primero obtener datos actuales del usuario para no sobrescribir nada
         const userDetailsResponse = await axios.get(
-          `https://food.siliconsoft.pk/api/userdetails/${userId}`,
+          `https://occr.pixelcrafters.digital/api/userdetails/${userId}`,
           { timeout: 10000 } // Timeout de 10 segundos
         );
         
@@ -751,7 +751,7 @@ const AddressFormUberStyle = () => {
         // });
         
         const response = await axios.post(
-          'https://food.siliconsoft.pk/api/updateuserprofile',
+          'https://occr.pixelcrafters.digital/api/updateuserprofile',
           payload,
           { timeout: 15000 } // Timeout de 15 segundos para actualización
         );

@@ -166,7 +166,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       
 
       // Enviar el ID token CON los datos del usuario para el backend
-      const {data} = await axios.post('https://food.siliconsoft.pk/api/auth/google', {
+      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/google', {
         id_token: idToken,
         first_name: user.givenName,
         last_name: user.familyName,
@@ -191,7 +191,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
             address: data.user.address || '',
           };
           
-          await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', updatePayload);
+          await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
         } catch (updateError) {
           // Error actualizando datos de Google
         }
@@ -274,7 +274,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
 
     try {
       const {status, data} = await axios.post(
-        'https://food.siliconsoft.pk/api/register',
+        'https://occr.pixelcrafters.digital/api/register',
         payload,
       );
       if (status === 201) {

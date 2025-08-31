@@ -25,7 +25,7 @@ const CustomerTracking = ({order}) => {
   const fetchDriverLocation = useCallback(async (attempt = 0) => {
     try {
       const res = await axios.get(
-        `https://food.siliconsoft.pk/api/driverlocationsagainstorder/${order.id}`,
+        `https://occr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
         { timeout: 8000 } // 8s timeout
       );
       const lastLoc = res.data.data;

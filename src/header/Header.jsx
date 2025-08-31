@@ -66,7 +66,7 @@ const Header = ({onLogout}) => {
       // Si no hemos cargado aún el catálogo, lo pedimos una sola vez
       if (!allProductsRef.current) {
         const resp = await axios.get(
-          'https://food.siliconsoft.pk/api/products',
+          'https://occr.pixelcrafters.digital/api/products',
           {cancelToken: cancelTokenRef.current.token},
         );
         allProductsRef.current = resp.data?.data || [];

@@ -14,7 +14,7 @@
 //   useEffect(() => {
 //     const fetchResults = async () => {
 //       try {
-//         const response = await axios.get(`https://food.siliconsoft.pk/api/searchproducts?cat=&product=${query}`);
+//         const response = await axios.get(`https://occr.pixelcrafters.digital/api/searchproducts?cat=&product=${query}`);
 //         setResults(response.data?.products || []); // adjust according to your API response shape
 //       } catch (err) {
 //       } finally {
@@ -78,7 +78,7 @@ const SearchResults = () => {
 useEffect(() => {
   const fetchResults = async () => {
     try {
-      const response = await axios.get('https://food.siliconsoft.pk/api/products');
+      const response = await axios.get('https://occr.pixelcrafters.digital/api/products');
       const all = response.data?.data || [];
 
       const filtered = all.filter(p =>

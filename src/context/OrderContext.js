@@ -26,12 +26,12 @@ export function OrderProvider({ children }) {
         try {
             let url;
             if (user.usertype === 'driver') {
-                url = `https://food.siliconsoft.pk/api/orderhistorydriver/${user.id}`;
+                url = `https://occr.pixelcrafters.digital/api/orderhistorydriver/${user.id}`;
             } else if (user.usertype === 'Guest' && allowGuestOrders) {
                 // ✅ Para Guest, usar email como user_id en el endpoint normal
-                url = `https://food.siliconsoft.pk/api/orderhistory/${encodeURIComponent(user.email)}`;
+                url = `https://occr.pixelcrafters.digital/api/orderhistory/${encodeURIComponent(user.email)}`;
             } else {
-                url = `https://food.siliconsoft.pk/api/orderhistory/${user.id}`;
+                url = `https://occr.pixelcrafters.digital/api/orderhistory/${user.id}`;
             }
 
             const response = await axios.get(url);

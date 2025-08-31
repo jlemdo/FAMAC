@@ -9,7 +9,7 @@ import axios from 'axios';
 export const migrateGuestOrders = async (guestEmail) => {
   try {
     
-    const response = await axios.post('https://food.siliconsoft.pk/api/migrateorders', {
+    const response = await axios.post('https://occr.pixelcrafters.digital/api/migrateorders', {
       user_email: guestEmail,
       need_invoice: "true", // Campo requerido por el backend actualizado
       tax_details: "" // Campo requerido, vacío para migración

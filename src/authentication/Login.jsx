@@ -81,7 +81,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   // 3️⃣ Función que llama al endpoint
   const handleLogin = async (values, {setSubmitting}) => {
     try {
-      const {data} = await axios.post('https://food.siliconsoft.pk/api/login', {
+      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/login', {
         email: values.email,
         password: values.password,
       });
@@ -122,7 +122,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       
 
       // Enviar el ID token CON los datos del usuario para el backend
-      const {data} = await axios.post('https://food.siliconsoft.pk/api/auth/google', {
+      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/google', {
         id_token: idToken,
         first_name: user.givenName,
         last_name: user.familyName,
@@ -147,7 +147,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             address: data.user.address || '',
           };
           
-          await axios.post('https://food.siliconsoft.pk/api/updateuserprofile', updatePayload);
+          await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
         } catch (updateError) {
           // Error actualizando datos de Google
         }

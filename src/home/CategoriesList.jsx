@@ -168,7 +168,7 @@ export default function CategoriesList() {
   // Fetch categories from the API
   useEffect(() => {
     axios
-      .get('https://food.siliconsoft.pk/api/productscats')
+      .get('https://occr.pixelcrafters.digital/api/productscats')
       .then(response => {
         const originalCategories = response.data.data;
         const sortedCategories = sortCategoriesByOrder(originalCategories);
