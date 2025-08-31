@@ -81,6 +81,12 @@ platform :ios do
       UI.error("❌ GoogleService-Info.plist not found at: #{firebase_source}")
     end
 
+    # 🔍 DEBUG: Verificar configuración antes de compilar
+    UI.message("🔍 VERIFICANDO CONFIGURACIÓN APPLE SIGN-IN...")
+    sh("plutil -p ios/MyNewApp/MyNewApp.entitlements | grep -A1 applesignin || echo 'NO APPLE SIGN-IN ENTITLEMENT'")
+    sh("xcodebuild -showBuildSettings -project ios/MyNewApp.xcodeproj -target MyNewApp | grep PRODUCT_BUNDLE_IDENTIFIER || echo 'NO BUNDLE ID'")
+    sh("xcodebuild -showBuildSettings -project ios/MyNewApp.xcodeproj -target MyNewApp | grep DEVELOPMENT_TEAM || echo 'NO TEAM ID'")
+
     # 4️⃣ Compilar con Gym
     begin
       # 🔧 Listar SDKs disponibles para debugging
