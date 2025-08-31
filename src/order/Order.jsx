@@ -36,34 +36,7 @@ const Order = () => {
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
-  // Función para traducir estados de órdenes de inglés a español
-  const translateStatus = (status) => {
-    if (!status) return 'Desconocido';
-    
-    const translations = {
-      // Estados principales
-      'open': 'Abierto',
-      'pending': 'Pendiente',
-      'confirmed': 'Confirmado',
-      'preparing': 'Preparando',
-      'on the way': 'En camino',
-      'delivered': 'Entregado',
-      'completed': 'Completado',
-      'cancelled': 'Cancelado',
-      'rejected': 'Rechazado',
-      'failed': 'Fallido',
-      
-      // Estados adicionales
-      'processing': 'Procesando',
-      'ready': 'Listo',
-      'picked up': 'Recogido',
-      'out for delivery': 'En reparto',
-      'delayed': 'Retrasado',
-      'returned': 'Devuelto'
-    };
-    
-    return translations[status.toLowerCase()] || status;
-  };
+  // ✅ Backend ahora envía estados directamente en español - No necesitamos traducir
 
   // Helper function para obtener estilo de status badge (incluye payment_status)
   const getStatusStyle = (status, paymentStatus) => {
@@ -365,7 +338,7 @@ const Order = () => {
                 {/* Status Badge - Ahora incluye payment_status */}
                 <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
                   <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
-                    {paymentStatus === 'pending' ? `${translateStatus(itemStatus) || 'Pendiente'} • Pago Pendiente` : (translateStatus(itemStatus) || 'Pendiente')}
+                    {paymentStatus === 'pending' ? `${item.status_spanish || 'Pendiente'} • Pago Pendiente` : (item.status_spanish || 'Pendiente')}
                   </Text>
                 </View>
 
