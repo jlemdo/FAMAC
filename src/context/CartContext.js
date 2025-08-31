@@ -19,14 +19,20 @@ export function CartProvider({ children }) {
             const existingItem = prevCart.find((item) => item.id === product.id);
             if (existingItem) {
                 return prevCart.map((item) =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + quantityToAdd } : item
+                    item.id === product.id ? { 
+                        ...item, 
+                        quantity: item.quantity + quantityToAdd,
+                        selectedQuantity: (item.selectedQuantity || item.quantity) + quantityToAdd
+                    } : item
                 );
             } else {
                 // Preservar información de descuento del producto
                 const discountNum = Number(product.discount) || 0;
                 return [...prevCart, { 
                     ...product, 
-                    quantity: quantityToAdd,
+                    selectedQuantity: quantityToAdd, // Unidades seleccionadas por el usuario
+                    productQuantity: product.quantity, // Cantidad original del producto (250gr, etc.)
+                    quantity: quantityToAdd, // Mantener quantity para compatibilidad con código existente
                     discount: discountNum, // Asegurar que el descuento se preserve
                     originalPrice: product.price, // Guardar precio original para referencia
                     discountedPrice: product.price - discountNum // Precio con descuento aplicado

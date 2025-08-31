@@ -396,34 +396,54 @@ export default function Cart() {
     return driverCoords;
   };
 
-  // Función para formatear cantidad usando datos reales del producto
-  const formatQuantity = (item, units) => {
-    const quantityPerUnit = parseFloat(item.quantity);
+  // Función para calcular el total de medida (peso/volumen/piezas)
+  const getTotalMeasure = (item, unitsSelected) => {
+    // DEBUG TEMPORAL - Ver datos exactos en el carrito
+    if (item.name && item.name.includes('RICOTTA')) {
+      console.log('🔍 DEBUG TARTA RICOTTA:', {
+        itemName: item.name,
+        itemUnit: item.unit,
+        itemQuantity: item.quantity, // unidades seleccionadas
+        productQuantity: item.productQuantity, // cantidad original del producto
+        unitsSelected: unitsSelected,
+        typeof_unit: typeof item.unit,
+        typeof_productQuantity: typeof item.productQuantity
+      });
+    }
     
-    // Para pieces: units = cantidad de piezas (no multiplicar por quantity)
-    // Para peso/volumen: quantity * units = cantidad total
-    switch (item.unit) {
-      case 'pieces':
-        return units === 1 ? '1 pieza' : `${units} piezas`;
+    // Normalizar el unit para comparaciones (minúsculas)
+    const unit = (item.unit || '').toLowerCase();
+    // Usar productQuantity (250gr) en lugar de quantity (2 unidades)
+    const measurePerUnit = parseFloat(item.productQuantity || item.quantity || 1);
+    
+    // Para products sin unit definido (mayoría de quesos), mostrar solo unidades
+    if (!item.unit || item.unit === null || unit === '') {
+      return unitsSelected === 1 ? '1 unidad' : `${unitsSelected} unidades`;
+    }
+    
+    // Para pieces, mostrar piezas directas (1 unidad = 1 pieza)
+    if (unit === 'pieces') {
+      return unitsSelected === 1 ? '1 pieza' : `${unitsSelected} piezas`;
+    }
+    
+    // Para peso/volumen, multiplicar por measurePerUnit
+    const totalMeasure = measurePerUnit * unitsSelected;
+    
+    switch (unit) {
       case 'kg':
-        const totalKg = quantityPerUnit * units;
-        return `${totalKg}kg`;
+        return `${totalMeasure}kg`;
       case 'gr':
-        const totalGr = quantityPerUnit * units;
-        return totalGr >= 1000 
-          ? `${(totalGr / 1000).toFixed(totalGr % 1000 === 0 ? 0 : 2)}kg`
-          : `${totalGr}gr`;
+        return totalMeasure >= 1000 
+          ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}kg`
+          : `${totalMeasure}gr`;
       case 'l':
-        const totalL = quantityPerUnit * units;
-        return `${totalL}l`;
+        return `${totalMeasure}l`;
       case 'ml':
-        const totalMl = quantityPerUnit * units;
-        return totalMl >= 1000
-          ? `${(totalMl / 1000).toFixed(totalMl % 1000 === 0 ? 0 : 2)}l`
-          : `${totalMl}ml`;
+        return totalMeasure >= 1000
+          ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}l`
+          : `${totalMeasure}ml`;
       default:
-        const totalDefault = quantityPerUnit * units;
-        return `${totalDefault} ${item.unit}`;
+        return `${totalMeasure} ${item.unit}`;
     }
   };
 
@@ -1761,12 +1781,12 @@ export default function Cart() {
                           {formatPriceWithSymbol(discountedPrice)}
                         </Text>
                         <Text style={styles.quantityInfoCart}>
-                          x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item, item.quantity)})
+                          x {item.quantity || 0} {(item.quantity || 0) === 1 ? 'unidad' : 'unidades'} ({getTotalMeasure(item, item.quantity || 0)})
                         </Text>
                       </View>
                     ) : (
                       <Text style={styles.price}>
-                        {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item, item.quantity)})
+                        {formatPriceWithSymbol(item.price)} x {item.quantity || 0} {(item.quantity || 0) === 1 ? 'unidad' : 'unidades'} ({getTotalMeasure(item, item.quantity || 0)})
                       </Text>
                     )}
                   <View style={styles.actions}>
