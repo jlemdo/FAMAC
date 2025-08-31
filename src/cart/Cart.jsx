@@ -396,14 +396,35 @@ export default function Cart() {
     return driverCoords;
   };
 
-  // Función para formatear cantidad como en ProductDetails
-  const formatQuantity = (units) => {
-    const grams = units * 250; // cada unidad = 250g
-    if (grams >= 1000) {
-      const kg = grams / 1000;
-      return `${kg % 1 === 0 ? kg.toFixed(0) : kg.toFixed(2)}kg`;
+  // Función para formatear cantidad usando datos reales del producto
+  const formatQuantity = (item, units) => {
+    const quantityPerUnit = parseFloat(item.quantity);
+    
+    // Para pieces: units = cantidad de piezas (no multiplicar por quantity)
+    // Para peso/volumen: quantity * units = cantidad total
+    switch (item.unit) {
+      case 'pieces':
+        return units === 1 ? '1 pieza' : `${units} piezas`;
+      case 'kg':
+        const totalKg = quantityPerUnit * units;
+        return `${totalKg}kg`;
+      case 'gr':
+        const totalGr = quantityPerUnit * units;
+        return totalGr >= 1000 
+          ? `${(totalGr / 1000).toFixed(totalGr % 1000 === 0 ? 0 : 2)}kg`
+          : `${totalGr}gr`;
+      case 'l':
+        const totalL = quantityPerUnit * units;
+        return `${totalL}l`;
+      case 'ml':
+        const totalMl = quantityPerUnit * units;
+        return totalMl >= 1000
+          ? `${(totalMl / 1000).toFixed(totalMl % 1000 === 0 ? 0 : 2)}l`
+          : `${totalMl}ml`;
+      default:
+        const totalDefault = quantityPerUnit * units;
+        return `${totalDefault} ${item.unit}`;
     }
-    return `${grams}g`;
   };
 
 
@@ -1740,12 +1761,12 @@ export default function Cart() {
                           {formatPriceWithSymbol(discountedPrice)}
                         </Text>
                         <Text style={styles.quantityInfoCart}>
-                          x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
+                          x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item, item.quantity)})
                         </Text>
                       </View>
                     ) : (
                       <Text style={styles.price}>
-                        {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item.quantity)})
+                        {formatPriceWithSymbol(item.price)} x {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'} ({formatQuantity(item, item.quantity)})
                       </Text>
                     )}
                   <View style={styles.actions}>

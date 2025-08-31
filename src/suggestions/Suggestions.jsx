@@ -135,7 +135,13 @@ export default function Suggestions() {
                     {/* Metadatos: peso y descripción */}
                     <View style={styles.metadataSection}>
                       <View style={styles.weightBadge}>
-                        <Text style={styles.weightText}>250g</Text>
+                        <Text style={styles.weightText}>
+                          {Math.round(parseFloat(item.quantity) * 100) / 100} {
+                            item.unit === 'pieces' 
+                              ? (parseFloat(item.quantity) === 1 ? 'pieza' : 'piezas')
+                              : item.unit
+                          }
+                        </Text>
                       </View>
                       <Text style={styles.description} numberOfLines={2}>
                         {item.description || 'Producto recomendado especialmente para ti'}
