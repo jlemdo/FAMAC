@@ -11,6 +11,13 @@ platform :ios do
       app_identifier: "com.occr.productos"
     )
 
+    # 🍎 FORZAR ENTITLEMENTS DE APPLE SIGN-IN
+    update_project_code_signing(
+      path: "ios/MyNewApp.xcodeproj",
+      targets: ["MyNewApp"],
+      code_sign_entitlements: "MyNewApp/MyNewApp.entitlements"
+    )
+
     # 1️⃣ Team ID
     update_project_team(
       path:    "ios/MyNewApp.xcodeproj",
@@ -84,8 +91,9 @@ platform :ios do
     # 🔍 DEBUG: Verificar configuración antes de compilar
     UI.message("🔍 VERIFICANDO CONFIGURACIÓN APPLE SIGN-IN...")
     sh("plutil -p ios/MyNewApp/MyNewApp.entitlements | grep -A1 applesignin || echo 'NO APPLE SIGN-IN ENTITLEMENT'")
-    sh("xcodebuild -showBuildSettings -project ios/MyNewApp.xcodeproj -target MyNewApp | grep PRODUCT_BUNDLE_IDENTIFIER || echo 'NO BUNDLE ID'")
-    sh("xcodebuild -showBuildSettings -project ios/MyNewApp.xcodeproj -target MyNewApp | grep DEVELOPMENT_TEAM || echo 'NO TEAM ID'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep PRODUCT_BUNDLE_IDENTIFIER | head -1 || echo 'NO BUNDLE ID'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep DEVELOPMENT_TEAM | head -1 || echo 'NO TEAM ID'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep CODE_SIGN_ENTITLEMENTS | head -1 || echo 'NO ENTITLEMENTS PATH'")
 
     # 4️⃣ Compilar con Gym
     begin

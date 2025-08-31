@@ -16,8 +16,24 @@ export function OrderProvider({ children }) {
 
     // Función para obtener órdenes del servidor
     const fetchOrdersFromServer = useCallback(async () => {
-        // ✅ Permitir Guest solo si se activó explícitamente
-        if (!user || (user.usertype === 'Guest' && !allowGuestOrders)) {
+        console.log('🔍 FETCH ORDERS DEBUG:', {
+            hasUser: !!user,
+            userType: user?.usertype,
+            userId: user?.id,
+            allowGuestOrders
+        });
+
+        // ✅ Solo bloquear si no hay usuario o si es Guest sin permisos
+        if (!user) {
+            console.log('❌ No user - returning empty');
+            setOrders([]);
+            setOrderCount(0);
+            return;
+        }
+
+        // ✅ Bloquear Guest SOLO si allowGuestOrders está false
+        if (user.usertype === 'Guest' && !allowGuestOrders) {
+            console.log('❌ Guest without permissions - returning empty');
             setOrders([]);
             setOrderCount(0);
             return;
@@ -34,8 +50,14 @@ export function OrderProvider({ children }) {
                 url = `https://occr.pixelcrafters.digital/api/orderhistory/${user.id}`;
             }
 
+            console.log('🌐 Making request to:', url);
             const response = await axios.get(url);
             const ordersData = response.data.orders || [];
+            
+            console.log('📦 Orders received:', {
+                count: ordersData.length,
+                response: response.data
+            });
             
             // Ordenar por fecha descendente
             const sortedOrders = ordersData.sort(
@@ -51,6 +73,11 @@ export function OrderProvider({ children }) {
             );
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());
+
+            console.log('✅ Orders processed:', {
+                total: sortedOrders.length,
+                active: activeOrders.length
+            });
             
         } catch (error) {
         }

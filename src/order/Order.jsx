@@ -206,6 +206,16 @@ const Order = () => {
     }
   }, [user?.email, user?.usertype, showingGuestOrders, loading]);
 
+  // 🔍 DEBUG TEMPORAL - para ver qué está pasando
+  console.log('🔍 ORDER DEBUG:', {
+    user: user ? { usertype: user.usertype, email: user.email, id: user.id } : null,
+    ordersLength: orders?.length || 0,
+    guestOrdersLength: guestOrders?.length || 0,
+    showingGuestOrders,
+    orderCount,
+    loading
+  });
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -338,7 +348,7 @@ const Order = () => {
                 {/* Status Badge - Ahora incluye payment_status */}
                 <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
                   <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
-                    {paymentStatus === 'pending' ? `${item.status_spanish || 'Pendiente'} • Pago Pendiente` : (item.status_spanish || 'Pendiente')}
+                    {item.status_spanish || itemStatus || 'Pendiente'}
                   </Text>
                 </View>
 
