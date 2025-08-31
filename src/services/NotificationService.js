@@ -175,29 +175,27 @@ class NotificationService {
     }
   }
 
-  // Enviar token al backend
+  // Enviar token al backend usando endpoint existente updateuserprofile
   async sendTokenToBackend(userId) {
     if (!this.token) {
       await this.getToken();
     }
 
     try {
-      // Reemplaza con tu endpoint real
-      await fetch('https://occr.pixelcrafters.digital/api/save-fcm-token', {
+      await fetch('https://occr.pixelcrafters.digital/api/updateuserprofile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: userId,
+          id: userId,
           fcm_token: this.token,
-          platform: Platform.OS,
         }),
       });
       
-      console.log('✅ Token enviado al backend exitosamente');
+      console.log('✅ FCM Token enviado al backend exitosamente via updateuserprofile');
     } catch (error) {
-      console.error('❌ Error enviando token al backend:', error);
+      console.error('❌ Error enviando FCM token al backend:', error);
     }
   }
 

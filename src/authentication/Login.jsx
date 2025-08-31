@@ -178,15 +178,22 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
         await login(data.user);
         
+        // 🔧 Para Apple Sign-In, esperar más tiempo y verificar navegación
+        const isAppleLogin = true; // Estamos en handleAppleLogin
+        const delay = isAppleLogin ? 1500 : 500; // Más tiempo para Apple
+        
         setTimeout(() => {
-          const userName = data.user.first_name || fullName?.givenName || 'Usuario';
-          showAlert({
-            type: 'success',
-            title: 'Bienvenido',
-            message: `¡Hola ${userName}!`,
-            confirmText: 'Continuar',
-          });
-        }, 500);
+          // 🔧 Verificar que aún estamos en la pantalla de login
+          if (navigation.isFocused && navigation.isFocused()) {
+            const userName = data.user.first_name || fullName?.givenName || 'Usuario';
+            showAlert({
+              type: 'success',
+              title: 'Bienvenido',
+              message: `¡Hola ${userName}!`,
+              confirmText: 'Continuar',
+            });
+          }
+        }, delay);
       } else {
         // 📱 DEBUG VISUAL: Error de credencial
         showAlert({
@@ -429,20 +436,20 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
                 {/* Botón Apple Sign-In - Solo iOS */}
                 {Platform.OS === 'ios' && appleAuth && (
-                  <TouchableOpacity
-                    style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
-                    onPress={handleAppleLogin}
-                    disabled={isSubmitting || appleLoading}
-                    activeOpacity={0.8}>
-                    {appleLoading ? (
-                      <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                      <>
-                        <Text style={styles.appleIcon}>🍎</Text>
-                        <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
-                      </>
+                  <View style={styles.appleButtonContainer}>
+                    <appleAuth.AppleButton
+                      buttonStyle={appleAuth.AppleButton.Style.BLACK}
+                      buttonType={appleAuth.AppleButton.Type.SIGN_IN}
+                      style={styles.appleButton}
+                      onPress={handleAppleLogin}
+                      disabled={isSubmitting || appleLoading}
+                    />
+                    {appleLoading && (
+                      <View style={styles.appleLoadingOverlay}>
+                        <ActivityIndicator color="#FFF" size="small" />
+                      </View>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 )}
 
                 {/* Botón Google Sign-In */}
@@ -657,28 +664,26 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  // 🍎 BOTÓN OFICIAL DE APPLE
+  appleButtonContainer: {
+    width: '100%',
+    height: 48,
+    marginBottom: 12,
+    position: 'relative',
+  },
   appleButton: {
     width: '100%',
     height: 48,
-    backgroundColor: '#000',
-    borderRadius: 8,
-    flexDirection: 'row',
+  },
+  appleLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  appleIcon: {
-    fontSize: 18,
-    marginRight: 12,
-  },
-  appleButtonText: {
-    color: '#FFF',
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
+    borderRadius: 8,
   },
 });
