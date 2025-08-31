@@ -12,10 +12,10 @@ platform :ios do
     )
 
     # 🍎 FORZAR ENTITLEMENTS DE APPLE SIGN-IN
-    update_project_code_signing(
+    update_code_signing_settings(
       path: "ios/MyNewApp.xcodeproj",
       targets: ["MyNewApp"],
-      code_sign_entitlements: "MyNewApp/MyNewApp.entitlements"
+      entitlements_file_path: "MyNewApp/MyNewApp.entitlements"
     )
 
     # 1️⃣ Team ID
@@ -29,7 +29,7 @@ platform :ios do
     update_code_signing_settings(
       use_automatic_signing: false,
       path:                  "ios/MyNewApp.xcodeproj",
-      team_id:               ENV["DEVELOPMENT_TEAM"],
+      teamid:               ENV["DEVELOPMENT_TEAM"],
       targets:               ["MyNewApp"],
       build_configurations:  ["Release"],
       code_sign_identity:    "Apple Distribution",
