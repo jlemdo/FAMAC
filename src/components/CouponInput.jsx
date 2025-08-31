@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from '../theme/fonts';
 import { scaleSpacing, scaleFontSize } from '../utils/responsiveUtils';
+import { AuthContext } from '../context/AuthContext';
 
 /**
  * Componente de entrada de cupones de descuento
@@ -30,31 +31,12 @@ const CouponInput = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false); // 🆕 Estado para colapsar/expandir
+  
+  // Obtener información del usuario del contexto
+  const { user } = useContext(AuthContext);
 
-  // 🧪 CUPONES DE PRUEBA - Remover cuando el backend esté listo
-  const TEST_COUPONS = {
-    'queso25': {
-      code: 'queso25',
-      discount: 25,
-      type: 'percentage', // 'percentage' o 'fixed'
-      description: '25% de descuento',
-      minAmount: 100, // Mínimo $100 para aplicar
-    },
-    'envio50': {
-      code: 'envio50',
-      discount: 50,
-      type: 'fixed',
-      description: '$50 de descuento',
-      minAmount: 200,
-    },
-    'bienvenido10': {
-      code: 'bienvenido10', 
-      discount: 10,
-      type: 'percentage',
-      description: '10% de descuento de bienvenida',
-      minAmount: 0,
-    }
-  };
+  // API endpoint para validación de cupones
+  const API_BASE_URL = 'https://occr.pixelcrafters.digital/api';
 
   // Función para validar y aplicar cupón
   const validateAndApplyCoupon = async (code) => {
@@ -62,43 +44,50 @@ const CouponInput = ({
     setError('');
 
     try {
-      // 🧪 LÓGICA DE PRUEBA - Reemplazar con API call
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay de API
-      
-      const testCoupon = TEST_COUPONS[code.toLowerCase()];
-      
-      if (!testCoupon) {
-        setError('Cupón no válido');
+      // Obtener email del usuario para tracking de uso único
+      const userEmail = user?.email || null;
+
+      const response = await fetch(`${API_BASE_URL}/validate-coupon`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          coupon_code: code.trim(),
+          subtotal: subtotal,
+          user_email: userEmail
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Error al validar cupón');
         setIsLoading(false);
         return;
       }
 
-      // Validar monto mínimo
-      if (subtotal < testCoupon.minAmount) {
-        setError(`Monto mínimo requerido: $${testCoupon.minAmount}`);
-        setIsLoading(false);
-        return;
-      }
+      if (data.status === 'success') {
+        // Adaptar datos del backend al formato esperado por el frontend
+        const couponData = {
+          code: data.coupon.code,
+          discount: data.coupon.discount,
+          type: data.coupon.discount_type, // 'percentage' o 'fixed'
+          description: data.coupon.description,
+          minAmount: data.coupon.minimum_amount,
+          discountAmount: data.coupon.discount_amount
+        };
 
-      // Calcular descuento
-      let discountAmount = 0;
-      if (testCoupon.type === 'percentage') {
-        discountAmount = (subtotal * testCoupon.discount) / 100;
+        onCouponApply(couponData);
+        setCouponCode('');
       } else {
-        discountAmount = testCoupon.discount;
+        setError(data.message || 'Cupón no válido');
       }
-
-      // Aplicar cupón
-      const couponData = {
-        ...testCoupon,
-        discountAmount: Math.round(discountAmount)
-      };
-
-      onCouponApply(couponData);
-      setCouponCode('');
       
     } catch (error) {
-      setError('Error al validar cupón');
+      console.error('Error validating coupon:', error);
+      setError('Error de conexión al validar cupón');
     } finally {
       setIsLoading(false);
     }
@@ -181,12 +170,12 @@ const CouponInput = ({
             </View>
           ) : null}
 
-          {/* Hints de cupones disponibles */}
+          {/* Información de cupones */}
           <View style={styles.hintsContainer}>
-            <Text style={styles.hintsTitle}>💡 Cupones disponibles:</Text>
-            <Text style={styles.hintText}>• queso25 - 25% de descuento</Text>
-            <Text style={styles.hintText}>• envio50 - $50 de descuento</Text>
-            <Text style={styles.hintText}>• bienvenido10 - 10% de descuento</Text>
+            <Text style={styles.hintsTitle}>💡 Información:</Text>
+            <Text style={styles.hintText}>• Ingresa tu código de cupón válido</Text>
+            <Text style={styles.hintText}>• Algunos cupones requieren monto mínimo</Text>
+            <Text style={styles.hintText}>• Los cupones son de uso único por usuario</Text>
           </View>
         </View>
           )}

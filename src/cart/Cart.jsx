@@ -1399,6 +1399,11 @@ export default function Cart() {
         tax_details: needInvoice ? (taxDetails || '') : '',
         delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
         delivery_slot: deliveryInfo?.slot || '',
+        // Campos de cupón (si existe y es válido)
+        coupon_code: appliedCoupon && isCouponStillValid() ? appliedCoupon.code : null,
+        coupon_discount: appliedCoupon && isCouponStillValid() ? appliedCoupon.discount : null,
+        coupon_type: appliedCoupon && isCouponStillValid() ? appliedCoupon.type : null,
+        discount_amount: appliedCoupon && isCouponStillValid() ? getDiscountAmount() : 0,
       };
       
       const response = await axios.post('https://occr.pixelcrafters.digital/api/ordersubmit', payload);
