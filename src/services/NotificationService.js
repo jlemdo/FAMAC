@@ -205,26 +205,18 @@ class NotificationService {
     messaging().onMessage(async remoteMessage => {
       console.log('📱 Notificación recibida en foreground:', remoteMessage);
       
-      // ✅ NUEVO: Agregar a la campana del header
+      // ✅ Solo agregar a la campanita (UX limpia en foreground)
       if (this.addNotificationCallback) {
         this.addNotificationCallback(
           remoteMessage.notification?.title || 'Nueva notificación',
           remoteMessage.notification?.body || 'Tienes una nueva actualización'
         );
+        
+        console.log('🔔 Notificación agregada a campanita:', remoteMessage.notification?.title);
       }
       
-      // Mostrar alerta personalizada (opcional - puedes comentar si prefieres solo la campana)
-      Alert.alert(
-        remoteMessage.notification?.title || 'Nueva notificación',
-        remoteMessage.notification?.body || 'Tienes una nueva actualización',
-        [
-          {
-            text: 'Ver',
-            onPress: () => this.handleNotificationPress(remoteMessage),
-          },
-          {text: 'Cerrar', style: 'cancel'},
-        ]
-      );
+      // 🚫 REMOVIDO: Alert molesto cuando app está abierta
+      // Las notificaciones push normales funcionan cuando app está cerrada/background
     });
 
     // Notificación cuando la app está en background y se abre
