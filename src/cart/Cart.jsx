@@ -38,7 +38,7 @@ import { geocodeGuestAddress, convertToDriverCoords, geocodeAddress } from '../u
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
-import { addressService } from '../services/addressService';
+import { newAddressService } from '../services/newAddressService';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
 import styles from './Cart.styles';
@@ -120,7 +120,6 @@ export default function Cart() {
     
     // Si el carrito está vacío, resetear todos los datos
     if (cart.length === 0) {
-      // console.log('🧹 CARRITO VACÍO - Reseteando datos...');
       
       // Resetear fecha y hora de entrega
       setDeliveryInfo(null);
@@ -133,7 +132,6 @@ export default function Cart() {
           driver_long: '',
         });
       }
-      // console.log('📏 Coordenadas Guest preservadas entre compras:', latlong);
       
       // Resetear datos de facturación
       setNeedInvoice(false);
@@ -150,7 +148,6 @@ export default function Cart() {
       
       // Para Guest, no hay AsyncStorage que limpiar, solo resetear estado local
       
-      // console.log('✅ Datos reseteados para carrito nuevo');
     }
   }, [cart.length, totalPrice, user?.id]);
   
@@ -163,9 +160,7 @@ export default function Cart() {
         date: info.date.toISOString() // Serializar Date a string
       };
       await AsyncStorage.setItem(key, JSON.stringify(dataToSave));
-      // console.log('💾 DELIVERY INFO GUARDADO:', dataToSave);
     } catch (error) {
-      // console.error('❌ Error guardando deliveryInfo:', error);
     }
   };
   
@@ -181,7 +176,6 @@ export default function Cart() {
           ...parsedData,
           date: new Date(parsedData.date) // Deserializar string a Date
         };
-        // console.log('📂 DELIVERY INFO RESTAURADO:', restoredInfo);
         setDeliveryInfo(restoredInfo);
         // Pequeño delay para asegurar que el estado se actualice
         setTimeout(() => {
@@ -190,7 +184,6 @@ export default function Cart() {
         return restoredInfo;
       }
     } catch (error) {
-      // console.error('❌ Error restaurando deliveryInfo:', error);
     }
     setIsRestoringDeliveryInfo(false);
     return null;
@@ -201,9 +194,7 @@ export default function Cart() {
     try {
       const key = `deliveryInfo_${userId}`;
       await AsyncStorage.removeItem(key);
-      // console.log('🗑️ DELIVERY INFO LIMPIADO del AsyncStorage');
     } catch (error) {
-      // console.error('❌ Error limpiando deliveryInfo:', error);
     }
   };
   
@@ -212,9 +203,7 @@ export default function Cart() {
     try {
       const key = `coordinates_${userId}`;
       await AsyncStorage.setItem(key, JSON.stringify(coords));
-      // console.log('💾 COORDENADAS GUARDADAS:', coords);
     } catch (error) {
-      // console.error('❌ Error guardando coordenadas:', error);
     }
   };
   
@@ -225,12 +214,10 @@ export default function Cart() {
       const savedData = await AsyncStorage.getItem(key);
       if (savedData) {
         const restoredCoords = JSON.parse(savedData);
-        // console.log('📂 COORDENADAS RESTAURADAS:', restoredCoords);
         setLatlong(restoredCoords);
         return restoredCoords;
       }
     } catch (error) {
-      // console.error('❌ Error restaurando coordenadas:', error);
     }
     return null;
   };
@@ -240,15 +227,12 @@ export default function Cart() {
     try {
       const key = `coordinates_${userId}`;
       await AsyncStorage.removeItem(key);
-      // console.log('🗑️ COORDENADAS LIMPIADAS del AsyncStorage');
     } catch (error) {
-      // console.error('❌ Error limpiando coordenadas:', error);
     }
   };
 
   // 🎫 FUNCIONES DE CUPONES
   const handleCouponApply = (couponData) => {
-    console.log('🎫 Aplicando cupón:', couponData);
     setAppliedCoupon(couponData);
     showAlert({
       type: 'success',
@@ -258,7 +242,6 @@ export default function Cart() {
   };
 
   const handleCouponRemove = () => {
-    console.log('🗑️ Removiendo cupón');
     setAppliedCoupon(null);
     showAlert({
       type: 'info',
@@ -364,12 +347,10 @@ export default function Cart() {
 
   // 🆕 FUNCIÓN: Geocoding para direcciones guardadas de Guest (usando utility)
   const handleGuestAddressGeocoding = async (addressString) => {
-    console.log('🧠 Guest sin coordenadas - haciendo geocoding de dirección guardada...');
     
     const coordinates = await geocodeGuestAddress(addressString);
     const driverCoords = convertToDriverCoords(coordinates);
     
-    console.log('✅ GEOCODING GUEST EXITOSO - Guardando coordenadas:', driverCoords);
     setLatlong(driverCoords);
   };
 
@@ -385,7 +366,6 @@ export default function Cart() {
     
     const driverCoords = convertToDriverCoords(coordinates);
     
-    console.log('✅ GEOCODING USER EXITOSO - Guardando coordenadas:', driverCoords);
     setLatlong(driverCoords);
     
     // Guardar coordenadas inmediatamente para futuras sesiones
@@ -508,7 +488,7 @@ export default function Cart() {
     
     setLoadingAddresses(true);
     try {
-      const addresses = await addressService.getAllAddresses(user.id);
+      const addresses = await newAddressService.getUserAddresses(user.id);
       setUserAddresses(addresses);
       
       // Si hay una dirección predeterminada, seleccionarla automáticamente
@@ -520,7 +500,6 @@ export default function Cart() {
         setAddress(defaultAddress.address);
       }
     } catch (error) {
-      console.error('❌ Error cargando direcciones:', error);
       setUserAddresses([]);
     } finally {
       setLoadingAddresses(false);
@@ -530,7 +509,6 @@ export default function Cart() {
   // TEMPORALMENTE DESHABILITADO - El callback automático está causando problemas
   // useEffect(() => {
   //   const clearDeliveryInfo = () => {
-  //     console.log('🧹 CALLBACK CLEAR DELIVERY INFO EJECUTADO');
   //     console.trace('Stack trace del callback clearDeliveryInfo:');
   //     setDeliveryInfo(null);
   //   };
@@ -560,7 +538,6 @@ export default function Cart() {
         
         // 🆕 FIX: Si Guest no tiene coordenadas, hacer geocoding de la dirección guardada
         if (!latlong?.driver_lat || !latlong?.driver_long) {
-          console.log('🧠 Guest sin coordenadas - haciendo geocoding de dirección guardada...');
           handleGuestAddressGeocoding(user.address);
         }
       }
@@ -573,7 +550,6 @@ export default function Cart() {
       fetchUserAddresses();
     }
     
-    // console.log('🔄 Estados inicializados para usuario:', user?.usertype);
   }, [user]);
 
   // Actualizar perfil cuando la pantalla gana foco (para refrescar dirección actualizada)
@@ -594,12 +570,10 @@ export default function Cart() {
             // Restaurar deliveryInfo para usuarios registrados
             if (!deliveryInfo) {
               const restored = await restoreDeliveryInfo(user.id);
-              // console.log('🔄 RESTAURACIÓN COMPLETADA:', restored);
             }
             // Restaurar coordenadas para usuarios registrados
             if (!latlong?.driver_lat || !latlong?.driver_long) {
               const restoredCoords = await restoreCoordinates(user.id);
-              // console.log('🔄 COORDENADAS RESTAURADAS:', restoredCoords);
               
               // 🆕 Si no hay coordenadas guardadas, aplicar geocoding inteligente
               if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
@@ -609,14 +583,12 @@ export default function Cart() {
                   const userAddress = currentProfile?.address || user?.address;
                   
                   if (userAddress && userAddress.trim().length > 10) {
-                    console.log('🧠 Auto-aplicando geocoding inteligente al cargar carrito...');
                     await handleUserAddressGeocoding(userAddress);
                   }
                 }, 1000); // Delay para asegurar que el perfil se haya cargado
               }
             }
           } else {
-            // console.log('⚠️ Carrito vacío - no se restauran datos');
           }
         }
       };
@@ -654,7 +626,6 @@ export default function Cart() {
             const tempGuestDataStr = await AsyncStorage.getItem('tempGuestData');
           if (tempGuestDataStr) {
             const tempGuestData = JSON.parse(tempGuestDataStr);
-            // console.log('✅ DATOS GUEST RECUPERADOS de AsyncStorage');
             
             // Usar los datos recuperados (misma lógica que antes)
             setEmail(tempGuestData.email);
@@ -677,12 +648,10 @@ export default function Cart() {
             const coordinatesToUse = tempGuestData.mapCoordinates || tempGuestData.preservedCoordinates;
             if (coordinatesToUse) {
               setLatlong(coordinatesToUse);
-              console.log('✅ Coordenadas Guest restauradas:', coordinatesToUse);
             }
             
             // 🚀 CRÍTICO: Activar flag de auto-pago para Guest que acaba de completar dirección
             setGuestJustCompletedAddress(true);
-            console.log('🎯 Flag auto-pago Guest activado');
             
             // Limpiar AsyncStorage después de usar
             await AsyncStorage.removeItem('tempGuestData');
@@ -695,7 +664,6 @@ export default function Cart() {
                 if (deliverySlotRef.current?.scrollToView) {
                   deliverySlotRef.current.scrollToView();
                 } else {
-                  console.log('⚠️ deliverySlotRef.current.scrollToView no disponible');
                 }
               }
             }, 600);
@@ -703,7 +671,6 @@ export default function Cart() {
             return; // No procesar el flujo antiguo
           }
           } catch (error) {
-            console.error('❌ Error leyendo tempGuestData:', error);
             // Continuar con flujo normal si hay error
           }
         };
@@ -720,13 +687,11 @@ export default function Cart() {
         
         // CRITICAL: Restaurar también los datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
-          // console.log('🔄 RESTAURANDO DELIVERY INFO:', params.guestData.preservedDeliveryInfo);
           // Convertir el string de fecha de vuelta a Date object
           const deliveryInfoToRestore = {
             ...params.guestData.preservedDeliveryInfo,
             date: new Date(params.guestData.preservedDeliveryInfo.date), // Convertir string a Date
           };
-          // console.log('📅 DELIVERY INFO RESTAURADO:', deliveryInfoToRestore);
           setDeliveryInfo(deliveryInfoToRestore);
         }
         if (params.guestData.preservedNeedInvoice !== undefined) {
@@ -736,13 +701,11 @@ export default function Cart() {
           setTaxDetails(params.guestData.preservedTaxDetails);
         }
         if (params.guestData.preservedCoordinates) {
-          // console.log('🔄 RESTAURANDO COORDENADAS GUEST:', params.guestData.preservedCoordinates);
           setLatlong(params.guestData.preservedCoordinates);
         }
         
         // NUEVO: Si Guest también tiene mapCoordinates, procesar auto-pago aquí mismo
         if (params?.mapCoordinates && user?.usertype === 'Guest') {
-          console.log('🚀 Guest: Procesando guestData + mapCoordinates - MARCANDO PARA AUTO-PAGO');
           
           // Actualizar coordenadas también
           setLatlong({
@@ -757,7 +720,6 @@ export default function Cart() {
           setTimeout(() => {
             // Limpiar parámetros después de procesar
             navigation.setParams({ guestData: null, mapCoordinates: null });
-            console.log('✅ Parámetros limpiados - Auto-pago se ejecutará automáticamente');
           }, 100);
           
         } else {
@@ -780,7 +742,6 @@ export default function Cart() {
       // NUEVO: Manejar coordenadas regresadas de MapSelector (solo User registrado)
       // Guest se procesa arriba junto con guestData
       if (params?.mapCoordinates && user?.usertype !== 'Guest') {
-        // console.log('🗺️ User registrado: Coordenadas recibidas de MapSelector:', params.mapCoordinates);
         
         // Guardar coordenadas en el estado
         setLatlong({
@@ -793,7 +754,6 @@ export default function Cart() {
         
         // Proceder directamente al pago con coordenadas frescas
         setTimeout(() => {
-          // console.log('🚀 User registrado: Auto-iniciando pago después de confirmar coordenadas');
           completeOrder();
         }, 300);
       }
@@ -803,11 +763,9 @@ export default function Cart() {
         setTimeout(() => {
           if (deliveryInfo) {
             // Ya tiene horario seleccionado → scroll al botón "Pagar"
-            // console.log('Usuario con horario - scroll hacia botón pagar');
             flatListRef.current?.scrollToEnd({ animated: true });
           } else {
             // No tiene horario → scroll al botón "Seleccionar Horario"
-            // console.log('Usuario sin horario - scroll hacia selección horario');
             flatListRef.current?.scrollToEnd({ animated: true });
           }
         }, 800); // Delay para asegurar que todo esté renderizado
@@ -846,7 +804,6 @@ export default function Cart() {
         latlong?.driver_long &&
         cart.length > 0) {
       
-      console.log('🎯 GUEST AUTO-PAGO: Guest acaba de completar dirección - auto-pagando...');
       
       // Pequeño delay para asegurar que la UI esté lista
       const autoPayTimeout = setTimeout(() => {
@@ -908,7 +865,6 @@ export default function Cart() {
     
     if (!deliveryInfo) {
       // Intentar restaurar una vez más antes de fallar
-      // console.log('⚠️ deliveryInfo es null, intentando restaurar...');
       if (user?.id && user?.usertype !== 'Guest') {
         // Usuario registrado: intentar restaurar de AsyncStorage
         const restored = await restoreDeliveryInfo(user.id);
@@ -921,14 +877,11 @@ export default function Cart() {
           });
           return;
         }
-        // console.log('✅ deliveryInfo restaurado en validación:', restored);
         // Continuar con la orden usando el deliveryInfo restaurado
       } else if (user?.usertype === 'Guest') {
         // Guest: esperar un momento más para que se actualice el estado
-        // console.log('⚠️ Guest sin deliveryInfo, esperando actualización de estado...');
         setTimeout(() => {
           if (deliveryInfo) {
-            // console.log('✅ Guest deliveryInfo actualizado, reintentando pago');
             completeOrder();
           } else {
             showAlert({
@@ -988,10 +941,8 @@ export default function Cart() {
       
       // Guest también necesita coordenadas del mapa
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        // console.log('⚠️ Guest sin coordenadas, esperando actualización de estado...');
         setTimeout(() => {
           if (latlong?.driver_lat && latlong?.driver_long) {
-            // console.log('✅ Guest coordenadas actualizadas, reintentando pago');
             completeOrder();
           } else {
             showAlert({
@@ -1033,14 +984,12 @@ export default function Cart() {
       }
       
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        console.log('⚠️ Usuario registrado sin coordenadas - aplicando geocoding inteligente...');
         
         // 🆕 PASO 1: Intentar restaurar coordenadas guardadas
         let restoredCoords = null;
         if (user?.id) {
           restoredCoords = await restoreCoordinates(user.id);
           if (restoredCoords && restoredCoords.driver_lat && restoredCoords.driver_long) {
-            console.log('✅ Coordenadas restauradas de AsyncStorage:', restoredCoords);
             // Las coordenadas ya se establecieron en el estado por restoreCoordinates()
             // Continuar con el flujo de pago
           }
@@ -1050,16 +999,13 @@ export default function Cart() {
         if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
           const userAddress = savedAddress?.trim();
           if (userAddress && userAddress.length > 10) {
-            console.log('🧠 Aplicando geocoding inteligente a dirección del usuario...');
             
             try {
               const geocodedCoords = await handleUserAddressGeocoding(userAddress);
               if (geocodedCoords && geocodedCoords.driver_lat && geocodedCoords.driver_long) {
-                console.log('✅ Geocoding exitoso - continuando con pago automáticamente');
                 // Las coordenadas ya se establecieron, continuar con el flujo
                 // No hacer return aquí, dejar que continúe el flujo normal
               } else {
-                console.log('⚠️ Geocoding falló - mostrando opción manual');
                 showAlert({
                   type: 'info',
                   title: 'Confirmar ubicación',
@@ -1087,7 +1033,6 @@ export default function Cart() {
                 return;
               }
             } catch (error) {
-              console.log('❌ Error en geocoding:', error);
               // Fallback: usar coordenadas por defecto
               setLatlong({
                 driver_lat: '19.4326',
@@ -1226,10 +1171,8 @@ export default function Cart() {
             expiration: nextAction.expiration,
             amount: finalPrice
           };
-          console.log('🎫 INFORMACIÓN OXXO CAPTURADA:', oxxoInfo);
         }
       } catch (error) {
-        console.log('⚠️ Error obteniendo info OXXO:', error);
       }
       
       // 1.4) Pago exitoso: enviar la orden
@@ -1251,7 +1194,6 @@ export default function Cart() {
         
         // Solo actualizar si hay algo que guardar
         if (Object.keys(updateData).length > 0) {
-          console.log('💾 GUARDANDO DATOS GUEST PARA PRÓXIMAS COMPRAS:', updateData);
           await updateUser(updateData);
         }
       }
@@ -1266,9 +1208,6 @@ export default function Cart() {
       const orderNumber = orderData?.order_id || orderData?.id || orderData?.order?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
       
-      // console.log('=== MODAL ÉXITO PEDIDO ===');
-      // console.log('orderData completo:', orderData);
-      // console.log('orderNumber extraído:', orderNumber);
       // console.log('isValidOrderId:', isValidOrderId);
       
       // Limpiar datos inmediatamente después del pedido exitoso
@@ -1316,10 +1255,8 @@ export default function Cart() {
         oxxoInfo: oxxoInfo // 🏪 Información del voucher OXXO si existe
       };
       
-      console.log('🔍 MODAL DATA CONSTRUIDO:', modalData);
       
       // 🔧 NAVEGACIÓN DIRECTA SIMPLIFICADA - Evitar navegación anidada
-      console.log('🚀 NAVEGANDO DIRECTO A CATEGORIESLIST CON MODAL DATA');
       
       // Opción 1: Navegar directo sin estructura anidada (PUEDE FALLAR)
       // navigation.navigate('CategoriesList', {
@@ -1328,7 +1265,6 @@ export default function Cart() {
       // });
       
       // Opción 2: Usar reset para asegurar navegación limpia y que los parámetros lleguen
-      console.log('🔧 USANDO NAVIGATION.RESET PARA FORZAR NAVEGACIÓN CORRECTA');
       navigation.reset({
         index: 0,
         routes: [
@@ -1356,7 +1292,6 @@ export default function Cart() {
         ]
       });
       
-      console.log('✅ NAVEGACIÓN ENVIADA - Modal debería aparecer en CategoriesList');
     } catch (err) {
       showAlert({
         type: 'error',
@@ -1375,7 +1310,7 @@ export default function Cart() {
     const userType = user?.usertype;
     
     if (userType === 'Guest') {
-      // Guest: usa dirección manual que escribió + coordenadas del mapa
+      // Guest: usa dirección manual que escribió + coordenadas del mapa (fallback)
       return {
         customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
         customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
@@ -1384,14 +1319,25 @@ export default function Cart() {
       };
     } 
     else {
-      // Usuario registrado: usa dirección guardada + coordenadas del MapSelector
-      const savedAddress = userProfile?.address || user?.address;
-      return {
-        customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
-        customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
-        address_source: 'registered_user_address',
-        delivery_address: savedAddress?.trim() || address?.trim() || ''
-      };
+      // 🔧 OPTIMIZADO: Usuario registrado usa NUEVO SISTEMA de direcciones
+      if (selectedAddress?.latitude && selectedAddress?.longitude) {
+        // Usar coordenadas de la dirección seleccionada del nuevo sistema
+        return {
+          customer_lat: selectedAddress.latitude.toString(),
+          customer_long: selectedAddress.longitude.toString(), 
+          address_source: 'new_address_system',
+          delivery_address: selectedAddress.address || ''
+        };
+      } else {
+        // Fallback: sistema anterior (MapSelector + perfil)
+        const savedAddress = userProfile?.address || user?.address;
+        return {
+          customer_lat: latlong.driver_lat || '',
+          customer_long: latlong.driver_long || '',
+          address_source: 'legacy_system_fallback',
+          delivery_address: savedAddress?.trim() || address?.trim() || ''
+        };
+      }
     }
   };
 
@@ -1429,16 +1375,13 @@ export default function Cart() {
             const profileResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
             const profileData = profileResponse.data?.data?.[0];
             userEmailForOrder = profileData?.email?.trim() || '';
-            console.log('📧 Email obtenido del perfil para orden:', userEmailForOrder);
           } catch (profileError) {
-            console.error('⚠️ Error obteniendo email del perfil:', profileError);
           }
         }
       }
       
       // Validación final: asegurar que siempre tengamos un email válido
       if (!userEmailForOrder) {
-        console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden');
         showAlert({
           type: 'error',
           title: 'Email requerido',
@@ -1449,16 +1392,22 @@ export default function Cart() {
         return;
       }
       
-      console.log('📧 Email final para orden:', userEmailForOrder);
 
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
       
-      // console.log('📍 DATOS DE ENVÍO:', {
-        // coordinates: coordinates,
-        // finalDeliveryAddress: coordinates.delivery_address || address?.trim() || '',
-        // userType: user?.usertype
-      // });
+      console.log('📍 DATOS DE ENVÍO OPTIMIZADOS:', {
+        coordinates: coordinates,
+        selectedAddress: selectedAddress ? {
+          id: selectedAddress.id,
+          address: selectedAddress.address,
+          lat: selectedAddress.latitude,
+          lng: selectedAddress.longitude,
+          isDefault: selectedAddress.is_default
+        } : null,
+        userType: user?.usertype,
+        addressSource: coordinates.address_source
+      });
 
       const payload = {
         userid: user?.id,
@@ -1568,7 +1517,6 @@ export default function Cart() {
     let mapCenter = { latitude: 19.4326, longitude: -99.1332 }; // Fallback CDMX
     
     if (userAddress && userAddress.trim().length > 10) {
-      console.log('🧠 Cart: Aplicando geocoding inteligente para centrar mapa en:', userAddress);
       
       try {
         const geocodedCoords = await handleUserAddressGeocoding(userAddress);
@@ -1577,16 +1525,11 @@ export default function Cart() {
             latitude: parseFloat(geocodedCoords.driver_lat),
             longitude: parseFloat(geocodedCoords.driver_long)
           };
-          console.log('✅ Cart: Geocoding exitoso - mapa centrado en:', mapCenter);
         } else {
-          console.log('⚠️ Cart: Geocoding falló - usando centro CDMX');
         }
       } catch (error) {
-        console.warn('❌ Cart: Error en geocoding:', error);
-        console.log('⚠️ Cart: Usando centro CDMX como fallback');
       }
     } else {
-      console.log('⚠️ Cart: Dirección muy corta - usando centro CDMX');
     }
     
     // ✅ REGISTRAR CALLBACK para recibir coordenadas del mapa
@@ -1884,9 +1827,6 @@ export default function Cart() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={({date, slot}) => {
-          // console.log('📅 CART - RECIBIENDO DE PICKER:');
-          // console.log('- date recibido:', date);
-          // console.log('- date type:', typeof date);
           // console.log('- slot recibido:', slot);
           
           setDeliveryInfo({date, slot});
@@ -2151,7 +2091,6 @@ const CartFooter = ({
             const profileResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
             const profileData = profileResponse.data?.data?.[0];
             userEmailForOrder = profileData?.email?.trim() || '';
-            console.log('📧 Email obtenido del perfil para orden (completeOrder):', userEmailForOrder);
           } catch (profileError) {
             console.error('⚠️ Error obteniendo email del perfil (completeOrder):', profileError);
           }
@@ -2170,7 +2109,6 @@ const CartFooter = ({
         return;
       }
       
-      console.log('📧 Email final para orden (completeOrder):', userEmailForOrder);
       
       // Coordenadas según tipo de usuario (lógica simplificada)
       let coordinates = {
@@ -2389,7 +2327,7 @@ const CartFooter = ({
               {userProfile.address}
             </Text>
             
-            {/* Estado de la ubicación en mapa - Mensaje único y consistente */}
+            {/* 🔧 COMENTADO: Ya no necesario - Las direcciones tienen coordenadas precisas automáticamente
             <View style={styles.locationStatusContainer}>
               <View style={styles.locationStatusRow}>
                 <Ionicons name="location-outline" size={20} color="#D27F27" />
@@ -2404,6 +2342,7 @@ const CartFooter = ({
                 </TouchableOpacity>
               </View>
             </View>
+            */}
           </View>
         )}
 

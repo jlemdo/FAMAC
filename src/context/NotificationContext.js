@@ -5,16 +5,35 @@ const NotificationContext = createContext();
 export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
 
-    // Add new notification
+    // Add new notification with duplicate prevention
     const addNotification = (title, description) => {
-        const newNotification = {
-            id: Date.now().toString(),
-            title,
-            description,
-            read: false,
-            expanded: false,
-        };
-        setNotifications((prev) => [...prev, newNotification]);
+        setNotifications((prev) => {
+            // 🔧 FIX 1: Prevenir duplicados por título y descripción
+            const isDuplicate = prev.some(notification => 
+                notification.title === title && 
+                notification.description === description &&
+                !notification.read // Solo considerar duplicados si no están leídos
+            );
+            
+            if (isDuplicate) {
+                console.log('🔔 Notificación duplicada prevenida:', title);
+                return prev; // No agregar
+            }
+            
+            // 🔧 FIX 2: ID único mejorado con timestamp + random
+            const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            const newNotification = {
+                id: uniqueId,
+                title,
+                description,
+                read: false,
+                expanded: false,
+            };
+            
+            console.log('🔔 Nueva notificación agregada:', title, 'ID:', uniqueId);
+            return [...prev, newNotification];
+        });
     };
 
     // Mark notification as read

@@ -6,6 +6,7 @@ class NotificationService {
   constructor() {
     this.token = null;
     this.addNotificationCallback = null; // Para conectar con NotificationContext
+    this.listenersSetup = false; // 🔧 PREVENIR múltiples listeners
   }
 
   // Conectar con el sistema de notificaciones del header
@@ -208,8 +209,18 @@ class NotificationService {
 
   // Configurar listeners de notificaciones
   setupNotificationListeners() {
+    // 🔧 PREVENIR múltiples configuraciones de listeners
+    if (this.listenersSetup) {
+      console.log('🔔 Listeners ya configurados, saltando setup');
+      return;
+    }
+    
+    console.log('🔔 Configurando listeners de notificaciones...');
+    this.listenersSetup = true;
+    
     // Notificación cuando la app está en foreground
     messaging().onMessage(async remoteMessage => {
+      console.log('🔔 Notificación recibida en foreground:', remoteMessage.notification?.title);
       
       // ✅ Solo agregar a la campanita (UX limpia en foreground)
       if (this.addNotificationCallback) {
@@ -217,7 +228,6 @@ class NotificationService {
           remoteMessage.notification?.title || 'Nueva notificación',
           remoteMessage.notification?.body || 'Tienes una nueva actualización'
         );
-        
       }
       
       // 🚫 REMOVIDO: Alert molesto cuando app está abierta
