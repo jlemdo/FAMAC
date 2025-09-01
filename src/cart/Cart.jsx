@@ -1413,10 +1413,43 @@ export default function Cart() {
         };
       });
       
-      // Determinar el email correcto para enviar
-      const userEmailForOrder = user?.usertype === 'Guest' 
-        ? (email?.trim() || user?.email || '') 
-        : (user?.email || '');
+      // Determinar el email correcto para enviar - MEJORADO PARA EVITAR ÓRDENES SIN EMAIL
+      let userEmailForOrder = '';
+      
+      if (user?.usertype === 'Guest') {
+        // Para Guests: priorizar email local, luego email del usuario
+        userEmailForOrder = email?.trim() || user?.email?.trim() || '';
+      } else {
+        // Para usuarios registrados: usar email del usuario o obtener del perfil
+        userEmailForOrder = user?.email?.trim() || '';
+        
+        // Si no hay email en el contexto, intentar obtenerlo del perfil
+        if (!userEmailForOrder && user?.id) {
+          try {
+            const profileResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
+            const profileData = profileResponse.data?.data?.[0];
+            userEmailForOrder = profileData?.email?.trim() || '';
+            console.log('📧 Email obtenido del perfil para orden:', userEmailForOrder);
+          } catch (profileError) {
+            console.error('⚠️ Error obteniendo email del perfil:', profileError);
+          }
+        }
+      }
+      
+      // Validación final: asegurar que siempre tengamos un email válido
+      if (!userEmailForOrder) {
+        console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden');
+        showAlert({
+          type: 'error',
+          title: 'Email requerido',
+          message: 'No se pudo obtener tu email. Por favor verifica tu información en el perfil.',
+          confirmText: 'Ir a Perfil',
+          onConfirm: () => navigation.navigate('Profile')
+        });
+        return;
+      }
+      
+      console.log('📧 Email final para orden:', userEmailForOrder);
 
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
@@ -2102,10 +2135,42 @@ const CartFooter = ({
         };
       });
       
-      // Email según tipo de usuario
-      const userEmailForOrder = user?.usertype === 'Guest' 
-        ? (email?.trim() || user?.email || '') 
-        : (user?.email || '');
+      // Email según tipo de usuario - MEJORADO PARA EVITAR ÓRDENES SIN EMAIL
+      let userEmailForOrder = '';
+      
+      if (user?.usertype === 'Guest') {
+        // Para Guests: priorizar email local, luego email del usuario
+        userEmailForOrder = email?.trim() || user?.email?.trim() || '';
+      } else {
+        // Para usuarios registrados: usar email del usuario o obtener del perfil
+        userEmailForOrder = user?.email?.trim() || '';
+        
+        // Si no hay email en el contexto, intentar obtenerlo del perfil
+        if (!userEmailForOrder && user?.id) {
+          try {
+            const profileResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
+            const profileData = profileResponse.data?.data?.[0];
+            userEmailForOrder = profileData?.email?.trim() || '';
+            console.log('📧 Email obtenido del perfil para orden (completeOrder):', userEmailForOrder);
+          } catch (profileError) {
+            console.error('⚠️ Error obteniendo email del perfil (completeOrder):', profileError);
+          }
+        }
+      }
+      
+      // Validación final: asegurar que siempre tengamos un email válido
+      if (!userEmailForOrder) {
+        console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden (completeOrder)');
+        showAlert({
+          type: 'error',
+          title: 'Email requerido',
+          message: 'No se pudo obtener tu email. Por favor verifica tu información en el perfil.',
+          confirmText: 'Entendido'
+        });
+        return;
+      }
+      
+      console.log('📧 Email final para orden (completeOrder):', userEmailForOrder);
       
       // Coordenadas según tipo de usuario (lógica simplificada)
       let coordinates = {

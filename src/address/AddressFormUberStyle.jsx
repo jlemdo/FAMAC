@@ -38,7 +38,7 @@ import { AuthContext } from '../context/AuthContext';
 const AddressFormUberStyle = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const { showAlert } = useAlert();
   
   // 🔧 RESTAURADO CON PROTECCIONES: Hook para manejo profesional del teclado
@@ -828,7 +828,53 @@ const AddressFormUberStyle = () => {
           });
         } else {
           // Crear nueva dirección
-          response = await addressService.addAddress(addressData);
+          console.log('🆕 Creando nueva dirección...');
+          
+          // ✅ LÓGICA: Primera dirección automáticamente predeterminada
+          // Verificar si el usuario no tiene ninguna dirección (ni en perfil ni adicionales)
+          const userResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
+          const currentUserData = userResponse.data?.data?.[0];
+          const hasProfileAddress = currentUserData?.address && currentUserData.address.trim() !== '';
+          
+          // Obtener direcciones adicionales del usuario
+          const existingAddresses = await addressService.getAllAddresses(user.id);
+          const hasAdditionalAddresses = existingAddresses && existingAddresses.length > 0;
+          
+          console.log('📊 Estado de direcciones:', {
+            hasProfileAddress,
+            hasAdditionalAddresses,
+            addressCount: existingAddresses?.length || 0
+          });
+          
+          if (!hasProfileAddress && !hasAdditionalAddresses) {
+            // CASO: Primera dirección del usuario - hacerla automáticamente predeterminada
+            console.log('🏠 Primera dirección del usuario - estableciendo como predeterminada...');
+            
+            // Actualizar el perfil del usuario con esta dirección como predeterminada
+            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
+              userid: user.id,
+              first_name: currentUserData?.first_name || user.first_name,
+              last_name: currentUserData?.last_name || user.last_name,
+              phone: currentUserData?.phone || user.phone,
+              email: currentUserData?.email || user.email,
+              address: addressData.address
+            });
+            
+            // Actualizar contexto local
+            await updateUser({
+              address: addressData.address,
+              phone: addressData.phone || user.phone
+            });
+            
+            response = { success: true, message: 'Primera dirección establecida como predeterminada' };
+          } else {
+            // CASO: Dirección adicional normal
+            console.log('📍 Agregando como dirección adicional...');
+            response = await addressService.addAddress({
+              ...addressData,
+              isDefault: false // Nunca predeterminada para direcciones adicionales
+            });
+          }
         }
 
         // Mostrar confirmación al usuario

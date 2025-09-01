@@ -15,7 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AuthContext } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import fonts from '../theme/fonts';
-import { addressService } from '../services/addressService';
+import { newAddressService } from '../services/newAddressService';
 import axios from 'axios';
 
 const AddressManager = () => {
@@ -23,41 +23,15 @@ const AddressManager = () => {
   const { user, updateUser } = useContext(AuthContext);
   const { showAlert } = useAlert();
   
-  // Estados
+  // Estados - Sistema nuevo simplificado
   const [addresses, setAddresses] = useState([]);
-  const [profileAddress, setProfileAddress] = useState(null); // Dirección del perfil (legacy)
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
-  const [settingDefaultId, setSettingDefaultId] = useState(null);
+  const [settingPrimaryId, setSettingPrimaryId] = useState(null);
 
-  // Limpiar direcciones que incorrectamente están marcadas como predeterminadas
-  const cleanupIncorrectDefaults = async (addresses) => {
-    try {
-      for (const address of addresses) {
-        if (address.is_default === "1" || address.is_default === 1) {
-          console.log('🧹 Limpiando dirección incorrectamente marcada como predeterminada:', address.id);
-          
-          // Actualizar para que NO sea predeterminada
-          await addressService.updateAddress({
-            addressId: address.id,
-            userId: user.id,
-            address: address.address,
-            phone: address.phone || '',
-            isDefault: false
-          });
-          
-          // Actualizar el objeto local también
-          address.is_default = "0";
-        }
-      }
-    } catch (error) {
-      console.error('⚠️ Error limpiando direcciones predeterminadas:', error);
-      // No fallar completamente si hay error en limpieza
-    }
-  };
 
-  // Cargar direcciones del usuario
+  // Cargar direcciones del usuario - Sistema nuevo
   const fetchAddresses = async (isRefresh = false) => {
     if (!user?.id) return;
     
@@ -65,16 +39,11 @@ const AddressManager = () => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
-      console.log('🔍 AddressManager - Llamando addressService.getAllAddresses para usuario:', user.id);
-      const addresses = await addressService.getAllAddresses(user.id);
-      console.log('📦 AddressManager - Direcciones recibidas del servicio:', addresses.length, 'direcciones');
-      console.log('📋 AddressManager - Detalle de direcciones:', addresses);
+      console.log('🔍 AddressManager - Obteniendo direcciones de usuario:', user.id);
+      const userAddresses = await newAddressService.getUserAddresses(user.id);
+      console.log('📦 AddressManager - Direcciones recibidas:', userAddresses.length, 'direcciones');
       
-      // LIMPIEZA: Asegurar que ninguna dirección adicional tenga is_default = 1
-      // Solo la dirección del perfil debe ser predeterminada
-      await cleanupIncorrectDefaults(addresses);
-      
-      setAddresses(addresses);
+      setAddresses(userAddresses);
       
     } catch (error) {
       console.error('❌ Error obteniendo direcciones:', error);
@@ -90,52 +59,6 @@ const AddressManager = () => {
     }
   };
 
-  // Cargar dirección del perfil (legacy)
-  const fetchProfileAddress = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const response = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
-      const userData = response.data?.data?.[0];
-      
-      if (userData?.address && userData.address.trim() !== '') {
-        setProfileAddress({
-          address: userData.address,
-          phone: userData.phone || '',
-          isLegacy: true
-        });
-      } else {
-        setProfileAddress(null);
-      }
-    } catch (error) {
-      console.error('❌ Error obteniendo dirección del perfil:', error);
-      setProfileAddress(null);
-    }
-  };
-
-  // Cargar ambos: direcciones múltiples y dirección del perfil
-  const loadAllAddresses = async (isRefresh = false) => {
-    if (!user?.id) return;
-    
-    console.log('📍 AddressManager - Cargando todas las direcciones para usuario:', user.id);
-    
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    
-    try {
-      // Cargar en paralelo
-      await Promise.all([
-        fetchAddresses(false), // No pasar isRefresh aquí para evitar doble loading
-        fetchProfileAddress()
-      ]);
-      console.log('✅ AddressManager - Direcciones cargadas exitosamente');
-    } catch (error) {
-      console.error('❌ AddressManager - Error cargando direcciones:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
   // Eliminar dirección
   const handleDeleteAddress = (addressId, addressText) => {
@@ -153,7 +76,7 @@ const AddressManager = () => {
     try {
       setDeletingId(addressId);
       
-      await addressService.deleteAddress(addressId);
+      await newAddressService.deleteUserAddress(addressId);
       
       showAlert({
         type: 'success',
@@ -175,10 +98,10 @@ const AddressManager = () => {
     }
   };
 
-  // Sistema de intercambio: hacer predeterminada una dirección intercambiándola con la del perfil
-  const setDefaultAddress = async (address) => {
+  // Establecer dirección como primaria - Sistema nuevo simplificado
+  const setPrimaryAddress = async (address) => {
     try {
-      setSettingDefaultId(address.id);
+      setSettingPrimaryId(address.id);
       
       showAlert({
         type: 'info',
@@ -188,78 +111,10 @@ const AddressManager = () => {
         confirmText: 'Sí, hacer principal',
         onConfirm: async () => {
           try {
-            if (profileAddress && profileAddress.address) {
-              // CASO 1: Ya hay dirección principal - Hacer intercambio
-              const currentProfileAddress = profileAddress.address;
-              const currentProfilePhone = profileAddress.phone || '';
-              const newPredeterminadaAddress = address.address;
-              const newPredeterminadaPhone = address.phone || '';
-
-              // Actualizar la dirección seleccionada con los datos del perfil
-              await addressService.updateAddress({
-                addressId: address.id,
-                userId: user.id,
-                address: currentProfileAddress,
-                phone: currentProfilePhone,
-                isDefault: false
-              });
-
-              // PASO 1: Actualizar user.address en el backend
-              await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
-                userid: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                phone: user.phone,
-                email: user.email,
-                address: newPredeterminadaAddress
-              });
-
-              // PASO 2: Actualizar contexto local
-              await updateUser({
-                address: newPredeterminadaAddress,
-                phone: newPredeterminadaPhone || user.phone
-              });
-
-              // Actualizar estado local
-              setProfileAddress({
-                address: newPredeterminadaAddress,
-                phone: newPredeterminadaPhone || user.phone || ''
-              });
-            } else {
-              // CASO 2: No hay dirección principal - Hacer esta la primera principal
-              
-              // PASO 1: Actualizar user.address en el backend
-              await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
-                userid: user.id,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                phone: user.phone,
-                email: user.email,
-                address: address.address
-              });
-
-              // PASO 2: Marcar dirección como predeterminada
-              await addressService.updateAddress({
-                addressId: address.id,
-                userId: user.id,
-                address: address.address,
-                phone: address.phone || '',
-                isDefault: true
-              });
-
-              // PASO 3: Actualizar contexto local
-              await updateUser({
-                address: address.address,
-                phone: address.phone || user.phone
-              });
-
-              // Actualizar estado local
-              setProfileAddress({
-                address: address.address,
-                phone: address.phone || user.phone || ''
-              });
-            }
-
+            console.log('🏠 Estableciendo dirección como primaria:', address.id);
+            
+            await newAddressService.setPrimaryUserAddress(address.id);
+            
             showAlert({
               type: 'success',
               title: 'Dirección Principal Actualizada',
@@ -269,19 +124,19 @@ const AddressManager = () => {
             // Recargar lista para mostrar cambios
             fetchAddresses();
           } catch (error) {
-            console.error('❌ Error intercambiando direcciones:', error);
+            console.error('❌ Error estableciendo dirección principal:', error);
             showAlert({
               type: 'error',
-              title: 'Error en Intercambio',
-              message: 'No se pudo intercambiar las direcciones. Inténtalo de nuevo.'
+              title: 'Error',
+              message: error.message || 'No se pudo establecer como dirección principal. Inténtalo de nuevo.'
             });
           }
         }
       });
     } catch (error) {
-      console.error('❌ Error en setDefaultAddress:', error);
+      console.error('❌ Error en setPrimaryAddress:', error);
     } finally {
-      setSettingDefaultId(null);
+      setSettingPrimaryId(null);
     }
   };
 
@@ -296,19 +151,6 @@ const AddressManager = () => {
     });
   };
 
-  // Navegar para editar dirección legacy (del perfil)
-  const handleEditLegacyAddress = (profileAddr) => {
-    navigation.navigate('AddressFormUberStyle', {
-      title: 'Editar Dirección Principal',
-      editMode: true,
-      fromProfile: true, // Usar el flujo del perfil para actualizar perfil
-      userId: user.id,
-      skipMapStep: true, // Sin mapa para direcciones de perfil
-      initialAddress: profileAddr.address, // Dirección completa para parsear
-      fromAddressManager: true, // Para saber que debe regresar aquí
-      isLegacyEdit: true, // Flag para indicar que es edición de dirección legacy
-    });
-  };
 
   // Navegar para agregar nueva dirección
   const handleAddNewAddress = () => {
@@ -331,36 +173,39 @@ const AddressManager = () => {
 
   // Renderizar item de dirección
   const renderAddressItem = ({ item, index }) => {
-    // IMPORTANTE: Las direcciones adicionales NUNCA son predeterminadas en el nuevo sistema
-    // Solo la dirección del perfil puede ser predeterminada
-    const isDefault = false; // Forzar a false siempre
+    const isPrimary = item.is_primary === true || item.is_primary === 1;
     const isDeleting = deletingId === item.id;
-    const isSettingDefault = settingDefaultId === item.id;
-    const addressTitle = `Dirección ${index + 1}`;
+    const isSettingPrimary = settingPrimaryId === item.id;
+    const addressTitle = isPrimary ? 'Dirección Principal' : `Dirección ${index + 1}`;
     
     return (
-      <View style={[styles.addressCard]}>
+      <View style={[styles.addressCard, isPrimary && styles.primaryAddressCard]}>
         {/* Header con icono y estado */}
         <View style={styles.addressHeader}>
           <View style={styles.addressIconContainer}>
             <Ionicons 
-              name="location-outline" 
+              name={isPrimary ? "home" : "location-outline"} 
               size={20} 
-              color="#8B5E3C" 
+              color={isPrimary ? "#33A744" : "#8B5E3C"} 
             />
+            {isPrimary && (
+              <Text style={styles.primaryBadge}>Principal</Text>
+            )}
           </View>
           
           <View style={styles.addressActions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => setDefaultAddress(item)}
-              disabled={isSettingDefault}>
-              {isSettingDefault ? (
-                <ActivityIndicator size="small" color="#8B5E3C" />
-              ) : (
-                <Ionicons name="home-outline" size={18} color="#8B5E3C" />
-              )}
-            </TouchableOpacity>
+            {!isPrimary && (
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setPrimaryAddress(item)}
+                disabled={isSettingPrimary}>
+                {isSettingPrimary ? (
+                  <ActivityIndicator size="small" color="#8B5E3C" />
+                ) : (
+                  <Ionicons name="home-outline" size={18} color="#8B5E3C" />
+                )}
+              </TouchableOpacity>
+            )}
             
             <TouchableOpacity
               style={styles.actionButton}
@@ -385,11 +230,16 @@ const AddressManager = () => {
         <View style={styles.addressContent}>
           <Text style={styles.addressTitle}>{addressTitle}</Text>
           <Text style={styles.addressText} numberOfLines={3}>
-            {item.address}
+            {newAddressService.formatAddressForDisplay(item)}
           </Text>
           {item.phone && (
             <Text style={styles.phoneText}>
               📱 {item.phone}
+            </Text>
+          )}
+          {item.label && (
+            <Text style={styles.labelText}>
+              🏷️ {item.label}
             </Text>
           )}
         </View>
@@ -399,7 +249,9 @@ const AddressManager = () => {
 
   // Cargar direcciones al montar componente
   useEffect(() => {
-    loadAllAddresses();
+    if (user?.id) {
+      fetchAddresses();
+    }
   }, [user?.id]);
 
   // Refrescar cuando la pantalla gane foco (por ejemplo, al regresar del formulario)
@@ -407,7 +259,7 @@ const AddressManager = () => {
     useCallback(() => {
       console.log('🔄 AddressManager - Pantalla ganó foco, recargando direcciones...');
       if (user?.id) {
-        loadAllAddresses();
+        fetchAddresses();
       }
     }, [user?.id])
   );
@@ -436,7 +288,7 @@ const AddressManager = () => {
             <ActivityIndicator size="large" color="#8B5E3C" />
             <Text style={styles.loadingText}>Cargando direcciones...</Text>
           </View>
-        ) : addresses.length === 0 && !profileAddress ? (
+        ) : addresses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="location-outline" size={80} color="#CCC" />
             <Text style={styles.emptyTitle}>No tienes direcciones guardadas</Text>
@@ -459,46 +311,12 @@ const AddressManager = () => {
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                onRefresh={() => loadAllAddresses(true)}
+                onRefresh={() => fetchAddresses(true)}
                 colors={['#8B5E3C']}
                 tintColor="#8B5E3C"
               />
             }
             contentContainerStyle={styles.listContainer}
-            ListHeaderComponent={profileAddress ? () => (
-              <View style={[styles.addressCard, styles.legacyAddressCard]}>
-                {/* Header con indicador legacy */}
-                <View style={styles.addressHeader}>
-                  <View style={styles.addressIconContainer}>
-                    <Ionicons name="home" size={20} color="#33A744" />
-                    <Text style={styles.defaultBadge}>Predeterminada</Text>
-                  </View>
-                  
-                  <View style={styles.addressActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleEditLegacyAddress(profileAddress)}>
-                      <Ionicons name="create-outline" size={18} color="#D27F27" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Contenido de la dirección */}
-                <View style={styles.addressContent}>
-                  <Text style={styles.addressText} numberOfLines={3}>
-                    {profileAddress.address}
-                  </Text>
-                  {profileAddress.phone && (
-                    <Text style={styles.phoneText}>
-                      📱 {profileAddress.phone}
-                    </Text>
-                  )}
-                  <Text style={styles.legacyNote}>
-                    🏠 Esta es tu dirección predeterminada. Para cambiarla, haz una dirección de abajo como predeterminada.
-                  </Text>
-                </View>
-              </View>
-            ) : null}
             ListFooterComponent={() => (
               <TouchableOpacity
                 style={styles.addAnotherButton}
@@ -615,7 +433,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  defaultAddressCard: {
+  primaryAddressCard: {
     borderColor: '#33A744',
     borderWidth: 2,
   },
@@ -630,7 +448,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  defaultBadge: {
+  primaryBadge: {
     marginLeft: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -668,6 +486,12 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     color: '#666',
+    marginBottom: 4,
+  },
+  labelText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#8B5E3C',
   },
   addAnotherButton: {
     flexDirection: 'row',
@@ -686,32 +510,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#8B5E3C',
-  },
-  
-  // ✅ ESTILOS PARA DIRECCIÓN LEGACY (PERFIL)
-  legacyAddressCard: {
-    borderColor: '#D27F27',
-    borderWidth: 2,
-    backgroundColor: 'rgba(210, 127, 39, 0.05)',
-    marginBottom: 16,
-  },
-  legacyBadge: {
-    marginLeft: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: '#D27F27',
-    color: '#FFF',
-    fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
-    borderRadius: 4,
-  },
-  legacyNote: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#D27F27',
-    fontStyle: 'italic',
-    marginTop: 8,
-    lineHeight: 18,
   },
 });
 
