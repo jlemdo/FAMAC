@@ -136,7 +136,7 @@ const getPlainPhone = (phone) => {
 };
 
 export default function Profile({ navigation, route }) {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUser } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
   const { updateProfile } = useProfile();
@@ -272,6 +272,9 @@ export default function Profile({ navigation, route }) {
   }, [orders, getSortedOrders, formatOrderDisplay]);
 
   const fetchUserDetails = useCallback(async () => {
+    if (!user?.id) return;
+    
+    console.log('🔄 Profile.jsx: Cargando datos del servidor para usuario:', user.id);
     setLoading(true);
     try {
       const res = await axios.get(
@@ -282,36 +285,27 @@ export default function Profile({ navigation, route }) {
       const dateValue = data.birthDate || data.birth_date || data.dob;
       const birthDate = parseFlexibleDate(dateValue);
       
-      
-      
       const profileData = {
         first_name: data.first_name || '',
         last_name:  data.last_name  || '',
-        email:      data.email      || '',
+        email:      data.email      || user.email || '',
         phone:      data.phone      || '',
         address:    data.address    || '',
         birthDate:  birthDate,
-        promotion_id: data.promotion_id, // Agregar promotion_id
-        promotional_discount: data.promotional_discount // Agregar promotional_discount
+        promotion_id: data.promotion_id,
+        promotional_discount: data.promotional_discount
       };
-      setProfile(profileData);
       
-      // Formatear teléfono para mostrar visualmente
+      console.log('📥 Profile.jsx: Datos cargados del servidor:', profileData);
+      setProfile(profileData);
       setFormattedPhone(formatMexicanPhone(profileData.phone));
       
-      // En la carga inicial está bien pasar todo porque son datos frescos del servidor
-      updateProfile(profileData); // Notificar al contexto
-    } catch {
-      showAlert({
-        type: 'error',
-        title: 'Error',
-        message: 'No se pudo cargar tu perfil.',
-        confirmText: 'Cerrar',
-      });
+    } catch (error) {
+      console.error('❌ Profile.jsx: Error cargando datos:', error);
     } finally {
       setLoading(false);
     }
-  }, [user.id, showAlert]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (user?.id) fetchUserDetails();
@@ -335,12 +329,6 @@ export default function Profile({ navigation, route }) {
         address: route.params.newAddress
       }));
       
-      // Actualizar contexto
-      updateProfile({
-        ...profile,
-        address: route.params.newAddress
-      });
-      
       // Mostrar alerta de éxito
       showAlert({
         type: 'success',
@@ -357,7 +345,6 @@ export default function Profile({ navigation, route }) {
   // Función para verificar datos faltantes
   const getMissingData = useCallback(() => {
     const missing = [];
-    
     
     if (!profile.phone || profile.phone.trim() === '') {
       missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
@@ -659,8 +646,6 @@ export default function Profile({ navigation, route }) {
         enableReinitialize
         validationSchema={ProfileSchema}
         onSubmit={async (values, { setSubmitting }) => {
-          // console.log('🐛 FORMIK DEBUG - Values recibidos:', values);
-          // console.log('🐛 FORMIK DEBUG - Profile actual:', profile);
           setLoading(true);
           try {
             // DOB Logic: Solo establecer UNA VEZ, nunca actualizar
@@ -684,9 +669,21 @@ export default function Profile({ navigation, route }) {
             if (!hasExistingBirthDate && values.birthDate) {
               const opts = {month: 'long', year: 'numeric'};
               dobFormatted = values.birthDate.toLocaleDateString('es-ES', opts);
-              console.log('🐛 Estableciendo DOB por primera vez:', dobFormatted);
             }
             
+            
+            // 🔧 CRÍTICO: Obtener datos actuales del servidor ANTES de actualizar
+            // para preservar campos que no estamos editando (como address)
+            let currentServerData = {};
+            try {
+              const currentRes = await axios.get(
+                `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
+              );
+              currentServerData = currentRes.data?.data?.[0] || {};
+              console.log('📥 DATOS ACTUALES DEL SERVIDOR:', currentServerData);
+            } catch (error) {
+              console.error('❌ Error obteniendo datos actuales:', error);
+            }
             
             // SIEMPRE enviar todos los campos para evitar que el backend borre datos
             const payload = {
@@ -694,8 +691,8 @@ export default function Profile({ navigation, route }) {
               first_name:  values.first_name,
               last_name:   values.last_name,
               phone:       getPlainPhone(values.phone), // Enviar solo números al backend
-              email:       profile.email,        // Preservar email
-              address:     profile.address,      // Preservar dirección actual
+              email:       currentServerData.email || profile.email,        // Preservar email del servidor
+              address:     currentServerData.address || profile.address || '',  // Preservar dirección del servidor
             };
             
             // Solo agregar/actualizar dob si es primera vez O preservar existente
@@ -710,59 +707,69 @@ export default function Profile({ navigation, route }) {
               const monthName = monthNames[profile.birthDate.getMonth()];
               const year = profile.birthDate.getFullYear();
               payload.dob = `${monthName} ${year}`;
+            } else if (currentServerData.dob || currentServerData.birthDate || currentServerData.birth_date) {
+              // Preservar fecha existente del servidor si existe
+              const existingDate = currentServerData.dob || currentServerData.birthDate || currentServerData.birth_date;
+              payload.dob = existingDate;
             }
             
-            // console.log('🐛 PAYLOAD FINAL enviado al backend:', payload);
             
             // Si hay DOB, intentar con endpoint diferente primero
             if (dobFormatted) {
-              // console.log('🐛 Intentando actualizar DOB con endpoint específico...');
               try {
                 const dobPayload = {
                   userid: user.id,
                   dob: dobFormatted
                 };
+                console.log('📅 ENVIANDO PAYLOAD DOB:', dobPayload);
                 const dobRes = await axios.post(
                   'https://occr.pixelcrafters.digital/api/updatedob', // Intentar endpoint específico para DOB
                   dobPayload
                 );
-                // console.log('🐛 DOB UPDATE RESPONSE:', dobRes.data);
+                console.log('✅ DOB RESPONSE:', dobRes.status);
               } catch (dobError) {
-                // console.log('🐛 DOB endpoint falló, intentando con updateuserprofile...', dobError.response?.data);
+                console.error('❌ DOB ERROR:', dobError);
               }
             }
             
+            console.log('📝 ENVIANDO PAYLOAD PRINCIPAL:', payload);
             const res = await axios.post(
               'https://occr.pixelcrafters.digital/api/updateuserprofile',
               payload
             );
-            // console.log('🐛 BACKEND RESPONSE:', res.data);
+            console.log('✅ PRINCIPAL RESPONSE:', res.status);
             if (res.status === 200) {
-              // Solo actualizar los campos del formulario, manteniendo address intacto
+              // 🔧 SOLUCIÓN AL BUG: Actualizar estados en orden correcto
               const updatedProfile = { 
-                ...profile, 
-                ...values,
-                address: profile.address // Preservar la dirección existente
-              };
-              setProfile(updatedProfile);
-              // Solo actualizar los campos específicos en el contexto
-              updateProfile({
                 ...profile, 
                 first_name: values.first_name,
                 last_name: values.last_name,
-                phone: values.phone,
-                birthDate: values.birthDate,
-                // Mantener todos los otros campos sin cambios
-                address: profile.address,
-                email: profile.email,
-                promotion_id: profile.promotion_id,
-                promotional_discount: profile.promotional_discount
+                phone: getPlainPhone(values.phone),
+                birthDate: values.birthDate
+              };
+              
+              // 1. Actualizar ProfileContext primero (evita conflicto con fetchUserDetails)
+              await updateProfile(updatedProfile);
+              
+              // 2. Actualizar estado local
+              setProfile(updatedProfile);
+              setFormattedPhone(formatMexicanPhone(getPlainPhone(values.phone)));
+              
+              // 3. Actualizar AuthContext al final (sin disparar re-fetch)
+              await updateUser({
+                first_name: values.first_name,
+                last_name: values.last_name,
+                phone: getPlainPhone(values.phone),
               });
+              
               showAlert({
                 type: 'success',
                 title: '✅ ¡Datos personales actualizados!',
                 message: 'Tu información personal se guardó correctamente.',
                 confirmText: 'Perfecto',
+                onConfirm: () => {
+                  setIsEditingProfile(false);
+                }
               });
             }
           } catch {
@@ -1081,7 +1088,7 @@ export default function Profile({ navigation, route }) {
                 style={styles.button}
                 onPress={() => {
                   handleSubmit();
-                  setIsEditingProfile(false); // Salir de modo edición después de guardar
+                  // NO cerrar inmediatamente - esperar a que termine el submit exitoso
                 }}
                 disabled={isSubmitting || loading}
               >

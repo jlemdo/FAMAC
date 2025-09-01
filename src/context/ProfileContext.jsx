@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper function para parsear fechas (igual que en Profile.jsx)
 const parseFlexibleDate = (dateValue) => {
@@ -68,6 +69,8 @@ const ProfileContext = createContext();
 
 export const ProfileProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
+  
+  // Estado inicial con persistencia
   const [profile, setProfile] = useState({
     first_name: '',
     last_name: '',
@@ -78,6 +81,45 @@ export const ProfileProvider = ({ children }) => {
   });
   const [missingData, setMissingData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  
+  // DEBUG: Monitor cuando profile cambia
+  useEffect(() => {
+  }, [profile]);
+  
+  // CARGAR estado persistido al inicializar (SOLO UNA VEZ)
+  useEffect(() => {
+    const loadPersistedProfile = async () => {
+      if (initialized || !user?.id) return;
+      
+      try {
+        const persistedProfile = await AsyncStorage.getItem(`profile_${user.id}`);
+        if (persistedProfile) {
+          const parsedProfile = JSON.parse(persistedProfile);
+          setProfile(parsedProfile);
+        }
+      } catch (error) {
+      } finally {
+        setInitialized(true);
+      }
+    };
+    
+    loadPersistedProfile();
+  }, [user?.id, initialized]);
+  
+  // GUARDAR en AsyncStorage cada vez que cambie el profile
+  useEffect(() => {
+    if (!initialized || !user?.id) return;
+    
+    const saveProfile = async () => {
+      try {
+        await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(profile));
+      } catch (error) {
+      }
+    };
+    
+    saveProfile();
+  }, [profile, user?.id, initialized]);
 
   // Función para verificar datos faltantes (igual que en Profile.jsx)
   const getMissingData = useCallback((profileData) => {
@@ -139,24 +181,45 @@ export const ProfileProvider = ({ children }) => {
     }
   }, [user?.id, user?.usertype, getMissingData]);
 
-  // Cargar datos cuando cambie el usuario
+  // 🔧 SOLUCIÓN AL BUG: Prevenir fetch automático que sobrescribe datos
+  // Solo cargar datos cuando realmente cambia el usuario ID, no en updates de perfil
+  const [lastUserId, setLastUserId] = useState(null);
+  
   useEffect(() => {
-    fetchUserDetails();
-  }, [user?.id, fetchUserDetails]);
+    // Solo hacer fetch si es un usuario completamente diferente
+    if (user?.id && user.id !== lastUserId) {
+      console.log('🔄 ProfileContext: Cargando datos para nuevo usuario:', user.id);
+      fetchUserDetails();
+      setLastUserId(user.id);
+    }
+  }, [user?.id]); // Mantener dependencia simple
 
   // Función para actualizar los datos (llamada desde Profile.jsx)
-  const updateProfile = useCallback((newProfileData) => {
+  const updateProfile = useCallback(async (newProfileData) => {
+    console.log('🔧 ProfileContext: Actualizando perfil con:', newProfileData);
+    
     // Hacer merge con los datos existentes para preservar campos no enviados
-    setProfile(prevProfile => ({
-      ...prevProfile, // Mantener datos previos
+    const updatedProfile = {
+      ...profile, // Mantener datos previos
       ...newProfileData // Sobrescribir solo los campos enviados
-    }));
+    };
+    
+    setProfile(updatedProfile);
+    
+    // PERSISTIR INMEDIATAMENTE en AsyncStorage
+    if (user?.id) {
+      try {
+        await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(updatedProfile));
+        console.log('💾 ProfileContext: Datos persistidos correctamente');
+      } catch (error) {
+        console.error('❌ ProfileContext: Error persistiendo datos:', error);
+      }
+    }
     
     // Calcular missing data con el perfil combinado
-    const mergedProfile = { ...profile, ...newProfileData };
-    const missing = getMissingData(mergedProfile);
+    const missing = getMissingData(updatedProfile);
     setMissingData(missing);
-  }, [getMissingData, profile]);
+  }, [getMissingData, profile, user?.id]);
 
   const value = {
     profile,
