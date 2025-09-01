@@ -31,7 +31,7 @@ import {
   registerNavigationCallback, 
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
-import { addressService } from '../services/addressService';
+import { newAddressService } from '../services/newAddressService';
 import { AuthContext } from '../context/AuthContext';
 // Debugging removido para producción
 
@@ -813,7 +813,7 @@ const AddressFormUberStyle = () => {
         };
 
         // Validar datos antes de enviar
-        const validation = addressService.validateAddressData(addressData);
+        const validation = newAddressService.validateAddressData(addressData);
         if (!validation.isValid) {
           Alert.alert('Error', validation.errors.join('\n'));
           return;
@@ -822,7 +822,7 @@ const AddressFormUberStyle = () => {
         let response;
         if (route.params?.editMode && route.params?.addressData?.id) {
           // Actualizar dirección existente
-          response = await addressService.updateAddress({
+          response = await newAddressService.updateUserAddress({
             ...addressData,
             addressId: route.params.addressData.id
           });
@@ -837,7 +837,7 @@ const AddressFormUberStyle = () => {
           const hasProfileAddress = currentUserData?.address && currentUserData.address.trim() !== '';
           
           // Obtener direcciones adicionales del usuario
-          const existingAddresses = await addressService.getAllAddresses(user.id);
+          const existingAddresses = await newAddressService.getUserAddresses(user.id);
           const hasAdditionalAddresses = existingAddresses && existingAddresses.length > 0;
           
           console.log('📊 Estado de direcciones:', {
@@ -870,7 +870,7 @@ const AddressFormUberStyle = () => {
           } else {
             // CASO: Dirección adicional normal
             console.log('📍 Agregando como dirección adicional...');
-            response = await addressService.addAddress({
+            response = await newAddressService.addUserAddress({
               ...addressData,
               isDefault: false // Nunca predeterminada para direcciones adicionales
             });

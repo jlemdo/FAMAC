@@ -83,7 +83,12 @@ export function AuthProvider({ children }) {
           email: userData.email,
           first_name: userData.first_name,
           last_name: userData.last_name,
-          address: userData.address
+          address: userData.address,
+          phone: userData.phone,
+          is_active: userData.is_active,
+          email_verified_at: userData.email_verified_at,
+          created_at: userData.created_at,
+          updated_at: userData.updated_at
         };
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUserData));
         await AsyncStorage.setItem('persistSession', 'true'); // Activar persistencia permanente
@@ -167,7 +172,12 @@ export function AuthProvider({ children }) {
           email: updatedUser.email,
           first_name: updatedUser.first_name,
           last_name: updatedUser.last_name,
-          address: updatedUser.address
+          address: updatedUser.address,
+          phone: updatedUser.phone,
+          is_active: updatedUser.is_active,
+          email_verified_at: updatedUser.email_verified_at,
+          created_at: updatedUser.created_at,
+          updated_at: updatedUser.updated_at
         };
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUpdatedUser));
       } catch (err) {
