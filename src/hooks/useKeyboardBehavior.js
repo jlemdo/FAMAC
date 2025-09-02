@@ -42,7 +42,6 @@ export const useKeyboardBehavior = () => {
         inputRef.measureInWindow((x, y, width, height) => {
           // 🛡️ VALIDACIÓN: Verificar que las coordenadas son válidas
           if (typeof y !== 'number' || y < 0 || isNaN(y)) {
-            console.log('⚠️ KEYBOARD BEHAVIOR: Coordenadas inválidas, ignorando scroll');
             return;
           }
           
@@ -68,7 +67,6 @@ export const useKeyboardBehavior = () => {
           }
         });
       } catch (error) {
-        console.log('⚠️ KEYBOARD BEHAVIOR: Error en measureInWindow, ignorando:', error.message);
       }
     }, Platform.OS === 'ios' ? 400 : 150); // iOS necesita más tiempo para estabilizarse
     

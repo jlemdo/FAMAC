@@ -267,6 +267,19 @@ const OrderDetails = () => {
               </View>
             )}
 
+            {/* 🔪 CIRUGÍA: Mostrar dirección de entrega */}
+            {order?.delivery_address && (
+              <View style={styles.deliveryAddressContainer}>
+                <View style={styles.deliveryAddressHeader}>
+                  <Ionicons name="location-outline" size={20} color="#D27F27" />
+                  <Text style={styles.deliveryAddressTitle}>Dirección de entrega</Text>
+                </View>
+                <Text style={styles.deliveryAddressText}>
+                  📍 {order.delivery_address}
+                </Text>
+              </View>
+            )}
+
             {/* Estado del repartidor y mensaje informativo */}
             {/* <View style={styles.driverStatusContainer}>
               {order.driver ? (
@@ -796,6 +809,34 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#D27F27',
     fontWeight: '600',
+  },
+  
+  // 🔪 CIRUGÍA: Estilos para dirección de entrega
+  deliveryAddressContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.2)',
+  },
+  deliveryAddressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  deliveryAddressTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#D27F27',
+    marginLeft: 8,
+  },
+  deliveryAddressText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    paddingLeft: 28,
+    lineHeight: 20,
   },
   driverStatusContainer: {
     backgroundColor: '#FFF',

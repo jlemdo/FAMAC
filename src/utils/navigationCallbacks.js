@@ -17,7 +17,6 @@ export const generateCallbackId = () => {
  */
 export const registerNavigationCallback = (id, callback) => {
   if (typeof callback !== 'function') {
-    console.warn('registerNavigationCallback: callback debe ser una función');
     return;
   }
   

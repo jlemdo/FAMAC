@@ -160,6 +160,7 @@ export function AuthProvider({ children }) {
 
   // Función para actualizar datos del usuario actual (especialmente email de Guest)
   const updateUser = async (updatedData) => {
+    
     const updatedUser = { ...user, ...updatedData };
     
     if (AsyncStorage) {

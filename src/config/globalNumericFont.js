@@ -82,5 +82,4 @@ export const initializeGlobalNumericFont = () => {
 export const disableGlobalNumericFont = () => {
   // Esto requeriría guardar la referencia original, 
   // por ahora solo mostrar advertencia
-  console.warn('⚠️ Para deshabilitar, reinicia la app');
 };

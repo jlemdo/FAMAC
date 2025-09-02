@@ -168,7 +168,6 @@ const AddressMap = () => {
           }
         }
       } catch (error) {
-        console.warn('Reverse geocoding failed:', error);
       }
       
       // CRITICAL: Solo devolver coordenadas y preservar dirección + referencias del usuario

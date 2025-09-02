@@ -80,11 +80,9 @@ export function CartProvider({ children }) {
         
         // Si hay un usuario previo diferente al actual, limpiar carrito
         if (currentUserId !== null && currentUserId !== userId) {
-            // console.log('🧹 CARTCONTEXT: Limpiando carrito por cambio de usuario');
             setCart([]);
             // Ejecutar callback para limpiar información adicional cuando cambia usuario
             if (onCartClearCallback) {
-                // console.log('🔥 CARTCONTEXT: EJECUTANDO CALLBACK DE LIMPIEZA');
                 // console.trace('Stack trace del callback:');
                 onCartClearCallback();
             }
@@ -129,7 +127,6 @@ export function CartProvider({ children }) {
 
     // Función para registrar callback de limpieza - memorizada para evitar bucles infinitos
     const setCartClearCallback = useCallback((callback) => {
-        // console.log('📝 CARTCONTEXT: Registrando nuevo callback:', !!callback);
         if (callback) {
             // console.trace('Stack trace del registro de callback:');
         }

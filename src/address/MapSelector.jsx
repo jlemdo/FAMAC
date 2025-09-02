@@ -99,7 +99,6 @@ const MapSelector = () => {
         callbackId: callbackId, // ✅ SOLUCIONADO: Pasar ID en lugar de función
       });
     } catch (error) {
-      console.error('Error preparando mapa:', error);
       showAlert({
         type: 'error',
         title: 'Error',

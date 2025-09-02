@@ -113,7 +113,6 @@ export default function GuestCheckout() {
         // NUEVO: Manejar coordenadas seleccionadas del mapa
         if (route.params?.selectedCoordinates) {
           setCoordinates(route.params.selectedCoordinates);
-          // console.log('🗺️ Coordenadas recibidas en GuestCheckout:', route.params.selectedCoordinates);
         }
         
         // ✅ SCROLL AUTOMÁTICO al botón "Completar Pedido" cuando regresa con dirección
@@ -207,13 +206,7 @@ export default function GuestCheckout() {
   // Completar checkout
   const handleComplete = async () => {
     // Debug: verificar qué valores tenemos
-    // console.log('=== DEBUG GUEST CHECKOUT ===');
-    // console.log('Email:', email);
-    // console.log('Address:', address);
     // console.log('Email trimmed:', email?.trim());
-    // console.log('Address trimmed:', address?.trim());
-    // console.log('Email valid?', !!email?.trim());
-    // console.log('Address valid?', !!address?.trim());
     
     if (!email?.trim() || !address?.trim()) {
       const missingFields = [];
@@ -236,8 +229,6 @@ export default function GuestCheckout() {
       // El email se guarda únicamente cuando el pago se completa correctamente
       
       // Navegar de regreso con los datos
-      // console.log('=== NAVEGANDO DE VUELTA AL CART ===');
-      // console.log('returnToCart:', returnToCart);
       // console.log('Datos preservados a enviar:', {
         // email: email.trim(),
         // address: address.trim(),
@@ -266,9 +257,7 @@ export default function GuestCheckout() {
             }
           }
         });
-        // console.log('Navegación a MainTabs enviada');
       } else {
-        // console.log('Haciendo goBack()');
         navigation.goBack();
       }
       

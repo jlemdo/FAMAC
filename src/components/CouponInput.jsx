@@ -86,7 +86,6 @@ const CouponInput = ({
       }
       
     } catch (error) {
-      console.error('Error validating coupon:', error);
       setError('Error de conexión al validar cupón');
     } finally {
       setIsLoading(false);

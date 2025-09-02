@@ -25,7 +25,6 @@ export function OrderProvider({ children }) {
 
         // ✅ Solo bloquear si no hay usuario o si es Guest sin permisos
         if (!user) {
-            console.log('❌ No user - returning empty');
             setOrders([]);
             setOrderCount(0);
             return;
@@ -33,7 +32,6 @@ export function OrderProvider({ children }) {
 
         // ✅ Bloquear Guest SOLO si allowGuestOrders está false
         if (user.usertype === 'Guest' && !allowGuestOrders) {
-            console.log('❌ Guest without permissions - returning empty');
             setOrders([]);
             setOrderCount(0);
             return;
@@ -50,7 +48,6 @@ export function OrderProvider({ children }) {
                 url = `https://occr.pixelcrafters.digital/api/orderhistory/${user.id}`;
             }
 
-            console.log('🌐 Making request to:', url);
             const response = await axios.get(url);
             const ordersData = response.data.orders || [];
             

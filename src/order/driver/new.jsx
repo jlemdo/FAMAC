@@ -116,11 +116,9 @@ const OrderDetails = () => {
         },
         (error) => {
           // Error crítico para drivers
-          console.warn('Driver location error:', error);
         }
       );
     } catch (error) {
-      console.warn('Failed to get driver location:', error);
     } finally {
       setLoadingLocation(false);
     }

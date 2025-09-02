@@ -57,7 +57,6 @@ export const geocodeAddress = async (address, options = {}) => {
 
   // Validación básica de entrada
   if (!address || typeof address !== 'string' || address.trim().length < 10) {
-    console.warn('⚠️ GEOCODING: Dirección muy corta o inválida:', address);
     return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
   }
 
@@ -90,7 +89,6 @@ export const geocodeAddress = async (address, options = {}) => {
     );
 
     if (response.data.status !== 'OK' || !response.data.results.length) {
-      console.warn('⚠️ GEOCODING: Sin resultados para:', address);
       return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
     }
 
@@ -99,13 +97,11 @@ export const geocodeAddress = async (address, options = {}) => {
     
     // Validar ubicación si está habilitada la validación estricta
     if (strictValidation && !GEOCODING_CONFIG.isValidLocation(result.address_components)) {
-      console.warn('⚠️ GEOCODING: Ubicación fuera de CDMX/EdoMex');
       return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
     }
     
     // Validar precisión si se requiere
     if (requireHighPrecision && !GEOCODING_CONFIG.isHighPrecision(result.geometry.location_type)) {
-      console.warn('⚠️ GEOCODING: Precisión insuficiente');
       return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
     }
     
@@ -116,15 +112,12 @@ export const geocodeAddress = async (address, options = {}) => {
     
     // Validar bounds finales
     if (!GEOCODING_CONFIG.isWithinBounds(coordinates.latitude, coordinates.longitude)) {
-      console.warn('⚠️ GEOCODING: Coordenadas fuera de bounds');
       return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
     }
     
-    console.log('✅ GEOCODING EXITOSO:', coordinates);
     return coordinates;
 
   } catch (error) {
-    console.warn('❌ GEOCODING ERROR:', error.message);
     return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
   }
 };

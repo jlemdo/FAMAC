@@ -39,14 +39,11 @@ const AddressManager = () => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       
-      console.log('🔍 AddressManager - Obteniendo direcciones de usuario:', user.id);
       const userAddresses = await newAddressService.getUserAddresses(user.id);
-      console.log('📦 AddressManager - Direcciones recibidas:', userAddresses.length, 'direcciones');
       
       setAddresses(userAddresses);
       
     } catch (error) {
-      console.error('❌ Error obteniendo direcciones:', error);
       showAlert({
         type: 'error',
         title: 'Error',
@@ -87,7 +84,6 @@ const AddressManager = () => {
       // Recargar lista
       fetchAddresses();
     } catch (error) {
-      console.error('❌ Error eliminando dirección:', error);
       showAlert({
         type: 'error',
         title: 'Error',
@@ -111,7 +107,6 @@ const AddressManager = () => {
         confirmText: 'Sí, hacer principal',
         onConfirm: async () => {
           try {
-            console.log('🏠 Estableciendo dirección como primaria:', address.id);
             
             await newAddressService.setPrimaryUserAddress(address.id);
             
@@ -124,7 +119,6 @@ const AddressManager = () => {
             // Recargar lista para mostrar cambios
             fetchAddresses();
           } catch (error) {
-            console.error('❌ Error estableciendo dirección principal:', error);
             showAlert({
               type: 'error',
               title: 'Error',
@@ -134,7 +128,6 @@ const AddressManager = () => {
         }
       });
     } catch (error) {
-      console.error('❌ Error en setPrimaryAddress:', error);
     } finally {
       setSettingPrimaryId(null);
     }
@@ -257,7 +250,6 @@ const AddressManager = () => {
   // Refrescar cuando la pantalla gane foco (por ejemplo, al regresar del formulario)
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 AddressManager - Pantalla ganó foco, recargando direcciones...');
       if (user?.id) {
         fetchAddresses();
       }

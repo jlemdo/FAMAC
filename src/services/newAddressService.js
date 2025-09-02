@@ -16,20 +16,16 @@ export const newAddressService = {
    */
   getUserAddresses: async (userId) => {
     try {
-      console.log('📍 Obteniendo direcciones de usuario:', userId);
       
       const response = await axios.get(`${BASE_URL}/user/${userId}/addresses`);
       
-      console.log('✅ Direcciones de usuario obtenidas:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data.addresses || [];
       } else {
-        console.warn('⚠️ Respuesta sin direcciones');
         return [];
       }
     } catch (error) {
-      console.error('❌ Error obteniendo direcciones de usuario:', error);
       if (error.response?.status === 404) {
         return []; // Sin direcciones no es error
       }
@@ -51,7 +47,6 @@ export const newAddressService = {
    */
   addUserAddress: async (addressData) => {
     try {
-      console.log('➕ Agregando dirección de usuario:', addressData);
       
       const payload = {
         user_id: addressData.userId,
@@ -65,7 +60,6 @@ export const newAddressService = {
       
       const response = await axios.post(`${BASE_URL}/user/addresses`, payload);
       
-      console.log('✅ Dirección de usuario agregada:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data;
@@ -73,7 +67,6 @@ export const newAddressService = {
         throw new Error(response.data?.message || 'Error agregando dirección');
       }
     } catch (error) {
-      console.error('❌ Error agregando dirección de usuario:', error);
       
       if (error.response?.status === 400) {
         throw new Error(error.response.data?.message || 'Datos inválidos');
@@ -96,7 +89,6 @@ export const newAddressService = {
    */
   updateUserAddress: async (addressData) => {
     try {
-      console.log('✏️ Actualizando dirección de usuario:', addressData);
       
       const payload = {
         address: addressData.address,
@@ -109,7 +101,6 @@ export const newAddressService = {
       
       const response = await axios.put(`${BASE_URL}/user/addresses/${addressData.addressId}`, payload);
       
-      console.log('✅ Dirección de usuario actualizada:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data;
@@ -117,7 +108,6 @@ export const newAddressService = {
         throw new Error(response.data?.message || 'Error actualizando dirección');
       }
     } catch (error) {
-      console.error('❌ Error actualizando dirección de usuario:', error);
       throw new Error('No se pudo actualizar la dirección');
     }
   },
@@ -129,11 +119,9 @@ export const newAddressService = {
    */
   deleteUserAddress: async (addressId) => {
     try {
-      console.log('🗑️ Eliminando dirección de usuario ID:', addressId);
       
       const response = await axios.delete(`${BASE_URL}/user/addresses/${addressId}`);
       
-      console.log('✅ Dirección de usuario eliminada:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data;
@@ -141,7 +129,6 @@ export const newAddressService = {
         throw new Error(response.data?.message || 'Error eliminando dirección');
       }
     } catch (error) {
-      console.error('❌ Error eliminando dirección de usuario:', error);
       throw new Error('No se pudo eliminar la dirección');
     }
   },
@@ -153,11 +140,9 @@ export const newAddressService = {
    */
   setPrimaryUserAddress: async (addressId) => {
     try {
-      console.log('🏠 Estableciendo dirección primaria ID:', addressId);
       
       const response = await axios.post(`${BASE_URL}/user/addresses/${addressId}/primary`);
       
-      console.log('✅ Dirección establecida como primaria:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data;
@@ -165,7 +150,6 @@ export const newAddressService = {
         throw new Error(response.data?.message || 'Error estableciendo como primaria');
       }
     } catch (error) {
-      console.error('❌ Error estableciendo dirección primaria:', error);
       throw new Error('No se pudo establecer como primaria');
     }
   },
@@ -186,7 +170,6 @@ export const newAddressService = {
    */
   saveGuestAddress: async (addressData) => {
     try {
-      console.log('💾 Guardando dirección de guest:', addressData.guestEmail);
       
       const payload = {
         guest_email: addressData.guestEmail,
@@ -198,7 +181,6 @@ export const newAddressService = {
       
       const response = await axios.post(`${BASE_URL}/guest/address`, payload);
       
-      console.log('✅ Dirección de guest guardada:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data;
@@ -206,7 +188,6 @@ export const newAddressService = {
         throw new Error(response.data?.message || 'Error guardando dirección guest');
       }
     } catch (error) {
-      console.error('❌ Error guardando dirección de guest:', error);
       throw new Error('No se pudo guardar la dirección');
     }
   },
@@ -218,24 +199,19 @@ export const newAddressService = {
    */
   getGuestAddress: async (guestEmail) => {
     try {
-      console.log('📍 Obteniendo dirección de guest:', guestEmail);
       
       const encodedEmail = encodeURIComponent(guestEmail);
       const response = await axios.get(`${BASE_URL}/guest/address/${encodedEmail}`);
       
-      console.log('✅ Dirección de guest obtenida:', response.data);
       
       if (response.data?.status === 'success') {
         return response.data.address;
       } else if (response.data?.status === 'not_found') {
-        console.log('📭 Guest no tiene dirección guardada');
         return null;
       } else {
-        console.warn('⚠️ Respuesta inesperada:', response.data);
         return null;
       }
     } catch (error) {
-      console.error('❌ Error obteniendo dirección de guest:', error);
       if (error.response?.status === 404) {
         return null; // Sin dirección no es error
       }
@@ -324,11 +300,9 @@ export const newAddressService = {
       
       const primaryAddress = addresses.find(addr => addr.is_primary);
       
-      console.log('🏠 Dirección primaria:', primaryAddress);
       
       return primaryAddress || null;
     } catch (error) {
-      console.error('❌ Error obteniendo dirección primaria:', error);
       return null;
     }
   },
@@ -343,7 +317,6 @@ export const newAddressService = {
       const addresses = await newAddressService.getUserAddresses(userId);
       return addresses.length;
     } catch (error) {
-      console.error('❌ Error contando direcciones:', error);
       return 0;
     }
   }

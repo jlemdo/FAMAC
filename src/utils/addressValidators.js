@@ -45,7 +45,6 @@ export const validatePostalCode = (postalCode, city = null) => {
     const result = validateCP(postalCode);
     return result.isValid;
   } catch (error) {
-    console.warn('Error validating postal code:', error);
     // Fallback al método anterior si hay error
     if (!postalCode || postalCode.length !== 5) return false;
     const cp = postalCode.trim();

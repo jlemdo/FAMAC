@@ -12,20 +12,15 @@ export const addressService = {
    */
   getAllAddresses: async (userId) => {
     try {
-      console.log('📍 Obteniendo direcciones para usuario:', userId);
       
       const response = await axios.get(`${BASE_URL}/fetch_address/${userId}`);
       
-      console.log('✅ Direcciones obtenidas:', response.data);
       console.log('🔍 Tipo de respuesta:', typeof response.data, 'Array?', Array.isArray(response.data));
-      console.log('🔍 Status:', response.data?.status, 'Data disponible:', !!response.data?.data);
       
       // Manejar diferentes formatos de respuesta del backend
       if (response.data && Array.isArray(response.data)) {
-        console.log('📋 Usando formato: Array directo');
         return response.data;
       } else if (response.data?.addresses && Array.isArray(response.data.addresses)) {
-        console.log('📋 Usando formato: response.data.addresses');
         return response.data.addresses;
       } else if (response.data?.status === 'success' && response.data?.data) {
         console.log('📋 Usando formato: {status: success, data: Array}');
@@ -34,11 +29,9 @@ export const addressService = {
         console.log('📋 Usando formato: {success: true, data: Array}');
         return Array.isArray(response.data.data) ? response.data.data : [];
       } else {
-        console.log('⚠️ Formato de respuesta no reconocido, retornando array vacío');
         return [];
       }
     } catch (error) {
-      console.error('❌ Error obteniendo direcciones:', error);
       throw new Error('No se pudieron cargar las direcciones');
     }
   },
@@ -50,15 +43,12 @@ export const addressService = {
    */
   getAddressById: async (addressId) => {
     try {
-      console.log('📍 Obteniendo dirección ID:', addressId);
       
       const response = await axios.get(`${BASE_URL}/fetch_address_single_edit/${addressId}`);
       
-      console.log('✅ Dirección obtenida:', response.data);
       
       return response.data;
     } catch (error) {
-      console.error('❌ Error obteniendo dirección:', error);
       throw new Error('No se pudo cargar la dirección');
     }
   },
@@ -74,7 +64,6 @@ export const addressService = {
    */
   addAddress: async (addressData) => {
     try {
-      console.log('➕ Agregando nueva dirección:', addressData);
       
       const payload = {
         userid: addressData.userId.toString(),
@@ -85,11 +74,9 @@ export const addressService = {
       
       const response = await axios.post(`${BASE_URL}/addaddress`, payload);
       
-      console.log('✅ Dirección agregada:', response.data);
       
       return response.data;
     } catch (error) {
-      console.error('❌ Error agregando dirección:', error);
       throw new Error('No se pudo agregar la dirección');
     }
   },
@@ -106,7 +93,6 @@ export const addressService = {
    */
   updateAddress: async (addressData) => {
     try {
-      console.log('✏️ Actualizando dirección:', addressData);
       
       const payload = {
         userid: addressData.userId.toString(),
@@ -118,11 +104,9 @@ export const addressService = {
       
       const response = await axios.post(`${BASE_URL}/updateaddress`, payload);
       
-      console.log('✅ Dirección actualizada:', response.data);
       
       return response.data;
     } catch (error) {
-      console.error('❌ Error actualizando dirección:', error);
       throw new Error('No se pudo actualizar la dirección');
     }
   },
@@ -134,7 +118,6 @@ export const addressService = {
    */
   deleteAddress: async (addressId) => {
     try {
-      console.log('🗑️ Eliminando dirección ID:', addressId);
       
       const payload = {
         id: addressId.toString()
@@ -142,11 +125,9 @@ export const addressService = {
       
       const response = await axios.post(`${BASE_URL}/deleteaddress`, payload);
       
-      console.log('✅ Dirección eliminada:', response.data);
       
       return response.data;
     } catch (error) {
-      console.error('❌ Error eliminando dirección:', error);
       throw new Error('No se pudo eliminar la dirección');
     }
   },
@@ -162,7 +143,6 @@ export const addressService = {
    */
   setDefaultAddress: async (addressData) => {
     try {
-      console.log('🏠 Estableciendo dirección predeterminada:', addressData.addressId);
       
       const payload = {
         userid: addressData.userId.toString(),
@@ -174,11 +154,9 @@ export const addressService = {
       
       const response = await axios.post(`${BASE_URL}/updateaddress`, payload);
       
-      console.log('✅ Dirección predeterminada establecida:', response.data);
       
       return response.data;
     } catch (error) {
-      console.error('❌ Error estableciendo predeterminada:', error);
       throw new Error('No se pudo establecer como predeterminada');
     }
   },
@@ -196,11 +174,9 @@ export const addressService = {
         addr.is_default === "1" || addr.is_default === 1
       );
       
-      console.log('🏠 Dirección predeterminada:', defaultAddress);
       
       return defaultAddress || null;
     } catch (error) {
-      console.error('❌ Error obteniendo dirección predeterminada:', error);
       return null;
     }
   },

@@ -98,7 +98,6 @@ export const requestLocationPermission = async (userType = 'user', showAlert = t
 
     return granted;
   } catch (error) {
-    console.warn('Error requesting location permission:', error);
     return false;
   }
 };
@@ -139,7 +138,6 @@ export const getCurrentLocation = async (userType = 'user', onSuccess = null, on
     return coordinates;
     
   } catch (error) {
-    console.warn('Error getting current location:', error);
     if (onError) onError(error);
     return null;
   }
@@ -171,7 +169,6 @@ export const startLocationTracking = async (onLocationUpdate, onError = null) =>
       onLocationUpdate(coordinates);
     },
     error => {
-      console.warn('Location tracking error:', error);
       if (onError) onError(error);
     },
     {
