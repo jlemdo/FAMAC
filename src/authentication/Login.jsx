@@ -34,7 +34,6 @@ if (Platform.OS === 'ios') {
   try {
     appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
   } catch (error) {
-    console.log('Apple Auth no disponible:', error.message);
   }
 }
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
@@ -74,7 +73,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       try {
         await NotificationService.requestPermission();
       } catch (error) {
-        console.log('⚠️ Error solicitando permisos de notificaciones en Login:', error);
       }
     };
 
@@ -117,7 +115,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     setAppleLoading(true);
     
     try {
-      console.log('🍎 Iniciando Apple Sign-In...');
       
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
@@ -132,7 +129,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
       
-      console.log('🍎 Estado credencial:', credentialState);
 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
@@ -144,17 +140,23 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
-        console.log('🍎 Enviando al backend:', appleUserId);
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
         
-        console.log('🍎 Backend respondió exitosamente:', data.message);
 
         // Login directo sin alerts molestos
         await login(data.user);
         
-        // Inicializar notificaciones para el usuario logueado
-        await NotificationService.initialize(data.user.id);
+        // 🔧 SOLUCIÓN iOS CRASH: Inicializar NotificationService de forma diferida
+        // Esto evita el crash en useKeyboardBehavior.js mientras mantiene FCM funcionando
+        setTimeout(async () => {
+          try {
+            await NotificationService.initialize(data.user.id);
+            console.log('🍎 NotificationService inicializado exitosamente (diferido)');
+          } catch (error) {
+            console.log('🍎 NotificationService falló (no crítico):', error.message);
+          }
+        }, 3000); // 3 segundos para que iOS se estabilice post-login
         
         // Welcome message simple
         const userName = data.user.first_name || fullName?.givenName || 'Usuario';
@@ -168,7 +170,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         }, 500);
         
       } else {
-        console.error('🍎 Estado no autorizado:', credentialState);
         showAlert({
           type: 'error',
           title: 'Error de autenticación',
@@ -177,11 +178,9 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         });
       }
     } catch (error) {
-      console.error('🍎 Error Apple Sign-In:', error);
       
       if (appleAuth && error.code === appleAuth.Error.CANCELED) {
         // Usuario canceló - No mostrar alert molesto
-        console.log('🍎 Usuario canceló el login');
       } else {
         showAlert({
           type: 'error',

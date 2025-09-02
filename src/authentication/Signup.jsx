@@ -39,7 +39,6 @@ if (Platform.OS === 'ios') {
   try {
     appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
   } catch (error) {
-    console.log('Apple Auth no disponible:', error.message);
   }
 }
 
@@ -269,7 +268,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     setAppleLoading(true);
     
     try {
-      console.log('🍎 Iniciando Apple Sign-Up...');
       
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
@@ -284,7 +282,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
       
-      console.log('🍎 Estado credencial:', credentialState);
 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
@@ -296,17 +293,23 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
-        console.log('🍎 Enviando al backend:', appleUserId);
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
         
-        console.log('🍎 Backend respondió exitosamente:', data.message);
 
         // Login directo sin alerts molestos
         await login(data.user);
         
-        // Inicializar notificaciones para el usuario registrado
-        await NotificationService.initialize(data.user.id);
+        // 🔧 SOLUCIÓN iOS CRASH: Inicializar NotificationService de forma diferida
+        // Esto evita el crash en useKeyboardBehavior.js mientras mantiene FCM funcionando
+        setTimeout(async () => {
+          try {
+            await NotificationService.initialize(data.user.id);
+            console.log('🍎 NotificationService inicializado exitosamente (diferido) - Signup');
+          } catch (error) {
+            console.log('🍎 NotificationService falló (no crítico) - Signup:', error.message);
+          }
+        }, 3000); // 3 segundos para que iOS se estabilice post-signup
         
         // Welcome message simple
         const userName = data.user.first_name || fullName?.givenName || 'Usuario';
@@ -325,7 +328,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         }
         
       } else {
-        console.error('🍎 Estado no autorizado:', credentialState);
         showAlert({
           type: 'error',
           title: 'Error de autenticación',
@@ -334,11 +336,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         });
       }
     } catch (error) {
-      console.error('🍎 Error Apple Sign-Up:', error);
       
       if (appleAuth && error.code === appleAuth.Error.CANCELED) {
         // Usuario canceló - No mostrar alert molesto
-        console.log('🍎 Usuario canceló el registro');
       } else {
         showAlert({
           type: 'error',
