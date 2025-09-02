@@ -186,11 +186,9 @@ export default function CategoriesList() {
   // useEffect para mostrar modal de éxito cuando se reciben parámetros de pedido exitoso
   useEffect(() => {
     const params = route.params;
-    console.log('📱 CATEGORIELIST RECIBIÓ PARÁMETROS:', JSON.stringify(params, null, 2));
     
     if (params?.showSuccessModal && params?.orderData) {
       console.log('🎉 MOSTRANDO SUCCESS MODAL CON:', JSON.stringify(params.orderData, null, 2));
-      console.log('📱 CATEGORIELIST: SUCCESS MODAL CONFIRMADO - Procesando orden:', params.orderData?.orderNumber);
       const { orderData } = params;
       
       // Pequeño delay para asegurar que la pantalla se haya renderizado
@@ -245,13 +243,7 @@ export default function CategoriesList() {
           onConfirm: () => {
             if (orderData.orderId) {
               // Navegar a pedido específico
-              navigation.navigate('MainTabs', { 
-                screen: 'Ordenes',
-                params: { 
-                  screen: 'OrderDetails',
-                  params: { orderId: orderData.orderId }
-                }
-              });
+              navigation.navigate('OrderDetails', { orderId: orderData.orderId });
             } else {
               // Navegar a lista de pedidos
               navigation.navigate('MainTabs', { 
