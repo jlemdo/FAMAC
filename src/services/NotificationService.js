@@ -6,7 +6,6 @@ class NotificationService {
   constructor() {
     this.token = null;
     this.addNotificationCallback = null; // Para conectar con NotificationContext
-    this.listenersSetup = false; // 🔧 PREVENIR múltiples listeners
   }
 
   // Conectar con el sistema de notificaciones del header
@@ -22,6 +21,7 @@ class NotificationService {
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (enabled) {
+      console.log('✅ Permisos de notificación otorgados:', authStatus);
       
       // 🔥 DEBUG iOS: Verificar estado específico (DISABLED for production)
       // if (Platform.OS === 'ios') {
@@ -34,6 +34,7 @@ class NotificationService {
       
       return true;
     } else {
+      console.log('❌ Permisos de notificación denegados');
       
       if (Platform.OS === 'ios') {
         Alert.alert(
@@ -53,20 +54,26 @@ class NotificationService {
       // iOS requiere registro para mensajes remotos antes del token
       if (Platform.OS === 'ios') {
         await messaging().registerDeviceForRemoteMessages();
+        console.log('📱 iOS device registered for remote messages');
         
         // 🔥 NUEVA SOLUCIÓN: Obtener y setear APNS token ANTES de FCM token
         try {
           const apnsToken = await messaging().getAPNSToken();
           if (apnsToken) {
+            console.log('🍎 APNS Token obtenido:', apnsToken);
             await messaging().setAPNSToken(apnsToken);
+            console.log('✅ APNS Token seteado correctamente');
           } else {
+            console.log('⚠️ No se pudo obtener APNS token - pero intentaremos FCM token');
           }
         } catch (apnsError) {
+          console.log('⚠️ Error con APNS token, pero continuamos:', apnsError.message);
         }
       }
       
       const token = await messaging().getToken();
       this.token = token;
+      console.log('🔑 FCM Token:', token);
       
       // Guardar token localmente
       await AsyncStorage.setItem('fcm_token', token);
@@ -85,6 +92,7 @@ class NotificationService {
       
       return token;
     } catch (error) {
+      console.error('❌ Error obteniendo token FCM:', error);
       
       // MOSTRAR ERROR EN PANTALLA para debug sin Mac (DISABLED for production)
       // if (Platform.OS === 'ios') {
@@ -149,6 +157,7 @@ class NotificationService {
             [
               {text: 'Copiar Token', onPress: () => {
                 // En iOS no hay Clipboard nativo, solo mostrar
+                console.log('🔑 Full Token:', token);
               }},
               {text: 'Entendido'}
             ]
@@ -166,63 +175,39 @@ class NotificationService {
     }
   }
 
-  // 🔧 CORREGIDO: Preservar datos existentes antes de actualizar FCM token
+  // Enviar token al backend
   async sendTokenToBackend(userId) {
     if (!this.token) {
       await this.getToken();
     }
 
     try {
-      // 1. OBTENER datos actuales del usuario PRIMERO
-      const currentDataResponse = await fetch(
-        `https://occr.pixelcrafters.digital/api/userdetails/${userId}`
-      );
-      const currentData = await currentDataResponse.json();
-      const userData = currentData?.data?.[0] || {};
-      
-      console.log('🔔 NotificationService: Preservando datos antes de actualizar token');
-      
-      // 2. ENVIAR payload COMPLETO preservando todos los campos
-      await fetch('https://occr.pixelcrafters.digital/api/updateuserprofile', {
+      // Reemplaza con tu endpoint real
+      await fetch('https://occr.pixelcrafters.digital/api/save-fcm-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userid: userId,
+          user_id: userId,
           fcm_token: this.token,
-          // 🔧 PRESERVAR TODOS LOS CAMPOS EXISTENTES
-          first_name: userData.first_name || '',
-          last_name: userData.last_name || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          address: userData.address || '',
-          dob: userData.dob || userData.birthDate || userData.birth_date || undefined,
+          platform: Platform.OS,
         }),
       });
       
-      console.log('✅ NotificationService: FCM token actualizado preservando datos');
+      console.log('✅ Token enviado al backend exitosamente');
     } catch (error) {
-      console.error('❌ NotificationService: Error actualizando token:', error);
+      console.error('❌ Error enviando token al backend:', error);
     }
   }
 
   // Configurar listeners de notificaciones
   setupNotificationListeners() {
-    // 🔧 PREVENIR múltiples configuraciones de listeners
-    if (this.listenersSetup) {
-      console.log('🔔 Listeners ya configurados, saltando setup');
-      return;
-    }
-    
-    console.log('🔔 Configurando listeners de notificaciones...');
-    this.listenersSetup = true;
-    
     // Notificación cuando la app está en foreground
     messaging().onMessage(async remoteMessage => {
-      console.log('🔔 Notificación recibida en foreground:', remoteMessage.notification?.title);
+      console.log('📱 Notificación recibida en foreground:', remoteMessage);
       
-      // ✅ Solo agregar a la campanita (UX limpia en foreground)
+      // ✅ NUEVO: Agregar a la campana del header
       if (this.addNotificationCallback) {
         this.addNotificationCallback(
           remoteMessage.notification?.title || 'Nueva notificación',
@@ -230,12 +215,23 @@ class NotificationService {
         );
       }
       
-      // 🚫 REMOVIDO: Alert molesto cuando app está abierta
-      // Las notificaciones push normales funcionan cuando app está cerrada/background
+      // Mostrar alerta personalizada (opcional - puedes comentar si prefieres solo la campana)
+      Alert.alert(
+        remoteMessage.notification?.title || 'Nueva notificación',
+        remoteMessage.notification?.body || 'Tienes una nueva actualización',
+        [
+          {
+            text: 'Ver',
+            onPress: () => this.handleNotificationPress(remoteMessage),
+          },
+          {text: 'Cerrar', style: 'cancel'},
+        ]
+      );
     });
 
     // Notificación cuando la app está en background y se abre
     messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('📱 Notificación abrió la app desde background:', remoteMessage);
       this.handleNotificationPress(remoteMessage);
     });
 
@@ -244,6 +240,7 @@ class NotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
+          console.log('📱 Notificación abrió la app desde cerrada:', remoteMessage);
           this.handleNotificationPress(remoteMessage);
         }
       });
@@ -259,12 +256,15 @@ class NotificationService {
         // Navegar a detalles de orden
         if (orderId) {
           // Aquí necesitarías acceso a la navegación
+          console.log('📦 Navegar a orden:', orderId);
         }
         break;
       case 'new_promotion':
         // Navegar a promociones
+        console.log('🎉 Mostrar promoción');
         break;
       default:
+        console.log('📱 Notificación genérica');
     }
   }
 
@@ -291,8 +291,10 @@ class NotificationService {
       // 4. Configurar listeners
       this.setupNotificationListeners();
 
+      console.log('🚀 Servicio de notificaciones inicializado correctamente');
       return true;
     } catch (error) {
+      console.error('❌ Error inicializando notificaciones:', error);
       return false;
     }
   }
