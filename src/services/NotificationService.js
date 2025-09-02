@@ -6,11 +6,17 @@ class NotificationService {
   constructor() {
     this.token = null;
     this.addNotificationCallback = null; // Para conectar con NotificationContext
+    this.navigationRef = null; // Para navegación desde notificaciones
   }
 
   // Conectar con el sistema de notificaciones del header
   setNotificationCallback(callback) {
     this.addNotificationCallback = callback;
+  }
+
+  // Conectar con navegación para manejar taps en notificaciones
+  setNavigationRef(navigationRef) {
+    this.navigationRef = navigationRef;
   }
 
   // Solicitar permisos
@@ -175,29 +181,29 @@ class NotificationService {
     }
   }
 
-  // Enviar token al backend
+  // Enviar token al backend usando endpoint existente
   async sendTokenToBackend(userId) {
     if (!this.token) {
       await this.getToken();
     }
 
     try {
-      // Reemplaza con tu endpoint real
-      await fetch('https://occr.pixelcrafters.digital/api/save-fcm-token', {
+      // 🔪 CIRUGÍA: Usar endpoint existente updateuserprofile
+      await fetch('https://occr.pixelcrafters.digital/api/updateuserprofile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: userId,
+          userid: userId,
           fcm_token: this.token,
-          platform: Platform.OS,
+          // Solo enviamos FCM token, otros campos mantienen valores actuales
         }),
       });
       
-      console.log('✅ Token enviado al backend exitosamente');
+      console.log('✅ FCM Token actualizado exitosamente');
     } catch (error) {
-      console.error('❌ Error enviando token al backend:', error);
+      console.error('❌ Error actualizando FCM token:', error);
     }
   }
 
@@ -207,26 +213,19 @@ class NotificationService {
     messaging().onMessage(async remoteMessage => {
       console.log('📱 Notificación recibida en foreground:', remoteMessage);
       
-      // ✅ NUEVO: Agregar a la campana del header
+      // ✅ MEJORADO: Usar contenido enhanced
+      const enhancedContent = this.enhanceNotificationContent(remoteMessage);
+      
+      // Agregar a la campana del header con contenido mejorado
       if (this.addNotificationCallback) {
         this.addNotificationCallback(
-          remoteMessage.notification?.title || 'Nueva notificación',
-          remoteMessage.notification?.body || 'Tienes una nueva actualización'
+          enhancedContent.title,
+          enhancedContent.body
         );
       }
       
-      // Mostrar alerta personalizada (opcional - puedes comentar si prefieres solo la campana)
-      Alert.alert(
-        remoteMessage.notification?.title || 'Nueva notificación',
-        remoteMessage.notification?.body || 'Tienes una nueva actualización',
-        [
-          {
-            text: 'Ver',
-            onPress: () => this.handleNotificationPress(remoteMessage),
-          },
-          {text: 'Cerrar', style: 'cancel'},
-        ]
-      );
+      // 🔪 CIRUGÍA: Solo campanita, sin alerts nativos
+      // Alert removido según solicitud del usuario
     });
 
     // Notificación cuando la app está en background y se abre
@@ -246,25 +245,155 @@ class NotificationService {
       });
   }
 
+  // Mejorar contenido de notificación basado en contexto
+  enhanceNotificationContent(remoteMessage) {
+    const notificationType = remoteMessage.data?.type;
+    const orderId = remoteMessage.data?.order_id;
+    const orderStatus = remoteMessage.data?.order_status;
+    const deliveryTime = remoteMessage.data?.delivery_time;
+    const driverName = remoteMessage.data?.driver_name;
+
+    let enhancedTitle = remoteMessage.notification?.title || 'Nueva notificación';
+    let enhancedBody = remoteMessage.notification?.body || 'Tienes una nueva actualización';
+
+    switch (notificationType) {
+      case 'order_confirmed':
+        enhancedTitle = '🎉 ¡Pedido confirmado!';
+        enhancedBody = `Tu pedido #${orderId} ha sido confirmado y será preparado pronto.`;
+        break;
+        
+      case 'order_preparing':
+        enhancedTitle = '👨‍🍳 Preparando tu pedido';
+        enhancedBody = `Estamos preparando tu pedido #${orderId} con mucho cuidado.`;
+        break;
+        
+      case 'order_ready':
+        enhancedTitle = '✅ ¡Pedido listo!';
+        enhancedBody = `Tu pedido #${orderId} está listo y será enviado pronto.`;
+        break;
+        
+      case 'order_on_way':
+        enhancedTitle = '🚚 ¡En camino!';
+        if (driverName) {
+          enhancedBody = `${driverName} está en camino con tu pedido #${orderId}.`;
+        } else {
+          enhancedBody = `Tu pedido #${orderId} está en camino. ¡Llegará pronto!`;
+        }
+        if (deliveryTime) {
+          enhancedBody += ` Tiempo estimado: ${deliveryTime} min.`;
+        }
+        break;
+        
+      case 'order_delivered':
+        enhancedTitle = '🎊 ¡Entregado!';
+        enhancedBody = `Tu pedido #${orderId} ha sido entregado. ¡Esperamos que lo disfrutes!`;
+        break;
+        
+      case 'order_cancelled':
+        enhancedTitle = '❌ Pedido cancelado';
+        enhancedBody = `Tu pedido #${orderId} ha sido cancelado. Tu reembolso será procesado pronto.`;
+        break;
+        
+      case 'payment_confirmed':
+        enhancedTitle = '💳 Pago confirmado';
+        enhancedBody = `El pago de tu pedido #${orderId} ha sido procesado exitosamente.`;
+        break;
+        
+      case 'new_promotion':
+        enhancedTitle = '🎁 ¡Nueva oferta especial!';
+        enhancedBody = remoteMessage.notification?.body || '¡No te pierdas nuestras promociones exclusivas!';
+        break;
+        
+      case 'delivery_delay':
+        enhancedTitle = '⏰ Retraso en entrega';
+        enhancedBody = `Tu pedido #${orderId} se retrasará unos minutos. Disculpa las molestias.`;
+        if (deliveryTime) {
+          enhancedBody += ` Nuevo tiempo estimado: ${deliveryTime} min.`;
+        }
+        break;
+        
+      case 'driver_assigned':
+        enhancedTitle = '🚗 Repartidor asignado';
+        if (driverName) {
+          enhancedBody = `${driverName} será quien entregue tu pedido #${orderId}.`;
+        } else {
+          enhancedBody = `Se ha asignado un repartidor para tu pedido #${orderId}.`;
+        }
+        break;
+        
+      default:
+        // Intentar mejorar notificaciones genéricas
+        if (orderId) {
+          enhancedBody = `Actualización sobre tu pedido #${orderId}: ${enhancedBody}`;
+        }
+    }
+
+    return { title: enhancedTitle, body: enhancedBody };
+  }
+
   // Manejar cuando se presiona una notificación
   handleNotificationPress(remoteMessage) {
     const notificationType = remoteMessage.data?.type;
     const orderId = remoteMessage.data?.order_id;
 
-    switch (notificationType) {
-      case 'order_status_update':
-        // Navegar a detalles de orden
-        if (orderId) {
-          // Aquí necesitarías acceso a la navegación
-          console.log('📦 Navegar a orden:', orderId);
+    console.log('🔔 Manejando tap en notificación:', {
+      type: notificationType,
+      orderId,
+      hasNavigation: !!this.navigationRef
+    });
+
+    try {
+      switch (notificationType) {
+        case 'order_confirmed':
+        case 'order_preparing':
+        case 'order_ready':
+        case 'order_on_way':
+        case 'order_delivered':
+        case 'order_cancelled':
+        case 'payment_confirmed':
+        case 'delivery_delay':
+        case 'driver_assigned':
+          // Navegar a detalles de orden
+          if (orderId && this.navigationRef) {
+            console.log('📦 Navegando a detalles de orden:', orderId);
+            this.navigationRef.navigate('MainTabs', {
+              screen: 'Pedidos',
+              params: {
+                screen: 'OrderDetail',
+                params: { orderId: orderId }
+              }
+            });
+          } else if (this.navigationRef) {
+            // Si no hay orderId específico, ir a la lista de pedidos
+            this.navigationRef.navigate('MainTabs', { screen: 'Pedidos' });
+          }
+          break;
+          
+        case 'new_promotion':
+          // Navegar a home para ver promociones
+          if (this.navigationRef) {
+            console.log('🎉 Navegando a promociones');
+            this.navigationRef.navigate('MainTabs', { screen: 'Home' });
+          }
+          break;
+          
+        default:
+          // Navegación genérica a home
+          if (this.navigationRef) {
+            console.log('📱 Navegación genérica a home');
+            this.navigationRef.navigate('MainTabs', { screen: 'Home' });
+          }
+      }
+    } catch (error) {
+      console.error('❌ Error en navegación desde notificación:', error);
+      // Fallback: intentar ir a home
+      if (this.navigationRef) {
+        try {
+          this.navigationRef.navigate('MainTabs', { screen: 'Home' });
+        } catch (fallbackError) {
+          console.error('❌ Error en navegación fallback:', fallbackError);
         }
-        break;
-      case 'new_promotion':
-        // Navegar a promociones
-        console.log('🎉 Mostrar promoción');
-        break;
-      default:
-        console.log('📱 Notificación genérica');
+      }
     }
   }
 

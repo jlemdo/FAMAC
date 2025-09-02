@@ -21,6 +21,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Image,
+  ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
@@ -248,12 +249,43 @@ const Header = ({onLogout}) => {
                   {notifications.length === 0 ? (
                     <Text style={styles.empty}>Sin notificaciones</Text>
                   ) : (
-                    notifications.map(item => (
-                      <View key={item.id} style={styles.item}>
-                        <Text style={styles.title}>{item.title}</Text>
-                        <Text style={styles.desc}>{item.description}</Text>
-                      </View>
-                    ))
+                    <ScrollView 
+                      style={styles.notificationScrollView}
+                      showsVerticalScrollIndicator={true}
+                      contentContainerStyle={styles.scrollViewContent}
+                    >
+                      {notifications.map(item => (
+                        <TouchableOpacity 
+                          key={item.id} 
+                          style={styles.item}
+                          onPress={() => {
+                            // 🔪 CIRUGÍA: Navegación específica desde campanita
+                            setShowNotif(false); // Cerrar modal
+                            
+                            // Extraer order_id del título si existe (formato "Pedido #123")
+                            const orderIdMatch = item.title.match(/Pedido #(\d+)/);
+                            const orderId = orderIdMatch ? orderIdMatch[1] : null;
+                            
+                            if (orderId) {
+                              // Navegar al pedido específico
+                              navigation.navigate('MainTabs', {
+                                screen: 'Pedidos',
+                                params: {
+                                  screen: 'OrderDetail',
+                                  params: { orderId: orderId }
+                                }
+                              });
+                            } else {
+                              // Si no hay orderId, ir a lista de pedidos
+                              navigation.navigate('MainTabs', { screen: 'Pedidos' });
+                            }
+                          }}
+                        >
+                          <Text style={styles.title}>{item.title}</Text>
+                          <Text style={styles.desc}>{item.description}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   )}
                 </View>
               </TouchableWithoutFeedback>
@@ -501,6 +533,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     color: '#444',
     fontFamily: fonts.regular,
+  },
+  // 🆕 ESTILOS PARA SCROLL EN MODAL NOTIFICACIONES
+  notificationScrollView: {
+    maxHeight: 280, // Un poco menos que el maxHeight del dropdown (320)
+  },
+  scrollViewContent: {
+    paddingBottom: 4, // Padding inferior para mejor visibilidad
   },
 });
 

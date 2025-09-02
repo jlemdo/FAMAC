@@ -39,7 +39,7 @@ export const API_ENDPOINTS = {
   // Other
   DELIVERY_DATES: `${API_BASE_URL}/fetch_ddates`,
   COMPLAINT_SUBMIT: `${API_BASE_URL}/compsubmit`,
-  SAVE_FCM_TOKEN: `${API_BASE_URL}/save-fcm-token`,
+  // 🔪 REMOVIDO: save-fcm-token (se usa updateuserprofile)
   
   // Static files
   INVOICES: `${BASE_URL}/invoices`,
