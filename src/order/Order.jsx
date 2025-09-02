@@ -84,87 +84,55 @@ const Order = () => {
     }, 1000);
   };
 
-  // ✅ Función para ver pedidos Guest sin registrarse (búsqueda directa)
+  // 🆕 Función mejorada para ver pedidos Guest usando endpoint específico
   const handleViewGuestOrders = async (guestEmail) => {
     if (!guestEmail || !guestEmail.trim()) {
-      // console.log('❌ No hay email de Guest para buscar pedidos');
       return;
     }
     
     setLoading(true);
     try {
-      // console.log('🔍 Buscando pedidos para Guest:', guestEmail);
+      const response = await axios.get(
+        `https://occr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
+        { timeout: 10000 }
+      );
       
-      const foundOrders = [];
-      
-      // Búsqueda reducida: IDs desde 220 hasta 190 para Guest orders
-      const searchIds = [];
-      // Generar IDs desde 220 hasta 190 (31 IDs total)
-      for (let i = 220; i >= 190; i--) {
-        searchIds.push(i);
-      }
-      const allSearchIds = searchIds;
-      
-      let requestCount = 0;
-      const maxRequests = 31; // Limitamos a los 31 IDs del rango 190-220
-      
-      for (const id of allSearchIds) {
-        if (requestCount >= maxRequests) break; // ✅ Removido límite de 3 pedidos
+      if (response.data?.status === 'success') {
+        const orders = response.data.orders.data || [];
         
-        try {
-          requestCount++;
-          // console.log(`🎯 Probando ID ${id}...`); // Debug opcional
+        if (orders.length > 0) {
+          // Mostrar órdenes Guest directamente
+          setGuestOrders(orders);
+          setShowingGuestOrders(true);
           
-          const response = await axios.get(
-            `https://occr.pixelcrafters.digital/api/orderdetails/${id}`,
-            { timeout: 5000 }
+          // Actualizar el contador de órdenes para el badge de navegación
+          const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+          const activeOrders = orders.filter(order => 
+            order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
+            order.payment_status === 'completed' // Solo contar órdenes con pago completado
           );
+          updateOrders(orders); // Esto actualiza el badge de navegación
           
-          if (response.data?.order && 
-              response.data.order.userid === null && 
-              response.data.order.user_email === guestEmail.trim()) {
-            
-            foundOrders.push(response.data.order);
-            // console.log(`✅ Orden ${id} encontrada para ${guestEmail}`);
-          }
-          
-          // Rate limiting optimizado: pausa más corta pero más frecuente
-          if (requestCount % 5 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-          
-        } catch (error) {
-          if (!error.message.includes('404')) {
-            // console.log(`⚠️ Error en ID ${id}:`, error.message);
-          }
+        } else {
+          // No hay órdenes para este guest
+          setGuestOrders([]);
+          setShowingGuestOrders(false);
+          updateOrders([]);
         }
-      }
-      
-      if (foundOrders.length > 0) {
-        // console.log(`🎉 ${foundOrders.length} pedidos encontrados`);
-        // Mostrar órdenes Guest directamente sin usar OrderContext
-        setGuestOrders(foundOrders);
-        setShowingGuestOrders(true);
-        
-        // Actualizar el contador de órdenes para el badge de navegación
-        // 🆕 Ahora también filtra por payment_status
-        const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-        const activeOrders = foundOrders.filter(order => 
-          order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
-          order.payment_status === 'completed' // Solo contar órdenes con pago completado
-        );
-        updateOrders(foundOrders); // Esto actualiza el badge de navegación
         
       } else {
-        // console.log('ℹ️ No se encontraron pedidos para este email');
+        // Error del servidor o email inválido
         setGuestOrders([]);
         setShowingGuestOrders(false);
-        // Limpiar contador cuando no hay órdenes
         updateOrders([]);
       }
       
     } catch (error) {
-      // console.log('❌ Error consultando pedidos Guest:', error);
+      // Error de conexión o servidor
+      console.error('Error cargando órdenes guest:', error);
+      setGuestOrders([]);
+      setShowingGuestOrders(false);
+      updateOrders([]);
     } finally {
       setLoading(false);
     }
@@ -173,13 +141,11 @@ const Order = () => {
   // 🧹 FUNCIÓN TEMPORAL para limpiar datos corruptos
   const handleCleanCorruptGuestData = async () => {
     try {
-      // console.log('🧹 Limpiando datos corruptos de Guest...');
       
       if (AsyncStorage) {
         // Limpiar AsyncStorage completamente
         await AsyncStorage.removeItem('userData');
         await AsyncStorage.removeItem('persistSession');
-        // console.log('✅ AsyncStorage limpiado');
       }
       
       // Reiniciar como Guest limpio (sin email)
@@ -188,10 +154,8 @@ const Order = () => {
       // Desactivar Guest orders si estaba activado
       disableGuestOrders();
       
-      // console.log('✅ Datos de Guest limpiados - reiniciado como Guest sin email');
       
     } catch (error) {
-      // console.log('❌ Error limpiando datos:', error);
     }
   };
 
@@ -201,7 +165,6 @@ const Order = () => {
         user.email && typeof user.email === 'string' && user.email.trim() &&
         !showingGuestOrders && !loading) {
       // Console log para debug
-      console.log('🔄 Auto-cargando pedidos para Guest:', user.email);
       handleViewGuestOrders(user.email);
     }
   }, [user?.email, user?.usertype, showingGuestOrders, loading]);
