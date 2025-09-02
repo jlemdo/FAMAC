@@ -147,16 +147,36 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         // Login directo sin alerts molestos
         await login(data.user);
         
-        // 🔧 SOLUCIÓN iOS CRASH: Inicializar NotificationService de forma diferida
-        // Esto evita el crash en useKeyboardBehavior.js mientras mantiene FCM funcionando
+        // 🎯 FASE 1: Solo hacer exactamente lo que funcionaba en testIOSNotifications
+        // NO sendTokenToBackend, NO setupNotificationListeners
         setTimeout(async () => {
           try {
-            await NotificationService.initialize(data.user.id);
-            console.log('🍎 NotificationService inicializado exitosamente (diferido)');
+            console.log('🍎 FASE 1: Iniciando permisos FCM...');
+            
+            // 1. Verificar permisos (seguro)
+            const hasPermission = await NotificationService.requestPermission();
+            if (!hasPermission) {
+              console.log('🍎 FASE 1: Sin permisos de notificación');
+              return;
+            }
+            
+            // 2. Obtener token (seguro)
+            const token = await NotificationService.getToken();
+            if (!token) {
+              console.log('🍎 FASE 1: No se pudo obtener FCM token');
+              return;
+            }
+            
+            console.log('✅ FASE 1: Permisos + Token FCM exitosos (sin backend, sin listeners)');
+            
+            // 🚫 INTENCIONALMENTE NO llamamos:
+            // - sendTokenToBackend() (lo probaremos en FASE 2)
+            // - setupNotificationListeners() (lo probaremos en FASE 3)
+            
           } catch (error) {
-            console.log('🍎 NotificationService falló (no crítico):', error.message);
+            console.error('❌ FASE 1: Crash confirmado en permisos/token:', error.message);
           }
-        }, 3000); // 3 segundos para que iOS se estabilice post-login
+        }, 2000);
         
         // Welcome message simple
         const userName = data.user.first_name || fullName?.givenName || 'Usuario';

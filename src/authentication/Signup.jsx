@@ -300,16 +300,36 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         // Login directo sin alerts molestos
         await login(data.user);
         
-        // 🔧 SOLUCIÓN iOS CRASH: Inicializar NotificationService de forma diferida
-        // Esto evita el crash en useKeyboardBehavior.js mientras mantiene FCM funcionando
+        // 🎯 FASE 1: Solo hacer exactamente lo que funcionaba en testIOSNotifications
+        // NO sendTokenToBackend, NO setupNotificationListeners
         setTimeout(async () => {
           try {
-            await NotificationService.initialize(data.user.id);
-            console.log('🍎 NotificationService inicializado exitosamente (diferido) - Signup');
+            console.log('🍎 FASE 1 Signup: Iniciando permisos FCM...');
+            
+            // 1. Verificar permisos (seguro)
+            const hasPermission = await NotificationService.requestPermission();
+            if (!hasPermission) {
+              console.log('🍎 FASE 1 Signup: Sin permisos de notificación');
+              return;
+            }
+            
+            // 2. Obtener token (seguro)
+            const token = await NotificationService.getToken();
+            if (!token) {
+              console.log('🍎 FASE 1 Signup: No se pudo obtener FCM token');
+              return;
+            }
+            
+            console.log('✅ FASE 1 Signup: Permisos + Token FCM exitosos (sin backend, sin listeners)');
+            
+            // 🚫 INTENCIONALMENTE NO llamamos:
+            // - sendTokenToBackend() (lo probaremos en FASE 2)
+            // - setupNotificationListeners() (lo probaremos en FASE 3)
+            
           } catch (error) {
-            console.log('🍎 NotificationService falló (no crítico) - Signup:', error.message);
+            console.error('❌ FASE 1 Signup: Crash confirmado en permisos/token:', error.message);
           }
-        }, 3000); // 3 segundos para que iOS se estabilice post-signup
+        }, 2000);
         
         // Welcome message simple
         const userName = data.user.first_name || fullName?.givenName || 'Usuario';
