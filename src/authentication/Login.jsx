@@ -34,6 +34,7 @@ if (Platform.OS === 'ios') {
   try {
     appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
   } catch (error) {
+    console.log('Apple Auth no disponible:', error.message);
   }
 }
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
@@ -73,6 +74,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       try {
         await NotificationService.requestPermission();
       } catch (error) {
+        console.log('⚠️ Error solicitando permisos de notificaciones en Login:', error);
       }
     };
 
@@ -108,27 +110,43 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     }
   };
 
-  // 4️⃣ Función para login con Apple (Limpia - Sin debug alerts)
+  // 4️⃣ Función para login con Apple
   const handleAppleLogin = async () => {
     if (!appleAuth || appleLoading) return;
     
     setAppleLoading(true);
     
+    // 📱 DEBUG VISUAL: Paso 1
+    showAlert({
+      type: 'info',
+      title: '🍎 DEBUG - Paso 1',
+      message: 'Iniciando Apple Sign-In...',
+      confirmText: 'Continuar',
+    });
+    
     try {
-      
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
       
-      console.log('🍎 Respuesta Apple recibida:', {
-        user: appleAuthRequestResponse.user,
-        hasToken: !!appleAuthRequestResponse.identityToken,
-        hasEmail: !!appleAuthRequestResponse.email
+      // 📱 DEBUG VISUAL: Paso 2
+      showAlert({
+        type: 'info',
+        title: '🍎 DEBUG - Paso 2',
+        message: `Respuesta Apple recibida:\nUser ID: ${appleAuthRequestResponse.user}\nTiene Token: ${!!appleAuthRequestResponse.identityToken ? 'SÍ' : 'NO'}\nTiene Email: ${!!appleAuthRequestResponse.email ? 'SÍ' : 'NO'}`,
+        confirmText: 'Continuar',
       });
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
       
+      // 📱 DEBUG VISUAL: Paso 3
+      showAlert({
+        type: 'info',
+        title: '🍎 DEBUG - Paso 3',
+        message: `Estado de credencial: ${credentialState}\n(Debe ser: ${appleAuth.State.AUTHORIZED})`,
+        confirmText: 'Continuar',
+      });
 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
@@ -140,47 +158,28 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
+        // 📱 DEBUG VISUAL: Paso 4
+        showAlert({
+          type: 'info',
+          title: '🍎 DEBUG - Paso 4',
+          message: `Enviando al servidor:\nURL: https://occr.pixelcrafters.digital/api/auth/apple\nUser ID: ${appleUserId}`,
+          confirmText: 'Continuar',
+        });
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
         
+        // 📱 DEBUG VISUAL: Paso 5 - ÉXITO
+        showAlert({
+          type: 'success',
+          title: '🍎 DEBUG - ÉXITO',
+          message: `¡Backend respondió correctamente!\nMensaje: ${data.message}`,
+          confirmText: 'Continuar',
+        });
 
-        // Login directo sin alerts molestos
         await login(data.user);
         
-        // 🎯 FASE 1: Solo hacer exactamente lo que funcionaba en testIOSNotifications
-        // NO sendTokenToBackend, NO setupNotificationListeners
-        setTimeout(async () => {
-          try {
-            console.log('🍎 FASE 1: Iniciando permisos FCM...');
-            
-            // 1. Verificar permisos (seguro)
-            const hasPermission = await NotificationService.requestPermission();
-            if (!hasPermission) {
-              console.log('🍎 FASE 1: Sin permisos de notificación');
-              return;
-            }
-            
-            // 2. Obtener token (seguro)
-            const token = await NotificationService.getToken();
-            if (!token) {
-              console.log('🍎 FASE 1: No se pudo obtener FCM token');
-              return;
-            }
-            
-            console.log('✅ FASE 1: Permisos + Token FCM exitosos (sin backend, sin listeners)');
-            
-            // 🚫 INTENCIONALMENTE NO llamamos:
-            // - sendTokenToBackend() (lo probaremos en FASE 2)
-            // - setupNotificationListeners() (lo probaremos en FASE 3)
-            
-          } catch (error) {
-            console.error('❌ FASE 1: Crash confirmado en permisos/token:', error.message);
-          }
-        }, 2000);
-        
-        // Welcome message simple
-        const userName = data.user.first_name || fullName?.givenName || 'Usuario';
         setTimeout(() => {
+          const userName = data.user.first_name || fullName?.givenName || 'Usuario';
           showAlert({
             type: 'success',
             title: 'Bienvenido',
@@ -188,26 +187,33 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             confirmText: 'Continuar',
           });
         }, 500);
-        
       } else {
+        // 📱 DEBUG VISUAL: Error de credencial
         showAlert({
           type: 'error',
-          title: 'Error de autenticación',
-          message: 'No se pudo verificar tu identidad con Apple. Intenta nuevamente.',
+          title: '🍎 DEBUG - ERROR CREDENCIAL',
+          message: `Estado no autorizado: ${credentialState}\nEsperado: ${appleAuth.State.AUTHORIZED}\n\nPosibles causas:\n- Bundle ID incorrecto\n- Service ID mal configurado`,
           confirmText: 'OK',
         });
       }
     } catch (error) {
+      // 📱 DEBUG VISUAL: Error completo
+      showAlert({
+        type: 'error',
+        title: '🍎 DEBUG - ERROR COMPLETO',
+        message: `Tipo: ${error.code || 'Sin código'}\nMensaje: ${error.message || 'Sin mensaje'}\nDetalles: ${JSON.stringify(error, null, 2).substring(0, 200)}`,
+        confirmText: 'OK',
+      });
       
       if (appleAuth && error.code === appleAuth.Error.CANCELED) {
-        // Usuario canceló - No mostrar alert molesto
-      } else {
-        showAlert({
-          type: 'error',
-          title: 'Error de conexión',
-          message: 'No se pudo completar el inicio de sesión con Apple. Verifica tu conexión e intenta nuevamente.',
-          confirmText: 'OK',
-        });
+        setTimeout(() => {
+          showAlert({
+            type: 'warning',
+            title: 'Usuario canceló',
+            message: 'Has cancelado el login con Apple.',
+            confirmText: 'OK',
+          });
+        }, 1000);
       }
     } finally {
       setAppleLoading(false);
@@ -423,20 +429,20 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
                 {/* Botón Apple Sign-In - Solo iOS */}
                 {Platform.OS === 'ios' && appleAuth && (
-                  <View style={styles.appleButtonContainer}>
-                    <appleAuth.AppleButton
-                      buttonStyle={appleAuth.AppleButton.Style.BLACK}
-                      buttonType={appleAuth.AppleButton.Type.SIGN_IN}
-                      style={styles.appleButton}
-                      onPress={handleAppleLogin}
-                      disabled={isSubmitting || appleLoading}
-                    />
-                    {appleLoading && (
-                      <View style={styles.appleLoadingOverlay}>
-                        <ActivityIndicator color="#FFF" size="small" />
-                      </View>
+                  <TouchableOpacity
+                    style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
+                    onPress={handleAppleLogin}
+                    disabled={isSubmitting || appleLoading}
+                    activeOpacity={0.8}>
+                    {appleLoading ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.appleIcon}>🍎</Text>
+                        <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
+                      </>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 )}
 
                 {/* Botón Google Sign-In */}
@@ -651,26 +657,28 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  // 🍎 BOTÓN OFICIAL DE APPLE
-  appleButtonContainer: {
-    width: '100%',
-    height: 48,
-    marginBottom: 12,
-    position: 'relative',
-  },
   appleButton: {
     width: '100%',
     height: 48,
-  },
-  appleLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#000',
+    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  appleIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  appleButtonText: {
+    color: '#FFF',
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
   },
 });

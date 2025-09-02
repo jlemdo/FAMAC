@@ -31,16 +31,6 @@ import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
-import NotificationService from '../services/NotificationService';
-
-// Apple Authentication solo disponible en iOS
-let appleAuth = null;
-if (Platform.OS === 'ios') {
-  try {
-    appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
-  } catch (error) {
-  }
-}
 
 // Helper function para formatear teléfono mexicano visualmente
 const formatMexicanPhone = (phone) => {
@@ -74,7 +64,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -261,118 +250,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     }
   };
 
-  // 4️⃣ Registro con Apple (limpio - sin debug alerts)
-  const handleAppleSignup = async () => {
-    if (!appleAuth || appleLoading) return;
-    
-    setAppleLoading(true);
-    
-    try {
-      
-      const appleAuthRequestResponse = await appleAuth.performRequest({
-        requestedOperation: appleAuth.Operation.LOGIN,
-        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-      });
-      
-      console.log('🍎 Respuesta Apple recibida:', {
-        user: appleAuthRequestResponse.user,
-        hasToken: !!appleAuthRequestResponse.identityToken,
-        hasEmail: !!appleAuthRequestResponse.email
-      });
-
-      const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
-      
-
-      if (credentialState === appleAuth.State.AUTHORIZED) {
-        const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
-        
-        const payload = {
-          identity_token: identityToken,
-          user_id: appleUserId,
-          email: email,
-          full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
-        };
-        
-        
-        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
-        
-
-        // Login directo sin alerts molestos
-        await login(data.user);
-        
-        // 🎯 FASE 1: Solo hacer exactamente lo que funcionaba en testIOSNotifications
-        // NO sendTokenToBackend, NO setupNotificationListeners
-        setTimeout(async () => {
-          try {
-            console.log('🍎 FASE 1 Signup: Iniciando permisos FCM...');
-            
-            // 1. Verificar permisos (seguro)
-            const hasPermission = await NotificationService.requestPermission();
-            if (!hasPermission) {
-              console.log('🍎 FASE 1 Signup: Sin permisos de notificación');
-              return;
-            }
-            
-            // 2. Obtener token (seguro)
-            const token = await NotificationService.getToken();
-            if (!token) {
-              console.log('🍎 FASE 1 Signup: No se pudo obtener FCM token');
-              return;
-            }
-            
-            console.log('✅ FASE 1 Signup: Permisos + Token FCM exitosos (sin backend, sin listeners)');
-            
-            // 🚫 INTENCIONALMENTE NO llamamos:
-            // - sendTokenToBackend() (lo probaremos en FASE 2)
-            // - setupNotificationListeners() (lo probaremos en FASE 3)
-            
-          } catch (error) {
-            console.error('❌ FASE 1 Signup: Crash confirmado en permisos/token:', error.message);
-          }
-        }, 2000);
-        
-        // Welcome message simple
-        const userName = data.user.first_name || fullName?.givenName || 'Usuario';
-        setTimeout(() => {
-          showAlert({
-            type: 'success',
-            title: 'Bienvenido',
-            message: `¡Hola ${userName}!`,
-            confirmText: 'Continuar',
-          });
-        }, 500);
-        
-        // Después del registro exitoso con Apple
-        if (onSuccess) {
-          onSuccess();
-        }
-        
-      } else {
-        showAlert({
-          type: 'error',
-          title: 'Error de autenticación',
-          message: 'No se pudo verificar tu identidad con Apple. Intenta nuevamente.',
-          confirmText: 'OK',
-        });
-      }
-    } catch (error) {
-      
-      if (appleAuth && error.code === appleAuth.Error.CANCELED) {
-        // Usuario canceló - No mostrar alert molesto
-      } else {
-        showAlert({
-          type: 'error',
-          title: 'Error de conexión',
-          message: 'No se pudo completar el registro con Apple. Verifica tu conexión e intenta nuevamente.',
-          confirmText: 'OK',
-        });
-      }
-    } finally {
-      setAppleLoading(false);
-    }
-  };
-
-  // 5️⃣ Envío de formulario
+  // 4️⃣ Envío de formulario
   const onSubmit = async (values, {setSubmitting}) => {
     let dob = null;
     if (values.birthDate) {
@@ -874,24 +752,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
               )}
             </TouchableOpacity>
 
-            {/* Botón Apple Sign-Up - Solo iOS */}
-            {Platform.OS === 'ios' && appleAuth && (
-              <View style={styles.appleButtonContainer}>
-                <appleAuth.AppleButton
-                  buttonStyle={appleAuth.AppleButton.Style.BLACK}
-                  buttonType={appleAuth.AppleButton.Type.SIGN_UP}
-                  style={styles.appleButton}
-                  onPress={handleAppleSignup}
-                  disabled={isSubmitting || appleLoading}
-                />
-                {appleLoading && (
-                  <View style={styles.appleLoadingOverlay}>
-                    <ActivityIndicator color="#FFF" size="small" />
-                  </View>
-                )}
-              </View>
-            )}
-
             {/* Ya tienes cuenta */}
             <TouchableOpacity 
               style={styles.loginButton}
@@ -1052,31 +912,6 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  // 🍎 BOTÓN OFICIAL DE APPLE
-  appleButtonContainer: {
-    width: '100%',
-    height: 48,
-    marginBottom: 16,
-    position: 'relative',
-  },
-  appleButton: {
-    width: '100%',
-    height: 48,
-  },
-  appleLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
   },
   loginButton: {
     width: '100%',
