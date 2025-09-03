@@ -191,9 +191,7 @@ export default function Profile({ navigation, route }) {
 
   // ✅ FUNCIÓN: Detectar si es usuario registrado VÍA Google OAuth 
   const isGoogleUser = () => {
-    // DESHABILITADO: No hay campos en el backend que distingan Google OAuth de registro normal
-    // Todos los usuarios pueden cambiar su contraseña
-    return false;
+    return profile.provider === 'google';
   };
 
   // ✅ FUNCIÓN: Comportamiento tipo acordeón - solo una sección abierta a la vez
@@ -252,6 +250,7 @@ export default function Profile({ navigation, route }) {
     phone: '',
     address: '',
     birthDate: null,
+    provider: 'local', // default to local
   });
   
   // Estado para el teléfono formateado visualmente
@@ -293,7 +292,8 @@ export default function Profile({ navigation, route }) {
         address:    data.address    || '',
         birthDate:  birthDate,
         promotion_id: data.promotion_id,
-        promotional_discount: data.promotional_discount
+        promotional_discount: data.promotional_discount,
+        provider: data.provider || 'local',
       };
       
       console.log('📥 Profile.jsx: Datos cargados del servidor:', profileData);
@@ -1156,32 +1156,32 @@ export default function Profile({ navigation, route }) {
       <TouchableOpacity 
         style={[
           styles.sectionHeader,
-          isGoogleUser() && styles.sectionHeaderDisabled
+          isOAuthUser() && styles.sectionHeaderDisabled
         ]}
         onPress={() => toggleSection('password')}
-        activeOpacity={isGoogleUser() ? 0.5 : 0.8}>
+        activeOpacity={isOAuthUser() ? 0.5 : 0.8}>
         <View style={styles.sectionHeaderContent}>
           <Text style={[
             styles.sectionHeaderTitle,
-            isGoogleUser() && styles.sectionHeaderTitleDisabled
+            isOAuthUser() && styles.sectionHeaderTitleDisabled
           ]}>
-            🔒 Seguridad {isGoogleUser() && '(Google)'}
+            🔒 Seguridad {isOAuthUser() && `(${getProviderName()})`}
           </Text>
-          {!isGoogleUser() && (
+          {!isOAuthUser() && (
             <Text style={styles.sectionHeaderIcon}>
               {showPasswordSection ? '▲' : '▼'}
             </Text>
           )}
-          {isGoogleUser() && (
+          {isOAuthUser() && (
             <Text style={styles.sectionHeaderIconDisabled}>🔒</Text>
           )}
         </View>
         <Text style={[
           styles.sectionHeaderSubtitle,
-          isGoogleUser() && styles.sectionHeaderSubtitleDisabled
+          isOAuthUser() && styles.sectionHeaderSubtitleDisabled
         ]}>
-          {isGoogleUser() 
-            ? 'Contraseña gestionada por Google' 
+          {isOAuthUser() 
+            ? `Contraseña gestionada por ${getProviderName()}` 
             : 'Cambiar contraseña de acceso'
           }
         </Text>
