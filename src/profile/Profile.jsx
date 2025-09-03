@@ -189,19 +189,26 @@ export default function Profile({ navigation, route }) {
     }, [])
   );
 
-  // ✅ FUNCIÓN: Detectar si es usuario registrado VÍA Google OAuth 
-  const isGoogleUser = () => {
-    return profile.provider === 'google';
+  // ✅ FUNCIÓN: Detectar si es usuario registrado VÍA OAuth (Google/Apple)
+  const isOAuthUser = () => {
+    return profile.provider === 'google' || profile.provider === 'apple';
+  };
+
+  // ✅ FUNCIÓN: Obtener nombre del proveedor OAuth
+  const getProviderName = () => {
+    if (profile.provider === 'google') return 'Google';
+    if (profile.provider === 'apple') return 'Apple ID';
+    return 'Local';
   };
 
   // ✅ FUNCIÓN: Comportamiento tipo acordeón - solo una sección abierta a la vez
   const toggleSection = (sectionName) => {
-    // Bloquear sección de contraseña para usuarios de Google
-    if (sectionName === 'password' && isGoogleUser()) {
+    // Bloquear sección de contraseña para usuarios OAuth
+    if (sectionName === 'password' && isOAuthUser()) {
       showAlert({
         type: 'info',
-        title: 'Cuenta de Google',
-        message: 'Tu cuenta está vinculada con Google. La contraseña se gestiona directamente en tu cuenta de Google.',
+        title: `Cuenta de ${getProviderName()}`,
+        message: `Tu cuenta está vinculada con ${getProviderName()}. La contraseña se gestiona directamente en tu cuenta de ${getProviderName()}.`,
         confirmText: 'Entendido'
       });
       return;
