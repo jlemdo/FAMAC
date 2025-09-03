@@ -181,15 +181,15 @@ class NotificationService {
     }
   }
 
-  // Enviar token al backend usando endpoint existente
+  // Enviar token al backend usando endpoint específico seguro
   async sendTokenToBackend(userId) {
     if (!this.token) {
       await this.getToken();
     }
 
     try {
-      // 🔪 CIRUGÍA: Usar endpoint existente updateuserprofile
-      await fetch('https://occr.pixelcrafters.digital/api/updateuserprofile', {
+      // ✅ USAR ENDPOINT ESPECÍFICO (no corrompe datos del perfil)
+      await fetch('https://occr.pixelcrafters.digital/api/update-fcm-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,13 +197,16 @@ class NotificationService {
         body: JSON.stringify({
           userid: userId,
           fcm_token: this.token,
-          // Solo enviamos FCM token, otros campos mantienen valores actuales
         }),
       });
       
-      console.log('✅ FCM Token actualizado exitosamente');
+      console.log('✅ FCM Token actualizado exitosamente (endpoint seguro)');
     } catch (error) {
       console.error('❌ Error actualizando FCM token:', error);
+      
+      // Fallback temporal: si endpoint específico falla, no hacer nada
+      // Esto evita corrupción de datos hasta que el backend esté actualizado
+      console.log('⚠️ FCM token no actualizado para evitar corrupción de datos');
     }
   }
 
