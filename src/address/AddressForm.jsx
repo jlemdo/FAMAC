@@ -452,7 +452,7 @@ const AddressForm = () => {
             <View style={[styles.inputContainer, {flex: 2, marginRight: 8}]}>
               <Text style={styles.label}>Número Ext. *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, fonts.numericStyles.tabular]}
                 placeholder="123"
                 placeholderTextColor="#999"
                 value={addressForm.exteriorNumber}
@@ -462,7 +462,7 @@ const AddressForm = () => {
             <View style={[styles.inputContainer, {flex: 1}]}>
               <Text style={styles.label}>Número Int.</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, fonts.numericStyles.tabular]}
                 placeholder="A"
                 placeholderTextColor="#999"
                 value={addressForm.interiorNumber}
@@ -475,7 +475,7 @@ const AddressForm = () => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Código Postal *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, fonts.numericStyles.tabular]}
               placeholder="01000"
               placeholderTextColor="#999"
               value={addressForm.postalCode}

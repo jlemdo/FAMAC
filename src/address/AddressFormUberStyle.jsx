@@ -1243,7 +1243,7 @@ const AddressFormUberStyle = () => {
             <Text style={styles.fieldLabel}>No. Ext *</Text>
             <TextInput
               ref={(ref) => registerInput('extNum', ref)}
-              style={styles.addressInput}
+              style={[styles.addressInput, fonts.numericStyles.tabular]}
               placeholder="Número"
               value={exteriorNumber}
               onChangeText={setExteriorNumber}
@@ -1260,7 +1260,7 @@ const AddressFormUberStyle = () => {
             <Text style={styles.fieldLabel}>No. Int</Text>
             <TextInput
               ref={(ref) => registerInput('intNum', ref)}
-              style={styles.addressInput}
+              style={[styles.addressInput, fonts.numericStyles.tabular]}
               placeholder="Opcional"
               value={interiorNumber}
               onChangeText={setInteriorNumber}
@@ -1288,7 +1288,7 @@ const AddressFormUberStyle = () => {
             <Text style={styles.fieldLabel}>CP</Text>
             <TextInput
               ref={(ref) => registerInput('postalCode', ref)}
-              style={styles.addressInput}
+              style={[styles.addressInput, fonts.numericStyles.tabular]}
               placeholder="5 dígitos"
               value={postalCode}
               onChangeText={handlePostalCodeChange}

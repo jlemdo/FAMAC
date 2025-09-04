@@ -31,6 +31,7 @@ import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import EmailVerification from '../components/EmailVerification';
 
 // Helper function para formatear teléfono mexicano visualmente
 const formatMexicanPhone = (phone) => {
@@ -65,6 +66,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   
+  // 🔐 Estados para OTP
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
+  
   // 🔧 Hook para manejo profesional del teclado
   const { 
     scrollViewRef, 
@@ -80,6 +86,20 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   
   // Estado para mostrar advertencia cuando se modifica el email
   const [emailModified, setEmailModified] = useState(false);
+  
+  // 🔐 Verificar si OTP está activado al cargar
+  useEffect(() => {
+    const checkOTPStatus = async () => {
+      try {
+        const response = await axios.get('https://occr.pixelcrafters.digital/api/settings/otp-status');
+        setOtpEnabled(response.data.enabled);
+      } catch (error) {
+        console.log('Error checking OTP status:', error);
+      }
+    };
+    
+    checkOTPStatus();
+  }, []);
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -136,7 +156,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
-      .min(8, 'Mínimo 8 caracteres')
+      .min(6,'')
       .required('Contraseña es obligatoria'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
@@ -250,7 +270,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     }
   };
 
-  // 4️⃣ Envío de formulario
+  // 4️⃣ Envío de formulario con OTP
   const onSubmit = async (values, {setSubmitting}) => {
     let dob = null;
     if (values.birthDate) {
@@ -261,7 +281,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     const payload = {
       first_name: values.first_name,
       last_name: values.last_name,
-      contact_number: getPlainPhone(values.phone), // Enviar solo números al backend
+      contact_number: getPlainPhone(values.phone),
       email: values.email,
       password: values.password,
       password_confirmation: values.confirmPassword,
@@ -272,6 +292,47 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       payload.dob = dob;
     }
 
+    // 🔐 Si OTP está activado, verificar email primero
+    if (otpEnabled) {
+      // Guardar datos del formulario para usar después de OTP
+      setPendingFormData({...payload, setSubmitting});
+      
+      try {
+        // Enviar OTP al email
+        const response = await axios.post('https://occr.pixelcrafters.digital/api/otp/send', {
+          email: values.email,
+          type: 'signup'
+        });
+        
+        if (response.data.success) {
+          setShowOTPModal(true);
+        } else {
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: 'No se pudo enviar código de verificación',
+            confirmText: 'OK',
+          });
+          setSubmitting(false);
+        }
+      } catch (error) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Error enviando código de verificación',
+          confirmText: 'OK',
+        });
+        setSubmitting(false);
+      }
+      return; // Detener aquí hasta que se verifique OTP
+    }
+
+    // Si OTP no está activado, proceder normal
+    await registerUser(payload, setSubmitting);
+  };
+
+  // 🔐 Función para registrar usuario después de OTP o cuando OTP está desactivado
+  const registerUser = async (payload, setSubmitting) => {
     try {
       const {status, data} = await axios.post(
         'https://occr.pixelcrafters.digital/api/register',
@@ -280,7 +341,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       if (status === 201) {
         await login(data.user);
         
-        // Mostrar alert después de un breve delay para evitar conflictos
         setTimeout(() => {
           showAlert({
             type: 'success',
@@ -290,8 +350,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           });
         }, 500);
         
-        // Después del registro exitoso, no es necesario navegar
-        // El AuthContext automáticamente cambiará el flujo a la app principal
         if (onSuccess) {
           onSuccess();
         }
@@ -310,6 +368,51 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       // No resetear el formulario, mantener los datos del usuario
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 🔐 Manejo del OTP modal
+  const handleOTPVerified = async (otp) => {
+    if (!pendingFormData) return;
+
+    // La verificación ya se hizo en el componente EmailVerification.
+    // Proceder directamente con el registro.
+    const payloadWithOTP = { ...pendingFormData, otp };
+    await registerUser(payloadWithOTP, pendingFormData.setSubmitting);
+    setShowOTPModal(false);
+    setPendingFormData(null);
+  };
+
+  const handleOTPCancel = () => {
+    setShowOTPModal(false);
+    setPendingFormData(null);
+    if (pendingFormData?.setSubmitting) {
+      pendingFormData.setSubmitting(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!pendingFormData?.email) return;
+    
+    try {
+      await axios.post('https://occr.pixelcrafters.digital/api/otp/send', {
+        email: pendingFormData.email,
+        type: 'signup'
+      });
+      
+      showAlert({
+        type: 'success',
+        title: 'Código reenviado',
+        message: 'Nuevo código enviado a tu email',
+        confirmText: 'OK',
+      });
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo reenviar el código',
+        confirmText: 'OK',
+      });
     }
   };
 
@@ -401,6 +504,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 style={[
                   styles.input,
                   touched.phone && errors.phone && styles.inputError,
+                  fonts.numericStyles.tabular // ✅ Aplicar estilo para números
                 ]}
                 placeholder="Teléfono (ej: 55 1234 5678)"
                 placeholderTextColor="#999"
@@ -649,7 +753,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña (8 caracteres mínimo)"
+                placeholder="Contraseña (6 caracteres mínimo)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
@@ -658,21 +762,24 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 onFocus={createFocusHandler('password', 30)}
                 returnKeyType="next"
               />
-              {/* Mostrar requisito simple de password */}
+              
+                            {/* Mostrar requisito simple de password */}
               {values.password && values.password.length > 0 && (
                 <View style={styles.passwordRequirements}>
                   <Text style={[
                     styles.passwordRequirement,
-                    values.password.length >= 8 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                    values.password.length >= 6 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
-                    {values.password.length >= 8 ? '✓' : '×'} Mínimo 8 caracteres
+                    {values.password.length >= 6 ? '✓' : '×'} Mínimo 6 caracteres
                   </Text>
                 </View>
               )}
               {touched.password && errors.password && (
                 <Text style={styles.error}>{errors.password}</Text>
               )}
-            </View>
+              
+            </View>                                    │
+
 
             {/* Verificar contraseña */}
             <View style={styles.inputGroup}>
@@ -772,6 +879,18 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       </Formik>
         </ScrollView>
       </TouchableWithoutFeedback>
+      
+      {/* 🔐 Modal de verificación OTP */}
+      <EmailVerification
+        isVisible={showOTPModal}
+        email={pendingFormData?.email}
+        onVerified={handleOTPVerified}
+        onCancel={handleOTPCancel}
+        onResend={handleResendOTP}
+        title="Verificar tu email"
+        subtitle="Te enviamos un código de 6 dígitos"
+        type="signup"
+      />
     </KeyboardAvoidingView>
   );
 }

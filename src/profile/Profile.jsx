@@ -877,7 +877,8 @@ export default function Profile({ navigation, route }) {
                 // Use inputNoMargin base if there's an error to avoid double spacing
                 (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
                 submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
-                !isEditingProfile && styles.disabledInput
+                !isEditingProfile && styles.disabledInput,
+                fonts.numericStyles.tabular // ✅ Aplicar estilo para números
               ]}
               placeholder="Teléfono (ej: 55 1234 5678)"
               placeholderTextColor="rgba(47,47,47,0.6)"

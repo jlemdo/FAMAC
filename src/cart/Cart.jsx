@@ -841,7 +841,7 @@ export default function Cart() {
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
     
     // 1. Validar carrito no vacío
-    if (parseFloat(totalPrice) <= 0) {
+    if (getFinalTotal() <= 0) {
       showAlert({
         type: 'error',
         title: 'Error',
@@ -1068,15 +1068,8 @@ export default function Cart() {
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       
-      // Calcular precio con descuento simple
-      let finalPrice = parseFloat(totalPrice);
-      if (appliedCoupon && parseFloat(totalPrice) >= appliedCoupon.minAmount) {
-        if (appliedCoupon.type === 'percentage') {
-          finalPrice = parseFloat(totalPrice) - ((parseFloat(totalPrice) * appliedCoupon.discount) / 100);
-        } else {
-          finalPrice = parseFloat(totalPrice) - appliedCoupon.discount;
-        }
-      }
+      // Usar el cálculo unificado de precio final
+      const finalPrice = Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0));
       
       // 🚨 DEBUG: Verificar qué se envía a Stripe
       console.log('🚨 ENVIANDO A STRIPE:', {
@@ -1119,7 +1112,7 @@ export default function Cart() {
           currencyCode: 'MXN', // Pesos mexicanos
         },
         // Configuración explícita de métodos de pago
-        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(totalPrice)}`,
+        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0)))}`,
         // Asegurar que se acepten tarjetas internacionales
         appearance: {
           primaryButton: {
@@ -2353,11 +2346,7 @@ const CartFooter = ({
           <Text style={styles.checkoutText}>
             {loading ? '🔄 Procesando pago...' : 
              isRestoringDeliveryInfo ? '⏳ Cargando...' : 
-             `💳 Pagar ${appliedCoupon && parseFloat(totalPrice) >= appliedCoupon.minAmount ? 
-               (appliedCoupon.type === 'percentage' ? 
-                 (parseFloat(totalPrice) - ((parseFloat(totalPrice) * appliedCoupon.discount) / 100)).toFixed(2) : 
-                 (parseFloat(totalPrice) - appliedCoupon.discount).toFixed(2)
-               ) : parseFloat(totalPrice).toFixed(2)} MXN`}
+             `💳 Pagar $${Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0)).toFixed(2)} MXN`}
           </Text>
         </TouchableOpacity>
       </View>
