@@ -391,7 +391,8 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     ) : (
                       <>
                         <Image 
-                          source={{uri: 'https://developer.apple.com/assets/elements/icons/sign-in-with-apple/sign-in-with-apple-logo.svg'}}
+                          source={{uri: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/Apple_logo_grey.svg'}}
+                          // source={{uri: 'https://developer.apple.com/assets/elements/icons/sign-in-with-apple/sign-in-with-apple-logo.svg'}}
                           style={styles.appleIcon}
                         />
                         <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
