@@ -25,13 +25,21 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+// Apple Authentication solo disponible en iOS
+let appleAuth = null;
+if (Platform.OS === 'ios') {
+  try {
+    appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
+  } catch (error) {
+    console.log('Apple Auth no disponible:', error.message);
+  }
+}
 import axios from 'axios';
 import {useNavigation} from '@react-navigation/native';
 import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
-// import EmailVerification from '../components/EmailVerification';
 
 // Helper function para formatear teléfono mexicano visualmente
 const formatMexicanPhone = (phone) => {
@@ -65,11 +73,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   
-  // 🔐 Estados para OTP
-  // const [showOTPModal, setShowOTPModal] = useState(false);
-  // const [otpEnabled, setOtpEnabled] = useState(false);
-  // const [pendingFormData, setPendingFormData] = useState(null);
+  // Estados OTP completamente eliminados para evitar crashes
   
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -87,21 +93,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   // Estado para mostrar advertencia cuando se modifica el email
   const [emailModified, setEmailModified] = useState(false);
   
-  // 🔐 Verificar si OTP está activado al cargar
-  /*
-  useEffect(() => {
-    const checkOTPStatus = async () => {
-      try {
-        const response = await axios.get('https://occr.pixelcrafters.digital/api/settings/otp-status');
-        setOtpEnabled(response.data.enabled);
-      } catch (error) {
-        console.log('Error checking OTP status:', error);
-      }
-    };
-    
-    checkOTPStatus();
-  }, []);
-  */
+  // OTP useEffect eliminado completamente
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -272,7 +264,72 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     }
   };
 
-  // 4️⃣ Envío de formulario con OTP
+  // 4️⃣ Registro con Apple
+  const handleAppleSignup = async () => {
+    if (!appleAuth || appleLoading) return;
+    
+    setAppleLoading(true);
+    
+    try {
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
+      
+      if (credentialState === appleAuth.State.AUTHORIZED) {
+        const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
+        
+        const payload = {
+          identity_token: identityToken,
+          user_id: appleUserId,
+          email: email,
+          full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
+        };
+        
+        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
+        await login(data.user);
+        
+        setTimeout(() => {
+          const userName = data.user.first_name || fullName?.givenName || 'Usuario';
+          showAlert({
+            type: 'success',
+            title: `¡Bienvenido, ${userName}!`,
+            message: 'Registro exitoso con Apple',
+            confirmText: 'OK',
+          });
+        }, 500);
+        
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error de autenticación',
+          message: 'No se pudo verificar tu identidad con Apple. Intenta nuevamente.',
+          confirmText: 'OK',
+        });
+      }
+    } catch (error) {
+      if (appleAuth && error.code === appleAuth.Error.CANCELED) {
+        // Usuario canceló - silencioso
+        return;
+      }
+      
+      showAlert({
+        type: 'error',
+        title: 'Error de conexión',
+        message: 'No se pudo completar el registro con Apple. Verifica tu conexión e intenta nuevamente.',
+        confirmText: 'OK',
+      });
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
+  // 5️⃣ Envío de formulario
   const onSubmit = async (values, {setSubmitting}) => {
     let dob = null;
     if (values.birthDate) {
@@ -294,49 +351,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       payload.dob = dob;
     }
 
-    // 🔐 Si OTP está activado, verificar email primero
-    /*
-    if (otpEnabled) {
-      // Guardar datos del formulario para usar después de OTP
-      setPendingFormData({...payload, setSubmitting});
-      
-      try {
-        // Enviar OTP al email
-        const response = await axios.post('https://occr.pixelcrafters.digital/api/otp/send', {
-          email: values.email,
-          type: 'signup'
-        });
-        
-        if (response.data.success) {
-          setShowOTPModal(true);
-        } else {
-          showAlert({
-            type: 'error',
-            title: 'Error',
-            message: 'No se pudo enviar código de verificación',
-            confirmText: 'OK',
-          });
-          setSubmitting(false);
-        }
-      } catch (error) {
-        showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Error enviando código de verificación',
-          confirmText: 'OK',
-        });
-        setSubmitting(false);
-      }
-      return; // Detener aquí hasta que se verifique OTP
-    }
-    */
-
-    // Si OTP no está activado, proceder normal
-    await registerUser(payload, setSubmitting);
-  };
-
-  // 🔐 Función para registrar usuario después de OTP o cuando OTP está desactivado
-  const registerUser = async (payload, setSubmitting) => {
     try {
       const {status, data} = await axios.post(
         'https://occr.pixelcrafters.digital/api/register',
@@ -345,6 +359,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       if (status === 201) {
         await login(data.user);
         
+        // Mostrar alert después de un breve delay para evitar conflictos
         setTimeout(() => {
           showAlert({
             type: 'success',
@@ -354,6 +369,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
           });
         }, 500);
         
+        // Después del registro exitoso, no es necesario navegar
+        // El AuthContext automáticamente cambiará el flujo a la app principal
         if (onSuccess) {
           onSuccess();
         }
@@ -375,52 +392,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     }
   };
 
-  // 🔐 Manejo del OTP modal
-  /*
-  const handleOTPVerified = async (otp) => {
-    if (!pendingFormData) return;
-
-    // La verificación ya se hizo en el componente EmailVerification.
-    // Proceder directamente con el registro.
-    const payloadWithOTP = { ...pendingFormData, otp };
-    await registerUser(payloadWithOTP, pendingFormData.setSubmitting);
-    setShowOTPModal(false);
-    setPendingFormData(null);
-  };
-
-  const handleOTPCancel = () => {
-    setShowOTPModal(false);
-    setPendingFormData(null);
-    if (pendingFormData?.setSubmitting) {
-      pendingFormData.setSubmitting(false);
-    }
-  };
-
-  const handleResendOTP = async () => {
-    if (!pendingFormData?.email) return;
-    
-    try {
-      await axios.post('https://occr.pixelcrafters.digital/api/otp/send', {
-        email: pendingFormData.email,
-        type: 'signup'
-      });
-      
-      showAlert({
-        type: 'success',
-        title: 'Código reenviado',
-        message: 'Nuevo código enviado a tu email',
-        confirmText: 'OK',
-      });
-    } catch (error) {
-      showAlert({
-        type: 'error',
-        title: 'Error',
-        message: 'No se pudo reenviar el código',
-        confirmText: 'OK',
-      });
-    }
-  };
-  */
+  // Todas las funciones OTP eliminadas completamente
 
   return (
     <KeyboardAvoidingView 
@@ -865,6 +837,27 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
               )}
             </TouchableOpacity>
 
+            {/* Botón Apple Sign-Up - Solo iOS */}
+            {appleAuth && Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
+                onPress={handleAppleSignup}
+                disabled={isSubmitting || appleLoading}
+                activeOpacity={0.8}>
+                {appleLoading ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Image 
+                      source={{uri: 'https://developer.apple.com/assets/elements/icons/sign-in-with-apple/sign-in-with-apple-logo.svg'}}
+                      style={styles.appleIcon}
+                    />
+                    <Text style={styles.appleButtonText}>Registrarse con Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* Ya tienes cuenta */}
             <TouchableOpacity 
               style={styles.loginButton}
@@ -886,19 +879,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         </ScrollView>
       </TouchableWithoutFeedback>
       
-      {/* 🔐 Modal de verificación OTP */}
-      {/*
-      <EmailVerification
-        isVisible={showOTPModal}
-        email={pendingFormData?.email}
-        onVerified={handleOTPVerified}
-        onCancel={handleOTPCancel}
-        onResend={handleResendOTP}
-        title="Verificar tu email"
-        subtitle="Te enviamos un código de 6 dígitos"
-        type="signup"
-      />
-      */}
+      {/* Modal OTP completamente eliminado */}
     </KeyboardAvoidingView>
   );
 }
@@ -1037,6 +1018,32 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: '#2F2F2F',
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  appleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+    tintColor: '#FFF',
+  },
+  appleButtonText: {
+    color: '#FFF',
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
   },

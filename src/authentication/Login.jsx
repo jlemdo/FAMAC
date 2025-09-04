@@ -390,7 +390,10 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                       <ActivityIndicator color="#FFF" size="small" />
                     ) : (
                       <>
-                        <Text style={styles.appleIcon}>🍎</Text>
+                        <Image 
+                          source={{uri: 'https://developer.apple.com/assets/elements/icons/sign-in-with-apple/sign-in-with-apple-logo.svg'}}
+                          style={styles.appleIcon}
+                        />
                         <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
                       </>
                     )}
@@ -625,8 +628,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   appleIcon: {
-    fontSize: 18,
+    width: 18,
+    height: 18,
     marginRight: 12,
+    tintColor: '#FFF',
   },
   appleButtonText: {
     color: '#FFF',
