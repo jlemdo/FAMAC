@@ -876,20 +876,23 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
 
             {/* Botón Apple Sign-Up - Solo iOS */}
             {Platform.OS === 'ios' && appleAuth && (
-              <View style={styles.appleButtonContainer}>
-                <appleAuth.AppleButton
-                  buttonStyle={appleAuth.AppleButton.Style.BLACK}
-                  buttonType={appleAuth.AppleButton.Type.SIGN_UP}
-                  style={styles.appleButton}
-                  onPress={handleAppleSignup}
-                  disabled={isSubmitting || appleLoading}
-                />
-                {appleLoading && (
-                  <View style={styles.appleLoadingOverlay}>
-                    <ActivityIndicator color="#FFF" size="small" />
-                  </View>
+              <TouchableOpacity
+                style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
+                onPress={handleAppleSignup}
+                disabled={isSubmitting || appleLoading}
+                activeOpacity={0.8}>
+                {appleLoading ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Image 
+                      source={{uri: 'https://upload.wikimedia.org/commons/1/1b/Apple_logo_grey.svg'}}
+                      style={styles.appleIcon}
+                    />
+                    <Text style={styles.appleButtonText}>Registrarse con Apple</Text>
+                  </>
                 )}
-              </View>
+              </TouchableOpacity>
             )}
 
             {/* Ya tienes cuenta */}
@@ -1056,27 +1059,31 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
-  // 🍎 BOTÓN OFICIAL DE APPLE
-  appleButtonContainer: {
-    width: '100%',
-    height: 48,
-    marginBottom: 16,
-    position: 'relative',
-  },
   appleButton: {
     width: '100%',
     height: 48,
-  },
-  appleLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#000',
     borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  appleIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 12,
+    tintColor: '#FFF',
+  },
+  appleButtonText: {
+    color: '#FFF',
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
   },
   loginButton: {
     width: '100%',
