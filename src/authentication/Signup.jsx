@@ -31,7 +31,7 @@ import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
-import EmailVerification from '../components/EmailVerification';
+// import EmailVerification from '../components/EmailVerification';
 
 // Helper function para formatear teléfono mexicano visualmente
 const formatMexicanPhone = (phone) => {
@@ -67,9 +67,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   
   // 🔐 Estados para OTP
-  const [showOTPModal, setShowOTPModal] = useState(false);
-  const [otpEnabled, setOtpEnabled] = useState(false);
-  const [pendingFormData, setPendingFormData] = useState(null);
+  // const [showOTPModal, setShowOTPModal] = useState(false);
+  // const [otpEnabled, setOtpEnabled] = useState(false);
+  // const [pendingFormData, setPendingFormData] = useState(null);
   
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -88,6 +88,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   const [emailModified, setEmailModified] = useState(false);
   
   // 🔐 Verificar si OTP está activado al cargar
+  /*
   useEffect(() => {
     const checkOTPStatus = async () => {
       try {
@@ -100,6 +101,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     
     checkOTPStatus();
   }, []);
+  */
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -293,6 +295,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     }
 
     // 🔐 Si OTP está activado, verificar email primero
+    /*
     if (otpEnabled) {
       // Guardar datos del formulario para usar después de OTP
       setPendingFormData({...payload, setSubmitting});
@@ -326,6 +329,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       }
       return; // Detener aquí hasta que se verifique OTP
     }
+    */
 
     // Si OTP no está activado, proceder normal
     await registerUser(payload, setSubmitting);
@@ -372,6 +376,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
   };
 
   // 🔐 Manejo del OTP modal
+  /*
   const handleOTPVerified = async (otp) => {
     if (!pendingFormData) return;
 
@@ -415,6 +420,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       });
     }
   };
+  */
 
   return (
     <KeyboardAvoidingView 
@@ -881,6 +887,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       </TouchableWithoutFeedback>
       
       {/* 🔐 Modal de verificación OTP */}
+      {/*
       <EmailVerification
         isVisible={showOTPModal}
         email={pendingFormData?.email}
@@ -891,6 +898,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         subtitle="Te enviamos un código de 6 dígitos"
         type="signup"
       />
+      */}
     </KeyboardAvoidingView>
   );
 }
