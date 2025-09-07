@@ -74,6 +74,11 @@ export default function Cart() {
   const [upsellItems, setUpsellItems] = useState([]);
   const [loadingUpsell, setLoadingUpsell] = useState(true);
   const [showLoadingContent, setShowLoadingContent] = useState(true); // 🆕 Controlar si mostrar el cuadro o solo el overlay
+  // 📦 NUEVO: Estados para sistema de envío motivacional
+  const [shippingConfig, setShippingConfig] = useState(null);
+  const [shippingMotivation, setShippingMotivation] = useState(null);
+  const [shippingCost, setShippingCost] = useState(0);
+  const [loadingShipping, setLoadingShipping] = useState(false);
   const [latlong, setLatlong] = useState({
     driver_lat: '',
     driver_long: '',
@@ -150,6 +155,22 @@ export default function Cart() {
       
     }
   }, [cart.length, totalPrice, user?.id]);
+
+  // 📦 NUEVO: Cargar configuración inicial de envío
+  useEffect(() => {
+    fetchShippingConfig();
+  }, []);
+
+  // 📦 NUEVO: Recalcular envío cuando cambie el subtotal
+  useEffect(() => {
+    const currentSubtotal = getSubtotal() - getDiscountAmount();
+    if (currentSubtotal > 0) {
+      calculateShippingAndMotivation(currentSubtotal);
+    } else {
+      setShippingCost(0);
+      setShippingMotivation(null);
+    }
+  }, [totalPrice, appliedCoupon]);
   
   // Función para guardar deliveryInfo en AsyncStorage
   const saveDeliveryInfo = async (info, userId) => {
@@ -277,7 +298,48 @@ export default function Cart() {
   const getFinalTotal = () => {
     const subtotal = getSubtotal();
     const discount = getDiscountAmount();
-    return Math.max(0, subtotal - discount);
+    return Math.max(0, subtotal - discount + shippingCost);
+  };
+
+  // 📦 NUEVO: Obtener configuración de envío
+  const fetchShippingConfig = async () => {
+    try {
+      const response = await axios.get(`${Config.API_URL}/api/shipping-config`);
+      if (response.data.status === 'success') {
+        setShippingConfig(response.data.data);
+        return response.data.data;
+      }
+    } catch (error) {
+      console.log('Error obteniendo configuración de envío:', error);
+    }
+    return null;
+  };
+
+  // 📦 NUEVO: Calcular envío y mensaje motivacional
+  const calculateShippingAndMotivation = async (subtotal) => {
+    if (!subtotal || subtotal <= 0) {
+      setShippingCost(0);
+      setShippingMotivation(null);
+      return;
+    }
+
+    setLoadingShipping(true);
+    
+    try {
+      const response = await axios.get(`${Config.API_URL}/api/shipping-motivation/${subtotal}`);
+      
+      if (response.data.status === 'success') {
+        const data = response.data.data;
+        setShippingMotivation(data);
+        setShippingCost(data.shipping_cost || 0);
+      }
+    } catch (error) {
+      console.log('Error calculando envío:', error);
+      setShippingCost(0);
+      setShippingMotivation(null);
+    } finally {
+      setLoadingShipping(false);
+    }
   };
   
   const isCouponStillValid = () => {
@@ -1699,6 +1761,24 @@ export default function Cart() {
                 <Text style={styles.stickyTotalDiscount}>
                   🎫 Descuento: -{formatPriceWithSymbol(getDiscountAmount())}
                 </Text>
+              )}
+              {/* 📦 NUEVO: Componente de motivación de envío */}
+              {shippingMotivation && (
+                <View style={styles.shippingMotivationContainer}>
+                  <Text style={[
+                    styles.shippingMotivationText,
+                    shippingMotivation.type === 'success' 
+                      ? styles.shippingMotivationSuccess 
+                      : styles.shippingMotivationRegular
+                  ]}>
+                    {shippingMotivation.message}
+                  </Text>
+                  {shippingCost > 0 && (
+                    <Text style={styles.shippingCostText}>
+                      📦 Envío: +{formatPriceWithSymbol(shippingCost)}
+                    </Text>
+                  )}
+                </View>
               )}
             </View>
           </View>

@@ -489,6 +489,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 2,
   },
+  // 📦 NUEVO: Estilos para motivación de envío
+  shippingMotivationContainer: {
+    backgroundColor: 'rgba(139, 94, 60, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+  },
+  shippingMotivationText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  shippingMotivationSuccess: {
+    color: '#33A744', // Verde para envío gratis conseguido
+  },
+  shippingMotivationRegular: {
+    color: '#D27F27', // Naranja para motivar compra adicional
+  },
+  shippingCostText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#8B5E3C',
+    textAlign: 'center',
+    opacity: 0.8,
+  },
   savedAddressText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
