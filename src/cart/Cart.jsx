@@ -1187,7 +1187,7 @@ export default function Cart() {
       // 1.2) Inicializar Stripe PaymentSheet
       const {error: initError} = await initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Lácteos y más',
+        merchantDisplayName: 'Sabores de Origen',
         allowsDelayedPaymentMethods: true, // CAMBIADO: true para OXXO y otros métodos delayed
         returnURL: 'occr-productos-app://stripe-redirect',
         // Configuración de métodos de pago específicos para México
@@ -1766,7 +1766,7 @@ export default function Cart() {
             <View style={styles.emptyCartContainer}>
           <Text style={styles.emptyCartTitle}>🛒 Tu carrito está vacío</Text>
           <Text style={styles.emptyCartText}>
-            ¡Es el momento perfecto para descubrir nuestros deliciosos lácteos frescos!
+            ¡Es el momento perfecto para descubrir nuestros sabores auténticos!
           </Text>
           <Text style={styles.emptyCartHighlight}>
             🥛 Productos artesanales • 🧀 Quesos premium • 🫐 Y más...

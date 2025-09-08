@@ -40,15 +40,11 @@ class NotificationService {
       
       return true;
     } else {
-      console.log('❌ Permisos de notificación denegados');
+      console.log('❌ Permisos de notificación denegados - continuando sin notificaciones');
       
-      if (Platform.OS === 'ios') {
-        Alert.alert(
-          '❌ Permisos Denegados', 
-          'Las notificaciones están deshabilitadas. Ve a Configuración > Notificaciones > FAMAC para habilitarlas.',
-          [{text: 'Ir a Configuración', onPress: () => Linking.openSettings()}]
-        );
-      }
+      // 🔧 ARREGLADO: No mostrar Alert automático - respetamos decisión del usuario
+      // El usuario ya vio el prompt nativo y decidió "No permitir"
+      // Mostrar Alert sería molesto e innecesario
       
       return false;
     }

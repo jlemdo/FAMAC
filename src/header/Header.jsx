@@ -205,7 +205,7 @@ const Header = ({onLogout}) => {
               resizeMode="contain"
             />
           </Animated.View>
-          <Text style={styles.appName}>Lácteos y más...</Text>
+          <Text style={styles.appName}>Sabores de Origen</Text>
         </View>
 
         <View style={styles.rightIcons}>

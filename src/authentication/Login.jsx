@@ -72,12 +72,16 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   useEffect(() => {
     const requestNotificationPermissions = async () => {
       try {
-        await NotificationService.requestPermission();
+        const hasPermission = await NotificationService.requestPermission();
+        console.log('📱 Permisos de notificaciones en Login:', hasPermission ? 'concedidos' : 'denegados');
+        // 🔧 IMPORTANTE: No bloquear flujo independientemente del resultado
       } catch (error) {
         console.log('⚠️ Error solicitando permisos de notificaciones en Login:', error);
+        // 🔧 IMPORTANTE: Continuar normalmente aunque fallen los permisos
       }
     };
 
+    // 🔧 ARREGLADO: Ejecutar sin await para evitar bloqueos
     requestNotificationPermissions();
   }, []);
 

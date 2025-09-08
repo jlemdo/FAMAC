@@ -256,7 +256,7 @@ const Order = () => {
                     Aún no has realizado ningún pedido. ¡Es hora de explorar nuestros deliciosos productos!
                   </Text>
                   <Text style={styles.userHighlight}>
-                    🥛 Descubre nuestros lácteos frescos y productos artesanales
+                    🌟 Descubre nuestros sabores auténticos y productos artesanales
                   </Text>
                   <Text style={styles.userSubtext}>
                     📱 Tus pedidos aparecerán aquí automáticamente después de cada compra

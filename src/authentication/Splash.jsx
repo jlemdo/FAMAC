@@ -112,7 +112,7 @@ const SplashScreen = ({ navigation }) => {
           ]}>
           <Text style={styles.welcomeText}>Bienvenido</Text>
           {/* <Text style={styles.appName}>FAMAC</Text> */}
-          <Text style={styles.tagline}>Lácteos frescos para tu hogar</Text>
+          <Text style={styles.tagline}>Sabores auténticos para tu hogar</Text>
         </Animated.View>
 
         {/* Indicador de carga sutil */}
