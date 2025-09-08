@@ -560,17 +560,42 @@ export default function Cart() {
     setLoadingAddresses(true);
     try {
       const addresses = await newAddressService.getUserAddresses(user.id);
+      console.log('🏠 DIRECCIONES OBTENIDAS:', addresses);
       setUserAddresses(addresses);
       
       // Si hay una dirección predeterminada, seleccionarla automáticamente
       const defaultAddress = addresses.find(addr => 
-        addr.is_default === "1" || addr.is_default === 1
+        addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true
       );
-      if (defaultAddress && !selectedAddress) {
+      console.log('🎯 DIRECCIÓN PRINCIPAL ENCONTRADA:', defaultAddress);
+      
+      if (defaultAddress) {
+        // 🔧 SIEMPRE actualizar con la dirección principal del backend
+        console.log('✅ ESTABLECIENDO DIRECCIÓN PRINCIPAL:', {
+          address: defaultAddress.address?.substring(0, 50),
+          latitude: defaultAddress.latitude,
+          longitude: defaultAddress.longitude,
+          is_primary: defaultAddress.is_primary,
+          selectedAddressBefore: selectedAddress?.id
+        });
         setSelectedAddress(defaultAddress);
         setAddress(defaultAddress.address);
+        // Las coordenadas ya vienen del backend
+        if (defaultAddress.latitude && defaultAddress.longitude) {
+          setLatlong({
+            driver_lat: defaultAddress.latitude.toString(),
+            driver_long: defaultAddress.longitude.toString(),
+          });
+          console.log('📍 COORDENADAS ESTABLECIDAS:', {
+            lat: defaultAddress.latitude,
+            lng: defaultAddress.longitude
+          });
+        }
+      } else {
+        console.log('❌ NO SE ENCONTRÓ DIRECCIÓN PRINCIPAL');
       }
     } catch (error) {
+      console.error('❌ ERROR OBTENIENDO DIRECCIONES:', error);
       setUserAddresses([]);
     } finally {
       setLoadingAddresses(false);
@@ -600,24 +625,11 @@ export default function Cart() {
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
-      
-      // 🆕 GUEST FIX: También restaurar dirección guardada de Guest
-      const hasAddress = user?.address && user?.address?.trim() !== '';
-      if (hasAddress) {
-        setAddress(user.address);
-        console.log('📍 RESTAURANDO DIRECCIÓN GUEST:', user.address.substring(0, 50) + '...');
-        
-        // 🆕 FIX: Si Guest no tiene coordenadas, hacer geocoding de la dirección guardada
-        if (!latlong?.driver_lat || !latlong?.driver_long) {
-          handleGuestAddressGeocoding(user.address);
-        }
-      }
+      // 🔧 LIMPIADO: Guest ya no usa sistema legacy de direcciones
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
-      // Cargar perfil completo para obtener dirección actualizada
-      fetchUserProfile();
-      // Cargar direcciones del usuario
+      // Cargar direcciones del usuario con el nuevo sistema
       fetchUserAddresses();
     }
     
@@ -634,7 +646,6 @@ export default function Cart() {
         // });
         
         if (user?.usertype !== 'Guest' && user?.id) {
-          fetchUserProfile();
           fetchUserAddresses();
           // Solo restaurar datos si hay productos en el carrito
           if (cart.length > 0) {
@@ -1027,20 +1038,28 @@ export default function Cart() {
         return;
       }
     } else {
-      // Usuario registrado: requiere dirección Y coordenadas del mapa
-      const savedAddress = userProfile?.address || user?.address;
-      if (!savedAddress?.trim() && !address?.trim()) {
-        showAlert({
-          type: 'error',
-          title: 'Dirección requerida',
-          message: 'Por favor agrega una dirección en tu perfil o proporciona una dirección.',
-          confirmText: 'Cerrar',
-        });
+      // Usuario registrado: requiere dirección del sistema nuevo
+      console.log('🔍 CHECKOUT DEBUG - Usuario Registrado:', {
+        address: address,
+        addressTrim: address?.trim(),
+        hasAddress: !!address?.trim(),
+        userAddressesLength: userAddresses?.length,
+        selectedAddress: selectedAddress,
+        latlong: latlong
+      });
+      
+      if (!address?.trim()) {
+        console.log('❌ NO HAY DIRECCIÓN - Mostrando modal');
+        // No tiene dirección del sistema nuevo - mostrar modal para seleccionar
+        setShowAddressModal(true);
         return;
       }
+      
+      console.log('✅ SÍ HAY DIRECCIÓN - Continuando con pago');
 
       // ✅ VALIDAR ZONA DE ENTREGA para Usuario registrado
-      const userAddress = address?.trim() || savedAddress?.trim();
+      console.log('🌍 VALIDANDO ZONA DE ENTREGA');
+      const userAddress = address?.trim();
       if (userAddress) {
         const zoneValidation = validateDeliveryZone(userAddress);
         if (!zoneValidation.isValid) {
@@ -1054,7 +1073,11 @@ export default function Cart() {
         }
       }
       
+      console.log('✅ ZONA DE ENTREGA VÁLIDA');
+      console.log('📍 VERIFICANDO COORDENADAS:', { latlong: latlong });
+      
       if (!latlong?.driver_lat || !latlong?.driver_long) {
+        console.log('❌ NO HAY COORDENADAS');
         
         // 🆕 PASO 1: Intentar restaurar coordenadas guardadas
         let restoredCoords = null;
@@ -1510,14 +1533,9 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
-    // console.log('🔍 HANDLE CHECKOUT - ESTADO ACTUAL:', {
-      // deliveryInfo: deliveryInfo,
-      // isRestoringDeliveryInfo: isRestoringDeliveryInfo,
-      // userType: user?.usertype,
-      // cartLength: cart.length
-    // });
     
     if (user?.usertype === 'Guest') {
+      console.log('👤 FLUJO GUEST');
       
       // Verificar si el guest ya tiene email y dirección
       const hasEmail = email?.trim() && email.trim() !== '';
@@ -1548,13 +1566,16 @@ export default function Cart() {
         });
       }
     } else {
-      // Usuario registrado: verificar si tiene dirección REAL del perfil
-      const hasProfileAddress = userProfile?.address && userProfile?.address?.trim() !== '';
+      console.log('👥 ENTRANDO A FLUJO USUARIO REGISTRADO');
+      // Usuario registrado: verificar si tiene dirección del SISTEMA NUEVO
+      console.log('🔍 VERIFICANDO DIRECCIÓN SISTEMA NUEVO:', { address: address?.trim() });
       
-      if (!hasProfileAddress) {
-        // No tiene dirección: mostrar modal para seleccionar/agregar
+      if (!address?.trim()) {
+        // No tiene dirección del sistema nuevo: mostrar modal
+        console.log('❌ NO HAY DIRECCIÓN DEL SISTEMA NUEVO - Mostrando modal');
         setShowAddressModal(true);
       } else {
+        console.log('✅ SÍ HAY DIRECCIÓN DEL SISTEMA NUEVO - Continuando...');
         // Usuario tiene dirección: verificar si ya tiene coordenadas
         const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
         
@@ -1945,7 +1966,7 @@ export default function Cart() {
                     <ActivityIndicator size="large" color="#8B5E3C" />
                     <Text style={styles.loadingText}>Cargando direcciones...</Text>
                   </View>
-                ) : userAddresses.length > 0 && !userAddresses.find(addr => addr.is_default === "1" || addr.is_default === 1) ? (
+                ) : userAddresses.length > 0 && !userAddresses.find(addr => addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true) ? (
                   // Usuario CON direcciones guardadas PERO SIN predeterminada - Mostrar selector
                   <>
                     <Text style={styles.modalMessage}>
@@ -1955,7 +1976,7 @@ export default function Cart() {
                     <ScrollView style={styles.addressList} nestedScrollEnabled={true}>
                       {userAddresses.map((addr) => {
                         const isSelected = selectedAddress?.id === addr.id;
-                        const isDefault = addr.is_default === "1" || addr.is_default === 1;
+                        const isDefault = addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true;
                         
                         return (
                           <TouchableOpacity
@@ -1968,6 +1989,13 @@ export default function Cart() {
                             onPress={() => {
                               setSelectedAddress(addr);
                               setAddress(addr.address);
+                              // 🔧 CRÍTICO: Establecer coordenadas cuando cambia la dirección
+                              if (addr.latitude && addr.longitude) {
+                                setLatlong({
+                                  driver_lat: addr.latitude.toString(),
+                                  driver_long: addr.longitude.toString(),
+                                });
+                              }
                             }}>
                             <View style={styles.addressOptionHeader}>
                               <View style={styles.addressIconContainer}>
@@ -2071,6 +2099,13 @@ export default function Cart() {
                         onPress={() => {
                           setSelectedAddress(userAddresses[0]);
                           setAddress(userAddresses[0].address);
+                          // 🔧 CRÍTICO: Establecer coordenadas
+                          if (userAddresses[0].latitude && userAddresses[0].longitude) {
+                            setLatlong({
+                              driver_lat: userAddresses[0].latitude.toString(),
+                              driver_long: userAddresses[0].longitude.toString(),
+                            });
+                          }
                           setShowAddressModal(false);
                           completeOrder(); // Usar la única dirección
                         }}>
@@ -2402,11 +2437,11 @@ const CartFooter = ({
         )}
 
         {/* ✅ MEJORADO: Ubicación con geocoding inteligente para usuarios registrados */}
-        {user && user.usertype !== 'Guest' && deliveryInfo && userProfile?.address && (
+        {user && user.usertype !== 'Guest' && deliveryInfo && address && (
           <View style={styles.registeredUserLocationSection}>
             <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
             <Text style={styles.userAddressText}>
-              {userProfile.address}
+              {address}
             </Text>
             
             {/* 🔧 COMENTADO: Ya no necesario - Las direcciones tienen coordenadas precisas automáticamente

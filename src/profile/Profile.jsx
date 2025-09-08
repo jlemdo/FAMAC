@@ -699,7 +699,7 @@ export default function Profile({ navigation, route }) {
               last_name:   values.last_name,
               phone:       getPlainPhone(values.phone), // Enviar solo números al backend
               email:       currentServerData.email || profile.email,        // Preservar email del servidor
-              address:     currentServerData.address || profile.address || '',  // Preservar dirección del servidor
+              // 🔧 ELIMINADO: address legacy - ahora usamos newAddressService para direcciones múltiples
             };
             
             // Solo agregar/actualizar dob si es primera vez O preservar existente
