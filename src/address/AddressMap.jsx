@@ -47,47 +47,13 @@ const AddressMap = () => {
   
 
 
-  // Manejar pin en mapa
-  const handleMapPress = async (event) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
+  // 🎯 NUEVO: Manejar movimiento del mapa (pin fijo central como Uber/DiDi)
+  const handleRegionChangeComplete = async (region) => {
+    const { latitude, longitude } = region;
     setCurrentLocation({ latitude, longitude });
     
-    try {
-      // Geocoding inverso para obtener dirección
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/geocode/json`,
-        {
-          params: {
-            latlng: `${latitude},${longitude}`,
-            key: Config.GOOGLE_DIRECTIONS_API_KEY,
-            language: 'es',
-          },
-        }
-      );
-
-      if (response.data.results[0]) {
-        const result = response.data.results[0];
-        const updatedForm = parseAddressComponents(
-          result.address_components, 
-          result.formatted_address, 
-          addressForm
-        );
-        
-        // ✅ SOLUCIONADO: Usar callback por ID o fallback a función directa
-        if (callbackId) {
-          executeNavigationCallback(callbackId, { latitude, longitude }, updatedForm);
-        } else if (onLocationReturn) {
-          onLocationReturn({ latitude, longitude }, updatedForm);
-        }
-      }
-    } catch (error) {
-      // ✅ SOLUCIONADO: Error with reverse geocoding, mantener solo coordenadas
-      if (callbackId) {
-        executeNavigationCallback(callbackId, { latitude, longitude }, addressForm);
-      } else if (onLocationReturn) {
-        onLocationReturn({ latitude, longitude }, addressForm);
-      }
-    }
+    // Opcional: Geocoding inverso para obtener dirección (solo para debug/info)
+    // No ejecutar callbacks automáticamente, solo al confirmar
   };
 
   // Confirmar ubicación y regresar
@@ -196,7 +162,7 @@ const AddressMap = () => {
       {/* Instrucciones */}
       <View style={styles.instructionsContainer}>
         <Text style={styles.instructionsText}>
-          📍 Toca en el mapa para seleccionar tu ubicación exacta
+          🗺️ Arrastra el mapa para posicionar el pin en tu ubicación exacta
         </Text>
         {userWrittenAddress && (
           <View style={styles.addressContextContainer}>
@@ -211,7 +177,7 @@ const AddressMap = () => {
         )}
       </View>
 
-      {/* Mapa */}
+      {/* Mapa con pin fijo central */}
       <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
@@ -222,18 +188,19 @@ const AddressMap = () => {
             latitudeDelta: 0.01,
             longitudeDelta: 0.01,
           }}
-          onPress={handleMapPress}>
-          {currentLocation && (
-            <Marker
-              coordinate={{
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-              }}
-              title="Ubicación seleccionada"
-              pinColor="#D27F27"
-            />
-          )}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          showsUserLocation={false}
+          showsMyLocationButton={false}>
+          {/* Sin Markers - el pin es fijo en el centro */}
         </MapView>
+        
+        {/* 🎯 PIN FIJO EN EL CENTRO (como Uber/DiDi) */}
+        <View style={styles.centerMarker}>
+          <View style={styles.markerFixed}>
+            <View style={styles.markerShadow} />
+            <Ionicons name="location" size={40} color="#D27F27" />
+          </View>
+        </View>
       </View>
 
       {/* Botones */}
@@ -336,6 +303,29 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  
+  // 🎯 ESTILOS PARA PIN FIJO CENTRAL
+  centerMarker: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -20, // Mitad del ancho del marcador (40px/2)
+    marginTop: -40,  // Altura completa del marcador para que la punta esté en el centro
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerFixed: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerShadow: {
+    position: 'absolute',
+    bottom: -5,
+    width: 20,
+    height: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   buttonContainer: {
     flexDirection: 'row',
