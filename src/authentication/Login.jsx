@@ -127,21 +127,23 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
-        // 🍎 Generar email proxy cuando Apple no proporciona email real
-        // Si el usuario eligió "No compartir email" o es un login subsecuente,
-        // generamos un email único basado en su Apple user ID
-        const finalEmail = email || `${appleUserId}@appleid.com`;
+        // ✅ LÓGICA CORREGIDA: Funciona igual que Google Sign-In
+        // - PRIMERA VEZ: Apple envía email (real o proxy según elección del usuario)
+        // - LOGINS POSTERIORES: Apple NO envía email, pero backend devuelve usuario existente con sus datos originales
+        // - SOLUCIÓN: Confiar en el backend, no generar emails falsos
         
         console.log('🍎 Apple Login Debug:', {
-          originalEmail: email,
-          finalEmail: finalEmail,
-          isProxyEmail: !email
+          isFirstTime: !!email, // Si hay email directo, es primera vez
+          emailFromApple: email, // null en logins posteriores
+          appleUserId: appleUserId,
+          hasIdentityToken: !!identityToken
         });
         
+        // ✅ Enviar datos tal como los recibimos de Apple (igual que Google)
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: finalEmail,
+          email: email, // null en logins posteriores = OK, backend maneja usuarios existentes
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
@@ -409,6 +411,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                         <Image 
                           source={require('../assets/apple/apple-logo-white.png')}
                           style={styles.appleIcon}
+                          resizeMode="contain"
                         />
                         <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>
                       </>

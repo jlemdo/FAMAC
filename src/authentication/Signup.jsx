@@ -286,10 +286,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
+        // ✅ Enviar datos tal como los recibimos de Apple (igual que Google)
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: email,
+          email: email, // En registro siempre debería haber email (real o proxy)
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
@@ -888,6 +889,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                     <Image 
                       source={require('../assets/apple/apple-logo-white.png')}
                       style={styles.appleIcon}
+                      resizeMode="contain"
                     />
                     <Text style={styles.appleButtonText}>Registrarse con Apple</Text>
                   </>
@@ -1078,7 +1080,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     marginRight: 12,
-    tintColor: '#FFF',
+    // tintColor: '#FFF',
   },
   appleButtonText: {
     color: '#FFF',
