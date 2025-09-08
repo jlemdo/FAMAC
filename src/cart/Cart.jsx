@@ -406,6 +406,8 @@ export default function Cart() {
   
   
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [temporaryAddress, setTemporaryAddress] = useState(null); // Dirección temporal para pedido actual
+  const [isChangingAddress, setIsChangingAddress] = useState(false); // Flag para cambio manual
   const [userProfile, setUserProfile] = useState(null); // Perfil completo del usuario
   const [lastSubtotal, setLastSubtotal] = useState(0); // Para detectar cambios en subtotal
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -1407,7 +1409,16 @@ export default function Cart() {
     } 
     else {
       // 🔧 OPTIMIZADO: Usuario registrado usa NUEVO SISTEMA de direcciones
-      if (selectedAddress?.latitude && selectedAddress?.longitude) {
+      // Priorizar dirección temporal si está seleccionada
+      if (temporaryAddress?.latitude && temporaryAddress?.longitude) {
+        // Usar coordenadas de la dirección temporal seleccionada
+        return {
+          customer_lat: temporaryAddress.latitude.toString(),
+          customer_long: temporaryAddress.longitude.toString(), 
+          address_source: 'temporary_address_selection',
+          delivery_address: temporaryAddress.address || ''
+        };
+      } else if (selectedAddress?.latitude && selectedAddress?.longitude) {
         // Usar coordenadas de la dirección seleccionada del nuevo sistema
         return {
           customer_lat: selectedAddress.latitude.toString(),
@@ -1936,6 +1947,9 @@ export default function Cart() {
                 userProfile={userProfile}
                 goToMapFromCart={goToMapFromCart} // ✅ NUEVA: Función para ir al mapa desde el carrito
                 navigation={navigation} // ✅ NUEVA: Pasar navigation para Guest address editing
+                temporaryAddress={temporaryAddress} // ✅ NUEVA: Dirección temporal para cambio
+                setIsChangingAddress={setIsChangingAddress} // ✅ NUEVA: Función para cambiar dirección
+                setShowAddressModal={setShowAddressModal} // ✅ NUEVA: Función para mostrar modal
               />
             }
             ListFooterComponentStyle={{paddingTop: 8}}
@@ -1983,6 +1997,96 @@ export default function Cart() {
                     <ActivityIndicator size="large" color="#8B5E3C" />
                     <Text style={styles.loadingText}>Cargando direcciones...</Text>
                   </View>
+                ) : isChangingAddress ? (
+                  // Usuario quiere cambiar dirección temporal - Mostrar todas sus direcciones
+                  <>
+                    <Text style={styles.modalMessage}>
+                      Selecciona una dirección diferente para este pedido:
+                    </Text>
+                    
+                    <ScrollView style={styles.addressList} nestedScrollEnabled={true}>
+                      {userAddresses.map((addr) => {
+                        const isSelected = temporaryAddress?.id === addr.id;
+                        const isDefault = addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={addr.id}
+                            style={[
+                              styles.addressOption,
+                              isSelected && styles.selectedAddressOption,
+                              isDefault && styles.defaultAddressOption
+                            ]}
+                            onPress={() => {
+                              setTemporaryAddress(addr);
+                              // Actualizar coordenadas para dirección temporal
+                              if (addr.latitude && addr.longitude) {
+                                setLatlong({
+                                  driver_lat: addr.latitude.toString(),
+                                  driver_long: addr.longitude.toString(),
+                                });
+                              }
+                            }}>
+                            <View style={styles.addressOptionHeader}>
+                              <View style={styles.addressIconContainer}>
+                                <Ionicons 
+                                  name={isDefault ? "home" : "location-outline"} 
+                                  size={18} 
+                                  color={isSelected ? "#33A744" : isDefault ? "#D27F27" : "#8B5E3C"} 
+                                />
+                                {isDefault && (
+                                  <Text style={styles.defaultBadgeSmall}>Principal</Text>
+                                )}
+                              </View>
+                              {isSelected && (
+                                <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+                              )}
+                            </View>
+                            <Text style={[
+                              styles.addressOptionText,
+                              isSelected && styles.selectedAddressText
+                            ]} numberOfLines={3}>
+                              {addr.address}
+                            </Text>
+                            {addr.phone && (
+                              <Text style={styles.phoneTextSmall}>
+                                📱 {addr.phone}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                    
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={styles.modalButtonSecondary}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          setIsChangingAddress(false);
+                          setTemporaryAddress(null);
+                        }}>
+                        <Text style={styles.modalButtonSecondaryText}>Cancelar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.modalButtonPrimary,
+                          !temporaryAddress && styles.modalButtonDisabled
+                        ]}
+                        disabled={!temporaryAddress}
+                        onPress={() => {
+                          setShowAddressModal(false);
+                          setIsChangingAddress(false);
+                        }}>
+                        <Text style={[
+                          styles.modalButtonPrimaryText,
+                          !temporaryAddress && styles.modalButtonDisabledText
+                        ]}>
+                          🔄 Usar Esta Dirección
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
                 ) : userAddresses.length > 0 && !userAddresses.find(addr => addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true) ? (
                   // Usuario CON direcciones guardadas PERO SIN predeterminada - Mostrar selector
                   <>
@@ -2187,6 +2291,9 @@ const CartFooter = ({
   userProfile, // ✅ NUEVO: Para direcciones de usuario registrado
   goToMapFromCart, // ✅ NUEVA: Función para ir al mapa desde el carrito
   navigation, // ✅ NUEVA: Navigation para Guest address editing
+  temporaryAddress, // ✅ NUEVA: Dirección temporal para cambio
+  setIsChangingAddress, // ✅ NUEVA: Función para cambiar dirección
+  setShowAddressModal, // ✅ NUEVA: Función para mostrar modal
 }) => {
   
   // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend - TEMPORALMENTE DESHABILITADA
@@ -2457,9 +2564,20 @@ const CartFooter = ({
         {/* ✅ MEJORADO: Ubicación con geocoding inteligente para usuarios registrados */}
         {user && user.usertype !== 'Guest' && deliveryInfo && address && (
           <View style={styles.registeredUserLocationSection}>
-            <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
+            <View style={styles.locationHeaderRow}>
+              <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
+              <TouchableOpacity
+                style={styles.changeAddressButton}
+                onPress={() => {
+                  setIsChangingAddress(true);
+                  setShowAddressModal(true);
+                }}>
+                <Ionicons name="refresh" size={16} color="#8B5E3C" />
+                <Text style={styles.changeAddressButtonText}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.userAddressText}>
-              {address}
+              {temporaryAddress?.address || address}
             </Text>
             
             {/* 🔧 COMENTADO: Ya no necesario - Las direcciones tienen coordenadas precisas automáticamente
