@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const CartContext = createContext();
 
@@ -91,6 +92,66 @@ export function CartProvider({ children }) {
         // Actualizar el ID del usuario actual
         setCurrentUserId(userId);
     }, [user?.id, user?.email]); // REMOVIDO currentUserId de las dependencias
+
+    // 📦 NUEVO: Cargar carrito desde AsyncStorage al iniciar
+    useEffect(() => {
+        loadCartFromStorage();
+    }, []);
+
+    // 📦 NUEVO: Guardar carrito en AsyncStorage cuando cambie
+    useEffect(() => {
+        if (cart.length > 0) {
+            saveCartToStorage();
+        } else if (cart.length === 0 && user) {
+            // Si el carrito está vacío, limpiar AsyncStorage del usuario actual
+            const currentUserId = user?.id || user?.email || 'anonymous';
+            const cartKey = `cart_${currentUserId}`;
+            AsyncStorage.removeItem(cartKey).catch(console.log);
+        }
+    }, [cart]);
+
+    // 📦 NUEVO: Funciones de persistencia con claves únicas por usuario
+    const saveCartToStorage = async () => {
+        try {
+            const currentUserId = user?.id || user?.email || 'anonymous';
+            const cartKey = `cart_${currentUserId}`;
+            
+            const cartWithTimestamp = {
+                items: cart,
+                timestamp: Date.now(),
+                userId: currentUserId
+            };
+            await AsyncStorage.setItem(cartKey, JSON.stringify(cartWithTimestamp));
+        } catch (error) {
+            console.log('Error guardando carrito:', error);
+        }
+    };
+
+    const loadCartFromStorage = async () => {
+        try {
+            const currentUserId = user?.id || user?.email || 'anonymous';
+            const cartKey = `cart_${currentUserId}`;
+            
+            const savedCart = await AsyncStorage.getItem(cartKey);
+            if (savedCart) {
+                const { items, timestamp } = JSON.parse(savedCart);
+                const currentTime = Date.now();
+                const twentyFourHours = 24 * 60 * 60 * 1000; // 24 horas en ms
+                
+                // Verificar si han pasado menos de 24 horas
+                if (currentTime - timestamp < twentyFourHours) {
+                    if (items.length > 0) {
+                        setCart(items);
+                    }
+                } else {
+                    // Carrito expirado, eliminarlo
+                    await AsyncStorage.removeItem(cartKey);
+                }
+            }
+        } catch (error) {
+            console.log('Error cargando carrito:', error);
+        }
+    };
 
     // Calculate subtotal before any discounts (original prices)
     const subtotalBeforeDiscounts = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);

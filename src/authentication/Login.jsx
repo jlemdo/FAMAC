@@ -127,10 +127,21 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
+        // 🍎 Generar email proxy cuando Apple no proporciona email real
+        // Si el usuario eligió "No compartir email" o es un login subsecuente,
+        // generamos un email único basado en su Apple user ID
+        const finalEmail = email || `${appleUserId}@appleid.com`;
+        
+        console.log('🍎 Apple Login Debug:', {
+          originalEmail: email,
+          finalEmail: finalEmail,
+          isProxyEmail: !email
+        });
+        
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: email,
+          email: finalEmail,
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
@@ -139,13 +150,18 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         await login(data.user);
         
         setTimeout(() => {
-          const userName = data.user.first_name || fullName?.givenName || 'Usuario';
-          showAlert({
-            type: 'success',
-            title: 'Bienvenido',
-            message: `¡Hola ${userName}!`,
-            confirmText: 'Continuar',
-          });
+          // Solo mostrar bienvenida si tenemos un nombre real (no fallback)
+          const userName = data.user.first_name || fullName?.givenName;
+          
+          if (userName) {
+            showAlert({
+              type: 'success',
+              title: 'Bienvenido',
+              message: `¡Hola ${userName}!`,
+              confirmText: 'Continuar',
+            });
+          }
+          // Si no hay nombre, no mostrar mensaje de bienvenida
         }, 500);
       } else {
         showAlert({
@@ -391,8 +407,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     ) : (
                       <>
                         <Image 
-                          source={{uri: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/Apple_logo_grey.svg'}}
-                          // source={{uri: 'https://developer.apple.com/assets/elements/icons/sign-in-with-apple/sign-in-with-apple-logo.svg'}}
+                          source={require('../assets/apple/apple-logo-white.png')}
                           style={styles.appleIcon}
                         />
                         <Text style={styles.appleButtonText}>Iniciar sesión con Apple</Text>

@@ -886,7 +886,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 ) : (
                   <>
                     <Image 
-                      source={{uri: 'https://upload.wikimedia.org/commons/1/1b/Apple_logo_grey.svg'}}
+                      source={require('../assets/apple/apple-logo-white.png')}
                       style={styles.appleIcon}
                     />
                     <Text style={styles.appleButtonText}>Registrarse con Apple</Text>

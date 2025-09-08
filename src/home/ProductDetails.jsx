@@ -119,6 +119,9 @@ export default function ProductDetails() {
     // Agregar al carrito
     addToCart(product, quantity);
     
+    // Reiniciar contador a 1 para el siguiente producto
+    setQuantity(1);
+    
     // Mostrar alerta de éxito
     showSuccessMessage();
   };

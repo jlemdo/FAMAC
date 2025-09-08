@@ -15,6 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
+  StyleSheet,
 } from 'react-native';
 import {useNavigation, useFocusEffect, useRoute} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
@@ -36,12 +37,12 @@ import axios from 'axios';
 import Config from 'react-native-config';
 import { geocodeGuestAddress, convertToDriverCoords, geocodeAddress } from '../utils/geocodingUtils';
 import fonts from '../theme/fonts';
+import styles from './Cart.styles';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import { newAddressService } from '../services/newAddressService';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
-import styles from './Cart.styles';
 
 export default function Cart() {
   const navigation = useNavigation();
@@ -304,7 +305,11 @@ export default function Cart() {
   // 📦 NUEVO: Obtener configuración de envío
   const fetchShippingConfig = async () => {
     try {
-      const response = await axios.get(`${Config.API_URL}/api/shipping-config`);
+      const response = await axios.get(`https://occr.pixelcrafters.digital/api/shipping-config`, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       if (response.data.status === 'success') {
         setShippingConfig(response.data.data);
         return response.data.data;
@@ -326,15 +331,19 @@ export default function Cart() {
     setLoadingShipping(true);
     
     try {
-      const response = await axios.get(`${Config.API_URL}/api/shipping-motivation/${subtotal}`);
+      const response = await axios.get(`https://occr.pixelcrafters.digital/api/shipping-motivation/${subtotal}`, {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       
       if (response.data.status === 'success') {
         const data = response.data.data;
         setShippingMotivation(data);
-        setShippingCost(data.shipping_cost || 0);
+        setShippingCost(Number(data.shipping_cost) || 0);
       }
     } catch (error) {
-      console.log('Error calculando envío:', error);
+      // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
     } finally {
@@ -1762,7 +1771,7 @@ export default function Cart() {
                   🎫 Descuento: -{formatPriceWithSymbol(getDiscountAmount())}
                 </Text>
               )}
-              {/* 📦 NUEVO: Componente de motivación de envío */}
+              {/* 📦 Componente de motivación de envío */}
               {shippingMotivation && (
                 <View style={styles.shippingMotivationContainer}>
                   <Text style={[

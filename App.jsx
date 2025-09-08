@@ -191,6 +191,7 @@ function MainTabs() {
     <View style={styles.container}>
       {/* <Header /> */}
       <Tab.Navigator
+        initialRouteName="Inicio"
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;
@@ -304,7 +305,7 @@ function RootStack() {
       <View style={{zIndex: 1000}}>
         <Header />
       </View>
-      <Stack.Navigator screenOptions={{headerShown: false}}>
+      <Stack.Navigator screenOptions={{headerShown: false}} initialRouteName="MainTabs">
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
         <Stack.Screen name="AddressForm" component={AddressForm} />
