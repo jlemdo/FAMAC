@@ -1950,6 +1950,7 @@ export default function Cart() {
                 temporaryAddress={temporaryAddress} // ✅ NUEVA: Dirección temporal para cambio
                 setIsChangingAddress={setIsChangingAddress} // ✅ NUEVA: Función para cambiar dirección
                 setShowAddressModal={setShowAddressModal} // ✅ NUEVA: Función para mostrar modal
+                userAddresses={userAddresses} // ✅ NUEVA: Lista de direcciones para condicionar botón
               />
             }
             ListFooterComponentStyle={{paddingTop: 8}}
@@ -2294,6 +2295,7 @@ const CartFooter = ({
   temporaryAddress, // ✅ NUEVA: Dirección temporal para cambio
   setIsChangingAddress, // ✅ NUEVA: Función para cambiar dirección
   setShowAddressModal, // ✅ NUEVA: Función para mostrar modal
+  userAddresses, // ✅ NUEVA: Lista de direcciones para condicionar botón
 }) => {
   
   // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend - TEMPORALMENTE DESHABILITADA
@@ -2566,15 +2568,18 @@ const CartFooter = ({
           <View style={styles.registeredUserLocationSection}>
             <View style={styles.locationHeaderRow}>
               <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
-              <TouchableOpacity
-                style={styles.changeAddressButton}
-                onPress={() => {
-                  setIsChangingAddress(true);
-                  setShowAddressModal(true);
-                }}>
-                <Ionicons name="refresh" size={16} color="#8B5E3C" />
-                <Text style={styles.changeAddressButtonText}>Cambiar</Text>
-              </TouchableOpacity>
+              {/* Solo mostrar botón "Cambiar" si el usuario tiene 2 o más direcciones */}
+              {userAddresses.length > 1 && (
+                <TouchableOpacity
+                  style={styles.changeAddressButton}
+                  onPress={() => {
+                    setIsChangingAddress(true);
+                    setShowAddressModal(true);
+                  }}>
+                  <Ionicons name="refresh" size={16} color="#8B5E3C" />
+                  <Text style={styles.changeAddressButtonText}>Cambiar</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <Text style={styles.userAddressText}>
               {temporaryAddress?.address || address}

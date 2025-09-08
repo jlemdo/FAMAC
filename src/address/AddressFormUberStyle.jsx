@@ -258,16 +258,19 @@ const AddressFormUberStyle = () => {
     // 🎯 NUEVA LÓGICA: Auto-actualizar opciones según CP
     if (value.length === 5) {
       const postalCodeNum = parseInt(value);
+      console.log('🔍 Debug CP:', value, '→', postalCodeNum);
       
-      if (postalCodeNum >= 1000 && postalCodeNum <= 16999) {
-        // CDMX
-        setState('Ciudad de México');
+      if ((postalCodeNum >= 1000 && postalCodeNum <= 16999) || (postalCodeNum >= 1 && postalCodeNum <= 9999)) {
+        console.log('✅ Detectado CDMX');
+        // CDMX (rango corregido: incluye 00001-09999 y 01000-16999)
+        setState('CDMX');
         setAvailableOptions(ALCALDIAS_CDMX);
         // Limpiar municipio si no está en alcaldías
         if (municipality && !ALCALDIAS_CDMX.includes(municipality)) {
           setMunicipality('');
         }
       } else if (postalCodeNum >= 50000 && postalCodeNum <= 56999) {
+        console.log('✅ Detectado EdoMex');
         // Estado de México
         setState('Estado de México');
         setAvailableOptions(MUNICIPIOS_EDOMEX);
@@ -275,6 +278,8 @@ const AddressFormUberStyle = () => {
         if (municipality && !MUNICIPIOS_EDOMEX.includes(municipality)) {
           setMunicipality('');
         }
+      } else {
+        console.log('❌ CP no reconocido:', postalCodeNum);
       }
     }
   };

@@ -175,7 +175,6 @@ export default function Profile({ navigation, route }) {
   // Estados para secciones colapsables
   const [showProfileSection, setShowProfileSection] = useState(false); // Colapsada por defecto
   const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [showAddressSection, setShowAddressSection] = useState(false); // Nueva sección de direcciones
 
   // ✅ Cerrar todos los acordeones cuando la pantalla no esté en foco
   useFocusEffect(
@@ -184,7 +183,6 @@ export default function Profile({ navigation, route }) {
       return () => {
         setShowProfileSection(false);
         setShowPasswordSection(false);
-        setShowAddressSection(false);
       };
     }, [])
   );
@@ -221,7 +219,6 @@ export default function Profile({ navigation, route }) {
         } else {
           // Cerrar todas las demás y abrir esta
           setShowPasswordSection(false);
-          setShowAddressSection(false);
           setShowProfileSection(true);
         }
         break;
@@ -230,17 +227,7 @@ export default function Profile({ navigation, route }) {
           setShowPasswordSection(false);
         } else {
           setShowProfileSection(false);
-          setShowAddressSection(false);
           setShowPasswordSection(true);
-        }
-        break;
-      case 'address':
-        if (showAddressSection) {
-          setShowAddressSection(false);
-        } else {
-          setShowProfileSection(false);
-          setShowPasswordSection(false);
-          setShowAddressSection(true);
         }
         break;
       default:
@@ -1112,53 +1099,18 @@ export default function Profile({ navigation, route }) {
         </Formik>
       )}
 
-      {/* Sección de Direcciones */}
+      {/* Sección de Direcciones - Navegación directa */}
       <TouchableOpacity 
         style={styles.sectionHeader}
-        onPress={() => toggleSection('address')}
+        onPress={() => navigation.navigate('AddressManager')}
         activeOpacity={0.8}>
         <View style={styles.sectionHeaderContent}>
           <Text style={styles.sectionHeaderTitle}>📍 Direcciones</Text>
-          <Text style={styles.sectionHeaderIcon}>
-            {showAddressSection ? '▲' : '▼'}
-          </Text>
         </View>
         <Text style={styles.sectionHeaderSubtitle}>
           Gestiona tu dirección de entrega
         </Text>
       </TouchableOpacity>
-
-      {showAddressSection && (
-        <View style={styles.section}>
-          {/* Gestión completa de direcciones */}
-          <View style={styles.addressManagerContainer}>
-            <View style={styles.addressManagerHeader}>
-              <Ionicons name="location" size={24} color="#8B5E3C" />
-              <View style={styles.addressManagerText}>
-                <Text style={styles.addressManagerTitle}>Mis Direcciones</Text>
-                <Text style={styles.addressManagerSubtitle}>
-                  Gestiona todas tus direcciones de entrega (casa, trabajo, etc.)
-                </Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity
-              style={styles.addressManagerButton}
-              onPress={() => navigation.navigate('AddressManager')}
-              activeOpacity={0.8}>
-              <View style={styles.addressManagerButtonContent}>
-                <View style={styles.addressManagerButtonLeft}>
-                  <Ionicons name="home-outline" size={20} color="#FFF" />
-                  <Text style={styles.addressManagerButtonText}>
-                    Ver y Gestionar Direcciones
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#FFF" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {/* Sección de Contraseña */}
       <TouchableOpacity 
