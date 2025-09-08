@@ -647,10 +647,10 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   appleIcon: {
-    width: 18,
-    height: 18,
+    width: 22,
+    height: 22,
     marginRight: 12,
-    tintColor: '#FFF',
+    // tintColor: '#FFF',
   },
   appleButtonText: {
     color: '#FFF',

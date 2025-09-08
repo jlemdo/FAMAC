@@ -182,7 +182,7 @@ const AddressMap = () => {
         <MapView
           ref={mapRef}
           style={styles.map}
-          region={{
+          initialRegion={{
             latitude: currentLocation.latitude,
             longitude: currentLocation.longitude,
             latitudeDelta: 0.01,

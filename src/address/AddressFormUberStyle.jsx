@@ -33,6 +33,10 @@ import {
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
 import { AuthContext } from '../context/AuthContext';
+import { 
+  ALCALDIAS_CDMX, 
+  MUNICIPIOS_EDOMEX
+} from '../utils/addressValidators';
 // Debugging removido para producciónn
 
 const AddressFormUberStyle = () => {
@@ -85,6 +89,8 @@ const AddressFormUberStyle = () => {
   const [postalCode, setPostalCode] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [state, setState] = useState('CDMX'); // Default CDMX
+  const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
+  const [availableOptions, setAvailableOptions] = useState(ALCALDIAS_CDMX); // Default CDMX
   
   const [references, setReferences] = useState('');
   const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
@@ -92,8 +98,9 @@ const AddressFormUberStyle = () => {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
   
-  // 🔧 NUEVO: Estado para bloquear botón de mapa durante geocoding
+  // 🔧 NUEVO: Estados para geocoding
   const [isGeocodingForMap, setIsGeocodingForMap] = useState(false);
+  const [isAutoGeocoding, setIsAutoGeocoding] = useState(false); // Para geocoding automático existente
   
   
   
@@ -247,6 +254,29 @@ const AddressFormUberStyle = () => {
   // 🆕 FUNCIÓN: Manejar cambios en código postal (SIN VALIDACIÓN)
   const handlePostalCodeChange = (value) => {
     setPostalCode(value);
+    
+    // 🎯 NUEVA LÓGICA: Auto-actualizar opciones según CP
+    if (value.length === 5) {
+      const postalCodeNum = parseInt(value);
+      
+      if (postalCodeNum >= 1000 && postalCodeNum <= 16999) {
+        // CDMX
+        setState('Ciudad de México');
+        setAvailableOptions(ALCALDIAS_CDMX);
+        // Limpiar municipio si no está en alcaldías
+        if (municipality && !ALCALDIAS_CDMX.includes(municipality)) {
+          setMunicipality('');
+        }
+      } else if (postalCodeNum >= 50000 && postalCodeNum <= 56999) {
+        // Estado de México
+        setState('Estado de México');
+        setAvailableOptions(MUNICIPIOS_EDOMEX);
+        // Limpiar municipio si no está en municipios
+        if (municipality && !MUNICIPIOS_EDOMEX.includes(municipality)) {
+          setMunicipality('');
+        }
+      }
+    }
   };
 
   // ✅ NUEVA: Función para parsear dirección legacy del perfil y pre-llenar campos
@@ -1099,8 +1129,13 @@ const AddressFormUberStyle = () => {
         
         // Delay para evitar múltiples calls mientras user escribe
         const timer = setTimeout(async () => {
-          const coords = await handleIntelligentGeocoding(finalAddress);
-          if (coords) {
+          setIsAutoGeocoding(true); // 🎯 Activar estado
+          try {
+            const coords = await handleIntelligentGeocoding(finalAddress);
+            if (coords) {
+            }
+          } finally {
+            setIsAutoGeocoding(false); // 🎯 Desactivar estado
           }
         }, 1500); // 1.5 segundos de delay
 
@@ -1108,6 +1143,20 @@ const AddressFormUberStyle = () => {
       }
     }
   }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, currentStep]);
+
+  // 🎯 Función helper para cerrar dropdown cuando se toque otro campo
+  const closeDropdownOnFocus = () => {
+    if (showMunicipalityDropdown) {
+      setShowMunicipalityDropdown(false);
+    }
+  };
+
+  // 🎯 NUEVO: Cerrar dropdown al hacer scroll o tocar otros elementos
+  const handleScrollViewTouch = () => {
+    if (showMunicipalityDropdown) {
+      setShowMunicipalityDropdown(false);
+    }
+  };
 
   // 🔇 OCULTADO TEMPORALMENTE: Renderizar paso 1: Búsqueda  
   // Mantener código comentado para uso futuro si es necesario
@@ -1235,7 +1284,10 @@ const AddressFormUberStyle = () => {
               placeholder="Calle o avenida"
               value={streetName}
               onChangeText={setStreetName}
-              onFocus={createFocusHandler('street')}
+              onFocus={() => {
+                createFocusHandler('street')();
+                closeDropdownOnFocus();
+              }}
               placeholderTextColor="#999"
             />
           </View>
@@ -1247,7 +1299,10 @@ const AddressFormUberStyle = () => {
               placeholder="Número"
               value={exteriorNumber}
               onChangeText={setExteriorNumber}
-              onFocus={createFocusHandler('extNum')}
+              onFocus={() => {
+                createFocusHandler('extNum')();
+                closeDropdownOnFocus();
+              }}
               placeholderTextColor="#999"
               keyboardType="numeric"
             />
@@ -1264,7 +1319,10 @@ const AddressFormUberStyle = () => {
               placeholder="Opcional"
               value={interiorNumber}
               onChangeText={setInteriorNumber}
-              onFocus={createFocusHandler('intNum')}
+              onFocus={() => {
+                createFocusHandler('intNum')();
+                closeDropdownOnFocus();
+              }}
               placeholderTextColor="#999"
             />
           </View>
@@ -1276,7 +1334,10 @@ const AddressFormUberStyle = () => {
               placeholder="Colonia"
               value={neighborhood}
               onChangeText={setNeighborhood}
-              onFocus={createFocusHandler('colony')}
+              onFocus={() => {
+                createFocusHandler('colony')();
+                closeDropdownOnFocus();
+              }}
               placeholderTextColor="#999"
             />
           </View>
@@ -1292,23 +1353,66 @@ const AddressFormUberStyle = () => {
               placeholder="5 dígitos"
               value={postalCode}
               onChangeText={handlePostalCodeChange}
-              onFocus={createFocusHandler('postalCode', 0, { disableOnIOS: true })}
+              onFocus={() => {
+                createFocusHandler('postalCode', 0, { disableOnIOS: true })();
+                closeDropdownOnFocus();
+              }}
               placeholderTextColor="#999"
               keyboardType="numeric"
               maxLength={5}
             />
           </View>
           <View style={[styles.addressField, {flex: 2}]}>
-            <Text style={styles.fieldLabel}>Alcaldía/Municipio</Text>
-            <TextInput
-              ref={(ref) => registerInput('municipality', ref)}
-              style={styles.addressInput}
-              placeholder="Alcaldía"
-              value={municipality}
-              onChangeText={setMunicipality}
-              onFocus={createFocusHandler('municipality')}
-              placeholderTextColor="#999"
-            />
+            <Text style={styles.fieldLabel}>Alcaldía/Municipio *</Text>
+            <TouchableOpacity
+              style={[
+                styles.addressInput,
+                styles.dropdownButton,
+                showMunicipalityDropdown && styles.dropdownButtonActive
+              ]}
+              onPress={() => setShowMunicipalityDropdown(!showMunicipalityDropdown)}>
+              <Text style={[
+                styles.dropdownButtonText,
+                !municipality && styles.dropdownPlaceholderText
+              ]}>
+                {municipality || 'Selecciona opciones'}
+              </Text>
+              <Ionicons 
+                name={showMunicipalityDropdown ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color="#8B5E3C" 
+              />
+            </TouchableOpacity>
+            
+            {/* Dropdown de opciones */}
+            {showMunicipalityDropdown && (
+              <View style={styles.dropdownContainer}>
+                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
+                  {availableOptions.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.dropdownOption,
+                        municipality === option && styles.dropdownOptionSelected
+                      ]}
+                      onPress={() => {
+                        setMunicipality(option);
+                        setShowMunicipalityDropdown(false);
+                      }}>
+                      <Text style={[
+                        styles.dropdownOptionText,
+                        municipality === option && styles.dropdownOptionTextSelected
+                      ]}>
+                        {option}
+                      </Text>
+                      {municipality === option && (
+                        <Ionicons name="checkmark" size={20} color="#33A744" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
         </View>
 
@@ -1319,14 +1423,26 @@ const AddressFormUberStyle = () => {
             <View style={styles.stateSelector}>
               <TouchableOpacity
                 style={[styles.stateOption, state === 'CDMX' && styles.stateOptionActive]}
-                onPress={() => setState('CDMX')}>
+                onPress={() => {
+                  setState('CDMX');
+                  setAvailableOptions(ALCALDIAS_CDMX);
+                  if (municipality && !ALCALDIAS_CDMX.includes(municipality)) {
+                    setMunicipality('');
+                  }
+                }}>
                 <Text style={[styles.stateOptionText, state === 'CDMX' && styles.stateOptionTextActive]}>
                   CDMX
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.stateOption, state === 'Estado de México' && styles.stateOptionActive]}
-                onPress={() => setState('Estado de México')}>
+                onPress={() => {
+                  setState('Estado de México');
+                  setAvailableOptions(MUNICIPIOS_EDOMEX);
+                  if (municipality && !MUNICIPIOS_EDOMEX.includes(municipality)) {
+                    setMunicipality('');
+                  }
+                }}>
                 <Text style={[styles.stateOptionText, state === 'Estado de México' && styles.stateOptionTextActive]}>
                   Edo. Méx
                 </Text>
@@ -1362,7 +1478,10 @@ const AddressFormUberStyle = () => {
             placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
             value={references}
             onChangeText={setReferences}
-            onFocus={createFocusHandler('references', 30)}
+            onFocus={() => {
+              createFocusHandler('references', Platform.OS === 'ios' ? 120 : 80)();
+              closeDropdownOnFocus();
+            }}
             multiline
             numberOfLines={3}
             placeholderTextColor="#999"
@@ -1409,9 +1528,9 @@ const AddressFormUberStyle = () => {
               <TouchableOpacity
                 style={[
                   userHasConfirmedLocation ? styles.adjustLocationButton : styles.selectLocationButton,
-                  isGeocodingForMap && styles.buttonDisabled
+                  (isGeocodingForMap || isAutoGeocoding) && styles.buttonDisabled
                 ]}
-                disabled={isGeocodingForMap}
+                disabled={isGeocodingForMap || isAutoGeocoding}
                 onPress={async () => {
                   // 🔧 BLOQUEADO: Activar estado de geocoding
                   setIsGeocodingForMap(true);
@@ -1437,7 +1556,9 @@ const AddressFormUberStyle = () => {
                   color={isGeocodingForMap ? "#FFF" : (userHasConfirmedLocation ? "#8B5E3C" : "#FFF")} 
                 />
                 <Text style={userHasConfirmedLocation ? styles.adjustLocationButtonText : styles.selectLocationButtonText}>
-                  {isGeocodingForMap ? 'Procesando...' : (userHasConfirmedLocation ? 'Ajustar' : 'Ir al mapa')}
+                  {isAutoGeocoding ? 'Geocodificando dirección...' :
+                   isGeocodingForMap ? 'Preparando mapa...' : 
+                   (userHasConfirmedLocation ? 'Ajustar' : 'Ir al mapa')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1476,7 +1597,7 @@ const AddressFormUberStyle = () => {
           disabled={!hasRequiredFields}>
           <Ionicons name="checkmark-circle" size={24} color="#FFF" />
           <Text style={styles.confirmButtonText}>
-            Completar dirección
+            {route.params?.fromGuestCheckout ? 'Continuar con pago' : 'Completar dirección'}
           </Text>
         </TouchableOpacity>
 
@@ -1537,7 +1658,10 @@ const AddressFormUberStyle = () => {
       </View> */}
       
       {/* Contenido scrolleable */}
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={() => {
+        Keyboard.dismiss();
+        handleScrollViewTouch();
+      }}>
         <ScrollView 
           {...scrollViewProps}
           style={styles.containerInner}
@@ -1914,7 +2038,7 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
     textAlignVertical: 'top',
     marginBottom: 8,
-    minHeight: 100,
+    minHeight: Platform.OS === 'ios' ? 100 : 80, // Más altura en iOS para mejor visibilidad
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -2215,6 +2339,69 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     textAlign: 'center',
+  },
+  
+  // 🎯 NUEVOS ESTILOS PARA DROPDOWN DE ALCALDÍAS/MUNICIPIOS
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 12,
+  },
+  dropdownButtonActive: {
+    borderColor: '#D27F27',
+    borderWidth: 2,
+  },
+  dropdownButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  dropdownPlaceholderText: {
+    color: '#999',
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    maxHeight: 200,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(224, 224, 224, 0.5)',
+  },
+  dropdownOptionSelected: {
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+  },
+  dropdownOptionText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    flex: 1,
+  },
+  dropdownOptionTextSelected: {
+    color: '#33A744',
+    fontFamily: fonts.bold,
   },
 });
 
