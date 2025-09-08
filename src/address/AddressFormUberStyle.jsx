@@ -871,14 +871,21 @@ const AddressFormUberStyle = () => {
             });
             
             // También actualizar el perfil del usuario para compatibilidad
-            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', {
+            const profilePayload = {
               userid: user.id,
               first_name: currentUserData?.first_name || user.first_name,
               last_name: currentUserData?.last_name || user.last_name,
               phone: currentUserData?.phone || user.phone,
               email: currentUserData?.email || user.email,
               address: addressData.address
-            });
+            };
+            
+            // 🔧 CRÍTICO: Preservar DOB para que no se elimine al agregar primera dirección
+            if (currentUserData?.dob) {
+              profilePayload.dob = currentUserData.dob;
+            }
+            
+            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', profilePayload);
             
             // Actualizar contexto local
             await updateUser({

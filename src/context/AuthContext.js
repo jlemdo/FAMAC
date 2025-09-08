@@ -1,7 +1,8 @@
 // src/context/AuthContext.js
 
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { migrateGuestOrders } from '../utils/orderMigration';
+import axios from 'axios';
 
 // 1️⃣ Import dinámico de AsyncStorage con fallback
 let AsyncStorage;
@@ -203,6 +204,43 @@ export function AuthProvider({ children }) {
     // El CartContext automáticamente limpiará el carrito cuando user cambie a null
     // gracias al useEffect que detecta cambios de usuario
   };
+
+  // 🛡️ INTERCEPTOR GLOBAL: Detectar usuarios eliminados de la base de datos
+  useEffect(() => {
+    // Solo configurar interceptor si hay usuario activo (no Guest)
+    if (!user || user.usertype === 'Guest') return;
+
+    const interceptor = axios.interceptors.response.use(
+      (response) => response, // Respuestas exitosas pasan sin modificación
+      (error) => {
+        // Detectar errores específicos de usuario eliminado
+        const { config, response } = error;
+        const isUserDetailsRequest = config?.url?.includes('/userdetails/');
+        const isUserNotFound = response?.status === 404 || response?.status === 401;
+        
+        if (isUserDetailsRequest && isUserNotFound) {
+          console.warn('🚨 Usuario eliminado de la base de datos, cerrando sesión...');
+          
+          // Mostrar alerta informativa (usando setTimeout para evitar conflictos de estado)
+          setTimeout(() => {
+            if (typeof alert !== 'undefined') {
+              alert('Tu cuenta ya no existe en nuestro sistema. Se cerrará la sesión automáticamente.');
+            }
+            
+            // Cerrar sesión automáticamente
+            logout();
+          }, 100);
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup: remover interceptor al desmontar o cambiar usuario
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [user?.id, user?.usertype, logout]);
 
   return (
     <AuthContext.Provider value={{

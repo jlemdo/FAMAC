@@ -314,27 +314,8 @@ export default function Profile({ navigation, route }) {
     }, [user?.id, fetchUserDetails])
   );
   
-  // NUEVO: Manejar regreso de AddressFormUberStyle
-  useEffect(() => {
-    if (route?.params?.addressUpdated && route?.params?.newAddress) {
-      // Actualizar el perfil local con la nueva dirección
-      setProfile(prev => ({
-        ...prev,
-        address: route.params.newAddress
-      }));
-      
-      // Mostrar alerta de éxito
-      showAlert({
-        type: 'success',
-        title: '✓ ¡Dirección actualizada!',
-        message: 'Tu dirección completa con referencias y coordenadas se guardó correctamente.',
-        confirmText: 'Perfecto',
-      });
-      
-      // Limpiar parámetros para evitar loops
-      navigation.setParams({ addressUpdated: null, newAddress: null });
-    }
-  }, [route?.params?.addressUpdated, route?.params?.newAddress]);
+  // 🔧 ELIMINADO: Legacy address handling - ahora usamos newAddressService + AddressManager
+  // Este useEffect causaba interferencias con datos del perfil (DOB corruption)
 
   // Función para verificar datos faltantes
   const getMissingData = useCallback(() => {
@@ -689,42 +670,27 @@ export default function Profile({ navigation, route }) {
               // 🔧 ELIMINADO: address legacy - ahora usamos newAddressService para direcciones múltiples
             };
             
-            // Solo agregar/actualizar dob si es primera vez O preservar existente
+            // 🔧 ARREGLADO: Lógica simplificada y no conflictiva para DOB
             if (dobFormatted) {
+              // Usuario seleccionó nueva fecha
               payload.dob = dobFormatted;
-            } else if (hasExistingBirthDate) {
-              // Preservar fecha existente en formato backend
-              const monthNames = [
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'
+            } else if (hasExistingBirthDate && profile.birthDate instanceof Date) {
+              // 🔧 ARREGLADO: Preservar formato español como lo escribió el usuario
+              const monthNamesSpanish = [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
               ];
-              const monthName = monthNames[profile.birthDate.getMonth()];
+              const monthName = monthNamesSpanish[profile.birthDate.getMonth()];
               const year = profile.birthDate.getFullYear();
-              payload.dob = `${monthName} ${year}`;
-            } else if (currentServerData.dob || currentServerData.birthDate || currentServerData.birth_date) {
-              // Preservar fecha existente del servidor si existe
-              const existingDate = currentServerData.dob || currentServerData.birthDate || currentServerData.birth_date;
-              payload.dob = existingDate;
+              payload.dob = `${monthName} de ${year}`;
+            } else if (currentServerData.dob && typeof currentServerData.dob === 'string') {
+              // Solo preservar si es string válido (evitar corrupción)
+              payload.dob = currentServerData.dob;
             }
+            // Si no hay DOB válido, no enviamos el campo (backend mantendrá el existente)
             
-            
-            // Si hay DOB, intentar con endpoint diferente primero
-            if (dobFormatted) {
-              try {
-                const dobPayload = {
-                  userid: user.id,
-                  dob: dobFormatted
-                };
-                console.log('📅 ENVIANDO PAYLOAD DOB:', dobPayload);
-                const dobRes = await axios.post(
-                  'https://occr.pixelcrafters.digital/api/updatedob', // Intentar endpoint específico para DOB
-                  dobPayload
-                );
-                console.log('✅ DOB RESPONSE:', dobRes.status);
-              } catch (dobError) {
-                console.error('❌ DOB ERROR:', dobError);
-              }
-            }
+            // 🔧 ELIMINADO: Endpoint duplicado /updatedob - causaba conflictos
+            // Ahora enviamos DOB junto con otros datos en un solo request
             
             console.log('📝 ENVIANDO PAYLOAD PRINCIPAL:', payload);
             const res = await axios.post(
