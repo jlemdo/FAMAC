@@ -188,6 +188,83 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     elevation: 2,
   },
+  // 📊 ESTILOS DESGLOSE DE TOTAL - COMPACTO
+  totalBreakdownContainer: {
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 2,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4, // Reducido de 8 a 4
+  },
+  breakdownLabel: {
+    fontSize: fonts.size.medium, // Vuelta a medium para mejor legibilidad
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+  },
+  breakdownAmount: {
+    fontSize: fonts.size.medium, // Vuelta a medium para mejor legibilidad
+    fontFamily: fonts.priceBold,
+    color: '#2F2F2F',
+  },
+  freeShippingText: {
+    color: '#33A744', // Verde para envío gratis
+    fontFamily: fonts.bold,
+  },
+  discountLabel: {
+    color: '#D27F27',
+  },
+  discountAmount: {
+    color: '#D27F27',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingTop: 8, // Reducido de 12 a 8
+    marginTop: 4, // Reducido de 8 a 4
+  },
+  totalLabel: {
+    fontSize: fonts.size.large, // Vuelta a large para que resalte
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+  },
+  totalAmount: {
+    fontSize: fonts.size.large, // Vuelta a large para que resalte
+    fontFamily: fonts.priceBold,
+    color: '#D27F27',
+  },
+  // Estilos compactos para info adicional
+  compactInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E0E0E0',
+  },
+  compactItemCount: {
+    fontSize: fonts.size.small, // Un poco más grande que tiny
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.7)',
+  },
+  compactShippingText: {
+    fontSize: fonts.size.small, // Un poco más grande que tiny
+    fontFamily: fonts.regular,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8,
+  },
   totalText: {
     fontSize: fonts.size.medium, // ✅ Reducido de large a medium
     fontFamily: fonts.priceBold, // ✅ Nueva fuente bold optimizada para precios totales

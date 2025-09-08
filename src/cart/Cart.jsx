@@ -1162,8 +1162,8 @@ export default function Cart() {
       // 1.1) Crear PaymentIntent en el servidor
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       
-      // Usar el cálculo unificado de precio final
-      const finalPrice = Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0));
+      // Usar el cálculo unificado de precio final (incluye envío)
+      const finalPrice = getFinalTotal();
       
       // 🚨 DEBUG: Verificar qué se envía a Stripe
       console.log('🚨 ENVIANDO A STRIPE:', {
@@ -1206,7 +1206,7 @@ export default function Cart() {
           currencyCode: 'MXN', // Pesos mexicanos
         },
         // Configuración explícita de métodos de pago
-        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0)))}`,
+        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(getFinalTotal())}`,
         // Asegurar que se acepten tarjetas internacionales
         appearance: {
           primaryButton: {
@@ -1777,38 +1777,54 @@ export default function Cart() {
         />
       ) : (
         <>
-          {/* Total sticky - siempre visible */}
-          <View style={styles.stickyTotalContainer}>
-            <View style={styles.stickyTotalContent}>
-              <Text style={styles.stickyTotalLabel}>Total de tu compra:</Text>
-              <Text style={styles.stickyTotalPrice}>{formatPriceWithSymbol(getFinalTotal())}</Text>
+          {/* 📊 DESGLOSE DEL TOTAL - Sticky siempre visible */}
+          <View style={styles.totalBreakdownContainer}>
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Subtotal</Text>
+              <Text style={styles.breakdownAmount}>
+                {formatPriceWithSymbol(totalPrice)}
+              </Text>
             </View>
-            <View style={styles.stickyTotalDetails}>
-              <Text style={styles.stickyTotalItems}>
+            
+            <View style={styles.breakdownRow}>
+              <Text style={styles.breakdownLabel}>Envío</Text>
+              <Text style={[styles.breakdownAmount, shippingCost === 0 && styles.freeShippingText]}>
+                {shippingCost === 0 ? 'Gratis' : `+${formatPriceWithSymbol(shippingCost)}`}
+              </Text>
+            </View>
+            
+            {appliedCoupon && (
+              <View style={styles.breakdownRow}>
+                <Text style={[styles.breakdownLabel, styles.discountLabel]}>
+                  Descuento ({appliedCoupon.code})
+                </Text>
+                <Text style={[styles.breakdownAmount, styles.discountAmount]}>
+                  -{formatPriceWithSymbol(getDiscountAmount())}
+                </Text>
+              </View>
+            )}
+            
+            <View style={[styles.breakdownRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalAmount}>
+                {formatPriceWithSymbol(getFinalTotal())}
+              </Text>
+            </View>
+            
+            {/* Info adicional compacta */}
+            <View style={styles.compactInfoRow}>
+              <Text style={styles.compactItemCount}>
                 {cart.reduce((total, item) => total + item.quantity, 0)} {cart.reduce((total, item) => total + item.quantity, 0) === 1 ? 'producto' : 'productos'}
               </Text>
-              {appliedCoupon && (
-                <Text style={styles.stickyTotalDiscount}>
-                  🎫 Descuento: -{formatPriceWithSymbol(getDiscountAmount())}
-                </Text>
-              )}
-              {/* 📦 Componente de motivación de envío */}
               {shippingMotivation && (
-                <View style={styles.shippingMotivationContainer}>
-                  <Text style={[
-                    styles.shippingMotivationText,
-                    shippingMotivation.type === 'success' 
-                      ? styles.shippingMotivationSuccess 
-                      : styles.shippingMotivationRegular
-                  ]}>
-                    {shippingMotivation.message}
-                  </Text>
-                  {shippingCost > 0 && (
-                    <Text style={styles.shippingCostText}>
-                      📦 Envío: +{formatPriceWithSymbol(shippingCost)}
-                    </Text>
-                  )}
-                </View>
+                <Text style={[
+                  styles.compactShippingText,
+                  shippingMotivation.type === 'success' 
+                    ? styles.shippingMotivationSuccess 
+                    : styles.shippingMotivationRegular
+                ]}>
+                  {shippingMotivation.message}
+                </Text>
               )}
             </View>
           </View>
@@ -1913,6 +1929,7 @@ export default function Cart() {
                 subtotal={getSubtotal()}
                 discountAmount={getDiscountAmount()}
                 finalTotal={getFinalTotal()}
+                shippingCost={shippingCost}
                 address={address}
                 cart={cart}
                 latlong={latlong}
@@ -2158,6 +2175,7 @@ const CartFooter = ({
   subtotal,
   discountAmount,
   finalTotal,
+  shippingCost,
   loadingUpsell,
   upsellItems,
   addToCart,
@@ -2470,7 +2488,7 @@ const CartFooter = ({
           <Text style={styles.checkoutText}>
             {loading ? '🔄 Procesando pago...' : 
              isRestoringDeliveryInfo ? '⏳ Cargando...' : 
-             `💳 Pagar $${Math.max(0, totalPrice - (appliedCoupon ? (appliedCoupon.type === 'percentage' ? totalPrice * appliedCoupon.discount / 100 : appliedCoupon.discount) : 0)).toFixed(2)} MXN`}
+             `💳 Pagar ${formatPriceWithSymbol(finalTotal)}`}
           </Text>
         </TouchableOpacity>
       </View>
