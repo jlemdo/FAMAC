@@ -277,8 +277,8 @@ const Order = () => {
             // Propiedades con valores por defecto adaptadas para Guest orders
             const createdAt = item.created_at || new Date().toISOString();
             const totalPrice = isGuestOrder ? 
-              (typeof item.total_price === 'number' ? item.total_price : 0) :
-              (typeof item.total_price === 'number' ? item.total_price : 0);
+              (item.total_amount || item.total_price || item.price || 0) :
+              (item.total_amount || item.total_price || item.price || 0);
             const orderDetails = isGuestOrder ? 
               (Array.isArray(item.order_details) ? item.order_details : []) :
               (Array.isArray(item.order_details) ? item.order_details : []);

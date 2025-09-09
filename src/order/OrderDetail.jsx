@@ -262,7 +262,7 @@ const OrderDetails = () => {
             <View style={[styles.priceRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Precio total</Text>
               <Text style={styles.totalValue}>
-                {formatPriceWithSymbol(order?.total_price)}
+                {formatPriceWithSymbol(order?.total_amount || order?.total_price)}
               </Text>
             </View>
           </View>
@@ -272,47 +272,51 @@ const OrderDetails = () => {
           <View style={styles.deliveryInfoSection}>
             <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
             
-            {/* Fecha y horario programado */}
-            {(order?.delivery_date || order?.delivery_slot) && (
-              <View style={styles.deliveryScheduleContainer}>
-                <View style={styles.deliveryScheduleHeader}>
-                  <Ionicons name="calendar-outline" size={20} color="#33A744" />
-                  <Text style={styles.deliveryScheduleTitle}>Entrega programada</Text>
+            <View style={styles.deliveryBreakdown}>
+              {/* Fecha programada */}
+              {order?.delivery_date && (
+                <View style={styles.deliveryRow}>
+                  <View style={styles.deliveryLabelContainer}>
+                    <Ionicons name="calendar-outline" size={16} color="#33A744" />
+                    <Text style={styles.deliveryLabel}>Fecha programada</Text>
+                  </View>
+                  <Text style={styles.deliveryValue}>
+                    {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long', 
+                      day: 'numeric'
+                    })}
+                  </Text>
                 </View>
-                
-                <View style={styles.deliveryScheduleInfo}>
-                  {order?.delivery_date && (
-                    <Text style={styles.deliveryDate}>
-                      📅 {new Date(order.delivery_date).toLocaleDateString('es-MX', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long', 
-                        day: 'numeric'
-                      })}
-                    </Text>
-                  )}
-                  
-                  {order?.delivery_slot && (
-                    <Text style={styles.deliverySlot}>
-                      ⏰ Horario: {order.delivery_slot}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            )}
+              )}
 
-            {/* 🔪 CIRUGÍA: Mostrar dirección de entrega */}
-            {order?.delivery_address && (
-              <View style={styles.deliveryAddressContainer}>
-                <View style={styles.deliveryAddressHeader}>
-                  <Ionicons name="location-outline" size={20} color="#D27F27" />
-                  <Text style={styles.deliveryAddressTitle}>Dirección de entrega</Text>
+              {/* Horario programado */}
+              {order?.delivery_slot && (
+                <View style={styles.deliveryRow}>
+                  <View style={styles.deliveryLabelContainer}>
+                    <Ionicons name="time-outline" size={16} color="#D27F27" />
+                    <Text style={styles.deliveryLabel}>Horario</Text>
+                  </View>
+                  <Text style={styles.deliveryValue}>
+                    {order.delivery_slot}
+                  </Text>
                 </View>
-                <Text style={styles.deliveryAddressText}>
-                  📍 {order.delivery_address}
-                </Text>
-              </View>
-            )}
+              )}
+
+              {/* Dirección de entrega */}
+              {order?.delivery_address && (
+                <View style={[styles.deliveryRow, styles.addressRow]}>
+                  <View style={styles.deliveryLabelContainer}>
+                    <Ionicons name="location-outline" size={16} color="#8B5E3C" />
+                    <Text style={styles.deliveryLabel}>Dirección</Text>
+                  </View>
+                  <Text style={[styles.deliveryValue, styles.addressValue]}>
+                    {order.delivery_address}
+                  </Text>
+                </View>
+              )}
+            </View>
 
             {/* Estado del repartidor y mensaje informativo */}
             {/* <View style={styles.driverStatusContainer}>
@@ -425,7 +429,7 @@ const OrderDetails = () => {
                               })}
                             </Text>
                             <Text style={styles.orderInfoPrice}>
-                              {formatPriceWithSymbol(order?.total_price || 0)}
+                              {formatPriceWithSymbol(order?.total_amount || order?.total_price || 0)}
                             </Text>
                           </View>
                         </View>
@@ -836,76 +840,56 @@ const styles = StyleSheet.create({
 
   // 🆕 Estilos para sección de información de entrega
   deliveryInfoSection: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
-    marginTop: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.2)',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  deliveryScheduleContainer: {
-    backgroundColor: '#FFF',
+  deliveryBreakdown: {
+    backgroundColor: '#F8F9FA',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(51, 167, 68, 0.2)',
   },
-  deliveryScheduleHeader: {
+  deliveryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+  },
+  addressRow: {
+    borderBottomWidth: 0,
+  },
+  deliveryLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    flex: 1,
+    marginRight: 12,
   },
-  deliveryScheduleTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#33A744',
-    marginLeft: 8,
-  },
-  deliveryScheduleInfo: {
-    paddingLeft: 28,
-  },
-  deliveryDate: {
+  deliveryLabel: {
     fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    marginBottom: 4,
+    fontSize: fonts.size.small,
+    color: '#6C757D',
+    marginLeft: 6,
+  },
+  deliveryValue: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#495057',
+    flex: 2,
+    textAlign: 'right',
     textTransform: 'capitalize',
   },
-  deliverySlot: {
-    fontFamily: fonts.numeric,
-    fontSize: fonts.size.medium,
-    color: '#D27F27',
-    fontWeight: '600',
-  },
-  
-  // 🔪 CIRUGÍA: Estilos para dirección de entrega
-  deliveryAddressContainer: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.2)',
-  },
-  deliveryAddressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  deliveryAddressTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#D27F27',
-    marginLeft: 8,
-  },
-  deliveryAddressText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    paddingLeft: 28,
-    lineHeight: 20,
+  addressValue: {
+    textAlign: 'right',
+    textTransform: 'none',
+    lineHeight: 18,
   },
   driverStatusContainer: {
     backgroundColor: '#FFF',
