@@ -147,8 +147,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       .email('Email inválido')
       .required('Email es obligatorio'),
     password: Yup.string()
-      .min(6, '')
-      .required('Contraseña es obligatoria'),
+      .required('Contraseña es obligatoria')
+      .min(6, 'La contraseña debe tener al menos 6 caracteres')
+      .matches(/^[a-zA-Z0-9]*$/, 'La contraseña solo puede contener letras y números'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
       .required('Verificar contraseña'),
@@ -779,7 +780,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   styles.input,
                   touched.password && errors.password && styles.inputError,
                 ]}
-                placeholder="Contraseña (6 caracteres mínimo)"
+                placeholder="Contraseña (letras y números, 6 caracteres mínimo)"
                 placeholderTextColor="#999"
                 secureTextEntry
                 value={values.password}
@@ -788,7 +789,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                 onFocus={createFocusHandler('password', 30)}
                 returnKeyType="next"
               />
-              {/* Mostrar requisito simple de password */}
+              {/* Mostrar requisitos de contraseña */}
               {values.password && values.password.length > 0 && (
                 <View style={styles.passwordRequirements}>
                   <Text style={[
@@ -796,6 +797,12 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                     values.password.length >= 6 ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
                     {values.password.length >= 6 ? '✓' : '×'} Mínimo 6 caracteres
+                  </Text>
+                  <Text style={[
+                    styles.passwordRequirement,
+                    /^[a-zA-Z0-9]*$/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                  ]}>
+                    {/^[a-zA-Z0-9]*$/.test(values.password) ? '✓' : '×'} Solo letras y números
                   </Text>
                 </View>
               )}
