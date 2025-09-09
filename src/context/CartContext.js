@@ -68,23 +68,31 @@ export function CartProvider({ children }) {
         );
     };
 
-    // Efecto para limpiar carrito cuando cambia el usuario
+    // 🔧 MEJORADO: Efecto para manejar cambios de usuario y logout
     useEffect(() => {
         const userId = user?.id || user?.email || null; // Para guests usar email, para registrados usar id
         
-        // console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
-            // currentUserId,
-            // newUserId: userId,
-            // deberíaLimpiar: currentUserId !== null && currentUserId !== userId,
-            // hasCallback: !!onCartClearCallback
-        // });
+        console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
+            currentUserId,
+            newUserId: userId,
+            userType: user?.usertype,
+            shouldClear: currentUserId !== null && currentUserId !== userId
+        });
         
-        // Si hay un usuario previo diferente al actual, limpiar carrito
-        if (currentUserId !== null && currentUserId !== userId) {
+        // 🚨 CASO CRÍTICO: Usuario hace logout (user cambia a null)
+        if (currentUserId !== null && userId === null) {
+            console.log('🛒 CARTCONTEXT: Detectado LOGOUT - limpiando todos los carritos');
+            clearCartOnLogout(); // Limpiar TODOS los carritos de storage
+            if (onCartClearCallback) {
+                onCartClearCallback();
+            }
+        }
+        // 🔄 CASO NORMAL: Cambio entre usuarios diferentes (no logout)
+        else if (currentUserId !== null && currentUserId !== userId && userId !== null) {
+            console.log('🛒 CARTCONTEXT: Cambio de usuario - limpiando carrito actual');
             setCart([]);
             // Ejecutar callback para limpiar información adicional cuando cambia usuario
             if (onCartClearCallback) {
-                // console.trace('Stack trace del callback:');
                 onCartClearCallback();
             }
         }
@@ -93,13 +101,17 @@ export function CartProvider({ children }) {
         setCurrentUserId(userId);
     }, [user?.id, user?.email]); // REMOVIDO currentUserId de las dependencias
 
-    // 📦 NUEVO: Cargar carrito desde AsyncStorage al iniciar
+    // 📦 CORREGIDO: Cargar carrito SOLO cuando user esté disponible
     useEffect(() => {
-        loadCartFromStorage();
-    }, []);
+        if (user !== undefined) { // user !== undefined significa que AuthContext ya cargó
+            loadCartFromStorage();
+        }
+    }, [user?.id, user?.email]); // Depende del user específico
 
-    // 📦 NUEVO: Guardar carrito en AsyncStorage cuando cambie
+    // 📦 CORREGIDO: Guardar carrito en AsyncStorage cuando cambie Y user esté definido
     useEffect(() => {
+        if (user === undefined) return; // No hacer nada si user aún no cargó
+        
         if (cart.length > 0) {
             saveCartToStorage();
         } else if (cart.length === 0 && user) {
@@ -108,7 +120,7 @@ export function CartProvider({ children }) {
             const cartKey = `cart_${currentUserId}`;
             AsyncStorage.removeItem(cartKey).catch(console.log);
         }
-    }, [cart]);
+    }, [cart, user?.id, user?.email]); // Ahora depende TAMBIÉN del user
 
     // 📦 NUEVO: Funciones de persistencia con claves únicas por usuario
     const saveCartToStorage = async () => {
@@ -129,8 +141,16 @@ export function CartProvider({ children }) {
 
     const loadCartFromStorage = async () => {
         try {
+            // ✅ VALIDACIÓN CRÍTICA: Solo cargar si user está definido
+            if (user === undefined) {
+                console.log('🛒 CartContext: Evitando cargar carrito sin user definido');
+                return;
+            }
+            
             const currentUserId = user?.id || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
+            
+            console.log(`🛒 CartContext: Cargando carrito para ${currentUserId} (key: ${cartKey})`);
             
             const savedCart = await AsyncStorage.getItem(cartKey);
             if (savedCart) {
@@ -141,15 +161,40 @@ export function CartProvider({ children }) {
                 // Verificar si han pasado menos de 24 horas
                 if (currentTime - timestamp < twentyFourHours) {
                     if (items.length > 0) {
+                        console.log(`🛒 CartContext: Restaurando ${items.length} items del carrito`);
                         setCart(items);
                     }
                 } else {
                     // Carrito expirado, eliminarlo
+                    console.log('🛒 CartContext: Carrito expirado, eliminando...');
                     await AsyncStorage.removeItem(cartKey);
                 }
+            } else {
+                console.log('🛒 CartContext: No hay carrito guardado para este usuario');
             }
         } catch (error) {
             console.log('Error cargando carrito:', error);
+        }
+    };
+
+    // 🆕 NUEVA FUNCIÓN: Limpiar carrito completamente en logout
+    const clearCartOnLogout = async () => {
+        try {
+            console.log('🛒 CartContext: Limpiando carrito por logout');
+            
+            // Limpiar carrito en memoria
+            setCart([]);
+            
+            // Limpiar TODOS los carritos de AsyncStorage para evitar cross-contamination
+            const keys = await AsyncStorage.getAllKeys();
+            const cartKeys = keys.filter(key => key.startsWith('cart_'));
+            
+            if (cartKeys.length > 0) {
+                console.log(`🛒 CartContext: Eliminando ${cartKeys.length} carritos de storage: ${cartKeys.join(', ')}`);
+                await AsyncStorage.multiRemove(cartKeys);
+            }
+        } catch (error) {
+            console.log('Error limpiando carritos en logout:', error);
         }
     };
 
@@ -209,6 +254,7 @@ export function CartProvider({ children }) {
             productDiscountSavings: formattedProductDiscountSavings,
             hasUserDiscount,
             clearCart,
+            clearCartOnLogout, // 🆕 Nueva función para logout
             setCartClearCallback 
         }}>
             {children}
