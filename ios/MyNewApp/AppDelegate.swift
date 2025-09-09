@@ -32,7 +32,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // — 3️⃣ Arranca React Native dentro de la ventana —
     window = UIWindow(frame: UIScreen.main.bounds)
     reactNativeFactory?.startReactNative(
-      withModuleName: "MyNewApp",
+      withModuleName: "SaboresDeOrigen",
       in: window,
       launchOptions: launchOptions
     )
