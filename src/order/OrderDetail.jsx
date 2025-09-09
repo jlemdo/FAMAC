@@ -226,11 +226,45 @@ const OrderDetails = () => {
             <Text style={styles.noItems}>No hay artículos en este pedido</Text>
           )}
 
-          <View style={styles.totalSection}>
-            <Text style={styles.totalLabel}>Precio total</Text>
-            <Text style={styles.totalValue}>
-              {formatPriceWithSymbol(order?.total_price)}
-            </Text>
+          {/* 🚚 Desglose de precios */}
+          <View style={styles.priceBreakdown}>
+            {/* Subtotal de productos */}
+            {order?.subtotal && order.subtotal > 0 && (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Subtotal productos</Text>
+                <Text style={styles.priceValue}>
+                  {formatPriceWithSymbol(order.subtotal)}
+                </Text>
+              </View>
+            )}
+            
+            {/* Costo de envío */}
+            {order?.shipping_cost && order.shipping_cost > 0 && (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Costo de envío</Text>
+                <Text style={styles.priceValue}>
+                  {formatPriceWithSymbol(order.shipping_cost)}
+                </Text>
+              </View>
+            )}
+            
+            {/* Descuento */}
+            {order?.discount_amount && order.discount_amount > 0 && (
+              <View style={styles.priceRow}>
+                <Text style={[styles.priceLabel, styles.discountLabel]}>Descuento</Text>
+                <Text style={[styles.priceValue, styles.discountValue]}>
+                  -{formatPriceWithSymbol(order.discount_amount)}
+                </Text>
+              </View>
+            )}
+            
+            {/* Total */}
+            <View style={[styles.priceRow, styles.totalRow]}>
+              <Text style={styles.totalLabel}>Precio total</Text>
+              <Text style={styles.totalValue}>
+                {formatPriceWithSymbol(order?.total_price)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -599,6 +633,41 @@ const styles = StyleSheet.create({
     color: 'rgba(47,47,47,0.6)',
     fontStyle: 'italic',
     marginBottom: 12,
+  },
+  // 🚚 Estilos para desglose de precios
+  priceBreakdown: {
+    marginTop: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  priceLabel: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#6C757D',
+  },
+  priceValue: {
+    fontFamily: fonts.priceBold,
+    fontSize: fonts.size.small,
+    color: '#495057',
+  },
+  discountLabel: {
+    color: '#28A745',
+  },
+  discountValue: {
+    color: '#28A745',
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#DEE2E6',
+    marginTop: 8,
+    paddingTop: 12,
   },
   totalSection: {
     flexDirection: 'row',

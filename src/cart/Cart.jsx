@@ -1477,6 +1477,10 @@ export default function Cart() {
         tax_details: needInvoice ? (taxDetails || '') : '',
         delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
         delivery_slot: deliveryInfo?.slot || '',
+        // 🚚 ARREGLAR: Incluir información de envío
+        shipping_cost: shippingCost || 0,
+        subtotal: getSubtotal(),
+        total_amount: getFinalTotal(),
         // Campos de cupón (si existe y es válido)
         coupon_code: appliedCoupon && isCouponStillValid() ? appliedCoupon.code : null,
         coupon_discount: appliedCoupon && isCouponStillValid() ? appliedCoupon.discount : null,
