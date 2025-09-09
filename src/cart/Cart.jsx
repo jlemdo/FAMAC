@@ -42,6 +42,7 @@ import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import { newAddressService } from '../services/newAddressService';
 import {formatQuantityWithUnit} from '../utils/unitFormatter';
+import { API_BASE_URL } from '../config/environment';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
 
