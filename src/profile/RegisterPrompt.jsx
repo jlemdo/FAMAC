@@ -19,6 +19,7 @@ function RegisterPrompt() {
   const {user} = useContext(AuthContext);
   const [mode, setMode] = useState('prompt');
   const [previousUserType, setPreviousUserType] = useState(user?.usertype);
+  const [hasError, setHasError] = useState(false); // 🆕 Para manejar errores
 
   // Detectar cambio de Guest a usuario registrado
   useEffect(() => {
@@ -95,6 +96,11 @@ function RegisterPrompt() {
               onSuccess={() => {
                 // El AuthContext cambiará automáticamente y el componente se desmontará
                 // No necesitamos hacer nada aquí
+              }}
+              onError={() => {
+                // 🆕 NUEVO: Manejar errores sin cambiar de pantalla
+                setHasError(true);
+                // No llamar setMode('prompt') - mantener al usuario en signup
               }}
             />
           </View>

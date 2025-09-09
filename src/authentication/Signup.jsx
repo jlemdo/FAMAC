@@ -67,7 +67,7 @@ const getPlainPhone = (phone) => {
   return phone ? phone.replace(/\D/g, '') : '';
 };
 
-export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
+export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }) {
   const navigation = useNavigation();
   const {user, login} = useContext(AuthContext);
   const {showAlert} = useAlert();
@@ -149,7 +149,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
     password: Yup.string()
       .required('Contraseña es obligatoria')
       .min(6, 'La contraseña debe tener al menos 6 caracteres')
-      .matches(/^[a-zA-Z0-9]*$/, 'La contraseña solo puede contener letras y números'),
+      .matches(/^[a-zA-Z0-9]+$/, 'La contraseña solo puede contener letras y números'),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], 'No coincide')
       .required('Verificar contraseña'),
@@ -396,6 +396,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
       email: values.email,
       password: values.password,
       password_confirmation: values.confirmPassword,
+      skip_otp: true, // 🆕 Saltar verificación OTP por ahora
     };
 
     // Solo agregar dob si existe
@@ -428,17 +429,40 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         }
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message;
+      console.log('🚨 ERROR DE REGISTRO:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        errors: error.response?.data?.errors,
+        fullError: error.response?.data
+      });
+
+      // Manejar errores de validación específicos
+      let errorMessage = 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.';
       
-      // Si el error contiene información de validación, no borrar el formulario
+      if (error.response?.status === 422) {
+        // Errores de validación
+        const validationErrors = error.response?.data?.errors;
+        if (validationErrors) {
+          const firstError = Object.values(validationErrors)[0];
+          errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+        }
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       showAlert({
         type: 'error',
         title: 'Error en el registro',
-        message: errorMessage || 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.',
+        message: errorMessage,
         confirmText: 'Cerrar',
       });
       
-      // No resetear el formulario, mantener los datos del usuario
+      // 🆕 NUEVO: Notificar al componente padre sobre el error
+      if (onError) {
+        onError(error);
+      }
+      
+      // IMPORTANTE: No resetear el formulario, mantener los datos del usuario
     } finally {
       setSubmitting(false);
     }
@@ -800,9 +824,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
                   </Text>
                   <Text style={[
                     styles.passwordRequirement,
-                    /^[a-zA-Z0-9]*$/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
+                    /^[a-zA-Z0-9]+$/.test(values.password) ? styles.passwordRequirementMet : styles.passwordRequirementUnmet
                   ]}>
-                    {/^[a-zA-Z0-9]*$/.test(values.password) ? '✓' : '×'} Solo letras y números
+                    {/^[a-zA-Z0-9]+$/.test(values.password) ? '✓' : '×'} Solo letras y números
                   </Text>
                 </View>
               )}

@@ -19,6 +19,7 @@ import {CartContext} from '../context/CartContext';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {numericPresets} from '../utils/numericStyles';
+import {formatQuantityWithUnit} from '../utils/unitFormatter';
 
 export default function ProductDetails() {
   const route = useRoute();
@@ -47,35 +48,9 @@ export default function ProductDetails() {
   const totalSavings = (discountNum * quantity).toFixed(2); // ahorros totales
   const originalTotalPrice = (product.price * quantity).toFixed(2); // precio original total
   
-  // Formatear cantidad para mostrar usando datos reales del producto
+  // Formatear cantidad usando la nueva utilidad
   const formatQuantity = (units) => {
-    const quantityPerUnit = parseFloat(product.quantity);
-    
-    // Para pieces: units = cantidad de piezas (no multiplicar por quantity)
-    // Para peso/volumen: quantity * units = cantidad total
-    switch (product.unit) {
-      case 'pieces':
-        return units === 1 ? '1 pieza' : `${units} piezas`;
-      case 'kg':
-        const totalKg = quantityPerUnit * units;
-        return `${totalKg}kg`;
-      case 'gr':
-        const totalGr = quantityPerUnit * units;
-        return totalGr >= 1000 
-          ? `${(totalGr / 1000).toFixed(totalGr % 1000 === 0 ? 0 : 2)}kg`
-          : `${totalGr}gr`;
-      case 'l':
-        const totalL = quantityPerUnit * units;
-        return `${totalL}l`;
-      case 'ml':
-        const totalMl = quantityPerUnit * units;
-        return totalMl >= 1000
-          ? `${(totalMl / 1000).toFixed(totalMl % 1000 === 0 ? 0 : 2)}l`
-          : `${totalMl}ml`;
-      default:
-        const totalDefault = quantityPerUnit * units;
-        return `${totalDefault} ${product.unit}`;
-    }
+    return formatQuantityWithUnit(product.quantity, product.unit, units);
   };
 
   // Función para mostrar la alerta de éxito

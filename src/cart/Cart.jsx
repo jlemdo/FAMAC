@@ -41,6 +41,7 @@ import styles from './Cart.styles';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import { newAddressService } from '../services/newAddressService';
+import {formatQuantityWithUnit} from '../utils/unitFormatter';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
 
@@ -449,55 +450,11 @@ export default function Cart() {
     return driverCoords;
   };
 
-  // Función para calcular el total de medida (peso/volumen/piezas)
+  // Función para calcular el total de medida usando la utilidad
   const getTotalMeasure = (item, unitsSelected) => {
-    // DEBUG TEMPORAL - Ver datos exactos en el carrito
-    if (item.name && item.name.includes('RICOTTA')) {
-      console.log('🔍 DEBUG TARTA RICOTTA:', {
-        itemName: item.name,
-        itemUnit: item.unit,
-        itemQuantity: item.quantity, // unidades seleccionadas
-        productQuantity: item.productQuantity, // cantidad original del producto
-        unitsSelected: unitsSelected,
-        typeof_unit: typeof item.unit,
-        typeof_productQuantity: typeof item.productQuantity
-      });
-    }
-    
-    // Normalizar el unit para comparaciones (minúsculas)
-    const unit = (item.unit || '').toLowerCase();
-    // Usar productQuantity (250gr) en lugar de quantity (2 unidades)
-    const measurePerUnit = parseFloat(item.productQuantity || item.quantity || 1);
-    
-    // Para products sin unit definido (mayoría de quesos), mostrar solo unidades
-    if (!item.unit || item.unit === null || unit === '') {
-      return unitsSelected === 1 ? '1 unidad' : `${unitsSelected} unidades`;
-    }
-    
-    // Para pieces, mostrar piezas directas (1 unidad = 1 pieza)
-    if (unit === 'pieces') {
-      return unitsSelected === 1 ? '1 pieza' : `${unitsSelected} piezas`;
-    }
-    
-    // Para peso/volumen, multiplicar por measurePerUnit
-    const totalMeasure = measurePerUnit * unitsSelected;
-    
-    switch (unit) {
-      case 'kg':
-        return `${totalMeasure}kg`;
-      case 'gr':
-        return totalMeasure >= 1000 
-          ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}kg`
-          : `${totalMeasure}gr`;
-      case 'l':
-        return `${totalMeasure}l`;
-      case 'ml':
-        return totalMeasure >= 1000
-          ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}l`
-          : `${totalMeasure}ml`;
-      default:
-        return `${totalMeasure} ${item.unit}`;
-    }
+    // Usar productQuantity (250gr) en lugar de quantity (2 unidades) si está disponible
+    const baseQuantity = item.productQuantity || item.quantity || 1;
+    return formatQuantityWithUnit(baseQuantity, item.unit, unitsSelected);
   };
 
 

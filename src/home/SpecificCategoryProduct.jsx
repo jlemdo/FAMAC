@@ -14,6 +14,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
+import {formatProductMeasure} from '../utils/unitFormatter';
 
 export default function SpecificCategoryProduct() {
   const route = useRoute();
@@ -119,11 +120,7 @@ export default function SpecificCategoryProduct() {
                     <View style={styles.metadataSection}>
                       <View style={styles.weightBadge}>
                         <Text style={styles.weightText}>
-                          {Math.round(parseFloat(item.quantity) * 100) / 100} {
-                            item.unit === 'pieces' 
-                              ? (parseFloat(item.quantity) === 1 ? 'pieza' : 'piezas')
-                              : item.unit
-                          }
+                          {formatProductMeasure(item.quantity, item.unit)}
                         </Text>
                       </View>
                       <Text style={styles.description} numberOfLines={2}>
