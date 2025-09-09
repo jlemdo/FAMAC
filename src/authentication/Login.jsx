@@ -143,19 +143,25 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
           hasIdentityToken: !!identityToken
         });
         
-        // ✅ Enviar datos tal como los recibimos de Apple (igual que Google)
-        // Si no hay email de Apple, generar uno corto y profesional
-        let finalEmail = email;
-        if (!finalEmail) {
-          const shortId = appleUserId.replace(/[.-]/g, '').substring(0, 8);
-          finalEmail = `apple${shortId}@apple.id`;
+        // ✅ PRIORIDAD 1: Usar datos reales de Apple cuando estén disponibles
+        // Solo generar fallbacks cuando Apple NO proporcione datos
+        
+        // 📧 Email: Usar real si existe, sino marcar como ausente para backend
+        const finalEmail = email || null; // null = Apple no proporcionó email
+        
+        // 👤 Nombre: Usar real si existe, sino marcar como ausente
+        let processedName = null;
+        if (fullName && (fullName.givenName || fullName.familyName)) {
+          processedName = `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim();
         }
         
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: finalEmail, // Email real de Apple o generado corto
-          full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
+          email: finalEmail, // Email real de Apple o null
+          full_name: processedName, // Nombre real de Apple o null
+          has_real_email: !!email, // Flag para backend: true = email real/proxy, false = sin email
+          has_real_name: !!processedName, // Flag para backend: true = nombre real, false = sin nombre
         };
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
@@ -163,18 +169,27 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         await login(data.user);
         
         setTimeout(() => {
-          // Solo mostrar bienvenida si tenemos un nombre real (no fallback)
-          const userName = data.user.first_name || fullName?.givenName;
+          // ✅ Solo mostrar bienvenida personalizada si tenemos nombre REAL de Apple
+          // No mostrar para usuarios que usan fallbacks como "Usuario Privado"
+          const realAppleName = fullName?.givenName || fullName?.familyName;
           
-          if (userName) {
+          if (realAppleName && processedName) {
+            // Usuario Apple proporcionó nombre real
             showAlert({
               type: 'success',
               title: 'Bienvenido',
-              message: `¡Hola ${userName}!`,
+              message: `¡Hola ${realAppleName}!`,
+              confirmText: 'Continuar',
+            });
+          } else {
+            // Usuario Apple sin nombre real - solo mostrar bienvenida genérica
+            showAlert({
+              type: 'success',
+              title: 'Bienvenido',
+              message: 'Has iniciado sesión exitosamente',
               confirmText: 'Continuar',
             });
           }
-          // Si no hay nombre, no mostrar mensaje de bienvenida
         }, 500);
       } else {
         showAlert({
@@ -650,7 +665,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -658,8 +673,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   appleIcon: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     marginRight: 12,
     // tintColor: '#FFF',
   },

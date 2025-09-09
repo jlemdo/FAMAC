@@ -287,19 +287,25 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
-        // ✅ Enviar datos tal como los recibimos de Apple (igual que Google)
-        // Si no hay email de Apple, generar uno corto y profesional
-        let finalEmail = email;
-        if (!finalEmail) {
-          const shortId = appleUserId.replace(/[.-]/g, '').substring(0, 8);
-          finalEmail = `apple${shortId}@apple.id`;
+        // ✅ PRIORIDAD 1: Usar datos reales de Apple cuando estén disponibles
+        // Solo generar fallbacks cuando Apple NO proporcione datos
+        
+        // 📧 Email: Usar real si existe, sino marcar como ausente para backend
+        const finalEmail = email || null; // null = Apple no proporcionó email
+        
+        // 👤 Nombre: Usar real si existe, sino marcar como ausente
+        let processedName = null;
+        if (fullName && (fullName.givenName || fullName.familyName)) {
+          processedName = `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim();
         }
         
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: finalEmail, // Email real de Apple o generado corto
-          full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
+          email: finalEmail, // Email real de Apple o null
+          full_name: processedName, // Nombre real de Apple o null
+          has_real_email: !!email, // Flag para backend: true = email real/proxy, false = sin email
+          has_real_name: !!processedName, // Flag para backend: true = nombre real, false = sin nombre
         };
         
         
@@ -340,15 +346,28 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
           }
         }, 2000);
         
-        // Welcome message simple
-        const userName = data.user.first_name || fullName?.givenName || 'Usuario';
+        // ✅ Bienvenida inteligente para Apple
         setTimeout(() => {
-          showAlert({
-            type: 'success',
-            title: 'Bienvenido',
-            message: `¡Hola ${userName}!`,
-            confirmText: 'Continuar',
-          });
+          // Solo mostrar bienvenida personalizada si tenemos nombre REAL de Apple
+          const realAppleName = fullName?.givenName || fullName?.familyName;
+          
+          if (realAppleName && processedName) {
+            // Usuario Apple proporcionó nombre real
+            showAlert({
+              type: 'success',
+              title: 'Bienvenido',
+              message: `¡Hola ${realAppleName}!`,
+              confirmText: 'Continuar',
+            });
+          } else {
+            // Usuario Apple sin nombre real - solo mostrar bienvenida genérica
+            showAlert({
+              type: 'success',
+              title: 'Bienvenido',
+              message: 'Te has registrado exitosamente',
+              confirmText: 'Continuar',
+            });
+          }
         }, 500);
         
         // Después del registro exitoso con Apple
@@ -1115,8 +1134,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   appleIcon: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     marginRight: 12,
     // tintColor: '#FFF',
   },
