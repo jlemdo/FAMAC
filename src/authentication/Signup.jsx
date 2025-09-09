@@ -287,10 +287,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess }) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
         
         // ✅ Enviar datos tal como los recibimos de Apple (igual que Google)
+        // Si no hay email de Apple, generar uno corto y profesional
+        let finalEmail = email;
+        if (!finalEmail) {
+          const shortId = appleUserId.replace(/[.-]/g, '').substring(0, 8);
+          finalEmail = `apple${shortId}@apple.id`;
+        }
+        
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: email, // En registro siempre debería haber email (real o proxy)
+          email: finalEmail, // Email real de Apple o generado corto
           full_name: fullName ? `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() : null,
         };
         
