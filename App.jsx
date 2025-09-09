@@ -209,8 +209,8 @@ function MainTabs() {
               iconName = focused ? 'clipboard' : 'clipboard-outline';
             } else if (route.name === 'Ruta') {
               iconName = focused ? 'navigate' : 'navigate-outline';
-            } else if (route.name === 'Sugerencias') {
-              iconName = focused ? 'bulb' : 'bulb-outline';
+            // } else if (route.name === 'Sugerencias') {
+            //   iconName = focused ? 'bulb' : 'bulb-outline';
             } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
             }
@@ -259,10 +259,11 @@ function MainTabs() {
                 tabBarBadge: ordersBadge,
               }}
             />
-            <Tab.Screen 
+            {/* TEMPORALMENTE OCULTO - Sugerencias para implementar más tarde */}
+            {/* <Tab.Screen 
               name="Sugerencias" 
               component={Suggestions}
-            />
+            /> */}
             {/* <Tab.Screen name="Route" component={Route} /> */}
           </>
         )}

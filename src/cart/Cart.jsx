@@ -2353,8 +2353,8 @@ const CartFooter = ({
   
   return (
   <View>
-    {/* Upsell */}
-    <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
+    {/* TEMPORALMENTE OCULTO - Upsell/Sugerencias para implementar más tarde */}
+    {/* <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
     {loadingUpsell ? (
       <ActivityIndicator size="large" color="#33A744" />
     ) : (
@@ -2371,7 +2371,6 @@ const CartFooter = ({
           
           return (
             <View style={styles.upsellItem}>
-              {/* Badge de descuento */}
               {hasDiscount && (
                 <View style={styles.upsellDiscountBadge}>
                   <Text style={styles.upsellDiscountText}>-${discountNum}</Text>
@@ -2381,7 +2380,6 @@ const CartFooter = ({
               <Image source={{uri: item.photo}} style={styles.upsellImage} />
               <Text style={styles.upsellName}>{item.name}</Text>
               
-              {/* Mostrar precios con/sin descuento */}
               {hasDiscount ? (
                 <View style={styles.upsellPriceContainer}>
                   <Text style={styles.upsellOriginalPrice}>
@@ -2404,7 +2402,7 @@ const CartFooter = ({
           );
         }}
       />
-    )}
+    )} */}
     {/* Selector de horario */}
     <View style={styles.totalContainer}>
       <TouchableOpacity

@@ -10,34 +10,116 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🆕 NUEVA LÓGICA: Mostrar MIÉRCOLES y LUNES según reglas de negocio
+  // 🆕 NUEVA LÓGICA: Obtener días de entrega desde el backend
   useEffect(() => {
-    const tempDays = [];
-    
-    // Generar fechas de entrega basadas en lógica de negocio
-    const deliveryDates = getDeliveryDatesBasedOnLogic();
-    
-    console.log('⭐ Generando días de entrega según nueva lógica:', deliveryDates.map(d => d.toLocaleDateString('es-MX')));
-    
-    deliveryDates.forEach((date, i) => {
-      const dayObj = {
-        date,
-        label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
-        isoDate: date.toISOString().split('T')[0],
-        isClosest: i === 0, // Solo el primer día (más cercano) tiene estrella
-      };
+    fetchDeliveryDaysFromBackend();
+  }, []);
+
+  // Obtener días activos desde el backend
+  const fetchDeliveryDaysFromBackend = async () => {
+    try {
+      const response = await axios.get('https://occr.pixelcrafters.digital/api/delivery-days');
       
-      console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
-      tempDays.push(dayObj);
-    });
+      if (response.data && response.data.status === 'success') {
+        const backendDays = response.data.data;
+        console.log('🎯 Días obtenidos del backend:', backendDays);
+        
+        // Generar fechas basadas en los días activos del backend
+        const deliveryDates = generateDeliveryDatesFromBackend(backendDays);
+        
+        const tempDays = [];
+        deliveryDates.forEach((date, i) => {
+          const dayObj = {
+            date,
+            label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+            isoDate: date.toISOString().split('T')[0],
+            isClosest: i === 0, // Solo el primer día (más cercano) tiene estrella
+          };
+          
+          console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
+          tempDays.push(dayObj);
+        });
+        
+        setDays(tempDays);
+        
+        if (tempDays.length > 0) {
+          setSelectedDateIndex(0);
+        }
+      } else {
+        console.warn('⚠️ Respuesta del backend sin éxito, usando fallback');
+        useFallbackDays();
+      }
+    } catch (error) {
+      console.error('❌ Error obteniendo días del backend:', error);
+      useFallbackDays();
+    }
+  };
+
+  // Generar fechas futuras basadas en días configurados en backend
+  const generateDeliveryDatesFromBackend = (backendDays) => {
+    const today = new Date();
+    const dates = [];
+    
+    // Obtener números de días activos desde el backend (ordenados por prioridad)
+    const activeDayNumbers = backendDays
+      .filter(day => day.number) // Asegurar que tenga número de día
+      .sort((a, b) => a.priority - b.priority)
+      .map(day => day.number); // 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, etc.
+    
+    console.log('🔢 Números de días activos:', activeDayNumbers);
+    
+    if (activeDayNumbers.length === 0) {
+      return []; // No hay días configurados
+    }
+    
+    // Generar próximas 4 fechas de entrega (aumentado de 3 a 4)
+    let daysFound = 0;
+    let searchDate = new Date(today);
+    
+    while (daysFound < 4) {
+      const dayOfWeek = searchDate.getDay(); // 0=Dom, 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb
+      
+      // Convertir a nuestro formato (1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie)
+      const dayNumber = dayOfWeek === 0 ? 7 : dayOfWeek; // Domingo = 7
+      
+      if (activeDayNumbers.includes(dayNumber)) {
+        // Verificar que no sea hoy o que aún esté disponible hoy
+        const isToday = searchDate.toDateString() === today.toDateString();
+        const currentHour = today.getHours();
+        
+        // Si es hoy, verificar que no hayan pasado las 9pm (cutoff)
+        if (!isToday || currentHour < 21) {
+          dates.push(new Date(searchDate));
+          daysFound++;
+        }
+      }
+      
+      searchDate.setDate(searchDate.getDate() + 1);
+      
+      // Evitar bucle infinito
+      if (searchDate.getTime() - today.getTime() > 30 * 24 * 60 * 60 * 1000) {
+        break;
+      }
+    }
+    
+    return dates;
+  };
+
+  // Fallback usando lógica anterior si falla el backend
+  const useFallbackDays = () => {
+    const deliveryDates = getDeliveryDatesBasedOnLogic();
+    const tempDays = deliveryDates.map((date, i) => ({
+      date,
+      label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+      isoDate: date.toISOString().split('T')[0],
+      isClosest: i === 0,
+    }));
     
     setDays(tempDays);
-    
-    // 🆕 Auto-seleccionar la primera fecha (más cercana)
     if (tempDays.length > 0) {
       setSelectedDateIndex(0);
     }
-  }, []);
+  };
 
   // 🆕 FUNCIÓN PRINCIPAL: Obtener fechas de entrega según lógica de negocio
   const getDeliveryDatesBasedOnLogic = () => {
@@ -160,24 +242,31 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ];
       }
       
-      // 🆕 FILTRAR horarios según la hora actual y disponibilidad del día
+      // 🆕 FILTRAR horarios SOLO para el día actual
       const now = new Date();
       const selectedDate = new Date(dateString);
       const isToday = now.toDateString() === selectedDate.toDateString();
-      const currentHour = now.getHours();
       
-      
-      // Si es hoy, aplicar filtros dinámicos de horarios
       let filteredSlots = slotsToProcess;
+      
+      // ⚡ SOLO aplicar filtros si es el día de HOY
       if (isToday) {
+        const currentHour = now.getHours();
+        console.log(`🕐 Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
+        
         filteredSlots = slotsToProcess.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour, isToday);
+          return !isSlotPassed(slot.value, currentHour, true);
         });
         
         // Si ya pasaron las 9pm, este día ya no está disponible
         if (currentHour >= 21) {
+          console.log('🚫 Día actual no disponible - pasaron las 9pm');
           filteredSlots = []; // No hay slots disponibles
         }
+      } else {
+        // 🎯 Para días FUTUROS, mostrar TODOS los horarios disponibles
+        console.log(`📅 Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
+        filteredSlots = slotsToProcess; // Todos los slots disponibles
       }
       
       setAvailableSlots(filteredSlots);
@@ -189,25 +278,29 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
       ];
       
-      // Aplicar filtro al fallback usando nueva lógica
+      // 🆕 Aplicar la misma lógica al fallback - SOLO filtrar si es hoy
       const now = new Date();
       const selectedDate = new Date(dateString);
       const isToday = now.toDateString() === selectedDate.toDateString();
-      const currentHour = now.getHours();
       
-      
-      // Aplicar filtros dinámicos al fallback
+      // ⚡ SOLO aplicar filtros si es el día de HOY
       if (isToday) {
+        const currentHour = now.getHours();
+        console.log(`🕐 FALLBACK - Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
+        
         fallbackSlots = fallbackSlots.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour, isToday);
+          return !isSlotPassed(slot.value, currentHour, true);
         });
         
         // Si ya pasaron las 9pm, no hay slots disponibles
         if (currentHour >= 21) {
+          console.log('🚫 FALLBACK - Día actual no disponible - pasaron las 9pm');
           fallbackSlots = [];
         }
+      } else {
+        // 🎯 Para días FUTUROS, mostrar TODOS los horarios del fallback
+        console.log(`📅 FALLBACK - Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
       }
-      
       
       setAvailableSlots(fallbackSlots);
     } finally {
@@ -215,32 +308,87 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     }
   };
   
-  // 🆕 Helper function mejorada para determinar si un horario ya pasó
+  // 🆕 Helper function para determinar si un horario ya pasó - SOLO para día actual
   const isSlotPassed = (slotValue, currentHour, isToday) => {
-    
+    // ⚡ IMPORTANTE: Esta función SOLO debe usarse para el día actual
     if (!isToday) {
+      console.warn('⚠️ isSlotPassed se llamó para un día que no es hoy - esto no debería pasar');
       return false; // Fechas futuras siempre tienen todos los slots disponibles
     }
     
     const timeSlot = slotValue.toLowerCase();
+    console.log(`🕐 Evaluando slot: "${timeSlot}" a las ${currentHour}:${new Date().getMinutes()}`);
     
-    // Identificar slots
-    const isMorningSlot = timeSlot.includes('9') && (timeSlot.includes('am') || timeSlot.includes('1pm'));
-    const isEveningSlot = timeSlot.includes('4') && timeSlot.includes('pm');
+    // 🆕 NUEVA LÓGICA: Extraer hora de fin del slot
+    const endHour = extractEndHourFromSlot(timeSlot);
     
-    // REGLA 1: Si ya pasó la 1pm, el horario de mañana (9am-1pm) desaparece
-    if (isMorningSlot && currentHour >= 13) {
-      console.log('❌ Slot matutino (9am-1pm) ya no disponible - pasó la 1pm');
-      return true;
+    if (endHour === null) {
+      console.warn(`⚠️ No se pudo extraer hora de fin del slot: ${timeSlot}`);
+      return false; // Si no podemos determinar la hora, no filtramos
     }
     
-    // REGLA 2: Si ya pasaron las 4pm, el horario vespertino (4pm-9pm) desaparece
-    if (isEveningSlot && currentHour >= 16) {
-      console.log('❌ Slot vespertino (4pm-9pm) ya no disponible - pasaron las 4pm');
-      return true;
+    // Si la hora actual ya pasó la hora de fin del slot, está vencido
+    const isPassed = currentHour >= endHour;
+    
+    if (isPassed) {
+      console.log(`❌ Slot "${timeSlot}" ya no disponible - pasó las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
+    } else {
+      console.log(`✅ Slot "${timeSlot}" aún disponible - termina a las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
     }
     
-    return false;
+    return isPassed;
+  };
+
+  // 🆕 Helper para extraer la hora de fin de cualquier formato de slot
+  const extractEndHourFromSlot = (timeSlot) => {
+    try {
+      // Patrones comunes: "8am-11am", "9am-1pm", "4pm-12pm", "8:00 AM - 11:00 AM"
+      
+      // Buscar patrones de hora de fin
+      const patterns = [
+        // Formato: "8am-11am", "9am-1pm"
+        /-(\d{1,2})(am|pm)/,
+        // Formato: "8:00 AM - 11:00 AM"
+        /-\s*(\d{1,2}):\d{2}\s*(am|pm)/i,
+        // Formato: "4pm-12pm" (medianoche)
+        /-12pm/i,
+        // Formato: "4:00 PM - 12:00 PM"
+        /-\s*12:\d{2}\s*pm/i
+      ];
+      
+      let endHour = null;
+      
+      // Caso especial: "12pm" = medianoche = 24:00
+      if (timeSlot.includes('-12pm') || timeSlot.includes('- 12:')) {
+        console.log('🌙 Slot termina a medianoche (24:00)');
+        return 24; // Medianoche
+      }
+      
+      // Intentar extraer la hora con los patrones
+      for (const pattern of patterns) {
+        const match = timeSlot.match(pattern);
+        if (match) {
+          const hour = parseInt(match[1]);
+          const period = match[2].toLowerCase();
+          
+          if (period === 'am') {
+            endHour = hour === 12 ? 0 : hour; // 12am = 0:00
+          } else { // pm
+            endHour = hour === 12 ? 12 : hour + 12; // 12pm = 12:00, 1pm = 13:00
+          }
+          
+          console.log(`🔍 Extraído de "${timeSlot}": hora de fin = ${endHour}:00`);
+          return endHour;
+        }
+      }
+      
+      console.warn(`⚠️ No se pudo extraer hora de fin de: "${timeSlot}"`);
+      return null;
+      
+    } catch (error) {
+      console.error('❌ Error extrayendo hora del slot:', error);
+      return null;
+    }
   };
 
   const handleConfirm = () => {
@@ -275,7 +423,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
             <View style={styles.deliveryDayHeader}>
               <Text style={styles.deliveryDayTitle}>📅 Elige tu día de entrega</Text>
               <View style={styles.deliveryDayInfo}>
-                <Text style={styles.deliveryDaySubtitle}>Solo entregamos Miércoles y Lunes</Text>
+                <Text style={styles.deliveryDaySubtitle}>Días de entrega disponibles</Text>
                 <Text style={styles.recommendedHint}>⭐ Más cercano a tu compra</Text>
               </View>
             </View>
