@@ -340,6 +340,68 @@ export default function Profile({ navigation, route }) {
   const missingData = getMissingData();
 
   // Función para mostrar toast de éxito (similar a ProductDetails)
+  // ✅ FUNCIÓN: Manejar "Olvidé mi contraseña"
+  const handleForgotPassword = async () => {
+    try {
+      // Validar que el email esté presente y sea válido
+      if (!profile.email || !profile.email.trim()) {
+        showAlert({
+          type: 'error',
+          title: 'Email requerido',
+          message: 'No se puede enviar el enlace de restablecimiento porque no tienes un email registrado.',
+          confirmText: 'Entendido'
+        });
+        return;
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(profile.email.trim())) {
+        showAlert({
+          type: 'error',
+          title: 'Email inválido',
+          message: 'El formato del email no es válido.',
+          confirmText: 'Entendido'
+        });
+        return;
+      }
+
+      setLoading(true);
+      
+      const response = await axios.post(
+        'https://occr.pixelcrafters.digital/api/forgetpasswordlink',
+        { email: profile.email.trim() }
+      );
+
+      if (response.status === 200) {
+        showAlert({
+          type: 'success',
+          title: 'Enlace enviado',
+          message: `Hemos enviado un enlace de restablecimiento de contraseña a ${profile.email}. Revisa tu bandeja de entrada y correo no deseado.`,
+          confirmText: 'Perfecto'
+        });
+      }
+    } catch (error) {
+      if (error.response?.status === 404) {
+        showAlert({
+          type: 'error',
+          title: 'Email no encontrado',
+          message: 'No se encontró una cuenta con este email.',
+          confirmText: 'Cerrar'
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'No se pudo enviar el enlace. Intenta de nuevo más tarde.',
+          confirmText: 'Cerrar'
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showSuccessMessage = (message) => {
     setToastMessage(message);
     setShowSuccessToast(true);
@@ -1225,6 +1287,22 @@ export default function Profile({ navigation, route }) {
               ) : (
                 <Text style={styles.buttonText}>Cambiar contraseña</Text>
               )}
+            </TouchableOpacity>
+
+            {/* Separador */}
+            <View style={styles.forgotPasswordSeparator}>
+              <Text style={styles.forgotPasswordSeparatorText}>o</Text>
+            </View>
+
+            {/* Botón Olvidé mi contraseña */}
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={handleForgotPassword}
+              disabled={loading}
+              activeOpacity={0.8}>
+              <Text style={styles.forgotPasswordButtonText}>
+                📧 Olvidé mi contraseña
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -2139,6 +2217,42 @@ const styles = StyleSheet.create({
   },
   pickerConfirmButtonTextDisabled: {
     color: '#999999',
+  },
+
+  // === ESTILOS PARA OLVIDÉ MI CONTRASEÑA ===
+  forgotPasswordSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  forgotPasswordSeparatorText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: 'rgba(47,47,47,0.6)',
+    flex: 1,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  forgotPasswordButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  forgotPasswordButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+    textAlign: 'center',
   },
   
 });
