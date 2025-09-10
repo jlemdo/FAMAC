@@ -93,14 +93,12 @@ const AddressFormUberStyle = () => {
   const [availableOptions, setAvailableOptions] = useState(ALCALDIAS_CDMX); // Default CDMX
   
   const [references, setReferences] = useState('');
-  const [mapCoordinates, setMapCoordinates] = useState(null); // NUEVA: Coordenadas del mapa
+  // Estados para manejo del mapa
+  const [mapCoordinates, setMapCoordinates] = useState(null); // Coordenadas actuales
+  const [coordinatesSource, setCoordinatesSource] = useState(null); // 'auto' | 'user' | null
   const [userHasConfirmedLocation, setUserHasConfirmedLocation] = useState(false); // Usuario confirmó en mapa
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isProcessingLocation, setIsProcessingLocation] = useState(false); // Estado único de carga
   const [mapCallbackId] = useState(() => generateCallbackId()); // ID único para callbacks del mapa
-  
-  // 🔧 NUEVO: Estados para geocoding
-  const [isGeocodingForMap, setIsGeocodingForMap] = useState(false);
-  const [isAutoGeocoding, setIsAutoGeocoding] = useState(false); // Para geocoding automático existente
   
   
   
@@ -234,18 +232,18 @@ const AddressFormUberStyle = () => {
     return parts.join(', ');
   };
 
-  // ✅ GEOCODING INTELIGENTE: Obtener coordenadas automáticamente de la dirección manual
+  // ✅ SIMPLIFICADO: Geocoding inteligente unificado
   const handleIntelligentGeocoding = async (addressString) => {
     try {
       const coordinates = await geocodeFormAddress(addressString);
       
       if (coordinates) {
         setMapCoordinates(coordinates);
+        setCoordinatesSource('auto'); // Marcar como automático
         return coordinates;
       }
       
       return null;
-
     } catch (error) {
       return null;
     }
@@ -657,10 +655,11 @@ const AddressFormUberStyle = () => {
       }
     }
     
-    // ✅ REGISTRAR CALLBACK para recibir coordenadas del mapa
+    // Callback para recibir coordenadas del mapa
     const handleLocationReturn = (coordinates) => {
       setMapCoordinates(coordinates);
-      setUserHasConfirmedLocation(true);
+      setCoordinatesSource('user'); // Marcar como seleccionado por usuario
+      setUserHasConfirmedLocation(true); // Usuario confirmó en mapa
     };
     
     registerNavigationCallback(mapCallbackId, handleLocationReturn);
@@ -671,7 +670,7 @@ const AddressFormUberStyle = () => {
       pickerId,
       callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
-      userWrittenAddress: userWrittenAddress, // Pasar dirección escrita para contexto
+      userWrittenAddress: buildFinalAddress(), // 🔧 FIX: Construir dirección fresh para evitar timing issues
       references: references, // NUEVO: Pasar referencias para preservarlas
       // CRITICAL: Preservar TODOS los parámetros para que no se pierdan en el mapa
       ...route.params, // Pasar todos los parámetros originales
@@ -1139,15 +1138,14 @@ const AddressFormUberStyle = () => {
       const finalAddress = buildFinalAddress();
       if (finalAddress && finalAddress.length > 15) {
         
-        // Delay para evitar múltiples calls mientras user escribe
+        // ✅ SIMPLIFICADO: Delay para evitar múltiples calls mientras user escribe
         const timer = setTimeout(async () => {
-          setIsAutoGeocoding(true); // 🎯 Activar estado
+          setIsProcessingLocation(true); // Estado único de carga
           try {
             const coords = await handleIntelligentGeocoding(finalAddress);
-            if (coords) {
-            }
+            // handleIntelligentGeocoding ya maneja setCoordinatesSource('auto')
           } finally {
-            setIsAutoGeocoding(false); // 🎯 Desactivar estado
+            setIsProcessingLocation(false);
           }
         }, 1500); // 1.5 segundos de delay
 
@@ -1456,10 +1454,7 @@ const AddressFormUberStyle = () => {
             placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
             value={references}
             onChangeText={setReferences}
-            onFocus={() => {
-              createFocusHandler('references', Platform.OS === 'ios' ? 120 : 80)();
-              collapseChipsOnFocus();
-            }}
+            onFocus={createFocusHandler('references', Platform.OS === 'ios' ? 120 : 80)}
             multiline
             numberOfLines={3}
             placeholderTextColor="#999"
@@ -1497,46 +1492,47 @@ const AddressFormUberStyle = () => {
               </View>
             */}
             
-            {/* Siempre mostrar texto estático sin indicadores de geocoding */}
+            {/* ✅ SIMPLIFICADO: UI limpia basada en coordinatesSource */}
             <View style={styles.coordinatesStatus}>
-              <Ionicons name="location-outline" size={20} color="#D27F27" />
+              <Ionicons 
+                name={coordinatesSource === 'user' ? "checkmark-circle" : coordinatesSource === 'auto' ? "location" : "location-outline"} 
+                size={20} 
+                color={coordinatesSource === 'user' ? "#33A744" : coordinatesSource === 'auto' ? "#D27F27" : "#D27F27"} 
+              />
               <Text style={styles.coordinatesStatusText}>
                 Puedes seleccionar ubicación para mayor precisión
               </Text>
               <TouchableOpacity
                 style={[
-                  userHasConfirmedLocation ? styles.adjustLocationButton : styles.selectLocationButton,
-                  (isGeocodingForMap || isAutoGeocoding) && styles.buttonDisabled
+                  coordinatesSource ? styles.adjustLocationButton : styles.selectLocationButton,
+                  isProcessingLocation && styles.buttonDisabled
                 ]}
-                disabled={isGeocodingForMap || isAutoGeocoding}
+                disabled={isProcessingLocation}
                 onPress={async () => {
-                  // 🔧 BLOQUEADO: Activar estado de geocoding
-                  setIsGeocodingForMap(true);
+                  setIsProcessingLocation(true);
                   
                   try {
-                    // Construir dirección y hacer geocoding antes de ir al mapa
+                    // Construir dirección y hacer geocoding solo si no tiene coordenadas
                     const finalAddress = buildFinalAddress();
                     setUserWrittenAddress(finalAddress);
-                    const geocodedCoordinates = await handleIntelligentGeocoding(finalAddress);
                     
-                    // 🔧 TIMING FIX: Pequeño delay para asegurar que el estado se actualice
-                    setTimeout(() => {
-                      goToMap();
-                    }, 200);
+                    if (!mapCoordinates) {
+                      await handleIntelligentGeocoding(finalAddress);
+                    }
+                    
+                    // Ir al mapa directamente (sin delay artificial)
+                    goToMap();
                   } finally {
-                    // 🔧 DESBLOQUEAR: Desactivar estado de geocoding
-                    setIsGeocodingForMap(false);
+                    setIsProcessingLocation(false);
                   }
                 }}>
                 <Ionicons 
-                  name={isGeocodingForMap ? "time-outline" : (userHasConfirmedLocation ? "map-outline" : "map")} 
+                  name={isProcessingLocation ? "time-outline" : (coordinatesSource ? "map-outline" : "map")} 
                   size={16} 
-                  color={isGeocodingForMap ? "#FFF" : (userHasConfirmedLocation ? "#8B5E3C" : "#FFF")} 
+                  color={isProcessingLocation ? "#FFF" : (coordinatesSource ? "#8B5E3C" : "#FFF")} 
                 />
-                <Text style={userHasConfirmedLocation ? styles.adjustLocationButtonText : styles.selectLocationButtonText}>
-                  {isAutoGeocoding ? 'Geocodificando dirección...' :
-                   isGeocodingForMap ? 'Preparando mapa...' : 
-                   (userHasConfirmedLocation ? 'Ajustar' : 'Ir al mapa')}
+                <Text style={coordinatesSource ? styles.adjustLocationButtonText : styles.selectLocationButtonText}>
+                  {isProcessingLocation ? 'Preparando mapa...' : (coordinatesSource ? 'Ajustar' : 'Ir al mapa')}
                 </Text>
               </TouchableOpacity>
             </View>
