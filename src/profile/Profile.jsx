@@ -30,6 +30,7 @@ import fonts from '../theme/fonts';
 import RegisterPrompt from './RegisterPrompt';
 import NotificationService from '../services/NotificationService';
 import {formatOrderId} from '../utils/orderIdFormatter';
+import { newAddressService } from '../services/newAddressService';
 // Importar sistema de estilos global
 import { 
   colors,
@@ -139,7 +140,7 @@ export default function Profile({ navigation, route }) {
   const { user, logout, updateUser } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
   const { showAlert } = useAlert();
-  const { updateProfile } = useProfile();
+  const { updateProfile, refreshAddresses } = useProfile();
   const [loading, setLoading] = useState(false);
   
   // 🔧 Hook para manejo profesional del teclado (pantalla principal)
@@ -249,6 +250,9 @@ export default function Profile({ navigation, route }) {
   
   // Estado para el teléfono formateado visualmente
   const [formattedPhone, setFormattedPhone] = useState('');
+  
+  // Estado para direcciones del usuario (para validación)
+  const [userAddresses, setUserAddresses] = useState([]);
 
   // Función para obtener el label de la orden seleccionada
   const getSelectedOrderLabel = useCallback((orderno) => {
@@ -264,12 +268,25 @@ export default function Profile({ navigation, route }) {
     setFormattedOrders(formatted);
   }, [orders, getSortedOrders, formatOrderDisplay]);
 
+  // Función para cargar direcciones del usuario
+  const fetchUserAddresses = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const addresses = await newAddressService.getUserAddresses(user.id);
+      setUserAddresses(addresses || []);
+    } catch (error) {
+      setUserAddresses([]);
+    }
+  }, [user?.id]);
+
   const fetchUserDetails = useCallback(async () => {
     if (!user?.id) return;
     
     console.log('🔄 Profile.jsx: Cargando datos del servidor para usuario:', user.id);
     setLoading(true);
     try {
+      // Cargar datos del perfil
       const res = await axios.get(
         `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
@@ -294,12 +311,15 @@ export default function Profile({ navigation, route }) {
       setProfile(profileData);
       setFormattedPhone(formatMexicanPhone(profileData.phone));
       
+      // También cargar direcciones para la validación
+      await fetchUserAddresses();
+      
     } catch (error) {
       console.error('❌ Profile.jsx: Error cargando datos:', error);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, fetchUserAddresses]);
 
   useEffect(() => {
     if (user?.id) fetchUserDetails();
@@ -309,9 +329,11 @@ export default function Profile({ navigation, route }) {
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
+        // Refrescar datos del perfil y direcciones para actualizar badge del navbar
         fetchUserDetails();
+        refreshAddresses(); // Actualizar badge del navbar cuando regresa de AddressManager
       }
-    }, [user?.id, fetchUserDetails])
+    }, [user?.id, fetchUserDetails, refreshAddresses])
   );
   
   // 🔧 ELIMINADO: Legacy address handling - ahora usamos newAddressService + AddressManager
@@ -324,7 +346,11 @@ export default function Profile({ navigation, route }) {
     if (!profile.phone || profile.phone.trim() === '') {
       missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
     }
-    // La dirección se maneja ahora desde AddressManager - no validar en perfil
+    
+    // Validar direcciones usando el nuevo sistema
+    if (!userAddresses || userAddresses.length === 0) {
+      missing.push({ field: 'address', label: 'Dirección de entrega', reason: 'para recibir tus pedidos' });
+    }
     
     // Verificar fecha de cumpleaños (debe existir y ser una fecha válida)
     if (!profile.birthDate || 
@@ -335,7 +361,7 @@ export default function Profile({ navigation, route }) {
     }
     
     return missing;
-  }, [profile]);
+  }, [profile, userAddresses]);
 
   const missingData = getMissingData();
 

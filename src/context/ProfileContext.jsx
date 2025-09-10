@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { newAddressService } from '../services/newAddressService';
 
 // Helper function para parsear fechas (igual que en Profile.jsx)
 const parseFlexibleDate = (dateValue) => {
@@ -82,6 +83,7 @@ export const ProfileProvider = ({ children }) => {
   const [missingData, setMissingData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [userAddresses, setUserAddresses] = useState([]);
   
   // DEBUG: Monitor cuando profile cambia
   useEffect(() => {
@@ -121,15 +123,29 @@ export const ProfileProvider = ({ children }) => {
     saveProfile();
   }, [profile, user?.id, initialized]);
 
-  // Función para verificar datos faltantes (igual que en Profile.jsx)
-  const getMissingData = useCallback((profileData) => {
+  // Función para cargar direcciones del usuario
+  const fetchUserAddresses = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const addresses = await newAddressService.getUserAddresses(user.id);
+      setUserAddresses(addresses || []);
+    } catch (error) {
+      setUserAddresses([]);
+    }
+  }, [user?.id]);
+
+  // Función para verificar datos faltantes (actualizada para usar newAddressService)
+  const getMissingData = useCallback((profileData, addressesData = []) => {
     const missing = [];
     
     if (!profileData.phone || profileData.phone.trim() === '') {
       missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
     }
-    if (!profileData.address || profileData.address.trim() === '') {
-      missing.push({ field: 'address', label: 'Dirección', reason: 'para poder hacer pedidos a domicilio' });
+    
+    // Validar direcciones usando el nuevo sistema
+    if (!addressesData || addressesData.length === 0) {
+      missing.push({ field: 'address', label: 'Dirección de entrega', reason: 'para recibir tus pedidos' });
     }
     
     // Verificar fecha de cumpleaños (debe existir y ser una fecha válida)
@@ -152,6 +168,7 @@ export const ProfileProvider = ({ children }) => {
 
     setLoading(true);
     try {
+      // Cargar datos del perfil
       const res = await axios.get(
         `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
@@ -170,7 +187,13 @@ export const ProfileProvider = ({ children }) => {
       };
       
       setProfile(profileData);
-      const missing = getMissingData(profileData);
+      
+      // También cargar direcciones para la validación
+      await fetchUserAddresses();
+      
+      // Obtener las direcciones actualizadas para calcular missing data
+      const addresses = await newAddressService.getUserAddresses(user.id);
+      const missing = getMissingData(profileData, addresses);
       setMissingData(missing);
       
     } catch (error) {
@@ -179,7 +202,7 @@ export const ProfileProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.usertype, getMissingData]);
+  }, [user?.id, user?.usertype, getMissingData, fetchUserAddresses]);
 
   // 🔧 SOLUCIÓN AL BUG: Prevenir fetch automático que sobrescribe datos
   // Solo cargar datos cuando realmente cambia el usuario ID, no en updates de perfil
@@ -216,10 +239,35 @@ export const ProfileProvider = ({ children }) => {
       }
     }
     
-    // Calcular missing data con el perfil combinado
-    const missing = getMissingData(updatedProfile);
-    setMissingData(missing);
+    // Recalcular missing data incluyendo direcciones actuales
+    try {
+      const addresses = await newAddressService.getUserAddresses(user.id);
+      const missing = getMissingData(updatedProfile, addresses);
+      setMissingData(missing);
+    } catch (error) {
+      // Si no se pueden cargar direcciones, calcular sin ellas
+      const missing = getMissingData(updatedProfile, []);
+      setMissingData(missing);
+    }
   }, [getMissingData, profile, user?.id]);
+
+  // Función para refrescar solo las direcciones (llamada cuando se agregan direcciones)
+  const refreshAddresses = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const addresses = await newAddressService.getUserAddresses(user.id);
+      setUserAddresses(addresses || []);
+      
+      // Recalcular missing data con las nuevas direcciones
+      const missing = getMissingData(profile, addresses);
+      setMissingData(missing);
+    } catch (error) {
+      // Si hay error cargando direcciones, asumir que no hay
+      const missing = getMissingData(profile, []);
+      setMissingData(missing);
+    }
+  }, [user?.id, profile, getMissingData]);
 
   const value = {
     profile,
@@ -228,6 +276,7 @@ export const ProfileProvider = ({ children }) => {
     hasIncompleteProfile: missingData.length > 0,
     fetchUserDetails,
     updateProfile,
+    refreshAddresses,
   };
 
   return (
