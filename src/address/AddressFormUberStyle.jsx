@@ -89,7 +89,7 @@ const AddressFormUberStyle = () => {
   const [postalCode, setPostalCode] = useState('');
   const [municipality, setMunicipality] = useState('');
   const [state, setState] = useState('CDMX'); // Default CDMX
-  const [showMunicipalityDropdown, setShowMunicipalityDropdown] = useState(false);
+  const [showMunicipalityModal, setShowMunicipalityModal] = useState(false);
   const [availableOptions, setAvailableOptions] = useState(ALCALDIAS_CDMX); // Default CDMX
   
   const [references, setReferences] = useState('');
@@ -1156,17 +1156,17 @@ const AddressFormUberStyle = () => {
     }
   }, [streetName, exteriorNumber, neighborhood, postalCode, municipality, currentStep]);
 
-  // 🎯 Función helper para cerrar dropdown cuando se toque otro campo
-  const closeDropdownOnFocus = () => {
-    if (showMunicipalityDropdown) {
-      setShowMunicipalityDropdown(false);
+  // 🎯 Función helper para cerrar modal cuando se toque otro campo  
+  const closeModalOnFocus = () => {
+    if (showMunicipalityModal) {
+      setShowMunicipalityModal(false);
     }
   };
 
-  // 🎯 NUEVO: Cerrar dropdown al hacer scroll o tocar otros elementos
+  // 🎯 NUEVO: Cerrar modal al hacer scroll o tocar otros elementos
   const handleScrollViewTouch = () => {
-    if (showMunicipalityDropdown) {
-      setShowMunicipalityDropdown(false);
+    if (showMunicipalityModal) {
+      setShowMunicipalityModal(false);
     }
   };
 
@@ -1298,7 +1298,7 @@ const AddressFormUberStyle = () => {
               onChangeText={setStreetName}
               onFocus={() => {
                 createFocusHandler('street')();
-                closeDropdownOnFocus();
+                closeModalOnFocus();
               }}
               placeholderTextColor="#999"
             />
@@ -1313,7 +1313,7 @@ const AddressFormUberStyle = () => {
               onChangeText={setExteriorNumber}
               onFocus={() => {
                 createFocusHandler('extNum')();
-                closeDropdownOnFocus();
+                closeModalOnFocus();
               }}
               placeholderTextColor="#999"
               keyboardType="numeric"
@@ -1333,7 +1333,7 @@ const AddressFormUberStyle = () => {
               onChangeText={setInteriorNumber}
               onFocus={() => {
                 createFocusHandler('intNum')();
-                closeDropdownOnFocus();
+                closeModalOnFocus();
               }}
               placeholderTextColor="#999"
             />
@@ -1348,7 +1348,7 @@ const AddressFormUberStyle = () => {
               onChangeText={setNeighborhood}
               onFocus={() => {
                 createFocusHandler('colony')();
-                closeDropdownOnFocus();
+                closeModalOnFocus();
               }}
               placeholderTextColor="#999"
             />
@@ -1367,7 +1367,7 @@ const AddressFormUberStyle = () => {
               onChangeText={handlePostalCodeChange}
               onFocus={() => {
                 createFocusHandler('postalCode', 0, { disableOnIOS: true })();
-                closeDropdownOnFocus();
+                closeModalOnFocus();
               }}
               placeholderTextColor="#999"
               keyboardType="numeric"
@@ -1379,52 +1379,18 @@ const AddressFormUberStyle = () => {
             <TouchableOpacity
               style={[
                 styles.addressInput,
-                styles.dropdownButton,
-                showMunicipalityDropdown && styles.dropdownButtonActive
+                styles.modalSelector,
+                municipality && styles.modalSelectorSelected
               ]}
-              onPress={() => setShowMunicipalityDropdown(!showMunicipalityDropdown)}>
+              onPress={() => setShowMunicipalityModal(true)}>
               <Text style={[
-                styles.dropdownButtonText,
-                !municipality && styles.dropdownPlaceholderText
+                styles.modalSelectorText,
+                !municipality && styles.modalSelectorPlaceholder
               ]}>
-                {municipality || 'Selecciona opciones'}
+                {municipality || 'Seleccionar...'}
               </Text>
-              <Ionicons 
-                name={showMunicipalityDropdown ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color="#8B5E3C" 
-              />
+              <Ionicons name="chevron-down" size={20} color="#8B5E3C" />
             </TouchableOpacity>
-            
-            {/* Dropdown de opciones */}
-            {showMunicipalityDropdown && (
-              <View style={styles.dropdownContainer}>
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
-                  {availableOptions.map((option, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.dropdownOption,
-                        municipality === option && styles.dropdownOptionSelected
-                      ]}
-                      onPress={() => {
-                        setMunicipality(option);
-                        setShowMunicipalityDropdown(false);
-                      }}>
-                      <Text style={[
-                        styles.dropdownOptionText,
-                        municipality === option && styles.dropdownOptionTextSelected
-                      ]}>
-                        {option}
-                      </Text>
-                      {municipality === option && (
-                        <Ionicons name="checkmark" size={20} color="#33A744" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
           </View>
         </View>
 
@@ -1492,7 +1458,7 @@ const AddressFormUberStyle = () => {
             onChangeText={setReferences}
             onFocus={() => {
               createFocusHandler('references', Platform.OS === 'ios' ? 120 : 80)();
-              closeDropdownOnFocus();
+              collapseChipsOnFocus();
             }}
             multiline
             numberOfLines={3}
@@ -1715,6 +1681,57 @@ const AddressFormUberStyle = () => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal para seleccionar Alcaldía/Municipio (mismos estilos que DOB picker) */}
+      <Modal
+        visible={showMunicipalityModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMunicipalityModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowMunicipalityModal(false)}>
+          <View style={styles.pickerModalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.municipalityModalContent}>
+                <Text style={styles.municipalityModalTitle}>
+                  {state === 'CDMX' ? 'Seleccionar Alcaldía' : 'Seleccionar Municipio'}
+                </Text>
+                
+                <ScrollView 
+                  style={styles.municipalityList}
+                  showsVerticalScrollIndicator={false}>
+                  {availableOptions.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.municipalityOption,
+                        municipality === option && styles.municipalityOptionSelected
+                      ]}
+                      onPress={() => {
+                        setMunicipality(option);
+                        setShowMunicipalityModal(false);
+                      }}>
+                      <Text style={[
+                        styles.municipalityOptionText,
+                        municipality === option && styles.municipalityOptionTextSelected
+                      ]}>
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={styles.municipalityModalButtons}>
+                  <TouchableOpacity
+                    style={styles.municipalityModalCancel}
+                    onPress={() => setShowMunicipalityModal(false)}>
+                    <Text style={styles.municipalityModalCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
     </KeyboardAvoidingView>
@@ -2353,67 +2370,99 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // 🎯 NUEVOS ESTILOS PARA DROPDOWN DE ALCALDÍAS/MUNICIPIOS
-  dropdownButton: {
+  // ✅ ESTILOS PARA MODAL SELECTOR DE ALCALDÍAS/MUNICIPIOS
+  modalSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingRight: 12,
   },
-  dropdownButtonActive: {
-    borderColor: '#D27F27',
+  modalSelectorSelected: {
+    borderColor: '#33A744',
     borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.05)',
   },
-  dropdownButtonText: {
+  modalSelectorText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
     flex: 1,
   },
-  dropdownPlaceholderText: {
+  modalSelectorPlaceholder: {
     color: '#999',
   },
-  dropdownContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    maxHeight: 200,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  dropdownScroll: {
-    maxHeight: 200,
-  },
-  dropdownOption: {
-    flexDirection: 'row',
+  
+  // ✅ ESTILOS DEL MODAL (IGUALES AL DOB PICKER DE PROFILE.JSX)
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 20,
+  },
+  municipalityModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  municipalityModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  municipalityList: {
+    maxHeight: 300,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  municipalityOption: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(224, 224, 224, 0.5)',
+    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
   },
-  dropdownOptionSelected: {
-    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+  municipalityOptionSelected: {
+    backgroundColor: 'rgba(139, 94, 60, 0.15)',
   },
-  dropdownOptionText: {
-    fontSize: fonts.size.medium,
+  municipalityOptionText: {
     fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
     color: '#2F2F2F',
-    flex: 1,
+    textAlign: 'center',
   },
-  dropdownOptionTextSelected: {
-    color: '#33A744',
+  municipalityOptionTextSelected: {
     fontFamily: fonts.bold,
+    color: '#8B5E3C',
+  },
+  municipalityModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  municipalityModalCancel: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  municipalityModalCancelText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
   },
 });
 
