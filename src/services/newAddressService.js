@@ -170,13 +170,22 @@ export const newAddressService = {
    */
   saveGuestAddress: async (addressData) => {
     try {
+      // 🔑 Obtener FCM token para notificaciones push
+      let fcmToken = null;
+      try {
+        const NotificationService = require('../services/NotificationService').default;
+        fcmToken = NotificationService.token || await NotificationService.getToken();
+      } catch (error) {
+        console.log('⚠️ No se pudo obtener FCM token para guest:', error.message);
+      }
       
       const payload = {
         guest_email: addressData.guestEmail,
         address: addressData.address,
         latitude: addressData.latitude,
         longitude: addressData.longitude,
-        phone: addressData.phone || ''
+        phone: addressData.phone || '',
+        fcm_token: fcmToken // 🔑 CRÍTICO: Incluir FCM token para push notifications
       };
       
       const response = await axios.post(`${BASE_URL}/guest/address`, payload);
