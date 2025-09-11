@@ -2463,10 +2463,20 @@ const CartFooter = ({
         {needInvoice && (
           <TextInput
             style={styles.input}
-            placeholder="Ingresa datos fiscales"
+            placeholder="RFC (ej: ABCD123456EF7)"
             placeholderTextColor="rgba(47,47,47,0.6)"
             value={taxDetails || ''}
-            onChangeText={setTaxDetails}
+            onChangeText={(text) => {
+              // Convertir a mayúsculas y remover espacios
+              const cleanText = text.replace(/\s/g, '').toUpperCase();
+              // Limitar a 13 caracteres (longitud máxima del RFC)
+              const limitedText = cleanText.slice(0, 13);
+              // Validar solo letras y números
+              const validText = limitedText.replace(/[^A-Z0-9]/g, '');
+              setTaxDetails(validText);
+            }}
+            maxLength={13}
+            autoCapitalize="characters"
           />
         )}
 

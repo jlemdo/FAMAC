@@ -1454,7 +1454,7 @@ const AddressFormUberStyle = () => {
             placeholder="Ej: Casa azul, junto al Oxxo, entre Starbucks y farmacia..."
             value={references}
             onChangeText={setReferences}
-            onFocus={Platform.OS === 'ios' ? undefined : createFocusHandler('references', 80)}
+            onFocus={createFocusHandler('references', Platform.OS === 'ios' ? 120 : 80)}
             multiline
             numberOfLines={3}
             placeholderTextColor="#999"
