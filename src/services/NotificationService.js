@@ -326,6 +326,16 @@ class NotificationService {
         enhancedBody = `Tu pedido #${orderId} ha sido cancelado. Tu reembolso será procesado pronto.`;
         break;
         
+      case 'order_confirmed_and_paid':
+        enhancedTitle = '🎉 ¡Pedido confirmado y pagado!';
+        enhancedBody = `Tu pedido #${orderId} ha sido confirmado y el pago procesado exitosamente.`;
+        break;
+        
+      case 'order_confirmed_payment_pending':
+        enhancedTitle = '📋 ¡Pedido confirmado! Pago pendiente';
+        enhancedBody = `Tu pedido #${orderId} ha sido confirmado. Ve a OXXO a completar tu pago.`;
+        break;
+        
       case 'payment_confirmed':
         enhancedTitle = '💳 Pago confirmado';
         enhancedBody = `El pago de tu pedido #${orderId} ha sido procesado exitosamente.`;
@@ -351,6 +361,11 @@ class NotificationService {
         } else {
           enhancedBody = `Se ha asignado un repartidor para tu pedido #${orderId}.`;
         }
+        break;
+        
+      case 'new_order_assigned':
+        enhancedTitle = '📦 Nuevo pedido asignado';
+        enhancedBody = `Se te ha asignado el pedido #${orderId}. ¡Revisa los detalles!`;
         break;
         
       default:
@@ -382,9 +397,12 @@ class NotificationService {
         case 'order_on_way':
         case 'order_delivered':
         case 'order_cancelled':
+        case 'order_confirmed_and_paid':
+        case 'order_confirmed_payment_pending':
         case 'payment_confirmed':
         case 'delivery_delay':
         case 'driver_assigned':
+        case 'new_order_assigned':
           // Navegar a detalles de orden
           if (orderId && this.navigationRef) {
             this.navigationRef.navigate('MainTabs', {
