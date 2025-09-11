@@ -1119,7 +1119,16 @@ export default function Cart() {
       // Las coordenadas ya fueron confirmadas por el usuario en el mapa
       // No necesitamos pedir permisos de ubicación nuevamente
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
-      // 1.1) Crear PaymentIntent en el servidor
+      
+      // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
+      const orderData = await completeOrderFunc();
+      const realOrderId = orderData?.order?.id;
+      
+      if (!realOrderId) {
+        throw new Error('No se pudo crear la orden correctamente.');
+      }
+      
+      // 1.1) Crear PaymentIntent con ID real de la orden
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
       
       // Usar el cálculo unificado de precio final (incluye envío)
@@ -1130,12 +1139,13 @@ export default function Cart() {
         totalPrice: totalPrice,
         appliedCoupon: appliedCoupon,
         finalPrice: finalPrice,
-        centavos: parseFloat(finalPrice) * 100
+        centavos: parseFloat(finalPrice) * 100,
+        realOrderId: realOrderId
       });
       
       const {data} = await axios.post(
         'https://occr.pixelcrafters.digital/api/create-payment-intent',
-        {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail},
+        {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail, order_id: realOrderId},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
@@ -1222,9 +1232,7 @@ export default function Cart() {
       } catch (error) {
       }
       
-      // 1.4) Pago exitoso: enviar la orden
-      const orderData = await completeOrderFunc();
-      
+      // 1.4) Pago exitoso: la orden ya fue creada, solo actualizar usuario
       // 🆕 GUEST FIX: Guardar email Y dirección de Guest para futuras compras
       if (user?.usertype === 'Guest') {
         const updateData = {};
