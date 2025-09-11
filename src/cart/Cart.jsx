@@ -167,13 +167,38 @@ export default function Cart() {
   // 📦 NUEVO: Recalcular envío cuando cambie el subtotal
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();
+    
+    console.log('🔄 useEffect shipping trigger:', {
+      currentSubtotal,
+      totalPrice,
+      appliedCoupon: appliedCoupon?.code,
+      userType: user?.usertype,
+      currentShippingCost: shippingCost
+    });
+    
     if (currentSubtotal > 0) {
-      calculateShippingAndMotivation(currentSubtotal);
+      // 🚨 PREVENIR MÚLTIPLES LLAMADAS: Solo llamar si el subtotal cambió significativamente
+      const timeoutId = setTimeout(() => {
+        calculateShippingAndMotivation(currentSubtotal);
+      }, 100); // Debounce de 100ms
+      
+      return () => clearTimeout(timeoutId);
     } else {
+      console.log('🔄 Reseteando shipping por subtotal <= 0');
       setShippingCost(0);
       setShippingMotivation(null);
     }
-  }, [totalPrice, appliedCoupon]);
+  }, [totalPrice, appliedCoupon, user?.usertype]);
+
+  // 📦 NUEVO: Recalcular envío específicamente para Guest cuando complete datos
+  useEffect(() => {
+    if (user?.usertype === 'Guest' && email?.trim() && address?.trim()) {
+      const currentSubtotal = getSubtotal() - getDiscountAmount();
+      if (currentSubtotal > 0) {
+        calculateShippingAndMotivation(currentSubtotal);
+      }
+    }
+  }, [user?.usertype, email, address]);
   
   // Función para guardar deliveryInfo en AsyncStorage
   const saveDeliveryInfo = async (info, userId) => {
@@ -323,7 +348,14 @@ export default function Cart() {
 
   // 📦 NUEVO: Calcular envío y mensaje motivacional
   const calculateShippingAndMotivation = async (subtotal) => {
+    console.log('🚚 calculateShippingAndMotivation INICIADO:', {
+      subtotal,
+      userType: user?.usertype,
+      currentShippingCost: shippingCost
+    });
+    
     if (!subtotal || subtotal <= 0) {
+      console.log('❌ Subtotal inválido, resetear shipping');
       setShippingCost(0);
       setShippingMotivation(null);
       return;
@@ -332,18 +364,34 @@ export default function Cart() {
     setLoadingShipping(true);
     
     try {
-      const response = await axios.get(`https://occr.pixelcrafters.digital/api/shipping-motivation/${subtotal}`, {
+      const apiUrl = `https://occr.pixelcrafters.digital/api/shipping-motivation/${subtotal}`;
+      console.log('📡 Llamando API:', apiUrl);
+      
+      const response = await axios.get(apiUrl, {
         headers: {
           'Accept': 'application/json'
         }
       });
       
+      console.log('📦 Respuesta API shipping:', response.data);
+      
       if (response.data.status === 'success') {
         const data = response.data.data;
+        const newShippingCost = Number(data.shipping_cost) || 0;
+        
+        console.log('✅ Actualizando shipping cost:', {
+          oldCost: shippingCost,
+          newCost: newShippingCost,
+          data
+        });
+        
         setShippingMotivation(data);
-        setShippingCost(Number(data.shipping_cost) || 0);
+        setShippingCost(newShippingCost);
+      } else {
+        console.log('❌ API shipping response not successful:', response.data);
       }
     } catch (error) {
+      console.log('❌ ERROR en API shipping:', error.response?.data || error.message);
       // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
@@ -1126,9 +1174,13 @@ export default function Cart() {
       
       // 🚨 DEBUG: Verificar qué se envía a Stripe
       console.log('🚨 ENVIANDO A STRIPE:', {
+        userType: user?.usertype,
         totalPrice: totalPrice,
         appliedCoupon: appliedCoupon,
         finalPrice: finalPrice,
+        shippingCost: shippingCost,
+        subtotal: getSubtotal(),
+        discountAmount: getDiscountAmount(),
         centavos: parseFloat(finalPrice) * 100,
         realOrderId: realOrderId
       });
@@ -1166,7 +1218,17 @@ export default function Cart() {
           currencyCode: 'MXN', // Pesos mexicanos
         },
         // Configuración explícita de métodos de pago
-        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(getFinalTotal())}`,
+        primaryButtonLabel: (() => {
+          const finalTotal = getFinalTotal();
+          console.log('💰 BOTÓN PAGAR - Estado shipping:', {
+            userType: user?.usertype,
+            shippingCost: shippingCost,
+            finalTotal: finalTotal,
+            subtotal: getSubtotal(),
+            discountAmount: getDiscountAmount()
+          });
+          return `Pagar ${formatPriceWithSymbol(finalTotal)}`;
+        })(),
         // Asegurar que se acepten tarjetas internacionales
         appearance: {
           primaryButton: {
