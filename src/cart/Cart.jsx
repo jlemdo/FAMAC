@@ -164,6 +164,65 @@ export default function Cart() {
     fetchShippingConfig();
   }, []);
 
+  // 🛒 NUEVO: Verificar expiración del carrito (24h)
+  useEffect(() => {
+    const checkCartExpiration = async () => {
+      try {
+        // Solo verificar cuando el usuario esté definido
+        if (user === undefined) return;
+        
+        // Obtener timestamp del carrito en AsyncStorage
+        const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
+        const cartKey = `cart_${currentUserId}`;
+        
+        const savedCart = await AsyncStorage.getItem(cartKey);
+        let lastModified = null;
+        
+        if (savedCart) {
+          const cartData = JSON.parse(savedCart);
+          lastModified = cartData.timestamp;
+        }
+        
+        // Construir payload con timestamp
+        const payload = {
+          last_modified: lastModified,
+          user_type: user?.id ? 'user' : user?.email ? 'guest' : 'anonymous'
+        };
+        
+        console.log('🛒 Verificando expiración carrito:', {
+          ...payload,
+          cartKey,
+          hasItems: cart.length > 0
+        });
+        
+        const response = await axios.post('https://occr.pixelcrafters.digital/api/cart-cleanup', payload);
+        
+        if (response.data.expired) {
+          console.log('🗑️ Carrito expirado, limpiando...', {
+            hours_since_activity: response.data.hours_since_activity,
+            last_modified: response.data.last_modified
+          });
+          
+          // Limpiar carrito usando la función del contexto
+          clearCart();
+        } else {
+          console.log('✅ Carrito válido, no expirado', {
+            hours_since_activity: response.data.hours_since_activity
+          });
+        }
+        
+      } catch (error) {
+        console.log('⚠️ Error verificando expiración carrito, manteniendo actual:', error.message);
+        // Fallar silenciosamente, mantener carrito actual
+      }
+    };
+    
+    // Solo ejecutar cuando AuthContext haya cargado completamente
+    if (user !== undefined) {
+      checkCartExpiration();
+    }
+  }, [user?.id, user?.email, user?.usertype]);
+
   // 📦 NUEVO: Recalcular envío cuando cambie el subtotal
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();

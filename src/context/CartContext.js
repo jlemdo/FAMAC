@@ -133,7 +133,39 @@ export function CartProvider({ children }) {
                 userId: currentUserId
             };
             await AsyncStorage.setItem(cartKey, JSON.stringify(cartWithTimestamp));
+            
+            // 🛒 NUEVO: Registrar actividad en backend (opcional)
+            updateCartActivity();
         } catch (error) {
+        }
+    };
+    
+    // 🛒 NUEVO: Función para registrar actividad del carrito en backend
+    const updateCartActivity = async () => {
+        try {
+            // Solo registrar si hay modificaciones reales del carrito
+            if (cart.length === 0) return;
+            
+            const payload = {
+                timestamp: Date.now(),
+                ...(user?.id 
+                    ? { user_id: user.id }
+                    : user?.email 
+                        ? { email: user.email }
+                        : { type: "anonymous" })
+            };
+            
+            // Llamada opcional al backend - fallar silenciosamente si hay error
+            await fetch('https://occr.pixelcrafters.digital/api/cart-activity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+            
+        } catch (error) {
+            // Fallar silenciosamente, no afectar la experiencia del usuario
         }
     };
 
