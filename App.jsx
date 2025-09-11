@@ -45,11 +45,11 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 // LIVE
-const PUBLISHABLE_KEY =
-  'pk_live_51RUatHIhBUbZl3CrIf9BW6LjracnlDnVMnpeRkhIk2Th6ULOdgZiSL3oGnEkGR8h42aLnzyrHy80gGIjv6pzmTp800PbiPa4Pe';
-  // SANDBOX
 // const PUBLISHABLE_KEY =
-//   'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
+//   'pk_live_51RUatHIhBUbZl3CrIf9BW6LjracnlDnVMnpeRkhIk2Th6ULOdgZiSL3oGnEkGR8h42aLnzyrHy80gGIjv6pzmTp800PbiPa4Pe';
+  // SANDBOX
+const PUBLISHABLE_KEY =
+  'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
 // const PUBLISHABLE_KEY =
 //   'pk_test_51OMmaHISCA0h3oYpdsnzpNlsLGm3WLtP7zb5mFyeEAKJqPZZXuP3J1ph7ShDzBUWiSJ64UHtfII8xmpbFkXbM4Bg00K0F4gAR9';
 
@@ -92,7 +92,9 @@ function MainTabs() {
   const {user} = useContext(AuthContext);
   const {orders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
-  const {hasIncompleteProfile} = useProfile(); // Usar el nuevo contexto
+  // ✅ FIX: Solo usar ProfileContext para usuarios no-driver
+  const profileContext = user?.usertype !== 'driver' ? useProfile() : { hasIncompleteProfile: false };
+  const {hasIncompleteProfile} = profileContext;
   
   // Memoized cart badge calculation with real-time updates
   const cartBadge = useMemo(() => {
@@ -191,7 +193,7 @@ function MainTabs() {
     <View style={styles.container}>
       {/* <Header /> */}
       <Tab.Navigator
-        initialRouteName="Inicio"
+        initialRouteName={user.usertype === 'driver' ? "Historial de Pedidos" : "Inicio"}
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;

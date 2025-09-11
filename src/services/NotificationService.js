@@ -27,7 +27,6 @@ class NotificationService {
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     if (enabled) {
-      console.log('✅ Permisos de notificación otorgados:', authStatus);
       
       // 🔥 DEBUG iOS: Verificar estado específico (DISABLED for production)
       // if (Platform.OS === 'ios') {
@@ -40,7 +39,6 @@ class NotificationService {
       
       return true;
     } else {
-      console.log('❌ Permisos de notificación denegados - continuando sin notificaciones');
       
       // 🔧 ARREGLADO: No mostrar Alert automático - respetamos decisión del usuario
       // El usuario ya vio el prompt nativo y decidió "No permitir"
@@ -56,26 +54,20 @@ class NotificationService {
       // iOS requiere registro para mensajes remotos antes del token
       if (Platform.OS === 'ios') {
         await messaging().registerDeviceForRemoteMessages();
-        console.log('📱 iOS device registered for remote messages');
         
         // 🔥 NUEVA SOLUCIÓN: Obtener y setear APNS token ANTES de FCM token
         try {
           const apnsToken = await messaging().getAPNSToken();
           if (apnsToken) {
-            console.log('🍎 APNS Token obtenido:', apnsToken);
             await messaging().setAPNSToken(apnsToken);
-            console.log('✅ APNS Token seteado correctamente');
           } else {
-            console.log('⚠️ No se pudo obtener APNS token - pero intentaremos FCM token');
           }
         } catch (apnsError) {
-          console.log('⚠️ Error con APNS token, pero continuamos:', apnsError.message);
         }
       }
       
       const token = await messaging().getToken();
       this.token = token;
-      console.log('🔑 FCM Token:', token);
       
       // Guardar token localmente
       await AsyncStorage.setItem('fcm_token', token);
@@ -94,7 +86,6 @@ class NotificationService {
       
       return token;
     } catch (error) {
-      console.error('❌ Error obteniendo token FCM:', error);
       
       // MOSTRAR ERROR EN PANTALLA para debug sin Mac (DISABLED for production)
       // if (Platform.OS === 'ios') {
@@ -159,7 +150,6 @@ class NotificationService {
             [
               {text: 'Copiar Token', onPress: () => {
                 // En iOS no hay Clipboard nativo, solo mostrar
-                console.log('🔑 Full Token:', token);
               }},
               {text: 'Entendido'}
             ]
@@ -198,11 +188,9 @@ class NotificationService {
       
       console.log('✅ FCM Token actualizado exitosamente (endpoint seguro)');
     } catch (error) {
-      console.error('❌ Error actualizando FCM token:', error);
       
       // Fallback temporal: si endpoint específico falla, no hacer nada
       // Esto evita corrupción de datos hasta que el backend esté actualizado
-      console.log('⚠️ FCM token no actualizado para evitar corrupción de datos');
     }
   }
 
@@ -210,7 +198,6 @@ class NotificationService {
   setupNotificationListeners() {
     // Notificación cuando la app está en foreground
     messaging().onMessage(async remoteMessage => {
-      console.log('📱 Notificación recibida en foreground:', remoteMessage);
       
       // ✅ MEJORADO: Usar contenido enhanced
       const enhancedContent = this.enhanceNotificationContent(remoteMessage);
@@ -229,7 +216,6 @@ class NotificationService {
 
     // Notificación cuando la app está en background y se abre
     messaging().onNotificationOpenedApp(remoteMessage => {
-      console.log('📱 Notificación abrió la app desde background:', remoteMessage);
       this.handleNotificationPress(remoteMessage);
     });
 
@@ -238,7 +224,6 @@ class NotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
-          console.log('📱 Notificación abrió la app desde cerrada:', remoteMessage);
           this.handleNotificationPress(remoteMessage);
         }
       });
@@ -354,7 +339,6 @@ class NotificationService {
         case 'driver_assigned':
           // Navegar a detalles de orden
           if (orderId && this.navigationRef) {
-            console.log('📦 Navegando a detalles de orden:', orderId);
             this.navigationRef.navigate('MainTabs', {
               screen: 'Pedidos',
               params: {
@@ -371,7 +355,6 @@ class NotificationService {
         case 'new_promotion':
           // Navegar a home para ver promociones
           if (this.navigationRef) {
-            console.log('🎉 Navegando a promociones');
             this.navigationRef.navigate('MainTabs', { screen: 'Home' });
           }
           break;
@@ -379,18 +362,15 @@ class NotificationService {
         default:
           // Navegación genérica a home
           if (this.navigationRef) {
-            console.log('📱 Navegación genérica a home');
             this.navigationRef.navigate('MainTabs', { screen: 'Home' });
           }
       }
     } catch (error) {
-      console.error('❌ Error en navegación desde notificación:', error);
       // Fallback: intentar ir a home
       if (this.navigationRef) {
         try {
           this.navigationRef.navigate('MainTabs', { screen: 'Home' });
         } catch (fallbackError) {
-          console.error('❌ Error en navegación fallback:', fallbackError);
         }
       }
     }
@@ -419,10 +399,8 @@ class NotificationService {
       // 4. Configurar listeners
       this.setupNotificationListeners();
 
-      console.log('🚀 Servicio de notificaciones inicializado correctamente');
       return true;
     } catch (error) {
-      console.error('❌ Error inicializando notificaciones:', error);
       return false;
     }
   }

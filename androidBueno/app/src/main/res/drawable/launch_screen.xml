@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Fondo con gradiente -->
+  <item>
+    <shape android:shape="rectangle">
+      <gradient
+        android:startColor="#F2EFE4"
+        android:centerColor="#FDFCF6" 
+        android:endColor="#F2EFE4"
+        android:angle="90" />
+    </shape>
+  </item>
+  
+  <!-- Logo centrado -->
+  <item
+    android:width="120dp"
+    android:height="120dp"
+    android:drawable="@mipmap/ic_launcher"
+    android:gravity="center" />
+  
+  <!-- Elementos decorativos opcionales -->
+  <item android:gravity="center">
+    <shape android:shape="oval">
+      <solid android:color="#20D27F27" />
+      <size android:width="200dp" android:height="200dp" />
+    </shape>
+  </item>
+</layer-list>

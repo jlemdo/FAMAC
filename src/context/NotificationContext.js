@@ -16,7 +16,6 @@ export const NotificationProvider = ({ children }) => {
             );
             
             if (isDuplicate) {
-                console.log('🔔 Notificación duplicada prevenida:', title);
                 return prev; // No agregar
             }
             
@@ -31,7 +30,6 @@ export const NotificationProvider = ({ children }) => {
                 expanded: false,
             };
             
-            console.log('🔔 Nueva notificación agregada:', title, 'ID:', uniqueId);
             return [...prev, newNotification];
         });
     };

@@ -219,7 +219,6 @@ export function AuthProvider({ children }) {
         const isUserNotFound = response?.status === 404 || response?.status === 401;
         
         if (isUserDetailsRequest && isUserNotFound) {
-          console.warn('🚨 Usuario eliminado de la base de datos, cerrando sesión...');
           
           // Mostrar alerta informativa (usando setTimeout para evitar conflictos de estado)
           setTimeout(() => {

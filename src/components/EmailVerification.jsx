@@ -62,13 +62,11 @@ const EmailVerification = ({
         
         // Debug en desarrollo
         if (__DEV__ && response.data.debug_otp) {
-          console.log('DEBUG OTP:', response.data.debug_otp);
         }
       } else {
         Alert.alert('Error', response.data.message || 'Error enviando código');
       }
     } catch (error) {
-      console.error('Error sending OTP:', error);
       Alert.alert('Error', 'No se pudo enviar el código de verificación');
     }
     setSending(false);
@@ -98,7 +96,6 @@ const EmailVerification = ({
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'No se pudo verificar el código';
-      console.error('Error verifying OTP:', error.response?.data || error);
       Alert.alert('Error', errorMessage);
     }
     setLoading(false);

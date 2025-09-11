@@ -211,7 +211,6 @@ export const ProfileProvider = ({ children }) => {
   useEffect(() => {
     // Solo hacer fetch si es un usuario completamente diferente
     if (user?.id && user.id !== lastUserId) {
-      console.log('🔄 ProfileContext: Cargando datos para nuevo usuario:', user.id);
       fetchUserDetails();
       setLastUserId(user.id);
     }
@@ -219,7 +218,6 @@ export const ProfileProvider = ({ children }) => {
 
   // Función para actualizar los datos (llamada desde Profile.jsx)
   const updateProfile = useCallback(async (newProfileData) => {
-    console.log('🔧 ProfileContext: Actualizando perfil con:', newProfileData);
     
     // Hacer merge con los datos existentes para preservar campos no enviados
     const updatedProfile = {
@@ -233,9 +231,7 @@ export const ProfileProvider = ({ children }) => {
     if (user?.id) {
       try {
         await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(updatedProfile));
-        console.log('💾 ProfileContext: Datos persistidos correctamente');
       } catch (error) {
-        console.error('❌ ProfileContext: Error persistiendo datos:', error);
       }
     }
     

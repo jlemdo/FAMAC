@@ -34,6 +34,7 @@ const Order = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [guestOrders, setGuestOrders] = useState([]);
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
+  const [driverActiveTab, setDriverActiveTab] = useState('disponibles'); // 'disponibles' o 'entregas'
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
   // ✅ Backend ahora envía estados directamente en español - No necesitamos traducir
@@ -129,7 +130,6 @@ const Order = () => {
       
     } catch (error) {
       // Error de conexión o servidor
-      console.error('Error cargando órdenes guest:', error);
       setGuestOrders([]);
       setShowingGuestOrders(false);
       updateOrders([]);
@@ -169,6 +169,19 @@ const Order = () => {
     }
   }, [user?.email, user?.usertype, showingGuestOrders, loading]);
 
+  // 🚚 FUNCIÓN: Filtrar órdenes para drivers según tab activa
+  const getFilteredDriverOrders = () => {
+    if (user?.usertype !== 'driver') return orders;
+    
+    if (driverActiveTab === 'disponibles') {
+      // Tab "Disponibles": Solo órdenes Open
+      return orders.filter(order => order.status === 'Open');
+    } else {
+      // Tab "Mis Entregas": Órdenes On the Way y Delivered
+      return orders.filter(order => ['On the Way', 'Delivered'].includes(order.status));
+    }
+  };
+
   // 🔍 DEBUG TEMPORAL - para ver qué está pasando
   console.log('🔍 ORDER DEBUG:', {
     user: user ? { usertype: user.usertype, email: user.email, id: user.id } : null,
@@ -176,7 +189,9 @@ const Order = () => {
     guestOrdersLength: guestOrders?.length || 0,
     showingGuestOrders,
     orderCount,
-    loading
+    loading,
+    driverActiveTab,
+    filteredDriverOrders: user?.usertype === 'driver' ? getFilteredDriverOrders().length : 'N/A'
   });
 
   return (
@@ -184,15 +199,71 @@ const Order = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#33A744" />
       ) : (
-        <FlatList
-          data={showingGuestOrders ? guestOrders : orders}
+        <>
+          {/* 🚚 TABS ESPECÍFICOS PARA DRIVERS */}
+          {user?.usertype === 'driver' && (
+            <View style={styles.driverTabsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.driverTab,
+                  driverActiveTab === 'disponibles' && styles.driverTabActive
+                ]}
+                onPress={() => setDriverActiveTab('disponibles')}
+              >
+                <Text style={[
+                  styles.driverTabText,
+                  driverActiveTab === 'disponibles' && styles.driverTabTextActive
+                ]}>
+                  🟢 Disponibles
+                </Text>
+                {driverActiveTab === 'disponibles' && (
+                  <View style={styles.driverTabBadge}>
+                    <Text style={styles.driverTabBadgeText}>
+                      {getFilteredDriverOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.driverTab,
+                  driverActiveTab === 'entregas' && styles.driverTabActive
+                ]}
+                onPress={() => setDriverActiveTab('entregas')}
+              >
+                <Text style={[
+                  styles.driverTabText,
+                  driverActiveTab === 'entregas' && styles.driverTabTextActive
+                ]}>
+                  🚚 Mis Entregas
+                </Text>
+                {driverActiveTab === 'entregas' && (
+                  <View style={styles.driverTabBadge}>
+                    <Text style={styles.driverTabBadgeText}>
+                      {getFilteredDriverOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <FlatList
+            data={
+              user?.usertype === 'driver' 
+                ? getFilteredDriverOrders() 
+                : (showingGuestOrders ? guestOrders : orders)
+            }
           keyExtractor={item => showingGuestOrders ? `guest-${item.id}` : item.id.toString()}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          // Encabezado siempre arriba
+          // Encabezado dinámico según tipo de usuario
           ListHeaderComponent={
-            <Text style={styles.header}>Historial de Pedidos</Text>
+            <Text style={styles.header}>
+              {user?.usertype === 'driver' ? 'Órdenes Asignadas' : 'Historial de Pedidos'}
+            </Text>
           }
           // Mensaje cuando no hay pedidos
           ListEmptyComponent={
@@ -273,6 +344,7 @@ const Order = () => {
 
             // Manejar tanto órdenes normales como Guest orders
             const isGuestOrder = showingGuestOrders;
+            const isDriver = user?.usertype === 'driver';
             
             // Propiedades con valores por defecto adaptadas para Guest orders
             const createdAt = item.created_at || new Date().toISOString();
@@ -285,6 +357,12 @@ const Order = () => {
             const itemId = item.id || Math.random().toString();
             const itemStatus = item.status || 'Pendiente';
             const paymentStatus = item.payment_status || 'pending'; // 🆕 Nuevo campo
+            
+            // 🆕 DRIVER: Extraer coordenadas del cliente y dirección
+            const customerLat = parseFloat(item.customer_lat);
+            const customerLong = parseFloat(item.customer_long);
+            const hasValidCoordinates = !isNaN(customerLat) && !isNaN(customerLong);
+            const customerAddress = item.delivery_address || item.customer_address || 'Dirección no disponible';
             
             // Usar order_number del backend o fallback a formatOrderId
             const formattedOrderId = item.order_number || formatOrderId(createdAt);
@@ -307,6 +385,38 @@ const Order = () => {
                     timeStyle: 'short',
                   })}
                 </Text>
+
+                {/* 🚚 INFORMACIÓN ESPECÍFICA PARA DRIVERS */}
+                {isDriver && (
+                  <View style={styles.driverInfo}>
+                    <View style={styles.driverRow}>
+                      <Text style={styles.driverLabel}>📍 Cliente:</Text>
+                      <Text style={styles.driverValue} numberOfLines={1}>
+                        {item.user_email || 'No disponible'}
+                      </Text>
+                    </View>
+                    <View style={styles.driverRow}>
+                      <Text style={styles.driverLabel}>🗺️ Dirección:</Text>
+                      <Text style={styles.driverValue} numberOfLines={2}>
+                        {customerAddress}
+                      </Text>
+                    </View>
+                    <View style={styles.driverRow}>
+                      <Text style={styles.driverLabel}>📅 Entrega:</Text>
+                      <Text style={styles.driverValue}>
+                        {item.delivery_date} • {item.delivery_slot || 'Horario flexible'}
+                      </Text>
+                    </View>
+                    {hasValidCoordinates && (
+                      <View style={styles.driverRow}>
+                        <Text style={styles.driverLabel}>🧭 Coordenadas:</Text>
+                        <Text style={styles.driverValue}>
+                          {customerLat.toFixed(4)}, {customerLong.toFixed(4)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
 
                 {/* Status Badge - Ahora incluye payment_status */}
                 <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
@@ -349,31 +459,86 @@ const Order = () => {
                   </Text>
                 )}
 
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.detailsButton,
-                      (itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') && styles.disabledButton,
-                    ]}
-                    disabled={itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado'}
-                    onPress={() =>
-                      navigation.navigate('OrderDetails', {orderId: itemId})
-                    }>
-                    <Text style={styles.detailsText}>
-                      {(itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') ? 'Entregado' : 'Ver detalles'}
-                    </Text>
-                  </TouchableOpacity>
+                {/* 🚚 BOTONES ESPECÍFICOS PARA DRIVERS */}
+                {isDriver ? (
+                  <View style={styles.driverButtonsContainer}>
+                    {/* Primera fila: Ver detalles + Navegar */}
+                    <View style={styles.driverButtonRow}>
+                      <TouchableOpacity
+                        style={[styles.driverButton, styles.detailsButton]}
+                        onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
+                      >
+                        <Text style={styles.driverButtonText}>📋 Ver detalles</Text>
+                      </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.invoiceButton}
-                    onPress={() => handleInvoices(item)}>
-                    <Text style={styles.invoiceText}>Ver ticket</Text>
-                  </TouchableOpacity>
-                </View>
+                      {hasValidCoordinates && (
+                        <TouchableOpacity
+                          style={[styles.driverButton, styles.navigateButton]}
+                          onPress={() => {
+                            const url = `https://www.google.com/maps/dir/?api=1&destination=${customerLat},${customerLong}`;
+                            Linking.openURL(url);
+                          }}
+                        >
+                          <Text style={styles.driverButtonText}>🧭 Navegar</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Segunda fila: Llamar + Ver mapa */}
+                    <View style={styles.driverButtonRow}>
+                      <TouchableOpacity
+                        style={[styles.driverButton, styles.callButton]}
+                        onPress={() => {
+                          // Extraer teléfono si existe en los datos
+                          const phone = item.customer_phone || item.phone || '5555555555';
+                          Linking.openURL(`tel:${phone}`);
+                        }}
+                      >
+                        <Text style={styles.driverButtonText}>📞 Llamar</Text>
+                      </TouchableOpacity>
+
+                      {hasValidCoordinates && (
+                        <TouchableOpacity
+                          style={[styles.driverButton, styles.mapButton]}
+                          onPress={() => {
+                            const url = `https://maps.google.com/?q=${customerLat},${customerLong}`;
+                            Linking.openURL(url);
+                          }}
+                        >
+                          <Text style={styles.driverButtonText}>📍 Ver mapa</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  // Botones originales para usuarios normales
+                  <View style={styles.buttonRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.detailsButton,
+                        (itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') && styles.disabledButton,
+                      ]}
+                      disabled={itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado'}
+                      onPress={() =>
+                        navigation.navigate('OrderDetails', {orderId: itemId})
+                      }>
+                      <Text style={styles.detailsText}>
+                        {(itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') ? 'Entregado' : 'Ver detalles'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.invoiceButton}
+                      onPress={() => handleInvoices(item)}>
+                      <Text style={styles.invoiceText}>Ver ticket</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             );
           }}
         />
+        </>
       )}
     </View>
   );
@@ -646,6 +811,126 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     textAlign: 'center',
+  },
+  
+  // 🚚 ESTILOS ESPECÍFICOS PARA DRIVERS
+  driverInfo: {
+    backgroundColor: '#F8F9FA', // Gris muy claro
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D27F27', // Color tema
+  },
+  driverRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  driverLabel: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#666',
+    width: 90, // Ancho fijo para alineación
+    flexShrink: 0,
+  },
+  driverValue: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#333',
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  
+  // 🚚 ESTILOS PARA TABS DE DRIVER
+  driverTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 2,
+  },
+  driverTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    position: 'relative',
+  },
+  driverTabActive: {
+    backgroundColor: '#D27F27',
+  },
+  driverTabText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#666',
+    textAlign: 'center',
+  },
+  driverTabTextActive: {
+    color: '#FFF',
+  },
+  driverTabBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 8,
+    backgroundColor: '#33A744',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  driverTabBadgeText: {
+    fontSize: fonts.size.XS,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  
+  // 🚚 ESTILOS PARA BOTONES ESPECÍFICOS DE DRIVER
+  driverButtonsContainer: {
+    marginTop: 12,
+  },
+  driverButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  driverButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  driverButtonText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  // Colores específicos por acción
+  navigateButton: {
+    backgroundColor: '#2196F3', // Azul para navegación
+  },
+  callButton: {
+    backgroundColor: '#4CAF50', // Verde para llamada
+  },
+  mapButton: {
+    backgroundColor: '#FF9800', // Naranja para mapa
   },
   
 });
