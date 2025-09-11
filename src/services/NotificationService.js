@@ -167,13 +167,40 @@ class NotificationService {
     }
   }
 
+  // ✅ NUEVO: Limpiar token del usuario anterior en backend
+  async removeTokenFromPreviousUser() {
+    if (!this.token) return;
+
+    try {
+      await fetch('https://occr.pixelcrafters.digital/api/remove-fcm-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fcm_token: this.token
+        }),
+      });
+      
+      console.log('🗑️ Token FCM limpiado de usuario anterior');
+    } catch (error) {
+      console.log('⚠️ Error limpiando token FCM:', error.message);
+    }
+  }
+
   // Enviar token al backend usando endpoint específico seguro
-  async sendTokenToBackend(userId) {
+  async sendTokenToBackend(userId, userType = null) {
     if (!this.token) {
       await this.getToken();
     }
 
     try {
+      console.log('📡 Enviando token FCM al backend:', {
+        userId,
+        userType,
+        tokenPreview: this.token ? this.token.substring(0, 20) + '...' : null
+      });
+
       // ✅ USAR ENDPOINT ESPECÍFICO (no corrompe datos del perfil)
       await fetch('https://occr.pixelcrafters.digital/api/update-fcm-token', {
         method: 'POST',
@@ -183,14 +210,35 @@ class NotificationService {
         body: JSON.stringify({
           userid: userId,
           fcm_token: this.token,
+          user_type: userType // ✅ NUEVO: Incluir tipo de usuario
         }),
       });
       
-      console.log('✅ FCM Token actualizado exitosamente (endpoint seguro)');
-    } catch (error) {
+      console.log('✅ FCM Token enviado exitosamente al backend');
       
+    } catch (error) {
+      console.log('❌ Error enviando token FCM al backend:', error.message);
       // Fallback temporal: si endpoint específico falla, no hacer nada
       // Esto evita corrupción de datos hasta que el backend esté actualizado
+    }
+  }
+
+  // ✅ NUEVO: Actualizar token cuando cambie el usuario/rol
+  async updateTokenForUser(userId, userType = null) {
+    try {
+      console.log('🔄 Actualizando token FCM para usuario:', { userId, userType });
+      
+      // 1. Primero limpiar token del usuario anterior
+      await this.removeTokenFromPreviousUser();
+      
+      // 2. Luego asociar token al nuevo usuario
+      await this.sendTokenToBackend(userId, userType);
+      
+      console.log('✅ Token FCM actualizado para nuevo usuario/rol');
+      return true;
+    } catch (error) {
+      console.log('❌ Error actualizando token FCM:', error.message);
+      return false;
     }
   }
 
@@ -377,7 +425,7 @@ class NotificationService {
   }
 
   // Inicializar servicio completo
-  async initialize(userId = null) {
+  async initialize(userId = null, userType = null) {
     try {
       // 1. Solicitar permisos
       const hasPermission = await this.requestPermission();
@@ -393,7 +441,7 @@ class NotificationService {
 
       // 3. Enviar token al backend si hay usuario
       if (userId) {
-        await this.sendTokenToBackend(userId);
+        await this.updateTokenForUser(userId, userType);
       }
 
       // 4. Configurar listeners

@@ -16,6 +16,7 @@ import {AuthContext} from './src/context/AuthContext';
 import {AuthProvider} from './src/context/AuthContext';
 import {AlertProvider} from './src/context/AlertContext';
 import {ProfileProvider, useProfile} from './src/context/ProfileContext';
+import {useNotificationManager} from './src/hooks/useNotificationManager';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
 
@@ -327,17 +328,13 @@ function AuthFlow() {
   const {user} = useContext(AuthContext);
   const {addNotification} = useNotification();
 
-  // Inicializar notificaciones cuando el usuario esté autenticado (EXACTO como commit 651d13b)
+  // ✅ NUEVO: Usar hook para manejar notificaciones y prevenir contaminación cruzada
+  const {isInitialized, reinitializeNotifications} = useNotificationManager(user);
+
+  // Conectar Firebase con NotificationContext
   useEffect(() => {
-    if (user && user.id) {
-      console.log('🔔 Inicializando notificaciones para usuario:', user.id);
-      
-      // ✅ CONECTAR Firebase con NotificationContext (igual que Android)
-      NotificationService.setNotificationCallback(addNotification);
-      
-      NotificationService.initialize(user.id);
-    }
-  }, [user, addNotification]);
+    NotificationService.setNotificationCallback(addNotification);
+  }, [addNotification]);
 
   if (user === undefined) {
     return <ActivityIndicator size="large" color="tomato" />;
