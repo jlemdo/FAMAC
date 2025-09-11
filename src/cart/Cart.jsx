@@ -192,7 +192,10 @@ export default function Cart() {
         console.log('🛒 Verificando expiración carrito:', {
           ...payload,
           cartKey,
-          hasItems: cart.length > 0
+          hasItems: cart.length > 0,
+          savedCartExists: !!savedCart,
+          timestampFound: !!lastModified,
+          hoursAgoLocal: lastModified ? Math.round((Date.now() - lastModified) / (1000 * 60 * 60) * 100) / 100 : 'N/A'
         });
         
         const response = await axios.post('https://occr.pixelcrafters.digital/api/cart-cleanup', payload);
@@ -212,7 +215,6 @@ export default function Cart() {
         }
         
       } catch (error) {
-        console.log('⚠️ Error verificando expiración carrito, manteniendo actual:', error.message);
         // Fallar silenciosamente, mantener carrito actual
       }
     };
@@ -243,7 +245,6 @@ export default function Cart() {
       
       return () => clearTimeout(timeoutId);
     } else {
-      console.log('🔄 Reseteando shipping por subtotal <= 0');
       setShippingCost(0);
       setShippingMotivation(null);
     }
@@ -414,7 +415,6 @@ export default function Cart() {
     });
     
     if (!subtotal || subtotal <= 0) {
-      console.log('❌ Subtotal inválido, resetear shipping');
       setShippingCost(0);
       setShippingMotivation(null);
       return;
@@ -424,7 +424,6 @@ export default function Cart() {
     
     try {
       const apiUrl = `https://occr.pixelcrafters.digital/api/shipping-motivation/${subtotal}`;
-      console.log('📡 Llamando API:', apiUrl);
       
       const response = await axios.get(apiUrl, {
         headers: {
@@ -432,7 +431,6 @@ export default function Cart() {
         }
       });
       
-      console.log('📦 Respuesta API shipping:', response.data);
       
       if (response.data.status === 'success') {
         const data = response.data.data;
@@ -447,10 +445,8 @@ export default function Cart() {
         setShippingMotivation(data);
         setShippingCost(newShippingCost);
       } else {
-        console.log('❌ API shipping response not successful:', response.data);
       }
     } catch (error) {
-      console.log('❌ ERROR en API shipping:', error.response?.data || error.message);
       // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
