@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
 
@@ -20,8 +21,11 @@ export function OrderProvider({ children }) {
             hasUser: !!user,
             userType: user?.usertype,
             userId: user?.id,
+            userEmail: user?.email,
             allowGuestOrders
         });
+        
+        console.log('👤 USER COMPLETO:', JSON.stringify(user, null, 2));
 
         // ✅ Solo bloquear si no hay usuario o si es Guest sin permisos
         if (!user) {
@@ -37,8 +41,9 @@ export function OrderProvider({ children }) {
             return;
         }
 
+        let url = 'URL_NO_DEFINIDA';
+        
         try {
-            let url;
             if (user.usertype === 'driver') {
                 url = `https://occr.pixelcrafters.digital/api/orderhistorydriver/${user.id}`;
             } else if (user.usertype === 'Guest' && allowGuestOrders) {
@@ -48,26 +53,98 @@ export function OrderProvider({ children }) {
                 url = `https://occr.pixelcrafters.digital/api/orderhistory/${user.id}`;
             }
 
-            const response = await axios.get(url);
-            const ordersData = response.data.orders || [];
+            
+            // Debug: interceptar request para ver exactamente qué se envía
+            const config = {
+                method: 'GET',
+                url: url,
+                headers: {},
+                timeout: 10000
+            };
+            
+            console.log('📤 CONFIG DE REQUEST:', JSON.stringify(config, null, 2));
+            
+            // PRUEBA DEFINITIVA: usar fetch() en lugar de axios
+            
+            // PRIMERA: Probar endpoint que SÍ funciona (login)
+            const testResponse = await fetch('https://occr.pixelcrafters.digital/api/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ test: true })
+            });
+            
+            // SEGUNDA: Probar orderhistory
+            const fetchResponse = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            
+            if (!fetchResponse.ok) {
+                throw new Error(`FETCH failed with status ${fetchResponse.status}`);
+            }
+            
+            const fetchData = await fetchResponse.json();
+            
+            const ordersData = fetchData.orders || [];
             
             console.log('📦 Orders received:', {
                 count: ordersData.length,
-                response: response.data
+                response: fetchData
             });
             
+            // 🔍 DEBUG TEMPORAL REMOVIDO - Ya no necesario
+            
+            // 🚚 FILTRADO ESPECÍFICO PARA DRIVERS
+            let filteredOrders = ordersData;
+            
+            if (user.usertype === 'driver') {
+                // Solo mostrar órdenes válidas para drivers:
+                // 1. Pago completado
+                // 2. Estados específicos de workflow del driver
+                filteredOrders = ordersData.filter(order => {
+                    const paymentValid = ['completed', 'paid'].includes(order.payment_status);
+                    const statusValid = ['Open', 'On the Way', 'Delivered'].includes(order.status);
+                    
+                    console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
+                        payment_status: order.payment_status,
+                        status: order.status,
+                        paymentValid,
+                        statusValid,
+                        incluir: paymentValid && statusValid
+                    });
+                    
+                    return paymentValid && statusValid;
+                });
+                
+                console.log(`✅ DRIVER FILTRADO: ${ordersData.length} → ${filteredOrders.length} órdenes válidas`);
+            }
+            
             // Ordenar por fecha descendente
-            const sortedOrders = ordersData.sort(
+            const sortedOrders = filteredOrders.sort(
                 (a, b) => new Date(b.created_at) - new Date(a.created_at)
             );
 
             setOrders(sortedOrders);
             
-            // Contar órdenes activas (no entregadas)
-            const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-            const activeOrders = sortedOrders.filter(order => 
-                order.status && !completedStatuses.includes(order.status.toLowerCase())
-            );
+            // Contar órdenes activas según tipo de usuario
+            let activeOrders;
+            if (user.usertype === 'driver') {
+                // Para drivers: solo contar órdenes "Open" (disponibles para aceptar)
+                activeOrders = sortedOrders.filter(order => order.status === 'Open');
+            } else {
+                // Para usuarios normales: contar órdenes no completadas
+                const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+                activeOrders = sortedOrders.filter(order => 
+                    order.status && !completedStatuses.includes(order.status.toLowerCase())
+                );
+            }
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());
 
@@ -76,7 +153,12 @@ export function OrderProvider({ children }) {
                 active: activeOrders.length
             });
             
-        } catch (error) {
+        } catch (err) {
+            console.log('📝 Message:', err?.message);
+            
+            // Mantener órdenes vacías cuando hay error
+            setOrders([]);
+            setOrderCount(0);
         }
     }, [user, allowGuestOrders]);
 

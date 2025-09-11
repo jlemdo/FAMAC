@@ -122,8 +122,23 @@ const DriverTracking = ({order}) => {
   // };
 
   const getCurrentLocation = async () => {
-    // ✅ Usar sistema optimizado para drivers - ubicación de alta precisión requerida
+    console.log('🚚 INICIANDO getCurrentLocation...');
     try {
+      // ✅ UBICACIÓN FIJA TEMPORAL PARA DEBUGGING
+      const fakeDriverLocation = {
+        latitude: 19.4326,  // Centro CDMX
+        longitude: -99.1332
+      };
+      
+      console.log('🚚 USANDO UBICACIÓN TEMPORAL:', fakeDriverLocation);
+      
+      setLatlong({
+        driver_lat: fakeDriverLocation.latitude,
+        driver_long: fakeDriverLocation.longitude,
+      });
+      
+      // TODO: Reemplazar con ubicación real después del debug
+      /*
       await getCurrentLocationUtil(
         'driver',
         (coordinates) => {
@@ -133,10 +148,12 @@ const DriverTracking = ({order}) => {
           });
         },
         (error) => {
-          // Error crítico para drivers
+          console.log('❌ Error ubicación driver:', error);
         }
       );
+      */
     } catch (error) {
+      console.log('❌ CRASH en getCurrentLocation:', error);
     }
   };
 
@@ -163,19 +180,28 @@ const DriverTracking = ({order}) => {
     longitude: parseFloat(order.customer_long),
   };
 
-  // ✅ OPTIMIZACIÓN: Ya no pedimos permisos al cargar
-  // Los permisos se piden just-in-time cuando el driver acepta la orden
-
+  // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
   useEffect(() => {
-    if (currentStatus == 'On the Way') {
+    console.log('🚚 DRIVER INIT - Estado:', currentStatus);
+    
+    // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
+    getCurrentLocation();
+    
+    if (currentStatus === 'On the Way') {
+      // Para órdenes en proceso, también obtener ubicación guardada
+      getDriverLocaton();
+      
       const interval = setInterval(() => {
         getDriverLocaton();
         getCurrentLocation();
         submitDriverLocation();
       }, 5000);
       return () => clearInterval(interval);
+    } else if (currentStatus === 'Delivered') {
+      // Para órdenes entregadas, obtener ubicación final guardada
+      getDriverLocaton();
     }
-  }, [currentStatus, getDriverLocaton, submitDriverLocation]);
+  }, [order.id]); // Dependencia simple para ejecutar solo al cargar
 
   return (
     <>
@@ -206,93 +232,31 @@ const DriverTracking = ({order}) => {
       </View>
 
       <View style={styles.mapContainer}>
-        {latlong ? (
-          <View style={styles.mapContainer}>
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              showsTraffic={true}
-              initialRegion={{
-                latitude: (latlong.driver_lat + customer.latitude) / 2,
-                longitude: (latlong.driver_long + customer.longitude) / 2,
-                latitudeDelta:
-                  Math.abs(latlong.driver_lat - customer.latitude) * 1.5,
-                longitudeDelta:
-                  Math.abs(latlong.driver_long - customer.longitude) * 1.5,
-              }}>
-              {/* 1) Ruta */}
-              <MapViewDirections
-                origin={{
-                  latitude: latlong.driver_lat,
-                  longitude: latlong.driver_long,
-                }}
-                destination={customer}
-                apikey={Config.GOOGLE_DIRECTIONS_API_KEY}
-                strokeWidth={4}
-                strokeColor="#D27F27"
-                onReady={result => {
-                  setEta({
-                    distance: result.distance,
-                    duration: result.duration,
-                  });
-                  setRouteCoords(result.coordinates);
-                  mapRef.current.fitToCoordinates(result.coordinates, {
-                    edgePadding: {
-                      top: 80,
-                      right: 40,
-                      bottom: 80,
-                      left: 40,
-                    },
-                    animated: true,
-                  });
-                }}
-                onError={err => {/* Directions error */}}
-              />
-
-              {/* 2) Marcadores */}
-              <Marker
-                coordinate={{
-                  latitude: latlong.driver_lat,
-                  longitude: latlong.driver_long,
-                }}
-                title="Conductor"
-              />
-              <Marker
-                coordinate={customer}
-                title="Cliente"
-                pinColor="#33A744"
-              />
-            </MapView>
-
-            {/* 3) HUD de ETA */}
-            <View style={styles.hud}>
-              <Text style={styles.hudText}>
-                🚗 {eta.distance.toFixed(1)} km · ⏱ {Math.ceil(eta.duration)}{' '}
-                min
-              </Text>
-            </View>
-
-            {/* 4) Botón recenter */}
-            <TouchableOpacity
-              style={styles.recenterBtn}
-              onPress={() => {
-                if (routeCoords.length) {
-                  mapRef.current.fitToCoordinates(routeCoords, {
-                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
-                    animated: true,
-                  });
-                }
-              }}>
-              <Ionicons name="locate-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <ActivityIndicator
-            style={styles.loader}
-            size="large"
-            color="#D27F27"
-          />
-        )}
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugTitle}>🚚 DEBUG - INFORMACIÓN DE UBICACIÓN</Text>
+          
+          <Text style={styles.debugText}>
+            📍 Cliente: {order.customer_lat}, {order.customer_long}
+          </Text>
+          
+          <Text style={styles.debugText}>
+            🚗 Driver: {latlong ? `${latlong.driver_lat}, ${latlong.driver_long}` : 'Cargando...'}
+          </Text>
+          
+          <Text style={styles.debugText}>
+            📊 Estado orden: {currentStatus}
+          </Text>
+          
+          <Text style={styles.debugText}>
+            💳 Estado pago: {order?.payment_status}
+          </Text>
+          
+          {latlong && (
+            <Text style={styles.debugSuccess}>
+              ✅ UBICACIONES LISTAS - Mapa funcionaría aquí
+            </Text>
+          )}
+        </View>
       </View>
 
       <>
@@ -474,6 +438,49 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: fonts.size.small,
     color: '#E65100',
+    textAlign: 'center',
+  },
+  
+  // 🗺️ Map placeholder styles
+  mapPlaceholder: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  
+  // 🚚 DEBUG styles
+  debugContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 8,
+    margin: 16,
+  },
+  debugTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  debugText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    marginBottom: 8,
+  },
+  debugSuccess: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+    marginTop: 12,
     textAlign: 'center',
   },
 });

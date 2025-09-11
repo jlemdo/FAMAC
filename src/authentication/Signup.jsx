@@ -319,19 +319,16 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         // NO sendTokenToBackend, NO setupNotificationListeners
         setTimeout(async () => {
           try {
-            console.log('🍎 FASE 1 Signup: Iniciando permisos FCM...');
             
             // 1. Verificar permisos (seguro)
             const hasPermission = await NotificationService.requestPermission();
             if (!hasPermission) {
-              console.log('🍎 FASE 1 Signup: Sin permisos de notificación');
               return;
             }
             
             // 2. Obtener token (seguro)
             const token = await NotificationService.getToken();
             if (!token) {
-              console.log('🍎 FASE 1 Signup: No se pudo obtener FCM token');
               return;
             }
             
@@ -342,7 +339,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
             // - setupNotificationListeners() (lo probaremos en FASE 3)
             
           } catch (error) {
-            console.error('❌ FASE 1 Signup: Crash confirmado en permisos/token:', error.message);
           }
         }, 2000);
         

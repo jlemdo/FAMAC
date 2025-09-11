@@ -176,7 +176,6 @@ export const newAddressService = {
         const NotificationService = require('../services/NotificationService').default;
         fcmToken = NotificationService.token || await NotificationService.getToken();
       } catch (error) {
-        console.log('⚠️ No se pudo obtener FCM token para guest:', error.message);
       }
       
       const payload = {

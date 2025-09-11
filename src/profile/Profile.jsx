@@ -283,7 +283,6 @@ export default function Profile({ navigation, route }) {
   const fetchUserDetails = useCallback(async () => {
     if (!user?.id) return;
     
-    console.log('🔄 Profile.jsx: Cargando datos del servidor para usuario:', user.id);
     setLoading(true);
     try {
       // Cargar datos del perfil
@@ -307,7 +306,6 @@ export default function Profile({ navigation, route }) {
         provider: data.provider || 'local',
       };
       
-      console.log('📥 Profile.jsx: Datos cargados del servidor:', profileData);
       setProfile(profileData);
       setFormattedPhone(formatMexicanPhone(profileData.phone));
       
@@ -315,7 +313,6 @@ export default function Profile({ navigation, route }) {
       await fetchUserAddresses();
       
     } catch (error) {
-      console.error('❌ Profile.jsx: Error cargando datos:', error);
     } finally {
       setLoading(false);
     }
@@ -743,9 +740,7 @@ export default function Profile({ navigation, route }) {
                 `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
               );
               currentServerData = currentRes.data?.data?.[0] || {};
-              console.log('📥 DATOS ACTUALES DEL SERVIDOR:', currentServerData);
             } catch (error) {
-              console.error('❌ Error obteniendo datos actuales:', error);
             }
             
             // SIEMPRE enviar todos los campos para evitar que el backend borre datos
@@ -780,12 +775,10 @@ export default function Profile({ navigation, route }) {
             // 🔧 ELIMINADO: Endpoint duplicado /updatedob - causaba conflictos
             // Ahora enviamos DOB junto con otros datos en un solo request
             
-            console.log('📝 ENVIANDO PAYLOAD PRINCIPAL:', payload);
             const res = await axios.post(
               'https://occr.pixelcrafters.digital/api/updateuserprofile',
               payload
             );
-            console.log('✅ PRINCIPAL RESPONSE:', res.status);
             if (res.status === 200) {
               // 🔧 SOLUCIÓN AL BUG: Actualizar estados en orden correcto
               const updatedProfile = { 

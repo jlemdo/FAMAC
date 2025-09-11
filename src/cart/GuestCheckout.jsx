@@ -206,7 +206,6 @@ export default function GuestCheckout() {
   // Completar checkout
   const handleComplete = async () => {
     // Debug: verificar qué valores tenemos
-    // console.log('Email trimmed:', email?.trim());
     
     if (!email?.trim() || !address?.trim()) {
       const missingFields = [];

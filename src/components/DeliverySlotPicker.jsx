@@ -22,7 +22,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       
       if (response.data && response.data.status === 'success') {
         const backendDays = response.data.data;
-        console.log('🎯 Días obtenidos del backend:', backendDays);
         
         // Generar fechas basadas en los días activos del backend
         const deliveryDates = generateDeliveryDatesFromBackend(backendDays);
@@ -46,11 +45,9 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
           setSelectedDateIndex(0);
         }
       } else {
-        console.warn('⚠️ Respuesta del backend sin éxito, usando fallback');
         useFallbackDays();
       }
     } catch (error) {
-      console.error('❌ Error obteniendo días del backend:', error);
       useFallbackDays();
     }
   };
@@ -66,7 +63,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       .sort((a, b) => a.priority - b.priority)
       .map(day => day.number); // 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, etc.
     
-    console.log('🔢 Números de días activos:', activeDayNumbers);
     
     if (activeDayNumbers.length === 0) {
       return []; // No hay días configurados
@@ -260,7 +256,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         
         // Si ya pasaron las 9pm, este día ya no está disponible
         if (currentHour >= 21) {
-          console.log('🚫 Día actual no disponible - pasaron las 9pm');
           filteredSlots = []; // No hay slots disponibles
         }
       } else {
@@ -294,7 +289,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         
         // Si ya pasaron las 9pm, no hay slots disponibles
         if (currentHour >= 21) {
-          console.log('🚫 FALLBACK - Día actual no disponible - pasaron las 9pm');
           fallbackSlots = [];
         }
       } else {
@@ -312,7 +306,6 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const isSlotPassed = (slotValue, currentHour, isToday) => {
     // ⚡ IMPORTANTE: Esta función SOLO debe usarse para el día actual
     if (!isToday) {
-      console.warn('⚠️ isSlotPassed se llamó para un día que no es hoy - esto no debería pasar');
       return false; // Fechas futuras siempre tienen todos los slots disponibles
     }
     
@@ -386,14 +379,12 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       return null;
       
     } catch (error) {
-      console.error('❌ Error extrayendo hora del slot:', error);
       return null;
     }
   };
 
   const handleConfirm = () => {
     const selectedDay = days[selectedDateIndex];
-    // console.log('- selectedDay.date type:', typeof selectedDay.date);
     
     onConfirm({ date: selectedDay.date, slot: selectedSlot });
     onClose();

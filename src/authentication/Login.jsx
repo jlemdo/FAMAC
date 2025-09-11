@@ -34,7 +34,6 @@ if (Platform.OS === 'ios') {
   try {
     appleAuth = require('@invertase/react-native-apple-authentication').appleAuth;
   } catch (error) {
-    console.log('Apple Auth no disponible:', error.message);
   }
 }
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
@@ -73,10 +72,8 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     const requestNotificationPermissions = async () => {
       try {
         const hasPermission = await NotificationService.requestPermission();
-        console.log('📱 Permisos de notificaciones en Login:', hasPermission ? 'concedidos' : 'denegados');
         // 🔧 IMPORTANTE: No bloquear flujo independientemente del resultado
       } catch (error) {
-        console.log('⚠️ Error solicitando permisos de notificaciones en Login:', error);
         // 🔧 IMPORTANTE: Continuar normalmente aunque fallen los permisos
       }
     };
@@ -221,21 +218,31 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
     if (googleLoading) return;
     
     setGoogleLoading(true);
+    
     try {
       // Cerrar sesión silenciosamente para mostrar selector de cuenta
       try {
         await GoogleSignin.signOut();
       } catch (error) {
-        // Ignorar errores si no hay sesión activa
+        console.log('⚠️ signOut falló (normal si no hay sesión):', error.message);
       }
       
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+      
       const userInfo = await GoogleSignin.signIn();
+      console.log('✅ GoogleSignin.signIn() exitoso');
+      console.log('📊 userInfo recibido:', JSON.stringify(userInfo, null, 2));
       
       // Obtener el ID token
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
       const { user } = userInfo.data; // Acceso correcto - es userInfo.data.user
+      console.log('👤 Datos de usuario extraídos:', {
+        email: user?.email,
+        name: user?.name,
+        givenName: user?.givenName,
+        familyName: user?.familyName
+      });
       
 
       // Enviar el ID token CON los datos del usuario para el backend
@@ -283,6 +290,12 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       }, 500);
 
     } catch (error) {
+      console.log('📊 Error completo:', JSON.stringify(error, null, 2));
+      console.log('🔍 statusCodes disponibles:', {
+        SIGN_IN_CANCELLED: statusCodes.SIGN_IN_CANCELLED,
+        IN_PROGRESS: statusCodes.IN_PROGRESS,
+        PLAY_SERVICES_NOT_AVAILABLE: statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+      });
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         showAlert({
@@ -308,8 +321,8 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       } else {
         showAlert({
           type: 'error',
-          title: 'Error',
-          message: 'Error al iniciar sesión con Google. Inténtalo de nuevo.',
+          title: 'Error de Google Sign-In',
+          message: `Error: ${error.message || 'Desconocido'}. Código: ${error.code || 'N/A'}`,
           confirmText: 'OK',
         });
       }

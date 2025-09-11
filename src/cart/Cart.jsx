@@ -317,7 +317,6 @@ export default function Cart() {
         return response.data.data;
       }
     } catch (error) {
-      console.log('Error obteniendo configuración de envío:', error);
     }
     return null;
   };
@@ -520,14 +519,12 @@ export default function Cart() {
     setLoadingAddresses(true);
     try {
       const addresses = await newAddressService.getUserAddresses(user.id);
-      console.log('🏠 DIRECCIONES OBTENIDAS:', addresses);
       setUserAddresses(addresses);
       
       // Si hay una dirección predeterminada, seleccionarla automáticamente
       const defaultAddress = addresses.find(addr => 
         addr.is_primary === "1" || addr.is_primary === 1 || addr.is_primary === true
       );
-      console.log('🎯 DIRECCIÓN PRINCIPAL ENCONTRADA:', defaultAddress);
       
       if (defaultAddress) {
         // 🔧 SIEMPRE actualizar con la dirección principal del backend
@@ -552,10 +549,8 @@ export default function Cart() {
           });
         }
       } else {
-        console.log('❌ NO SE ENCONTRÓ DIRECCIÓN PRINCIPAL');
       }
     } catch (error) {
-      console.error('❌ ERROR OBTENIENDO DIRECCIONES:', error);
       setUserAddresses([]);
     } finally {
       setLoadingAddresses(false);
@@ -1009,16 +1004,13 @@ export default function Cart() {
       });
       
       if (!address?.trim()) {
-        console.log('❌ NO HAY DIRECCIÓN - Mostrando modal');
         // No tiene dirección del sistema nuevo - mostrar modal para seleccionar
         setShowAddressModal(true);
         return;
       }
       
-      console.log('✅ SÍ HAY DIRECCIÓN - Continuando con pago');
 
       // ✅ VALIDAR ZONA DE ENTREGA para Usuario registrado
-      console.log('🌍 VALIDANDO ZONA DE ENTREGA');
       const userAddress = address?.trim();
       if (userAddress) {
         const zoneValidation = validateDeliveryZone(userAddress);
@@ -1033,11 +1025,9 @@ export default function Cart() {
         }
       }
       
-      console.log('✅ ZONA DE ENTREGA VÁLIDA');
       console.log('📍 VERIFICANDO COORDENADAS:', { latlong: latlong });
       
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        console.log('❌ NO HAY COORDENADAS');
         
         // 🆕 PASO 1: Intentar restaurar coordenadas guardadas
         let restoredCoords = null;
@@ -1255,7 +1245,6 @@ export default function Cart() {
       const orderNumber = orderData?.order_id || orderData?.id || orderData?.order?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
       
-      // console.log('isValidOrderId:', isValidOrderId);
       
       // Limpiar datos inmediatamente después del pedido exitoso
       clearCart();
@@ -1508,7 +1497,6 @@ export default function Cart() {
   const handleCheckout = () => {
     
     if (user?.usertype === 'Guest') {
-      console.log('👤 FLUJO GUEST');
       
       // Verificar si el guest ya tiene email y dirección
       const hasEmail = email?.trim() && email.trim() !== '';
@@ -1539,16 +1527,13 @@ export default function Cart() {
         });
       }
     } else {
-      console.log('👥 ENTRANDO A FLUJO USUARIO REGISTRADO');
       // Usuario registrado: verificar si tiene dirección del SISTEMA NUEVO
       console.log('🔍 VERIFICANDO DIRECCIÓN SISTEMA NUEVO:', { address: address?.trim() });
       
       if (!address?.trim()) {
         // No tiene dirección del sistema nuevo: mostrar modal
-        console.log('❌ NO HAY DIRECCIÓN DEL SISTEMA NUEVO - Mostrando modal');
         setShowAddressModal(true);
       } else {
-        console.log('✅ SÍ HAY DIRECCIÓN DEL SISTEMA NUEVO - Continuando...');
         // Usuario tiene dirección: verificar si ya tiene coordenadas
         const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
         
@@ -1924,7 +1909,6 @@ export default function Cart() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={({date, slot}) => {
-          // console.log('- slot recibido:', slot);
           
           setDeliveryInfo({date, slot});
           setPickerVisible(false);
