@@ -183,16 +183,16 @@ const Order = () => {
   };
 
   // 🔍 DEBUG TEMPORAL - para ver qué está pasando
-  // console.log('🔍 ORDER DEBUG:', {
-    // user: user ? { usertype: user.usertype, email: user.email, id: user.id } : null,
-    // ordersLength: orders?.length || 0,
-    // guestOrdersLength: guestOrders?.length || 0,
-    // showingGuestOrders,
-    // orderCount,
-    // loading,
-    // driverActiveTab,
-    // filteredDriverOrders: user?.usertype === 'driver' ? getFilteredDriverOrders().length : 'N/A'
-  // });
+  console.log('🔍 ORDER DEBUG:', {
+    user: user ? { usertype: user.usertype, email: user.email, id: user.id } : null,
+    ordersLength: orders?.length || 0,
+    guestOrdersLength: guestOrders?.length || 0,
+    showingGuestOrders,
+    orderCount,
+    loading,
+    driverActiveTab,
+    filteredDriverOrders: user?.usertype === 'driver' ? getFilteredDriverOrders().length : 'N/A'
+  });
 
   return (
     <View style={styles.container}>

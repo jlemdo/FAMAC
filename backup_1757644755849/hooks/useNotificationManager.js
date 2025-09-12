@@ -32,6 +32,7 @@ export const useNotificationManager = (user) => {
 
         // Caso 1: Usuario se desloguea (logout)
         if (previousUser && !currentUser) {
+          console.log('🚪 LOGOUT detectado - limpiando token FCM');
           await NotificationService.removeTokenFromPreviousUser();
           isInitialized.current = false;
           previousUserRef.current = currentUser;
@@ -44,6 +45,7 @@ export const useNotificationManager = (user) => {
             previousUser.email !== currentUser.email ||
             previousUser.usertype !== currentUser.usertype)) {
           
+          console.log('🔄 NUEVO USUARIO - inicializando notificaciones FCM');
           
           const userId = currentUser.id || currentUser.email;
           const userType = currentUser.usertype;
@@ -53,8 +55,10 @@ export const useNotificationManager = (user) => {
           const success = await NotificationService.initialize(userId, userType);
           
           if (success) {
+            console.log('✅ Notificaciones FCM inicializadas correctamente');
             isInitialized.current = true;
           } else {
+            console.log('⚠️ Error inicializando notificaciones FCM');
           }
         }
 
@@ -62,6 +66,7 @@ export const useNotificationManager = (user) => {
         previousUserRef.current = currentUser;
         
       } catch (error) {
+        console.log('❌ Error manejando cambio de usuario en notificaciones:', error.message);
       }
     };
 
@@ -78,6 +83,7 @@ export const useNotificationManager = (user) => {
       const userId = user.id || user.email;
       const userType = user.usertype;
       
+      console.log('🔄 REINICIALIZANDO notificaciones FCM manualmente');
       const success = await NotificationService.initialize(userId, userType);
       
       return success;

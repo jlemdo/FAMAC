@@ -35,7 +35,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
             isClosest: i === 0, // Solo el primer día (más cercano) tiene estrella
           };
           
-          // console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
+          console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
           tempDays.push(dayObj);
         });
         
@@ -251,7 +251,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       // ⚡ SOLO aplicar filtros si es el día de HOY
       if (isToday) {
         const currentHour = now.getHours();
-        // console.log(`🕐 Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
+        console.log(`🕐 Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
         
         filteredSlots = slotsToProcess.filter(slot => {
           return !isSlotPassed(slot.value, currentHour, true);
@@ -263,13 +263,13 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         }
       } else {
         // 🎯 Para días FUTUROS, mostrar TODOS los horarios disponibles
-        // console.log(`📅 Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
+        console.log(`📅 Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
         filteredSlots = slotsToProcess; // Todos los slots disponibles
       }
       */
       
       // ✅ MOSTRAR TODOS LOS HORARIOS del backend sin filtrar
-      // console.log(`📅 Mostrando TODOS los horarios disponibles para ${dateString}`);
+      console.log(`📅 Mostrando TODOS los horarios disponibles para ${dateString}`);
       setAvailableSlots(slotsToProcess);
       
     } catch (error) {
@@ -289,7 +289,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       // ⚡ SOLO aplicar filtros si es el día de HOY
       if (isToday) {
         const currentHour = now.getHours();
-        // console.log(`🕐 FALLBACK - Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
+        console.log(`🕐 FALLBACK - Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
         
         fallbackSlots = fallbackSlots.filter(slot => {
           return !isSlotPassed(slot.value, currentHour, true);
@@ -301,12 +301,12 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         }
       } else {
         // 🎯 Para días FUTUROS, mostrar TODOS los horarios del fallback
-        // console.log(`📅 FALLBACK - Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
+        console.log(`📅 FALLBACK - Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
       }
       */
       
       // ✅ FALLBACK: Mostrar TODOS los horarios sin filtrar
-      // console.log(`📅 FALLBACK - Mostrando TODOS los horarios disponibles para ${dateString}`);
+      console.log(`📅 FALLBACK - Mostrando TODOS los horarios disponibles para ${dateString}`);
       
       setAvailableSlots(fallbackSlots);
     } finally {
@@ -322,13 +322,13 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     }
     
     const timeSlot = slotValue.toLowerCase();
-    // console.log(`🕐 Evaluando slot: "${timeSlot}" a las ${currentHour}:${new Date().getMinutes()}`);
+    console.log(`🕐 Evaluando slot: "${timeSlot}" a las ${currentHour}:${new Date().getMinutes()}`);
     
     // 🆕 NUEVA LÓGICA: Extraer hora de fin del slot
     const endHour = extractEndHourFromSlot(timeSlot);
     
     if (endHour === null) {
-      // console.warn(`⚠️ No se pudo extraer hora de fin del slot: ${timeSlot}`);
+      console.warn(`⚠️ No se pudo extraer hora de fin del slot: ${timeSlot}`);
       return false; // Si no podemos determinar la hora, no filtramos
     }
     
@@ -336,9 +336,9 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     const isPassed = currentHour >= endHour;
     
     if (isPassed) {
-      // console.log(`❌ Slot "${timeSlot}" ya no disponible - pasó las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
+      console.log(`❌ Slot "${timeSlot}" ya no disponible - pasó las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
     } else {
-      // console.log(`✅ Slot "${timeSlot}" aún disponible - termina a las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
+      console.log(`✅ Slot "${timeSlot}" aún disponible - termina a las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
     }
     
     return isPassed;
@@ -365,7 +365,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       
       // Caso especial: "12pm" = medianoche = 24:00
       if (timeSlot.includes('-12pm') || timeSlot.includes('- 12:')) {
-        // console.log('🌙 Slot termina a medianoche (24:00)');
+        console.log('🌙 Slot termina a medianoche (24:00)');
         return 24; // Medianoche
       }
       
@@ -382,12 +382,12 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
             endHour = hour === 12 ? 12 : hour + 12; // 12pm = 12:00, 1pm = 13:00
           }
           
-          // console.log(`🔍 Extraído de "${timeSlot}": hora de fin = ${endHour}:00`);
+          console.log(`🔍 Extraído de "${timeSlot}": hora de fin = ${endHour}:00`);
           return endHour;
         }
       }
       
-      // console.warn(`⚠️ No se pudo extraer hora de fin de: "${timeSlot}"`);
+      console.warn(`⚠️ No se pudo extraer hora de fin de: "${timeSlot}"`);
       return null;
       
     } catch (error) {

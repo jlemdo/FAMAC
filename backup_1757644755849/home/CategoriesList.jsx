@@ -188,7 +188,7 @@ export default function CategoriesList() {
     const params = route.params;
     
     if (params?.showSuccessModal && params?.orderData) {
-      // console.log('🎉 MOSTRANDO SUCCESS MODAL CON:', JSON.stringify(params.orderData, null, 2));
+      console.log('🎉 MOSTRANDO SUCCESS MODAL CON:', JSON.stringify(params.orderData, null, 2));
       const { orderData } = params;
       
       // Pequeño delay para asegurar que la pantalla se haya renderizado

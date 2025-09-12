@@ -42,7 +42,6 @@ import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import { newAddressService } from '../services/newAddressService';
 import {formatQuantityWithUnit} from '../utils/unitFormatter';
-import NotificationService from '../services/NotificationService'; // 🔔 Para FCM token
 import { API_BASE_URL } from '../config/environment';
 import { validatePostalCode, getPostalCodeInfo } from '../utils/postalCodeValidator';
 import { navigateToCartNew } from '../utils/addressNavigation';
@@ -83,7 +82,6 @@ export default function Cart() {
   const [shippingMotivation, setShippingMotivation] = useState(null);
   const [shippingCost, setShippingCost] = useState(0);
   const [loadingShipping, setLoadingShipping] = useState(false);
-  const [shippingCalculated, setShippingCalculated] = useState(false); // ⚡ Flag para saber si ya se calculó envío
   const [latlong, setLatlong] = useState({
     driver_lat: '',
     driver_long: '',
@@ -147,9 +145,8 @@ export default function Cart() {
       setNeedInvoice(false);
       setTaxDetails('');
       
-      // 🆕 RESETEAR FLAGS para próxima compra
+      // 🆕 RESETEAR FLAG de auto-pago para próxima compra
       setGuestJustCompletedAddress(false);
-      setShippingCalculated(false); // ⚡ Resetear flag de envío calculado
       
       // Limpiar AsyncStorage si hay usuario registrado
       if (user?.id && user?.usertype !== 'Guest') {
@@ -192,29 +189,29 @@ export default function Cart() {
           user_type: user?.id ? 'user' : user?.email ? 'guest' : 'anonymous'
         };
         
-        // console.log('🛒 Verificando expiración carrito:', {
-          // ...payload,
-          // cartKey,
-          // hasItems: cart.length > 0,
-          // savedCartExists: !!savedCart,
-          // timestampFound: !!lastModified,
-          // hoursAgoLocal: lastModified ? Math.round((Date.now() - lastModified) / (1000 * 60 * 60) * 100) / 100 : 'N/A'
-        // });
+        console.log('🛒 Verificando expiración carrito:', {
+          ...payload,
+          cartKey,
+          hasItems: cart.length > 0,
+          savedCartExists: !!savedCart,
+          timestampFound: !!lastModified,
+          hoursAgoLocal: lastModified ? Math.round((Date.now() - lastModified) / (1000 * 60 * 60) * 100) / 100 : 'N/A'
+        });
         
         const response = await axios.post('https://occr.pixelcrafters.digital/api/cart-cleanup', payload);
         
         if (response.data.expired) {
-          // console.log('🗑️ Carrito expirado, limpiando...', {
-            // hours_since_activity: response.data.hours_since_activity,
-            // last_modified: response.data.last_modified
-          // });
+          console.log('🗑️ Carrito expirado, limpiando...', {
+            hours_since_activity: response.data.hours_since_activity,
+            last_modified: response.data.last_modified
+          });
           
           // Limpiar carrito usando la función del contexto
           clearCart();
         } else {
-          // console.log('✅ Carrito válido, no expirado', {
-            // hours_since_activity: response.data.hours_since_activity
-          // });
+          console.log('✅ Carrito válido, no expirado', {
+            hours_since_activity: response.data.hours_since_activity
+          });
         }
         
       } catch (error) {
@@ -232,13 +229,13 @@ export default function Cart() {
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();
     
-    // console.log('🔄 useEffect shipping trigger:', {
-      // currentSubtotal,
-      // totalPrice,
-      // appliedCoupon: appliedCoupon?.code,
-      // userType: user?.usertype,
-      // currentShippingCost: shippingCost
-    // });
+    console.log('🔄 useEffect shipping trigger:', {
+      currentSubtotal,
+      totalPrice,
+      appliedCoupon: appliedCoupon?.code,
+      userType: user?.usertype,
+      currentShippingCost: shippingCost
+    });
     
     if (currentSubtotal > 0) {
       // 🚨 PREVENIR MÚLTIPLES LLAMADAS: Solo llamar si el subtotal cambió significativamente
@@ -250,34 +247,21 @@ export default function Cart() {
     } else {
       setShippingCost(0);
       setShippingMotivation(null);
-      setShippingCalculated(false); // ⚡ Resetear flag cuando no hay datos
     }
   }, [totalPrice, appliedCoupon, user?.usertype]);
 
   // 📦 NUEVO: Recalcular envío específicamente para Guest cuando complete datos
   useEffect(() => {
-    // console.log('🔍 GUEST SHIPPING EFFECT disparado:', {
-      // userType: user?.usertype,
-      // hasEmail: !!email?.trim(),
-      // hasAddress: !!address?.trim(),
-      // cartItems: cart.length,
-      // currentShippingCost: shippingCost,
-      // shippingCalculated: shippingCalculated,
-      // loadingShipping: loadingShipping,
-      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long)
-    // });
-    
     if (user?.usertype === 'Guest' && email?.trim() && address?.trim()) {
       const currentSubtotal = getSubtotal() - getDiscountAmount();
       if (currentSubtotal > 0) {
-        // console.log('🚚 GUEST: Recalculando envío por cambios:', {
-          // email: email?.trim(),
-          // address: address?.trim(),
-          // cartItems: cart.length,
-          // subtotal: currentSubtotal,
-          // appliedCoupon: appliedCoupon?.code,
-          // currentShippingCost: shippingCost
-        // });
+        console.log('🚚 GUEST: Recalculando envío por cambios:', {
+          email: email?.trim(),
+          address: address?.trim(),
+          cartItems: cart.length,
+          subtotal: currentSubtotal,
+          appliedCoupon: appliedCoupon?.code
+        });
         calculateShippingAndMotivation(currentSubtotal);
       }
     }
@@ -431,11 +415,11 @@ export default function Cart() {
 
   // 📦 NUEVO: Calcular envío y mensaje motivacional
   const calculateShippingAndMotivation = async (subtotal) => {
-    // console.log('🚚 calculateShippingAndMotivation INICIADO:', {
-      // subtotal,
-      // userType: user?.usertype,
-      // currentShippingCost: shippingCost
-    // });
+    console.log('🚚 calculateShippingAndMotivation INICIADO:', {
+      subtotal,
+      userType: user?.usertype,
+      currentShippingCost: shippingCost
+    });
     
     if (!subtotal || subtotal <= 0) {
       setShippingCost(0);
@@ -459,22 +443,20 @@ export default function Cart() {
         const data = response.data.data;
         const newShippingCost = Number(data.shipping_cost) || 0;
         
-        // console.log('✅ Actualizando shipping cost:', {
-          // oldCost: shippingCost,
-          // newCost: newShippingCost,
-          // data
-        // });
+        console.log('✅ Actualizando shipping cost:', {
+          oldCost: shippingCost,
+          newCost: newShippingCost,
+          data
+        });
         
         setShippingMotivation(data);
         setShippingCost(newShippingCost);
-        setShippingCalculated(true); // ⚡ Marcar como calculado
       } else {
       }
     } catch (error) {
       // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
-      setShippingCalculated(true); // ⚡ Marcar como calculado incluso si hay error
     } finally {
       setLoadingShipping(false);
     }
@@ -558,7 +540,7 @@ export default function Cart() {
 
   // 🆕 FUNCIÓN: Geocoding inteligente para usuarios registrados
   const handleUserAddressGeocoding = async (addressString) => {
-    // console.log('🧠 Usuario registrado: Aplicando geocoding inteligente a dirección:', addressString?.substring(0, 50) + '...');
+    console.log('🧠 Usuario registrado: Aplicando geocoding inteligente a dirección:', addressString?.substring(0, 50) + '...');
     
     const coordinates = await geocodeAddress(addressString, {
       strictValidation: false, // Menos restrictivo para direcciones guardadas
@@ -656,13 +638,13 @@ export default function Cart() {
       
       if (defaultAddress) {
         // 🔧 SIEMPRE actualizar con la dirección principal del backend
-        // console.log('✅ ESTABLECIENDO DIRECCIÓN PRINCIPAL:', {
-          // address: defaultAddress.address?.substring(0, 50),
-          // latitude: defaultAddress.latitude,
-          // longitude: defaultAddress.longitude,
-          // is_primary: defaultAddress.is_primary,
-          // selectedAddressBefore: selectedAddress?.id
-        // });
+        console.log('✅ ESTABLECIENDO DIRECCIÓN PRINCIPAL:', {
+          address: defaultAddress.address?.substring(0, 50),
+          latitude: defaultAddress.latitude,
+          longitude: defaultAddress.longitude,
+          is_primary: defaultAddress.is_primary,
+          selectedAddressBefore: selectedAddress?.id
+        });
         setSelectedAddress(defaultAddress);
         setAddress(defaultAddress.address);
         // Las coordenadas ya vienen del backend
@@ -671,10 +653,10 @@ export default function Cart() {
             driver_lat: defaultAddress.latitude.toString(),
             driver_long: defaultAddress.longitude.toString(),
           });
-          // console.log('📍 COORDENADAS ESTABLECIDAS:', {
-            // lat: defaultAddress.latitude,
-            // lng: defaultAddress.longitude
-          // });
+          console.log('📍 COORDENADAS ESTABLECIDAS:', {
+            lat: defaultAddress.latitude,
+            lng: defaultAddress.longitude
+          });
         }
       } else {
       }
@@ -819,15 +801,14 @@ export default function Cart() {
             setTimeout(() => {
               const currentSubtotal = getSubtotal() - getDiscountAmount();
               if (currentSubtotal > 0 && tempGuestData.email?.trim() && tempGuestData.address?.trim()) {
-                // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar datos (AsyncStorage):', {
-                  // email: tempGuestData.email?.trim(),
-                  // address: tempGuestData.address?.trim(),
-                  // subtotal: currentSubtotal,
-                  // timestamp: new Date().toISOString()
-                // });
+                console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar datos:', {
+                  email: tempGuestData.email?.trim(),
+                  address: tempGuestData.address?.trim(),
+                  subtotal: currentSubtotal
+                });
                 calculateShippingAndMotivation(currentSubtotal);
               }
-            }, 200); // Aumentado de 100ms a 200ms
+            }, 100); // Pequeño delay para que se actualicen todos los estados
             
             // 🚀 CRÍTICO: Activar flag de auto-pago para Guest que acaba de completar dirección
             setGuestJustCompletedAddress(true);
@@ -899,15 +880,14 @@ export default function Cart() {
           setTimeout(() => {
             const currentSubtotal = getSubtotal() - getDiscountAmount();
             if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar params.guestData + mapCoordinates:', {
-                // email: params.guestData.email?.trim(),
-                // address: params.guestData.address?.trim(),
-                // subtotal: currentSubtotal,
-                // timestamp: new Date().toISOString()
-              // });
+              console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar params.guestData:', {
+                email: params.guestData.email?.trim(),
+                address: params.guestData.address?.trim(),
+                subtotal: currentSubtotal
+              });
               calculateShippingAndMotivation(currentSubtotal);
             }
-          }, 200); // Aumentado de 100ms a 200ms
+          }, 100);
           
           // Pequeño delay para asegurar que todos los setState terminen
           setTimeout(() => {
@@ -920,15 +900,14 @@ export default function Cart() {
           setTimeout(() => {
             const currentSubtotal = getSubtotal() - getDiscountAmount();
             if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar params.guestData normal:', {
-                // email: params.guestData.email?.trim(),
-                // address: params.guestData.address?.trim(),
-                // subtotal: currentSubtotal,
-                // timestamp: new Date().toISOString()
-              // });
+              console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar datos normales:', {
+                email: params.guestData.email?.trim(),
+                address: params.guestData.address?.trim(),
+                subtotal: currentSubtotal
+              });
               calculateShippingAndMotivation(currentSubtotal);
             }
-          }, 200); // Aumentado de 100ms a 200ms
+          }, 100);
           
           // Limpiar solo guestData si no hay mapCoordinates
           navigation.setParams({ guestData: null });
@@ -1001,20 +980,6 @@ export default function Cart() {
 
   // 🚀 AUTO-PAGO GUEST: Solo cuando acaba de completar su dirección por primera vez
   useEffect(() => {
-    // console.log('🚀 AUTO-PAGO EFFECT disparado:', {
-      // userType: user?.usertype,
-      // guestJustCompletedAddress,
-      // hasDeliveryInfo: !!deliveryInfo,
-      // hasEmail: !!email?.trim(),
-      // hasAddress: !!address?.trim(),
-      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
-      // cartItems: cart.length,
-      // currentShippingCost: shippingCost,
-      // shippingCalculated: shippingCalculated,
-      // loadingShipping: loadingShipping,
-      // finalTotal: getFinalTotal()
-    // });
-    
     // Solo para Guest que ACABA DE COMPLETAR su dirección (viene del flujo inicial)
     if (user?.usertype === 'Guest' && 
         guestJustCompletedAddress && // 🆕 NUEVA CONDICIÓN: Solo si acaba de completar dirección
@@ -1023,33 +988,19 @@ export default function Cart() {
         address?.trim() && 
         latlong?.driver_lat && 
         latlong?.driver_long &&
-        cart.length > 0 &&
-        shippingCalculated && // ⚡ CRÍTICO: Esperar a que se complete el cálculo del envío
-        !loadingShipping) { // ⚡ Y que no esté cargando
+        cart.length > 0) {
       
-      // console.log('🚀 EJECUTANDO AUTO-PAGO con valores:', {
-        // subtotal: getSubtotal(),
-        // shippingCost: shippingCost,
-        // finalTotal: getFinalTotal(),
-        // address: address?.trim(),
-        // coordinates: `${latlong?.driver_lat}, ${latlong?.driver_long}`
-      // });
       
-      // ⏱️ DELAY AUMENTADO para dar tiempo al recálculo del envío
+      // Pequeño delay para asegurar que la UI esté lista
       const autoPayTimeout = setTimeout(() => {
-        // console.log('⏰ EJECUTANDO AUTO-PAGO después del delay, valores finales:', {
-          // subtotal: getSubtotal(),
-          // shippingCost: shippingCost,
-          // finalTotal: getFinalTotal()
-        // });
         completeOrder();
         // Limpiar la bandera después del auto-pago
         setGuestJustCompletedAddress(false);
-      }, 1000); // Aumentado de 300ms a 1000ms
+      }, 300);
       
       return () => clearTimeout(autoPayTimeout);
     }
-  }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length, shippingCalculated, loadingShipping]); // ⚡ Agregado shippingCalculated y loadingShipping
+  }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length]);
 
   // Invocado desde el botón de checkout
   const decideCheckout = () => {
@@ -1062,21 +1013,16 @@ export default function Cart() {
     
     if (loading) return;
     
-    console.log('💳 COMPLETE ORDER DEBUG:', {
-      userType: user?.usertype,
-      userId: user?.id,
-      userEmail: user?.email,
-      deliveryInfo: !!deliveryInfo,
-      totalPrice: totalPrice,
-      subtotal: getSubtotal(),
-      shippingCost: shippingCost,
-      finalTotal: getFinalTotal(),
-      hasEmail: !!email?.trim(),
-      hasAddress: !!address?.trim(),
-      hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
-      guestJustCompletedAddress,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('🔍 COMPLETE ORDER - VALIDACIONES:', {
+      // deliveryInfo: deliveryInfo,
+      // isRestoringDeliveryInfo: isRestoringDeliveryInfo,
+      // userType: user?.usertype,
+      // totalPrice: totalPrice,
+      // email: email,
+      // address: address,
+      // latlong: latlong,
+      // userProfile: userProfile
+    // });
     
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
     
@@ -1197,14 +1143,14 @@ export default function Cart() {
       }
     } else {
       // Usuario registrado: requiere dirección del sistema nuevo
-      // console.log('🔍 CHECKOUT DEBUG - Usuario Registrado:', {
-        // address: address,
-        // addressTrim: address?.trim(),
-        // hasAddress: !!address?.trim(),
-        // userAddressesLength: userAddresses?.length,
-        // selectedAddress: selectedAddress,
-        // latlong: latlong
-      // });
+      console.log('🔍 CHECKOUT DEBUG - Usuario Registrado:', {
+        address: address,
+        addressTrim: address?.trim(),
+        hasAddress: !!address?.trim(),
+        userAddressesLength: userAddresses?.length,
+        selectedAddress: selectedAddress,
+        latlong: latlong
+      });
       
       if (!address?.trim()) {
         // No tiene dirección del sistema nuevo - mostrar modal para seleccionar
@@ -1228,7 +1174,7 @@ export default function Cart() {
         }
       }
       
-      // console.log('📍 VERIFICANDO COORDENADAS:', { latlong: latlong });
+      console.log('📍 VERIFICANDO COORDENADAS:', { latlong: latlong });
       
       if (!latlong?.driver_lat || !latlong?.driver_long) {
         
@@ -1328,17 +1274,17 @@ export default function Cart() {
       const finalPrice = getFinalTotal();
       
       // 🚨 DEBUG: Verificar qué se envía a Stripe
-      // console.log('🚨 ENVIANDO A STRIPE:', {
-        // userType: user?.usertype,
-        // totalPrice: totalPrice,
-        // appliedCoupon: appliedCoupon,
-        // finalPrice: finalPrice,
-        // shippingCost: shippingCost,
-        // subtotal: getSubtotal(),
-        // discountAmount: getDiscountAmount(),
-        // centavos: parseFloat(finalPrice) * 100,
-        // realOrderId: realOrderId
-      // });
+      console.log('🚨 ENVIANDO A STRIPE:', {
+        userType: user?.usertype,
+        totalPrice: totalPrice,
+        appliedCoupon: appliedCoupon,
+        finalPrice: finalPrice,
+        shippingCost: shippingCost,
+        subtotal: getSubtotal(),
+        discountAmount: getDiscountAmount(),
+        centavos: parseFloat(finalPrice) * 100,
+        realOrderId: realOrderId
+      });
       
       const {data} = await axios.post(
         'https://occr.pixelcrafters.digital/api/create-payment-intent',
@@ -1375,13 +1321,13 @@ export default function Cart() {
         // Configuración explícita de métodos de pago
         primaryButtonLabel: (() => {
           const finalTotal = getFinalTotal();
-          // console.log('💰 BOTÓN PAGAR - Estado shipping:', {
-            // userType: user?.usertype,
-            // shippingCost: shippingCost,
-            // finalTotal: finalTotal,
-            // subtotal: getSubtotal(),
-            // discountAmount: getDiscountAmount()
-          // });
+          console.log('💰 BOTÓN PAGAR - Estado shipping:', {
+            userType: user?.usertype,
+            shippingCost: shippingCost,
+            finalTotal: finalTotal,
+            subtotal: getSubtotal(),
+            discountAmount: getDiscountAmount()
+          });
           return `Pagar ${formatPriceWithSymbol(finalTotal)}`;
         })(),
         // Asegurar que se acepten tarjetas internacionales
@@ -1491,19 +1437,19 @@ export default function Cart() {
       refreshOrders();
       
       // 🐛 DEBUG: Logs temporales para diagnóstico OXXO
-      // console.log('🎉 PAGO EXITOSO - Analizando orderData completo:', {
-        // userType: user?.usertype,
-        // paymentMethod: 'OXXO_DETECTED',
-        // orderDataRaw: orderData,
-        // orderDataKeys: Object.keys(orderData || {}),
-        // orderDataString: JSON.stringify(orderData, null, 2),
-        // orderNumber: orderNumber,
-        // orderDataOrderId: orderData?.order_id,
-        // orderDataId: orderData?.id,
-        // isValidOrderId: isValidOrderId,
-        // totalPrice: totalPrice,
-        // deliveryText: deliveryText
-      // });
+      console.log('🎉 PAGO EXITOSO - Analizando orderData completo:', {
+        userType: user?.usertype,
+        paymentMethod: 'OXXO_DETECTED',
+        orderDataRaw: orderData,
+        orderDataKeys: Object.keys(orderData || {}),
+        orderDataString: JSON.stringify(orderData, null, 2),
+        orderNumber: orderNumber,
+        orderDataOrderId: orderData?.order_id,
+        orderDataId: orderData?.id,
+        isValidOrderId: isValidOrderId,
+        totalPrice: totalPrice,
+        deliveryText: deliveryText
+      });
 
       // Construir datos del modal para debug
       const modalData = {
@@ -1614,30 +1560,6 @@ export default function Cart() {
   // 2) Envía la orden al backend y maneja fallos
   const completeOrderFunc = async () => {
     try {
-      // 🔑 CRÍTICO: Obtener FCM token para notificaciones (especialmente para Guest)
-      let fcmToken = null;
-      try {
-        fcmToken = NotificationService.token || await NotificationService.getToken();
-        console.log('🔔 FCM TOKEN DEBUG - Orden:', {
-          userType: user?.usertype,
-          userId: user?.id,
-          userEmail: user?.email,
-          hasToken: !!fcmToken,
-          tokenLength: fcmToken ? fcmToken.length : 0,
-          tokenPreview: fcmToken ? `${fcmToken.substring(0, 30)}...` : 'NULL',
-          notificationService: {
-            hasInstance: !!NotificationService,
-            cachedToken: !!NotificationService.token
-          }
-        });
-      } catch (error) {
-        console.log('⚠️ ERROR FCM TOKEN:', {
-          userType: user?.usertype,
-          error: error.message,
-          stack: error.stack
-        });
-      }
-      
       const cartUpdateArr = cart.map(it => {
         // Calcular precio final con descuento aplicado
         const itemDiscount = Number(it.discount) || 0;
@@ -1690,18 +1612,18 @@ export default function Cart() {
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
       
-      // console.log('📍 DATOS DE ENVÍO OPTIMIZADOS:', {
-        // coordinates: coordinates,
-        // selectedAddress: selectedAddress ? {
-          // id: selectedAddress.id,
-          // address: selectedAddress.address,
-          // lat: selectedAddress.latitude,
-          // lng: selectedAddress.longitude,
-          // isDefault: selectedAddress.is_default
-        // } : null,
-        // userType: user?.usertype,
-        // addressSource: coordinates.address_source
-      // });
+      console.log('📍 DATOS DE ENVÍO OPTIMIZADOS:', {
+        coordinates: coordinates,
+        selectedAddress: selectedAddress ? {
+          id: selectedAddress.id,
+          address: selectedAddress.address,
+          lat: selectedAddress.latitude,
+          lng: selectedAddress.longitude,
+          isDefault: selectedAddress.is_default
+        } : null,
+        userType: user?.usertype,
+        addressSource: coordinates.address_source
+      });
 
       const payload = {
         userid: user?.id,
@@ -1725,8 +1647,6 @@ export default function Cart() {
         coupon_discount: appliedCoupon && isCouponStillValid() ? appliedCoupon.discount : null,
         coupon_type: appliedCoupon && isCouponStillValid() ? appliedCoupon.type : null,
         discount_amount: appliedCoupon && isCouponStillValid() ? getDiscountAmount() : 0,
-        // 🔑 CRÍTICO: Incluir FCM token para notificaciones push
-        fcm_token: fcmToken || null,
       };
       
       const response = await axios.post('https://occr.pixelcrafters.digital/api/ordersubmit', payload);
@@ -1779,7 +1699,7 @@ export default function Cart() {
       }
     } else {
       // Usuario registrado: verificar si tiene dirección del SISTEMA NUEVO
-      // console.log('🔍 VERIFICANDO DIRECCIÓN SISTEMA NUEVO:', { address: address?.trim() });
+      console.log('🔍 VERIFICANDO DIRECCIÓN SISTEMA NUEVO:', { address: address?.trim() });
       
       if (!address?.trim()) {
         // No tiene dirección del sistema nuevo: mostrar modal
@@ -2533,14 +2453,14 @@ const CartFooter = ({
             const profileData = profileResponse.data?.data?.[0];
             userEmailForOrder = profileData?.email?.trim() || '';
           } catch (profileError) {
-            // console.error('⚠️ Error obteniendo email del perfil (completeOrder):', profileError);
+            console.error('⚠️ Error obteniendo email del perfil (completeOrder):', profileError);
           }
         }
       }
       
       // Validación final: asegurar que siempre tengamos un email válido
       if (!userEmailForOrder) {
-        // console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden (completeOrder)');
+        console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden (completeOrder)');
         showAlert({
           type: 'error',
           title: 'Email requerido',

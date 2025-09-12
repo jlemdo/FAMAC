@@ -358,13 +358,13 @@ const AddressFormUberStyle = () => {
       }
     }
     
-    // console.log('✅ Campos pre-llenados:', {
-      // userWrittenAddress: mainAddress,
-      // references: extractedReferences,
-      // streetName: streetMatch?.[1]?.trim() || '',
-      // exteriorNumber: numberMatch?.[1] || '',
-      // neighborhood: neighborhood,
-    // });
+    console.log('✅ Campos pre-llenados:', {
+      userWrittenAddress: mainAddress,
+      references: extractedReferences,
+      streetName: streetMatch?.[1]?.trim() || '',
+      exteriorNumber: numberMatch?.[1] || '',
+      neighborhood: neighborhood,
+    });
   };
 
   // Función para obtener ubicación actual usando locationUtils - CON DEBUG MEJORADO
@@ -614,10 +614,10 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa con geocoding inteligente
   const goToMap = async () => {
-    // console.log('🗺️ NAVEGANDO AL MAPA CON COORDENADAS:', {
-      // mapCoordinatesState: mapCoordinates,
-      // willUseDefault: !mapCoordinates
-    // });
+    console.log('🗺️ NAVEGANDO AL MAPA CON COORDENADAS:', {
+      mapCoordinatesState: mapCoordinates,
+      willUseDefault: !mapCoordinates
+    });
     
     let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
     
@@ -675,14 +675,14 @@ const AddressFormUberStyle = () => {
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
   const handleConfirm = async (providedAddress = null) => {
     try {
-      // console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
-        // fromAddressManager: route.params?.fromAddressManager,
-        // fromCart: route.params?.fromCart,
-        // fromProfile: route.params?.fromProfile,
-        // userId: user?.id,
-        // usertype: user?.usertype,
-        // editMode: route.params?.editMode
-      // });
+      console.log('🔍 DEBUGGING handleConfirm - Parámetros recibidos:', {
+        fromAddressManager: route.params?.fromAddressManager,
+        fromCart: route.params?.fromCart,
+        fromProfile: route.params?.fromProfile,
+        userId: user?.id,
+        usertype: user?.usertype,
+        editMode: route.params?.editMode
+      });
       
 
     // VALIDACIONES EXACTAS DE PROFILE - NO CAMBIAR
@@ -849,11 +849,11 @@ const AddressFormUberStyle = () => {
           const existingAddresses = await newAddressService.getUserAddresses(user.id);
           const hasAdditionalAddresses = existingAddresses && existingAddresses.length > 0;
           
-          // console.log('📊 Estado de direcciones:', {
-            // hasProfileAddress,
-            // hasAdditionalAddresses,
-            // addressCount: existingAddresses?.length || 0
-          // });
+          console.log('📊 Estado de direcciones:', {
+            hasProfileAddress,
+            hasAdditionalAddresses,
+            addressCount: existingAddresses?.length || 0
+          });
           
           if (!hasProfileAddress && !hasAdditionalAddresses) {
             // CASO: Primera dirección del usuario - hacerla automáticamente predeterminada

@@ -72,12 +72,12 @@ export function CartProvider({ children }) {
     useEffect(() => {
         const userId = user?.id || user?.email || null; // Para guests usar email, para registrados usar id
         
-        // console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
-            // currentUserId,
-            // newUserId: userId,
-            // userType: user?.usertype,
-            // shouldClear: currentUserId !== null && currentUserId !== userId
-        // });
+        console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
+            currentUserId,
+            newUserId: userId,
+            userType: user?.usertype,
+            shouldClear: currentUserId !== null && currentUserId !== userId
+        });
         
         // 🚨 CASO CRÍTICO: Usuario hace logout (user cambia a null)
         if (currentUserId !== null && userId === null) {
@@ -127,13 +127,13 @@ export function CartProvider({ children }) {
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
             
-            // console.log('💾 GUARDANDO CARRITO:', {
-                // userType: user?.usertype,
-                // userId: currentUserId,
-                // cartKey: cartKey,
-                // itemCount: cart.length,
-                // items: cart.map(item => `${item.name} x${item.quantity}`)
-            // });
+            console.log('💾 GUARDANDO CARRITO:', {
+                userType: user?.usertype,
+                userId: currentUserId,
+                cartKey: cartKey,
+                itemCount: cart.length,
+                items: cart.map(item => `${item.name} x${item.quantity}`)
+            });
             
             const cartWithTimestamp = {
                 items: cart,
@@ -142,10 +142,12 @@ export function CartProvider({ children }) {
             };
             await AsyncStorage.setItem(cartKey, JSON.stringify(cartWithTimestamp));
             
+            console.log('✅ CARRITO GUARDADO EXITOSAMENTE en AsyncStorage');
             
             // 🛒 NUEVO: Registrar actividad en backend (opcional)
             updateCartActivity();
         } catch (error) {
+            console.log('❌ ERROR GUARDANDO CARRITO:', error);
         }
     };
     
@@ -188,14 +190,14 @@ export function CartProvider({ children }) {
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
             
-            // console.log(`🛒 CartContext: Cargando carrito para ${currentUserId} (key: ${cartKey})`);
+            console.log(`🛒 CartContext: Cargando carrito para ${currentUserId} (key: ${cartKey})`);
             
             const savedCart = await AsyncStorage.getItem(cartKey);
-            // console.log('📦 RESULTADO AsyncStorage.getItem:', {
-                // cartKey,
-                // savedCartExists: !!savedCart,
-                // savedCartLength: savedCart ? savedCart.length : 0
-            // });
+            console.log('📦 RESULTADO AsyncStorage.getItem:', {
+                cartKey,
+                savedCartExists: !!savedCart,
+                savedCartLength: savedCart ? savedCart.length : 0
+            });
             
             if (savedCart) {
                 const { items, timestamp } = JSON.parse(savedCart);
@@ -203,25 +205,28 @@ export function CartProvider({ children }) {
                 const twentyFourHours = 24 * 60 * 60 * 1000; // 24 horas en ms
                 const hoursAgo = Math.round((currentTime - timestamp) / (1000 * 60 * 60) * 100) / 100;
                 
-                // console.log('⏰ VERIFICANDO EXPIRACIÓN:', {
-                    // timestamp,
-                    // currentTime,
-                    // hoursAgo,
-                    // isExpired: currentTime - timestamp >= twentyFourHours,
-                    // itemsCount: items.length
-                // });
+                console.log('⏰ VERIFICANDO EXPIRACIÓN:', {
+                    timestamp,
+                    currentTime,
+                    hoursAgo,
+                    isExpired: currentTime - timestamp >= twentyFourHours,
+                    itemsCount: items.length
+                });
                 
                 // Verificar si han pasado menos de 24 horas
                 if (currentTime - timestamp < twentyFourHours) {
                     if (items.length > 0) {
-                        // console.log(`🛒 CartContext: Restaurando ${items.length} items del carrito`);
+                        console.log(`🛒 CartContext: Restaurando ${items.length} items del carrito`);
                         setCart(items);
                     } else {
+                        console.log('📦 Carrito válido pero vacío, no restaurar');
                     }
                 } else {
+                    console.log('💀 Carrito expirado (>24h), eliminando de AsyncStorage');
                     await AsyncStorage.removeItem(cartKey);
                 }
             } else {
+                console.log('❌ NO SE ENCONTRÓ carrito guardado en AsyncStorage');
             }
         } catch (error) {
         }
