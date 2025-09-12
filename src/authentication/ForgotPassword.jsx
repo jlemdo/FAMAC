@@ -47,16 +47,17 @@ export default function ForgotPassword({ onBackToLogin }) {
   const handleResetPassword = async (values, { setSubmitting, resetForm }) => {
     setSubmitting(true);
     try {
-      const { status } = await axios.post(
+      const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/forgetpasswordlink',
         { email: values.email.trim() }
       );
-      if (status === 200) {
+      
+      if (response.status === 200) {
         showAlert({
           type: 'success',
-          title: 'Éxito',
-          message: 'Enviamos el enlace de restablecimiento.',
-          confirmText: 'OK',
+          title: '🔑 Nueva contraseña enviada',
+          message: response.data.message || 'Nueva contraseña enviada a tu correo. Revisa tu bandeja de entrada.',
+          confirmText: 'Entendido',
         });
         resetForm();
         if (onBackToLogin) {
@@ -67,18 +68,24 @@ export default function ForgotPassword({ onBackToLogin }) {
       }
     } catch (e) {
       if (e.response?.status === 404) {
-        // Email no encontrado
         showAlert({
           type: 'error',
-          title: 'Error',
-          message: 'Correo no encontrado',
+          title: 'Usuario no encontrado',
+          message: 'No existe una cuenta con ese correo electrónico.',
+          confirmText: 'Cerrar',
+        });
+      } else if (e.response?.status === 500) {
+        showAlert({
+          type: 'error',
+          title: 'Error de envío',
+          message: 'No pudimos enviar el correo. Verifica tu conexión e intenta de nuevo.',
           confirmText: 'Cerrar',
         });
       } else {
         showAlert({
           type: 'error',
           title: 'Error',
-          message: 'Intenta de nuevo más tarde.',
+          message: 'Algo salió mal. Intenta de nuevo más tarde.',
           confirmText: 'Cerrar',
         });
       }
@@ -101,7 +108,7 @@ export default function ForgotPassword({ onBackToLogin }) {
           
           <Text style={styles.title}>Restablecer contraseña</Text>
           <Text style={styles.subtitle}>
-            Ingresa tu correo para recibir el enlace
+            Ingresa tu correo para recibir una contraseña temporal
           </Text>
 
           <Formik
@@ -154,7 +161,7 @@ export default function ForgotPassword({ onBackToLogin }) {
                   {isSubmitting ? (
                     <ActivityIndicator color="#2F2F2F" />
                   ) : (
-                    <Text style={styles.buttonText}>Enviar enlace</Text>
+                    <Text style={styles.buttonText}>Enviar contraseña temporal</Text>
                   )}
                 </TouchableOpacity>
               </>
