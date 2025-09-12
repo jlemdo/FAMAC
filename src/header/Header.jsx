@@ -33,7 +33,7 @@ import fonts from '../theme/fonts';
 
 const Header = ({onLogout}) => {
   const navigation = useNavigation();
-  const {logout} = useContext(AuthContext);
+  const {user, logout} = useContext(AuthContext);
   const {notifications, markAsRead} = useNotification();
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -222,13 +222,16 @@ const Header = ({onLogout}) => {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconContainer} onPress={toggleSearchBar}>
-            <Ionicons 
-              name={showSearchBar ? "close-outline" : "search-outline"} 
-              size={24} 
-              color="black" 
-            />
-          </TouchableOpacity>
+          {/* ✅ DRIVER FIX: Ocultar barra de búsqueda para drivers */}
+          {user?.usertype !== 'driver' && (
+            <TouchableOpacity style={styles.iconContainer} onPress={toggleSearchBar}>
+              <Ionicons 
+                name={showSearchBar ? "close-outline" : "search-outline"} 
+                size={24} 
+                color="black" 
+              />
+            </TouchableOpacity>
+          )}
         </View>
         <Modal
           visible={showNotif}
@@ -254,7 +257,7 @@ const Header = ({onLogout}) => {
                       showsVerticalScrollIndicator={true}
                       contentContainerStyle={styles.scrollViewContent}
                     >
-                      {notifications.map(item => (
+                      {notifications.slice().reverse().map(item => (
                         <TouchableOpacity 
                           key={item.id} 
                           style={styles.item}
@@ -294,63 +297,68 @@ const Header = ({onLogout}) => {
         </Modal>
       </View>
 
-      {/* Search Bar Animada */}
-      <Animated.View 
-        style={[
-          styles.searchContainer,
-          {
-            height: searchBarHeight,
-            opacity: searchBarOpacity,
-            overflow: 'hidden',
-          }
-        ]}>
-        <Ionicons
-          name="search-outline"
-          size={20}
-          color="#888"
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar Productos..."
-          value={searchText}
-          placeholderTextColor="#666"
-          onChangeText={handleSearch}
-          returnKeyType="search"
-          keyboardShouldPersistTaps="handled"
-          onSubmitEditing={() => {
-            if (searchText.trim()) {
-              setSuggestions([]);
-              navigation.navigate('SearchResults', {
-                query: searchText.trim()
-              });
-              Keyboard.dismiss();
-              toggleSearchBar();
-            }
-          }}
-          autoFocus={showSearchBar}
-        />
-      </Animated.View>
+      {/* ✅ DRIVER FIX: Ocultar Search Bar para drivers */}
+      {user?.usertype !== 'driver' && (
+        <>
+          {/* Search Bar Animada */}
+          <Animated.View 
+            style={[
+              styles.searchContainer,
+              {
+                height: searchBarHeight,
+                opacity: searchBarOpacity,
+                overflow: 'hidden',
+              }
+            ]}>
+            <Ionicons
+              name="search-outline"
+              size={20}
+              color="#888"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar Productos..."
+              value={searchText}
+              placeholderTextColor="#666"
+              onChangeText={handleSearch}
+              returnKeyType="search"
+              keyboardShouldPersistTaps="handled"
+              onSubmitEditing={() => {
+                if (searchText.trim()) {
+                  setSuggestions([]);
+                  navigation.navigate('SearchResults', {
+                    query: searchText.trim()
+                  });
+                  Keyboard.dismiss();
+                  toggleSearchBar();
+                }
+              }}
+              autoFocus={showSearchBar}
+            />
+          </Animated.View>
 
-      {/* Search Suggestions */}
-      {showSearchBar && suggestions.length > 0 && (
-        <FlatList
-          data={suggestions}
-          keyExtractor={item => item.id.toString()}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({item}) => (
-            <TouchableOpacity
-              style={styles.suggestionItem}
-              onPress={() => {
-                Keyboard.dismiss();
-                handleSelectSuggestion(item);
-                toggleSearchBar();
-              }}>
-              <Text style={styles.suggestionText}>{item.name}</Text>
-            </TouchableOpacity>
+          {/* Search Suggestions */}
+          {showSearchBar && suggestions.length > 0 && (
+            <FlatList
+              data={suggestions}
+              keyExtractor={item => item.id.toString()}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({item}) => (
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    handleSelectSuggestion(item);
+                    toggleSearchBar();
+                  }}>
+                  <Text style={styles.suggestionText}>{item.name}</Text>
+                </TouchableOpacity>
+              )}
+              style={styles.suggestionsList}
+            />
           )}
-          style={styles.suggestionsList}
-        />
+        </>
       )}
     </View>
   );

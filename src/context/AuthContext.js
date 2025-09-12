@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { migrateGuestOrders } from '../utils/orderMigration';
+import { useNotification } from './NotificationContext';
 import axios from 'axios';
 
 // 1️⃣ Import dinámico de AsyncStorage con fallback
@@ -24,6 +25,7 @@ export const AuthContext = createContext({
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser]         = useState(undefined); // undefined = loading
+  const { clearNotifications } = useNotification();
 
   // 3️⃣ Verifica login en AsyncStorage (si está disponible)
   useEffect(() => {
@@ -97,6 +99,9 @@ export function AuthProvider({ children }) {
       }
     }
     
+    // 🔔 LIMPIAR notificaciones del usuario anterior al hacer login
+    clearNotifications();
+    
     setUser(userData);
     setIsLoggedIn(true);
     
@@ -155,6 +160,9 @@ export function AuthProvider({ children }) {
       }
     }
     
+    // 🔔 LIMPIAR notificaciones al cambiar a guest
+    clearNotifications();
+    
     setUser(cleanGuestUser);
     setIsLoggedIn(true);
   };
@@ -197,6 +205,9 @@ export function AuthProvider({ children }) {
       } catch (err) {
       }
     }
+    
+    // 🔔 LIMPIAR notificaciones al hacer logout
+    clearNotifications();
     
     setUser(null);
     setIsLoggedIn(false);

@@ -41,8 +41,13 @@ export const NotificationProvider = ({ children }) => {
         );
     };
 
+    // 🆕 FIX: Limpiar notificaciones al cambiar de usuario
+    const clearNotifications = () => {
+        setNotifications([]);
+    };
+
     return (
-        <NotificationContext.Provider value={{ notifications, addNotification, markAsRead }}>
+        <NotificationContext.Provider value={{ notifications, addNotification, markAsRead, clearNotifications }}>
             {children}
         </NotificationContext.Provider>
     );
