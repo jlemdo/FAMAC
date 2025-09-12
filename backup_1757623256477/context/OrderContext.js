@@ -109,7 +109,7 @@ export function OrderProvider({ children }) {
                 // 1. Pago completado
                 // 2. Estados específicos de workflow del driver
                 filteredOrders = ordersData.filter(order => {
-                    const paymentValid = ['paid'].includes(order.payment_status);
+                    const paymentValid = ['completed', 'paid'].includes(order.payment_status);
                     const statusValid = ['Open', 'On the Way', 'Delivered'].includes(order.status);
                     
                     console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
@@ -154,6 +154,7 @@ export function OrderProvider({ children }) {
             });
             
         } catch (err) {
+            console.log('📝 Message:', err?.message);
             
             // Mantener órdenes vacías cuando hay error
             setOrders([]);

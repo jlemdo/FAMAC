@@ -68,7 +68,7 @@ const translatePaymentStatus = (paymentStatus) => {
   
   const translations = {
     'pending': 'Pendiente',
-    'paid': 'Pagado', 
+    'completed': 'Completado', 
     'paid': 'Pagado',
     'failed': 'Fallido',
     'cancelled': 'Cancelado',
@@ -186,7 +186,7 @@ const OrderDetails = () => {
               <Text style={[
                 styles.paymentStatusText,
                 order?.payment_status === 'pending' && styles.paymentStatusPending,
-                order?.payment_status === 'paid' && styles.paymentStatusCompleted,
+                order?.payment_status === 'completed' && styles.paymentStatusCompleted,
                 order?.payment_status === 'failed' && styles.paymentStatusFailed
               ]}>
                 Pago: {translatePaymentStatus(order?.payment_status)}

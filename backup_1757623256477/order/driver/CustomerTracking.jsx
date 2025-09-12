@@ -115,7 +115,7 @@ const CustomerTracking = ({order}) => {
         <Text style={styles.sectionTitle}>Información del conductor</Text>
         
         {/* 🆕 Payment Status Indicator */}
-        {order?.payment_status !== 'paid' && (
+        {order?.payment_status !== 'completed' && (
           <View style={styles.paymentWarning}>
             <Ionicons name="warning-outline" size={16} color="#FF9800" />
             <Text style={styles.paymentWarningText}>

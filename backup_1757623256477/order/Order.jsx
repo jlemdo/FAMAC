@@ -110,7 +110,7 @@ const Order = () => {
           const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
           const activeOrders = orders.filter(order => 
             order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
-            order.payment_status === 'paid' // Solo contar órdenes con pago completado
+            order.payment_status === 'completed' // Solo contar órdenes con pago completado
           );
           updateOrders(orders); // Esto actualiza el badge de navegación
           
@@ -421,11 +421,7 @@ const Order = () => {
                 {/* Status Badge - Ahora incluye payment_status */}
                 <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
                   <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
-                    {/* Mostrar estado de pago cuando sea relevante, sino estado del pedido */}
-                    {paymentStatus === 'paid' ? 'Pagado' : 
-                     paymentStatus === 'pending' ? 'Procesando pago' :
-                     paymentStatus === 'failed' ? 'Pago fallido' :
-                     item.status_spanish || itemStatus || 'Pendiente'}
+                    {item.status_spanish || itemStatus || 'Pendiente'}
                   </Text>
                 </View>
 

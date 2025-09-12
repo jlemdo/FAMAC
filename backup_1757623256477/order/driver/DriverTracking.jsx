@@ -122,6 +122,7 @@ const DriverTracking = ({order}) => {
   // };
 
   const getCurrentLocation = async () => {
+    console.log('🚚 INICIANDO getCurrentLocation...');
     try {
       // ✅ UBICACIÓN FIJA TEMPORAL PARA DEBUGGING
       const fakeDriverLocation = {
@@ -129,6 +130,7 @@ const DriverTracking = ({order}) => {
         longitude: -99.1332
       };
       
+      console.log('🚚 USANDO UBICACIÓN TEMPORAL:', fakeDriverLocation);
       
       setLatlong({
         driver_lat: fakeDriverLocation.latitude,
@@ -146,10 +148,12 @@ const DriverTracking = ({order}) => {
           });
         },
         (error) => {
+          console.log('❌ Error ubicación driver:', error);
         }
       );
       */
     } catch (error) {
+      console.log('❌ CRASH en getCurrentLocation:', error);
     }
   };
 
@@ -178,6 +182,7 @@ const DriverTracking = ({order}) => {
 
   // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
   useEffect(() => {
+    console.log('🚚 DRIVER INIT - Estado:', currentStatus);
     
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
@@ -256,7 +261,7 @@ const DriverTracking = ({order}) => {
 
       <>
         {/* 🆕 Validación: Solo mostrar botones si el pago está completado */}
-        {order?.payment_status === 'paid' ? (
+        {order?.payment_status === 'completed' ? (
           <>
             {currentStatus == 'Open' && (
               <>
