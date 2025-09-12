@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 export const CartContext = createContext();
 
@@ -47,14 +48,6 @@ export function CartProvider({ children }) {
         setCart((prevCart) => prevCart.filter((item) => item.id !== id));
     };
 
-    // In CartContext.js
-    const clearCart = () => {
-        setCart([]);
-        // Ejecutar callback si está definido para limpiar información adicional (como deliveryInfo)
-        if (onCartClearCallback) {
-            onCartClearCallback();
-        }
-    };
 
 
     // Update quantity
@@ -103,7 +96,7 @@ export function CartProvider({ children }) {
     useEffect(() => {
         if (user !== undefined) { // user !== undefined significa que AuthContext ya cargó
             // Delay pequeño para asegurar que limpieza de usuario anterior termine primero
-            setTimeout(() => loadCartFromStorage(), 50);
+            setTimeout(() => loadCartFromBackend(), 50);
         }
     }, [user?.id, user?.email]); // Depende del user específico
 
@@ -112,7 +105,7 @@ export function CartProvider({ children }) {
         if (user === undefined) return; // No hacer nada si user aún no cargó
         
         if (cart.length > 0) {
-            saveCartToStorage();
+            saveCartToBackend();
         } else if (cart.length === 0 && user) {
             // Si el carrito está vacío, limpiar AsyncStorage del usuario actual
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
@@ -121,31 +114,41 @@ export function CartProvider({ children }) {
         }
     }, [cart, user?.id, user?.email]); // Ahora depende TAMBIÉN del user
 
-    // 📦 NUEVO: Funciones de persistencia con claves únicas por usuario
-    const saveCartToStorage = async () => {
+    // 🆕 NUEVO: Guardar carrito en backend persistente
+    const saveCartToBackend = async () => {
         try {
+            if (!user || user.usertype === 'Driver') return; // Drivers no tienen carrito
+            
+            const payload = {
+                user_type: user.usertype === 'Guest' ? 'guest' : 'user',
+                cart_data: cart
+            };
+
+            if (user.usertype === 'Guest') {
+                payload.guest_email = user.email;
+            } else {
+                payload.user_id = user.id;
+            }
+            
+            console.log('💾 GUARDANDO CARRITO EN BACKEND:', {
+                userType: user.usertype,
+                userId: user.id || user.email,
+                items: cart.length
+            });
+
+            await axios.post('https://occr.pixelcrafters.digital/api/cart/save', payload);
+            
+        } catch (error) {
+            console.log('❌ Error guardando carrito en backend:', error.message);
+            // Fallback: guardar localmente como respaldo
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
-            
-            // console.log('💾 GUARDANDO CARRITO:', {
-                // userType: user?.usertype,
-                // userId: currentUserId,
-                // cartKey: cartKey,
-                // itemCount: cart.length,
-                // items: cart.map(item => `${item.name} x${item.quantity}`)
-            // });
-            
             const cartWithTimestamp = {
                 items: cart,
                 timestamp: Date.now(),
                 userId: currentUserId
             };
             await AsyncStorage.setItem(cartKey, JSON.stringify(cartWithTimestamp));
-            
-            
-            // 🛒 NUEVO: Registrar actividad en backend (opcional)
-            updateCartActivity();
-        } catch (error) {
         }
     };
     
@@ -178,65 +181,103 @@ export function CartProvider({ children }) {
         }
     };
 
-    const loadCartFromStorage = async () => {
+    const loadCartFromBackend = async () => {
         try {
             // ✅ VALIDACIÓN CRÍTICA: Solo cargar si user está definido
-            if (user === undefined) {
+            if (user === undefined || user.usertype === 'Driver') {
                 return;
             }
             
-            const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
-            const cartKey = `cart_${currentUserId}`;
-            
-            // console.log(`🛒 CartContext: Cargando carrito para ${currentUserId} (key: ${cartKey})`);
-            
-            const savedCart = await AsyncStorage.getItem(cartKey);
-            // console.log('📦 RESULTADO AsyncStorage.getItem:', {
-                // cartKey,
-                // savedCartExists: !!savedCart,
-                // savedCartLength: savedCart ? savedCart.length : 0
-            // });
-            
-            if (savedCart) {
-                const { items, timestamp } = JSON.parse(savedCart);
-                const currentTime = Date.now();
-                const twentyFourHours = 24 * 60 * 60 * 1000; // 24 horas en ms
-                const hoursAgo = Math.round((currentTime - timestamp) / (1000 * 60 * 60) * 100) / 100;
-                
-                // console.log('⏰ VERIFICANDO EXPIRACIÓN:', {
-                    // timestamp,
-                    // currentTime,
-                    // hoursAgo,
-                    // isExpired: currentTime - timestamp >= twentyFourHours,
-                    // itemsCount: items.length
-                // });
-                
-                // Verificar si han pasado menos de 24 horas
-                if (currentTime - timestamp < twentyFourHours) {
-                    if (items.length > 0) {
-                        // console.log(`🛒 CartContext: Restaurando ${items.length} items del carrito`);
-                        setCart(items);
-                    } else {
-                    }
-                } else {
-                    await AsyncStorage.removeItem(cartKey);
-                }
+            const payload = {
+                user_type: user.usertype === 'Guest' ? 'guest' : 'user'
+            };
+
+            if (user.usertype === 'Guest') {
+                payload.guest_email = user.email;
             } else {
+                payload.user_id = user.id;
             }
+            
+            console.log('📦 CARGANDO CARRITO DESDE BACKEND:', {
+                userType: user.usertype,
+                userId: user.id || user.email
+            });
+            
+            const response = await axios.post('https://occr.pixelcrafters.digital/api/cart/get', payload);
+            
+            if (response.data.success && response.data.cart.length > 0) {
+                console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del backend`);
+                setCart(response.data.cart);
+            } else {
+                console.log('📦 No hay carrito en backend o está vacío');
+                setCart([]);
+            }
+            
         } catch (error) {
+            console.log('❌ Error cargando carrito desde backend:', error.message);
+            // Fallback: intentar cargar desde AsyncStorage local
+            try {
+                const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
+                const cartKey = `cart_${currentUserId}`;
+                const savedCart = await AsyncStorage.getItem(cartKey);
+                
+                if (savedCart) {
+                    const { items, timestamp } = JSON.parse(savedCart);
+                    const currentTime = Date.now();
+                    const twentyFourHours = 24 * 60 * 60 * 1000;
+                    
+                    if (currentTime - timestamp < twentyFourHours && items.length > 0) {
+                        console.log(`🛒 Fallback: Restaurando ${items.length} items desde AsyncStorage`);
+                        setCart(items);
+                    }
+                }
+            } catch (fallbackError) {
+                console.log('❌ Fallback también falló:', fallbackError.message);
+            }
         }
     };
 
     // 🆕 FUNCIÓN CORREGIDA: Solo limpiar memoria en logout, mantener carritos guardados
     const clearCartOnLogout = async () => {
         try {
-            
             // Solo limpiar carrito en memoria
             setCart([]);
             
-            // ✅ NO eliminar AsyncStorage - cada usuario mantiene su carrito hasta que expire (24h)
+            // ✅ NO eliminar backend - cada usuario mantiene su carrito hasta que expire (24h)
             // Los carritos persisten para cuando cada usuario regrese
         } catch (error) {
+        }
+    };
+
+    // 🆕 NUEVO: Limpiar carrito completamente (memoria + backend)
+    const clearCart = async () => {
+        try {
+            // Limpiar memoria
+            setCart([]);
+            
+            // Ejecutar callback para limpiar información adicional (como deliveryInfo)
+            if (onCartClearCallback) {
+                onCartClearCallback();
+            }
+            
+            // Limpiar backend
+            if (user && user.usertype !== 'Driver') {
+                const payload = {
+                    user_type: user.usertype === 'Guest' ? 'guest' : 'user'
+                };
+
+                if (user.usertype === 'Guest') {
+                    payload.guest_email = user.email;
+                } else {
+                    payload.user_id = user.id;
+                }
+
+                await axios.post('https://occr.pixelcrafters.digital/api/cart/clear', payload);
+                console.log('🧹 Carrito limpiado en backend');
+            }
+            
+        } catch (error) {
+            console.log('❌ Error limpiando carrito:', error.message);
         }
     };
 
