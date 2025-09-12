@@ -979,6 +979,23 @@ const AddressFormUberStyle = () => {
           
           await AsyncStorage.setItem('tempGuestData', JSON.stringify(tempGuestData));
           
+          // 🔄 NUEVO: También guardar en BD para persistencia
+          try {
+            if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
+              await newAddressService.saveGuestAddress({
+                guestEmail: tempGuestData.email.trim(),
+                address: tempGuestData.address,
+                latitude: tempGuestData.mapCoordinates.driver_lat,
+                longitude: tempGuestData.mapCoordinates.driver_long,
+                phone: null
+              });
+              console.log('✅ AddressForm: Datos Guest guardados en BD');
+            }
+          } catch (error) {
+            console.error('❌ AddressForm: Error guardando en BD:', error);
+            // Continuar con el flujo aunque falle el guardado en BD
+          }
+          
           // 3. NAVEGACIÓN SIMPLE - solo flag indicando que hay datos en AsyncStorage
           navigation.navigate('MainTabs', {
             screen: 'Carrito',

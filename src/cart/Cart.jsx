@@ -106,6 +106,44 @@ export default function Cart() {
       saveDeliveryInfo(deliveryInfo, user.id);
     }
   }, [deliveryInfo, user?.id, cart.length]);
+
+  // 🔄 NUEVO: Cargar automáticamente datos Guest desde BD al inicializar
+  useEffect(() => {
+    const loadGuestDataFromDatabase = async () => {
+      // Solo para Guests con email y sin datos ya cargados
+      if (user?.usertype === 'Guest' && user?.email && !email && !address) {
+        try {
+          console.log('🔄 Cargando datos Guest desde BD para:', user.email);
+          const guestData = await loadGuestDataFromDB(user.email);
+          
+          if (guestData) {
+            setEmail(guestData.email);
+            setAddress(guestData.address);
+            if (guestData.coordinates) {
+              setLatlong(guestData.coordinates);
+            }
+            console.log('✅ Datos Guest cargados desde BD:', {
+              email: guestData.email,
+              hasAddress: !!guestData.address,
+              hasCoordinates: !!guestData.coordinates
+            });
+            
+            // Calcular envío si tenemos datos completos
+            const currentSubtotal = getSubtotal() - getDiscountAmount();
+            if (currentSubtotal > 0 && guestData.address?.trim()) {
+              setTimeout(() => {
+                calculateShippingAndMotivation(currentSubtotal);
+              }, 300);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error cargando datos Guest desde BD:', error);
+        }
+      }
+    };
+
+    loadGuestDataFromDatabase();
+  }, [user?.usertype, user?.email, email, address]);
   
   // 🔍 DEBUG: Monitorear cambios en coordenadas
   useEffect(() => {
@@ -556,6 +594,51 @@ export default function Cart() {
     setLatlong(driverCoords);
   };
 
+  // 🔄 NUEVA FUNCIÓN: Guardar datos Guest en BD en lugar de AsyncStorage
+  const saveGuestDataToDB = async (guestEmail, addressData, coordinatesData) => {
+    try {
+      if (!guestEmail?.trim()) return false;
+
+      const addressPayload = {
+        guestEmail: guestEmail.trim(),
+        address: addressData?.address || '',
+        latitude: coordinatesData?.driver_lat || null,
+        longitude: coordinatesData?.driver_long || null,
+        phone: null // Se puede agregar en el futuro
+      };
+
+      await newAddressService.saveGuestAddress(addressPayload);
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando datos Guest en BD:', error);
+      return false;
+    }
+  };
+
+  // 🔄 NUEVA FUNCIÓN: Recuperar datos Guest desde BD en lugar de AsyncStorage
+  const loadGuestDataFromDB = async (guestEmail) => {
+    try {
+      if (!guestEmail?.trim()) return null;
+
+      const guestAddress = await newAddressService.getGuestAddress(guestEmail.trim());
+      
+      if (guestAddress) {
+        return {
+          email: guestEmail,
+          address: guestAddress.address,
+          coordinates: {
+            driver_lat: guestAddress.latitude,
+            driver_long: guestAddress.longitude
+          }
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Error cargando datos Guest desde BD:', error);
+      return null;
+    }
+  };
+
   // 🆕 FUNCIÓN: Geocoding inteligente para usuarios registrados
   const handleUserAddressGeocoding = async (addressString) => {
     // console.log('🧠 Usuario registrado: Aplicando geocoding inteligente a dirección:', addressString?.substring(0, 50) + '...');
@@ -783,7 +866,7 @@ export default function Cart() {
         // hasGuestData: !!params?.guestData
       // });
       
-      // ✅ NUEVO: Leer datos de AsyncStorage si vienen de AddressForm simplificado
+      // ✅ NUEVO: Leer datos de AsyncStorage si vienen de AddressForm simplificado (TEMPORAL: mantenemos AsyncStorage para datos temporales)
       if (params?.hasGuestDataInStorage && user?.usertype === 'Guest') {
         // Función async interna para manejar AsyncStorage
         const handleGuestDataFromStorage = async () => {
@@ -795,6 +878,16 @@ export default function Cart() {
             // Usar los datos recuperados (misma lógica que antes)
             setEmail(tempGuestData.email);
             setAddress(tempGuestData.address);
+            
+            // 🔄 NUEVO: Guardar en BD automáticamente cuando se completa la dirección
+            if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
+              await saveGuestDataToDB(
+                tempGuestData.email,
+                { address: tempGuestData.address },
+                tempGuestData.mapCoordinates
+              );
+              console.log('✅ Datos Guest guardados automáticamente en BD');
+            }
             
             if (tempGuestData.preservedDeliveryInfo) {
               const deliveryInfoToRestore = {
@@ -819,12 +912,6 @@ export default function Cart() {
             setTimeout(() => {
               const currentSubtotal = getSubtotal() - getDiscountAmount();
               if (currentSubtotal > 0 && tempGuestData.email?.trim() && tempGuestData.address?.trim()) {
-                // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar datos (AsyncStorage):', {
-                  // email: tempGuestData.email?.trim(),
-                  // address: tempGuestData.address?.trim(),
-                  // subtotal: currentSubtotal,
-                  // timestamp: new Date().toISOString()
-                // });
                 calculateShippingAndMotivation(currentSubtotal);
               }
             }, 200); // Aumentado de 100ms a 200ms
@@ -863,6 +950,19 @@ export default function Cart() {
         // Usar los datos del guest checkout
         setEmail(params.guestData.email);
         setAddress(params.guestData.address);
+        
+        // 🔄 NUEVO: Guardar en BD automáticamente cuando se reciben datos de Guest
+        if (params.guestData.email?.trim() && params.guestData.address?.trim() && params.mapCoordinates) {
+          saveGuestDataToDB(
+            params.guestData.email,
+            { address: params.guestData.address },
+            params.mapCoordinates
+          ).then(() => {
+            console.log('✅ Datos Guest guardados en BD desde guestData');
+          }).catch((error) => {
+            console.error('❌ Error guardando datos Guest desde guestData:', error);
+          });
+        }
         
         // CRITICAL: Restaurar también los datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
