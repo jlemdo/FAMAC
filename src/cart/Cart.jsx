@@ -1581,6 +1581,13 @@ export default function Cart() {
       const orderNumber = orderData?.order_id || orderData?.id || orderData?.order?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
       
+      console.log('🔍 ORDER ID DEBUG:', {
+        orderData: orderData,
+        orderNumber: orderNumber,
+        isValidOrderId: isValidOrderId,
+        userType: user?.usertype
+      });
+      
       
       // Limpiar datos inmediatamente después del pedido exitoso
       clearCart();
@@ -1600,6 +1607,28 @@ export default function Cart() {
       
       // Actualizar órdenes
       refreshOrders();
+      
+      // 🆕 GUEST FIX: Actualizar badge para Guest después del pago
+      if (user?.usertype === 'Guest' && user?.email) {
+        // Forzar actualización del badge usando la misma lógica que Order.jsx
+        try {
+          const response = await axios.get(
+            `https://occr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(user.email.trim())}`,
+            { timeout: 10000 }
+          );
+          
+          if (response.data?.status === 'success') {
+            const guestOrders = response.data.orders.data || [];
+            if (guestOrders.length > 0) {
+              // Actualizar OrderContext para mostrar badge
+              updateOrders(guestOrders);
+              console.log('🎉 GUEST BADGE: Actualizado con', guestOrders.length, 'órdenes');
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ No se pudo actualizar badge de Guest:', error.message);
+        }
+      }
       
       // 🐛 DEBUG: Logs temporales para diagnóstico OXXO
       // console.log('🎉 PAGO EXITOSO - Analizando orderData completo:', {
@@ -1623,7 +1652,7 @@ export default function Cart() {
         itemCount: itemCount,
         deliveryText: deliveryText,
         needInvoice: needInvoice,
-        orderId: isValidOrderId ? orderNumber.toString() : null,
+        orderId: orderNumber ? orderNumber.toString() : null,
         oxxoInfo: oxxoInfo // 🏪 Información del voucher OXXO si existe
       };
       

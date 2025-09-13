@@ -242,14 +242,8 @@ export default function CategoriesList() {
             cancelText: 'Continuar',
           onConfirm: () => {
             if (orderData.orderId) {
-              // 🔪 CIRUGÍA: Corregir navegación OrderDetails → OrderDetail
-              navigation.navigate('MainTabs', {
-                screen: 'Pedidos',
-                params: {
-                  screen: 'OrderDetail',
-                  params: { orderId: orderData.orderId }
-                }
-              });
+              // 🎯 IR DIRECTO A OrderDetails DE ESA ORDEN ESPECÍFICA
+              navigation.navigate('OrderDetails', { orderId: orderData.orderId });
             } else {
               // Navegar a lista de pedidos
               navigation.navigate('MainTabs', { 
