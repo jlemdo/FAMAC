@@ -264,17 +264,18 @@ const filesToProcess = [
 
 // Función principal
 function main() {
-  console.log(`🔍 Procesando ${filesToProcess.length} archivos específicos`);
+  const rootDir = path.join(__dirname, 'src'); // carpeta raíz del código
+  const filesToProcess = findJSFiles(rootDir);
+
+  console.log(`🔍 Procesando ${filesToProcess.length} archivos en ${rootDir}`);
   console.log(`📋 Buscando: ${CONSOLE_METHODS.map(m => `console.${m}()`).join(', ')}`);
-  
+
   for (const file of filesToProcess) {
     if (fs.existsSync(file)) {
       processFile(file);
-    } else {
-      console.log(`⚠️ Archivo no encontrado: ${file}`);
     }
   }
-  
+
   // Estadísticas finales
   console.log(`\n📊 Resumen de procesamiento:`);
   console.log(`   📁 Archivos procesados: ${stats.filesProcessed}`);
