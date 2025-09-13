@@ -467,17 +467,11 @@ const Order = () => {
                   // Botones originales para usuarios normales
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={[
-                        styles.detailsButton,
-                        (itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') && styles.disabledButton,
-                      ]}
-                      disabled={itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado'}
+                      style={styles.detailsButton}
                       onPress={() =>
                         navigation.navigate('OrderDetails', {orderId: itemId})
                       }>
-                      <Text style={styles.detailsText}>
-                        {(itemStatus?.toLowerCase() === 'delivered' || itemStatus?.toLowerCase() === 'entregado') ? 'Entregado' : 'Ver detalles'}
-                      </Text>
+                      <Text style={styles.detailsText}>Ver detalles</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -605,9 +599,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
   },
   detailsText: {
     fontSize: fonts.size.medium,
