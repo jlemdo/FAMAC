@@ -17,6 +17,7 @@ export function CartProvider({ children }) {
 
     // Add item to cart
     const addToCart = (product, quantityToAdd = 1) => {
+        console.log('🛒 AGREGANDO al carrito:', product.name, 'cantidad:', quantityToAdd);
         setCart((prevCart) => {
             const existingItem = prevCart.find((item) => item.id === product.id);
             if (existingItem) {
@@ -45,6 +46,7 @@ export function CartProvider({ children }) {
 
     // Remove item from cart
     const removeFromCart = (id) => {
+        console.log('🛒 REMOVIENDO del carrito:', id);
         setCart((prevCart) => prevCart.filter((item) => item.id !== id));
     };
 
@@ -65,15 +67,17 @@ export function CartProvider({ children }) {
     useEffect(() => {
         const userId = user?.id || user?.email || null; // Para guests usar email, para registrados usar id
         
-        // console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
-            // currentUserId,
-            // newUserId: userId,
-            // userType: user?.usertype,
-            // shouldClear: currentUserId !== null && currentUserId !== userId
-        // });
+        console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
+            currentUserId,
+            newUserId: userId,
+            userType: user?.usertype,
+            shouldClear: currentUserId !== null && currentUserId !== userId,
+            cartLength: cart.length
+        });
         
         // 🚨 CASO CRÍTICO: Usuario hace logout (user cambia a null)
         if (currentUserId !== null && userId === null) {
+            console.log('🚨 CARRITO: Limpiando por LOGOUT');
             clearCartOnLogout(); // Limpiar TODOS los carritos de storage
             if (onCartClearCallback) {
                 onCartClearCallback();
@@ -81,6 +85,7 @@ export function CartProvider({ children }) {
         }
         // 🔄 CASO NORMAL: Cambio entre usuarios diferentes (no logout)
         else if (currentUserId !== null && currentUserId !== userId && userId !== null) {
+            console.log('🚨 CARRITO: Limpiando por CAMBIO DE USUARIO');
             setCart([]);
             // Ejecutar callback para limpiar información adicional cuando cambia usuario
             if (onCartClearCallback) {
@@ -251,6 +256,7 @@ export function CartProvider({ children }) {
 
     // 🆕 NUEVO: Limpiar carrito completamente (memoria + backend)
     const clearCart = async () => {
+        console.log('🚨 CLEAR CART EJECUTADO - Stack trace:', new Error().stack);
         try {
             // Limpiar memoria
             setCart([]);

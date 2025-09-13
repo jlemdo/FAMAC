@@ -68,7 +68,7 @@ export default function Cart() {
   // TEMPORALMENTE COMENTADO - Sistema de temporizadores de productos
   // const [timers, setTimers] = useState({});
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState((user?.address && typeof user?.address === 'string') ? user?.address : '');
   const [selectedAddress, setSelectedAddress] = useState(null); // Nueva dirección seleccionada
   const [userAddresses, setUserAddresses] = useState([]); // Lista de direcciones del usuario
   const [loadingAddresses, setLoadingAddresses] = useState(false);
@@ -208,6 +208,12 @@ export default function Cart() {
   // 🛒 NUEVO: Verificar expiración del carrito (24h)
   useEffect(() => {
     const checkCartExpiration = async () => {
+      console.log('🔍 VERIFICANDO EXPIRACIÓN CARRITO:', { 
+        userId: user?.id, 
+        email: user?.email, 
+        type: user?.usertype,
+        cartLength: cart.length 
+      });
       try {
         // Solo verificar cuando el usuario esté definido
         if (user === undefined) return;
@@ -242,13 +248,15 @@ export default function Cart() {
         const response = await axios.post('https://occr.pixelcrafters.digital/api/cart-cleanup', payload);
         
         if (response.data.expired) {
-          // console.log('🗑️ Carrito expirado, limpiando...', {
-            // hours_since_activity: response.data.hours_since_activity,
-            // last_modified: response.data.last_modified
-          // });
+          console.log('🗑️ Carrito expirado, limpiando...', {
+            hours_since_activity: response.data.hours_since_activity,
+            last_modified: response.data.last_modified,
+            userInfo: { id: user?.id, email: user?.email, type: user?.usertype }
+          });
           
-          // Limpiar carrito usando la función del contexto
-          clearCart();
+          // 🚨 TEMPORAL: Deshabilitar limpieza automática para debug
+          // clearCart();
+          console.log('🚨 CARRITO EXPIRATION DISABLED - NO SE LIMPIA AUTOMÁTICAMENTE');
         } else {
           // console.log('✅ Carrito válido, no expirado', {
             // hours_since_activity: response.data.hours_since_activity
@@ -790,11 +798,14 @@ export default function Cart() {
     
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
+      const hasAddress = user?.address && user?.address?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
-      // 🔧 LIMPIADO: Guest ya no usa sistema legacy de direcciones
+      setAddress(hasAddress ? user.address : '');
+      console.log('🔄 GUEST: Inicializando email y dirección:', { email: user?.email, address: user?.address });
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
+      setAddress(''); // Limpiar dirección temporal para usuarios registrados
       // Cargar direcciones del usuario con el nuevo sistema
       fetchUserAddresses();
     }
