@@ -5,10 +5,25 @@ import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 
-export default function Chat({ orderId }) {
+export default function Chat({ orderId, order }) {
     const [newMessage, setNewMessage] = useState('');
     const [chatMessages, setChatMessages] = useState([]);
     const { user } = useContext(AuthContext);
+    
+    // Generar título dinámico del chat
+    const getChatTitle = () => {
+        if (user?.usertype === 'driver') {
+            const customerName = order?.customer?.first_name 
+                ? `${order.customer.first_name} ${order.customer.last_name || ''}`.trim()
+                : order?.customer?.email || 'Cliente';
+            return `💬 Chatea con ${customerName}`;
+        } else {
+            const driverName = order?.driver?.first_name 
+                ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                : order?.driver?.name || 'tu repartidor';
+            return `💬 Chatea con ${driverName}`;
+        }
+    };
 
     const handleSendMessage = async () => {
         if (!newMessage.trim()) {return;}
@@ -59,9 +74,9 @@ export default function Chat({ orderId }) {
     }, [fetchMessages]);
 
     return (
-        <View style={styles.chatContainer}>
+        <View style={styles.chatCard}>
             <ScrollView>
-                <Text style={styles.sectionTitle}>Chat</Text>
+                <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
                 <View style={styles.chatInputContainer}>
                     <TextInput
@@ -97,13 +112,16 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F2EFE4',
     },
-    chatContainer: {
-        marginTop: 5,
-        backgroundColor: '#fff',
-        padding: 15,
-        borderRadius: 8,
-        elevation: 2,
-        marginBottom: 15,
+    chatCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: {width: 0, height: 2},
+        elevation: 3,
     },
     sectionTitle: {
         fontSize: fonts.size.large,

@@ -111,46 +111,35 @@ const CustomerTracking = ({order}) => {
   // Return JSX
   return (
     <View style={styles.container}>
-      <View style={styles.deliveryInfo}>
-        <Text style={styles.sectionTitle}>Información del conductor</Text>
-        
-        {/* 🆕 Payment Status Indicator */}
-        {order?.payment_status !== 'paid' && (
-          <View style={styles.paymentWarning}>
-            <Ionicons name="warning-outline" size={16} color="#FF9800" />
-            <Text style={styles.paymentWarningText}>
-              ⚠️ Pago pendiente - El conductor no puede procesar esta orden aún
-            </Text>
-          </View>
-        )}
-        
-        {/* Connection Status Indicator */}
-        {!isConnected && (
-          <View style={styles.connectionStatus}>
-            <Ionicons name="wifi-outline" size={16} color="#E63946" />
-            <Text style={styles.connectionText}>
-              {retryCount < 3 
-                ? `Reintentando conexión... (${retryCount}/3)` 
-                : 'Sin conexión - Tocca para reintentar'
-              }
-            </Text>
-            {retryCount >= 3 && (
-              <TouchableOpacity 
-                onPress={() => fetchDriverLocation(0)} 
-                style={styles.retryButton}>
-                <Ionicons name="refresh" size={16} color="#2196F3" />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-        
-        <Text style={styles.infoText}>
-          Nombre: {order?.driver?.first_name} {order?.driver?.last_name}
-        </Text>
-        <Text style={styles.infoText}>
-          Correo: {order?.driver?.email ?? 'correo@ejemplo.com'}
-        </Text>
-      </View>
+
+      {/* Warnings de estado */}
+      {order?.payment_status !== 'paid' && (
+        <View style={styles.paymentWarning}>
+          <Ionicons name="warning-outline" size={16} color="#FF9800" />
+          <Text style={styles.paymentWarningText}>
+            ⚠️ Pago pendiente - El conductor no puede procesar esta orden aún
+          </Text>
+        </View>
+      )}
+      
+      {!isConnected && (
+        <View style={styles.connectionStatus}>
+          <Ionicons name="wifi-outline" size={16} color="#E63946" />
+          <Text style={styles.connectionText}>
+            {retryCount < 3 
+              ? `Reintentando conexión... (${retryCount}/3)` 
+              : 'Sin conexión - Toca para reintentar'
+            }
+          </Text>
+          {retryCount >= 3 && (
+            <TouchableOpacity 
+              onPress={() => fetchDriverLocation(0)} 
+              style={styles.retryButton}>
+              <Ionicons name="refresh" size={16} color="#2196F3" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {driverLocation ? (
         <View style={styles.mapWrapper}>
@@ -227,7 +216,16 @@ const CustomerTracking = ({order}) => {
           </TouchableOpacity>
         </View>
       ) : (
-        <ActivityIndicator style={styles.loader} size="large" color="#33A744" />
+        <View style={styles.waitingCard}>
+          <View style={styles.waitingContent}>
+            <Ionicons name="time-outline" size={48} color="#D27F27" />
+            <Text style={styles.waitingTitle}>Esperando a tu repartidor</Text>
+            <Text style={styles.waitingText}>
+              Tu pedido ha sido asignado a un repartidor. En unos momentos aparecerá su ubicación en tiempo real.
+            </Text>
+            <ActivityIndicator style={styles.waitingSpinner} size="large" color="#D27F27" />
+          </View>
+        </View>
       )}
     </View>
   );
@@ -318,6 +316,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginVertical: 8,
+    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: '#E63946',
   },
@@ -342,6 +341,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginVertical: 8,
+    marginHorizontal: 16,
     borderWidth: 1,
     borderColor: '#FF9800',
   },
@@ -351,6 +351,42 @@ const styles = StyleSheet.create({
     color: '#F57C00',
     marginLeft: 8,
     flex: 1,
+  },
+  
+  // 🆕 Waiting Card Styles
+  waitingCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 24,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 3,
+  },
+  waitingContent: {
+    alignItems: 'center',
+  },
+  waitingTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginTop: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  waitingText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  waitingSpinner: {
+    marginTop: 8,
   },
 });
 

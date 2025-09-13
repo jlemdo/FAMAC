@@ -190,16 +190,24 @@ export function OrderProvider({ children }) {
         fetchOrdersFromServer();
     };
 
-    // Auto-refresh cada 30 segundos cuando el usuario esté logueado
+    // ✅ DRIVER FIX: Función para refresh inmediato (útil para notificaciones push)
+    const forceRefreshOrders = useCallback(() => {
+        console.log('🔄 FORCE REFRESH para driver - nueva orden asignada');
+        fetchOrdersFromServer();
+    }, [fetchOrdersFromServer]);
+
+    // Auto-refresh optimizado por tipo de usuario
     useEffect(() => {
         if (user && (user.usertype !== 'Guest' || allowGuestOrders)) {
             // Fetch inicial
             fetchOrdersFromServer();
             
-            // Configurar auto-refresh cada 30 segundos
+            // ✅ DRIVER FIX: Auto-refresh más frecuente para drivers (5s vs 30s)
+            const refreshInterval = user.usertype === 'driver' ? 5000 : 30000;
+            
             const interval = setInterval(() => {
                 fetchOrdersFromServer();
-            }, 30000); // 30 segundos
+            }, refreshInterval);
             
             setAutoRefreshInterval(interval);
             
@@ -223,6 +231,7 @@ export function OrderProvider({ children }) {
             orderCount, 
             updateOrders, 
             refreshOrders, 
+            forceRefreshOrders, // ✅ DRIVER FIX: Nueva función para refresh inmediato
             lastFetch,
             enableGuestOrders,
             disableGuestOrders,

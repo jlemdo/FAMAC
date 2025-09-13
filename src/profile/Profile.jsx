@@ -637,9 +637,17 @@ export default function Profile({ navigation, route }) {
           
           {/* Información del usuario */}
           <View style={styles.userInfo}>
-            <Text style={styles.name}>
-              {profile.first_name} {profile.last_name}
-            </Text>
+            <View style={styles.nameContainer}>
+              <Text style={styles.name}>
+                {profile.first_name} {profile.last_name}
+              </Text>
+              {/* ✅ DRIVER FIX: Badge de Driver */}
+              {user?.usertype === 'driver' && (
+                <View style={styles.driverBadge}>
+                  <Text style={styles.driverBadgeText}>Driver</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.email}>{profile.email}</Text>
             
             {/* Indicador de estado */}
@@ -652,7 +660,8 @@ export default function Profile({ navigation, route }) {
       </View>
 
       {/* Alerta sutil para datos faltantes */}
-      {missingData.length > 0 && (
+      {/* ✅ DRIVER FIX: Ocultar alerta 'completa tu perfil' para drivers */}
+      {user?.usertype !== 'driver' && missingData.length > 0 && (
         <View style={styles.missingDataAlert}>
           <Text style={styles.missingDataTitle}>
             📝 Completa tu perfil ({missingData.length} campo{missingData.length !== 1 ? 's' : ''} pendiente{missingData.length !== 1 ? 's' : ''})
@@ -667,16 +676,17 @@ export default function Profile({ navigation, route }) {
 
       {loading && <ActivityIndicator size="large" color="#33A744" style={styles.loading} />}
 
-      {/* Botones de Acción Rápida */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.supportButton}
-          onPress={() => setShowSupportModal(true)}
-          activeOpacity={0.8}>
-          <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
-        </TouchableOpacity>
-        
-      </View>
+      {/* ✅ DRIVER FIX: Ocultar Atención al Cliente para drivers */}
+      {user?.usertype !== 'driver' && (
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.supportButton}
+            onPress={() => setShowSupportModal(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Información del Perfil */}
       <TouchableOpacity 
@@ -905,76 +915,81 @@ export default function Profile({ navigation, route }) {
               value={profile.email}
             />
 
-            <TextInput
-              ref={(ref) => registerMainInput('phone', ref)}
-              style={[
-                // Use inputNoMargin base if there's an error to avoid double spacing
-                (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
-                submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
-                !isEditingProfile && styles.disabledInput,
-                fonts.numericStyles.tabular // ✅ Aplicar estilo para números
-              ]}
-              placeholder="Teléfono (ej: 55 1234 5678)"
-              placeholderTextColor="rgba(47,47,47,0.6)"
-              keyboardType="phone-pad"
-              value={values.phone}
-              onChangeText={(text) => {
-                const formatted = formatMexicanPhone(text);
-                handleChange('phone')(formatted);
-              }}
-              onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
-              editable={isEditingProfile}
-              returnKeyType="done"
-            />
-            {submitCount > 0 && errors.phone && (
-              <Text style={styles.errorText}>{errors.phone}</Text>
+            {/* ✅ DRIVER FIX: Ocultar teléfono para drivers */}
+            {user?.usertype !== 'driver' && (
+              <>
+                <TextInput
+                  ref={(ref) => registerMainInput('phone', ref)}
+                  style={[
+                    // Use inputNoMargin base if there's an error to avoid double spacing
+                    (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
+                    submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
+                    !isEditingProfile && styles.disabledInput,
+                    fonts.numericStyles.tabular // ✅ Aplicar estilo para números
+                  ]}
+                  placeholder="Teléfono (ej: 55 1234 5678)"
+                  placeholderTextColor="rgba(47,47,47,0.6)"
+                  keyboardType="phone-pad"
+                  value={values.phone}
+                  onChangeText={(text) => {
+                    const formatted = formatMexicanPhone(text);
+                    handleChange('phone')(formatted);
+                  }}
+                  onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
+                  editable={isEditingProfile}
+                  returnKeyType="done"
+                />
+                {submitCount > 0 && errors.phone && (
+                  <Text style={styles.errorText}>{errors.phone}</Text>
+                )}
+              </>
             )}
 
 
-            {/* Fecha de cumpleaños */}
-            <TouchableOpacity
-              style={[
-                styles.input,
-                styles.dateInput,
-                submitCount > 0 && errors.birthDate && styles.inputError,
-                // Bloquear si ya tiene fecha de cumpleaños O si no está en modo edición
-                (profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? styles.disabledInput : null,
-              ]}
-              onPress={() => {
-                // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
-                const canOpenPicker = isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()));
-                // console.log('🐛 PICKER DEBUG - Can open?:', {
-                  // isEditingProfile,
-                  // profile_birthDate: profile.birthDate,
-                  // canOpenPicker
-                // });
-                if (canOpenPicker) {
-                  setShowMonthYearPicker(true);
-                }
-              }}
-              activeOpacity={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? 1 : 0.7}
-              disabled={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile}>
-              <Text
-                style={[
-                  values.birthDate ? styles.dateText : styles.datePlaceholder,
-                  // Si no es editable (no en modo edición O ya tiene fecha), usar estilo deshabilitado
-                  !isEditingProfile || (profile.birthDate && !isNaN(profile.birthDate.getTime())) ? styles.dateTextDisabled : null
-                ]}>
-                {values.birthDate
-                  ? values.birthDate.toLocaleDateString('es-ES', {
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : 'Mes y año de cumpleaños'}
-              </Text>
-              <Text style={styles.dateIcon}>📅</Text>
-            </TouchableOpacity>
-            {submitCount > 0 && errors.birthDate && (
-              <Text style={styles.errorText}>{errors.birthDate}</Text>
+            {/* ✅ DRIVER FIX: Ocultar fecha de cumpleaños para drivers */}
+            {user?.usertype !== 'driver' && (
+              <>
+                {/* Fecha de cumpleaños */}
+                <TouchableOpacity
+                  style={[
+                    styles.input,
+                    styles.dateInput,
+                    submitCount > 0 && errors.birthDate && styles.inputError,
+                    // Bloquear si ya tiene fecha de cumpleaños O si no está en modo edición
+                    (profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? styles.disabledInput : null,
+                  ]}
+                  onPress={() => {
+                    // Solo permitir abrir el picker si está en modo edición Y no tiene fecha de cumpleaños
+                    const canOpenPicker = isEditingProfile && (!profile.birthDate || isNaN(profile.birthDate.getTime()));
+                    if (canOpenPicker) {
+                      setShowMonthYearPicker(true);
+                    }
+                  }}
+                  activeOpacity={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile ? 1 : 0.7}
+                  disabled={(profile.birthDate && !isNaN(profile.birthDate.getTime())) || !isEditingProfile}>
+                  <Text
+                    style={[
+                      values.birthDate ? styles.dateText : styles.datePlaceholder,
+                      // Si no es editable (no en modo edición O ya tiene fecha), usar estilo deshabilitado
+                      !isEditingProfile || (profile.birthDate && !isNaN(profile.birthDate.getTime())) ? styles.dateTextDisabled : null
+                    ]}>
+                    {values.birthDate
+                      ? values.birthDate.toLocaleDateString('es-ES', {
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : 'Mes y año de cumpleaños'}
+                  </Text>
+                  <Text style={styles.dateIcon}>📅</Text>
+                </TouchableOpacity>
+                {submitCount > 0 && errors.birthDate && (
+                  <Text style={styles.errorText}>{errors.birthDate}</Text>
+                )}
+              </>
             )}
             
-            {/* Selector personalizado de mes y año - solo si no tiene fecha bloqueada */}
-            {showMonthYearPicker && (!profile.birthDate || isNaN(profile.birthDate.getTime())) && (
+            {/* ✅ DRIVER FIX: Ocultar modal picker para drivers */}
+            {user?.usertype !== 'driver' && showMonthYearPicker && (!profile.birthDate || isNaN(profile.birthDate.getTime())) && (
               <Modal
                 transparent
                 animationType="fade"
@@ -1146,18 +1161,20 @@ export default function Profile({ navigation, route }) {
         </Formik>
       )}
 
-      {/* Sección de Direcciones - Navegación directa */}
-      <TouchableOpacity 
-        style={styles.sectionHeader}
-        onPress={() => navigation.navigate('AddressManager')}
-        activeOpacity={0.8}>
-        <View style={styles.sectionHeaderContent}>
-          <Text style={styles.sectionHeaderTitle}>📍 Direcciones</Text>
-        </View>
-        <Text style={styles.sectionHeaderSubtitle}>
-          Gestiona tu dirección de entrega
-        </Text>
-      </TouchableOpacity>
+      {/* ✅ DRIVER FIX: Ocultar sección de direcciones para drivers */}
+      {user?.usertype !== 'driver' && (
+        <TouchableOpacity 
+          style={styles.sectionHeader}
+          onPress={() => navigation.navigate('AddressManager')}
+          activeOpacity={0.8}>
+          <View style={styles.sectionHeaderContent}>
+            <Text style={styles.sectionHeaderTitle}>📍 Direcciones</Text>
+          </View>
+          <Text style={styles.sectionHeaderSubtitle}>
+            Gestiona tu dirección de entrega
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Sección de Contraseña */}
       <TouchableOpacity 
@@ -1338,9 +1355,10 @@ export default function Profile({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {/* Modal de Atención al Cliente */}
-      <Modal
-        visible={showSupportModal}
+      {/* ✅ DRIVER FIX: Ocultar modal de Atención al Cliente para drivers */}
+      {user?.usertype !== 'driver' && (
+        <Modal
+          visible={showSupportModal}
         transparent
         animationType="slide"
         onRequestClose={() => {
@@ -1515,6 +1533,7 @@ export default function Profile({ navigation, route }) {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
+      )}
 
       {/* Modal de confirmación de cierre de sesión */}
       <Modal
@@ -1693,9 +1712,33 @@ const styles = StyleSheet.create({
     color: '#33A744',
   },
   // === TIPOGRAFÍA MIGRADA AL TEMA ===
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   name: {
     ...typography.highlight,
-    marginBottom: 4, // Mantener espaciado original
+    marginRight: 8,
+  },
+  // ✅ DRIVER FIX: Estilos para badge Driver
+  driverBadge: {
+    backgroundColor: '#D27F27',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  driverBadgeText: {
+    color: '#FFF',
+    fontSize: fonts.size.tiny,
+    fontFamily: fonts.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   email: typography.subtitle,
   loading: {

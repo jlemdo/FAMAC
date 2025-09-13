@@ -93,9 +93,9 @@ function MainTabs() {
   const {user} = useContext(AuthContext);
   const {orders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
-  // ✅ FIX: Solo usar ProfileContext para usuarios no-driver
-  const profileContext = user?.usertype !== 'driver' ? useProfile() : { hasIncompleteProfile: false };
-  const {hasIncompleteProfile} = profileContext;
+  // ✅ FIXED: Siempre llamar useProfile(), validar condicionalmente después
+  const profileContext = useProfile();
+  const hasIncompleteProfile = user?.usertype !== 'driver' ? profileContext.hasIncompleteProfile : false;
   
   // Memoized cart badge calculation with real-time updates
   const cartBadge = useMemo(() => {
@@ -110,15 +110,21 @@ function MainTabs() {
   const ordersBadge = useMemo(() => {
     if (!orders || orders.length === 0) return null;
     
-    // Count only active orders (not delivered/completed)
-    const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-    const activeOrders = orders.filter(order => 
-      order.status && !completedStatuses.includes(order.status.toLowerCase())
-    );
+    let activeOrders;
+    if (user?.usertype === 'driver') {
+      // Para drivers: solo contar órdenes "Open" (disponibles para aceptar)
+      activeOrders = orders.filter(order => order.status === 'Open');
+    } else {
+      // Para usuarios normales: contar órdenes no completadas
+      const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+      activeOrders = orders.filter(order => 
+        order.status && !completedStatuses.includes(order.status.toLowerCase())
+      );
+    }
     
     if (activeOrders.length === 0) return null;
     return activeOrders.length > 99 ? '+99' : activeOrders.length;
-  }, [orders]);
+  }, [orders, user?.usertype]);
 
   // Función para obtener altura del bottom tab basada en el dispositivo
   const getTabBarHeight = () => {

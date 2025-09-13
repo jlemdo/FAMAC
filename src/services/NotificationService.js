@@ -7,6 +7,7 @@ class NotificationService {
     this.token = null;
     this.addNotificationCallback = null; // Para conectar con NotificationContext
     this.navigationRef = null; // Para navegación desde notificaciones
+    this.forceRefreshOrdersCallback = null; // ✅ DRIVER FIX: Para force refresh de órdenes
   }
 
   // Conectar con el sistema de notificaciones del header
@@ -17,6 +18,11 @@ class NotificationService {
   // Conectar con navegación para manejar taps en notificaciones
   setNavigationRef(navigationRef) {
     this.navigationRef = navigationRef;
+  }
+
+  // ✅ DRIVER FIX: Conectar con OrderContext para force refresh
+  setForceRefreshOrdersCallback(callback) {
+    this.forceRefreshOrdersCallback = callback;
   }
 
   // Solicitar permisos

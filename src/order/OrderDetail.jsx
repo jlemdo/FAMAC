@@ -273,6 +273,36 @@ const OrderDetails = () => {
             <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
             
             <View style={styles.deliveryBreakdown}>
+              {/* Nombre del cliente (para drivers) */}
+              {user?.usertype === 'driver' && (order?.customer?.first_name || order?.customer?.email) && (
+                <View style={styles.deliveryRow}>
+                  <View style={styles.deliveryLabelContainer}>
+                    <Ionicons name="person-outline" size={16} color="#2196F3" />
+                    <Text style={styles.deliveryLabel}>Cliente</Text>
+                  </View>
+                  <Text style={styles.deliveryValue}>
+                    {order.customer?.first_name 
+                      ? `${order.customer.first_name} ${order.customer.last_name || ''}`.trim()
+                      : order.customer?.email || 'Cliente'}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Información del conductor (para usuarios) */}
+              {user?.usertype !== 'driver' && order?.driver && (
+                <View style={styles.deliveryRow}>
+                  <View style={styles.deliveryLabelContainer}>
+                    <Ionicons name="car-outline" size={16} color="#D27F27" />
+                    <Text style={styles.deliveryLabel}>Conductor</Text>
+                  </View>
+                  <Text style={styles.deliveryValue}>
+                    {order.driver?.first_name 
+                      ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                      : order.driver?.name || 'Tu repartidor'}
+                  </Text>
+                </View>
+              )}
+              
               {/* Fecha programada */}
               {order?.delivery_date && (
                 <View style={styles.deliveryRow}>
@@ -348,13 +378,21 @@ const OrderDetails = () => {
           // 2. Los drivers siempre ven todo
           <>
             <DriverTracking order={order} />
-            <Chat orderId={orderId} />
+            
+            
+            {/* Solo mostrar chat si la orden no está entregada */}
+            {order?.status?.toLowerCase() !== 'delivered' && order?.status?.toLowerCase() !== 'entregado' && (
+              <Chat orderId={orderId} order={order} />
+            )}
           </>
         ) : order.driver ? (
           // 1. Clientes solo ven Tracking y Chat después de asignar driver
           <>
             <CustomerTracking order={order} />
-            <Chat orderId={orderId} />
+            {/* Solo mostrar chat si la orden no está entregada */}
+            {order?.status?.toLowerCase() !== 'delivered' && order?.status?.toLowerCase() !== 'entregado' && (
+              <Chat orderId={orderId} order={order} />
+            )}
           </>
         ) : (
           // Mientras esté en “Open” (sin driver asignado)
@@ -365,13 +403,15 @@ const OrderDetails = () => {
           </View>
         )}
 
-        {/* Botón de Atención al Cliente */}
-        <TouchableOpacity
-          style={styles.supportButton}
-          onPress={() => setShowSupportModal(true)}
-          activeOpacity={0.8}>
-          <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
-        </TouchableOpacity>
+        {/* Botón de Atención al Cliente - Solo para usuarios, no drivers */}
+        {user?.usertype !== 'driver' && (
+          <TouchableOpacity
+            style={styles.supportButton}
+            onPress={() => setShowSupportModal(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Modal de Atención al Cliente */}
@@ -927,6 +967,30 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.small,
     color: '#666',
     lineHeight: 20,
+  },
+  
+  // 🧭 Estilos para botón de navegar
+  navigateButton: {
+    backgroundColor: '#2196F3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  navigateButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+    marginLeft: 8,
   },
 });
 

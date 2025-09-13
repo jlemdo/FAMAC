@@ -351,9 +351,7 @@ const Order = () => {
             const totalPrice = isGuestOrder ? 
               (item.total_amount || item.total_price || item.price || 0) :
               (item.total_amount || item.total_price || item.price || 0);
-            const orderDetails = isGuestOrder ? 
-              (Array.isArray(item.order_details) ? item.order_details : []) :
-              (Array.isArray(item.order_details) ? item.order_details : []);
+            const orderDetails = Array.isArray(item.order_details) ? item.order_details : [];
             const itemId = item.id || Math.random().toString();
             const itemStatus = item.status || 'Pendiente';
             const paymentStatus = item.payment_status || 'pending'; // 🆕 Nuevo campo
@@ -407,14 +405,6 @@ const Order = () => {
                         {item.delivery_date} • {item.delivery_slot || 'Horario flexible'}
                       </Text>
                     </View>
-                    {hasValidCoordinates && (
-                      <View style={styles.driverRow}>
-                        <Text style={styles.driverLabel}>🧭 Coordenadas:</Text>
-                        <Text style={styles.driverValue}>
-                          {customerLat.toFixed(4)}, {customerLong.toFixed(4)}
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 )}
 
@@ -459,60 +449,19 @@ const Order = () => {
                   })
                 ) : (
                   <Text style={styles.noItems}>
-                    No hay artículos en este pedido
+                    {isDriver ? 'Ver detalles para más información' : 'No hay artículos en este pedido'}
                   </Text>
                 )}
 
-                {/* 🚚 BOTONES ESPECÍFICOS PARA DRIVERS */}
+                {/* 🚚 BOTÓN ÚNICO PARA DRIVERS */}
                 {isDriver ? (
                   <View style={styles.driverButtonsContainer}>
-                    {/* Primera fila: Ver detalles + Navegar */}
-                    <View style={styles.driverButtonRow}>
-                      <TouchableOpacity
-                        style={[styles.driverButton, styles.detailsButton]}
-                        onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
-                      >
-                        <Text style={styles.driverButtonText}>📋 Ver detalles</Text>
-                      </TouchableOpacity>
-
-                      {hasValidCoordinates && (
-                        <TouchableOpacity
-                          style={[styles.driverButton, styles.navigateButton]}
-                          onPress={() => {
-                            const url = `https://www.google.com/maps/dir/?api=1&destination=${customerLat},${customerLong}`;
-                            Linking.openURL(url);
-                          }}
-                        >
-                          <Text style={styles.driverButtonText}>🧭 Navegar</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* Segunda fila: Llamar + Ver mapa */}
-                    <View style={styles.driverButtonRow}>
-                      <TouchableOpacity
-                        style={[styles.driverButton, styles.callButton]}
-                        onPress={() => {
-                          // Extraer teléfono si existe en los datos
-                          const phone = item.customer_phone || item.phone || '5555555555';
-                          Linking.openURL(`tel:${phone}`);
-                        }}
-                      >
-                        <Text style={styles.driverButtonText}>📞 Llamar</Text>
-                      </TouchableOpacity>
-
-                      {hasValidCoordinates && (
-                        <TouchableOpacity
-                          style={[styles.driverButton, styles.mapButton]}
-                          onPress={() => {
-                            const url = `https://maps.google.com/?q=${customerLat},${customerLong}`;
-                            Linking.openURL(url);
-                          }}
-                        >
-                          <Text style={styles.driverButtonText}>📍 Ver mapa</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <TouchableOpacity
+                      style={[styles.driverButton, styles.detailsButton]}
+                      onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
+                    >
+                      <Text style={styles.driverButtonText}>📋 Ver detalles</Text>
+                    </TouchableOpacity>
                   </View>
                 ) : (
                   // Botones originales para usuarios normales
@@ -905,11 +854,6 @@ const styles = StyleSheet.create({
   driverButtonsContainer: {
     marginTop: 12,
   },
-  driverButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
   driverButton: {
     flex: 1,
     paddingVertical: 10,
@@ -925,16 +869,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
     textAlign: 'center',
-  },
-  // Colores específicos por acción
-  navigateButton: {
-    backgroundColor: '#2196F3', // Azul para navegación
-  },
-  callButton: {
-    backgroundColor: '#4CAF50', // Verde para llamada
-  },
-  mapButton: {
-    backgroundColor: '#FF9800', // Naranja para mapa
   },
   
 });
