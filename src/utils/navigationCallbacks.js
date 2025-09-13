@@ -25,12 +25,12 @@ export const registerNavigationCallback = (id, callback) => {
   // Auto-limpiar callback después de 5 minutos (prevenir memory leaks)
   setTimeout(() => {
     if (navigationCallbacks.has(id)) {
-      console.log(`📝 Auto-limpiando callback: ${id}`);
+      // console.log(`📝 Auto-limpiando callback: ${id}`);
       navigationCallbacks.delete(id);
     }
   }, 5 * 60 * 1000);
   
-  console.log(`📝 Callback registrado: ${id}`);
+  // console.log(`📝 Callback registrado: ${id}`);
 };
 
 /**
@@ -40,16 +40,16 @@ export const executeNavigationCallback = (id, ...args) => {
   const callback = navigationCallbacks.get(id);
   
   if (!callback) {
-    console.warn(`⚠️ Callback no encontrado: ${id}`);
+    // console.warn(`⚠️ Callback no encontrado: ${id}`);
     return false;
   }
   
   try {
-    console.log(`🚀 Ejecutando callback: ${id}`);
+    // console.log(`🚀 Ejecutando callback: ${id}`);
     callback(...args);
     return true;
   } catch (error) {
-    console.error(`❌ Error ejecutando callback ${id}:`, error);
+    // console.error(`❌ Error ejecutando callback ${id}:`, error);
     return false;
   }
 };
@@ -60,7 +60,7 @@ export const executeNavigationCallback = (id, ...args) => {
 export const cleanupNavigationCallback = (id) => {
   if (navigationCallbacks.has(id)) {
     navigationCallbacks.delete(id);
-    console.log(`🗑️ Callback limpiado: ${id}`);
+    // console.log(`🗑️ Callback limpiado: ${id}`);
     return true;
   }
   return false;
@@ -72,7 +72,7 @@ export const cleanupNavigationCallback = (id) => {
 export const cleanupAllNavigationCallbacks = () => {
   const count = navigationCallbacks.size;
   navigationCallbacks.clear();
-  console.log(`🗑️ ${count} callbacks limpiados`);
+  // console.log(`🗑️ ${count} callbacks limpiados`);
 };
 
 /**

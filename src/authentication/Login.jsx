@@ -133,12 +133,12 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         // - LOGINS POSTERIORES: Apple NO envía email, pero backend devuelve usuario existente con sus datos originales
         // - SOLUCIÓN: Confiar en el backend, no generar emails falsos
         
-        console.log('🍎 Apple Login Debug:', {
-          isFirstTime: !!email, // Si hay email directo, es primera vez
-          emailFromApple: email, // null en logins posteriores
-          appleUserId: appleUserId,
-          hasIdentityToken: !!identityToken
-        });
+        // console.log('🍎 Apple Login Debug:', {
+          // isFirstTime: !!email, // Si hay email directo, es primera vez
+          // emailFromApple: email, // null en logins posteriores
+          // appleUserId: appleUserId,
+          // hasIdentityToken: !!identityToken
+        // });
         
         // ✅ PRIORIDAD 1: Usar datos reales de Apple cuando estén disponibles
         // Solo generar fallbacks cuando Apple NO proporcione datos
@@ -224,25 +224,25 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       try {
         await GoogleSignin.signOut();
       } catch (error) {
-        console.log('⚠️ signOut falló (normal si no hay sesión):', error.message);
+        // console.log('⚠️ signOut falló (normal si no hay sesión):', error.message);
       }
       
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
       
       const userInfo = await GoogleSignin.signIn();
-      console.log('✅ GoogleSignin.signIn() exitoso');
-      console.log('📊 userInfo recibido:', JSON.stringify(userInfo, null, 2));
+      // console.log('✅ GoogleSignin.signIn() exitoso');
+      // console.log('📊 userInfo recibido:', JSON.stringify(userInfo, null, 2));
       
       // Obtener el ID token
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
       const { user } = userInfo.data; // Acceso correcto - es userInfo.data.user
-      console.log('👤 Datos de usuario extraídos:', {
-        email: user?.email,
-        name: user?.name,
-        givenName: user?.givenName,
-        familyName: user?.familyName
-      });
+      // console.log('👤 Datos de usuario extraídos:', {
+        // email: user?.email,
+        // name: user?.name,
+        // givenName: user?.givenName,
+        // familyName: user?.familyName
+      // });
       
 
       // Enviar el ID token CON los datos del usuario para el backend
@@ -290,12 +290,12 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       }, 500);
 
     } catch (error) {
-      console.log('📊 Error completo:', JSON.stringify(error, null, 2));
-      console.log('🔍 statusCodes disponibles:', {
-        SIGN_IN_CANCELLED: statusCodes.SIGN_IN_CANCELLED,
-        IN_PROGRESS: statusCodes.IN_PROGRESS,
-        PLAY_SERVICES_NOT_AVAILABLE: statusCodes.PLAY_SERVICES_NOT_AVAILABLE
-      });
+      // console.log('📊 Error completo:', JSON.stringify(error, null, 2));
+      // console.log('🔍 statusCodes disponibles:', {
+        // SIGN_IN_CANCELLED: statusCodes.SIGN_IN_CANCELLED,
+        // IN_PROGRESS: statusCodes.IN_PROGRESS,
+        // PLAY_SERVICES_NOT_AVAILABLE: statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+      // });
       
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         showAlert({

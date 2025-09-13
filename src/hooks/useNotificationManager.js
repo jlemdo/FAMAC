@@ -17,18 +17,18 @@ export const useNotificationManager = (user) => {
         // Solo proceder si hay cambio real de usuario
         if (currentUser === previousUser) return;
         
-        console.log('👤 CAMBIO DE USUARIO DETECTADO:', {
-          from: previousUser ? {
-            id: previousUser.id,
-            email: previousUser.email,
-            usertype: previousUser.usertype
-          } : null,
-          to: currentUser ? {
-            id: currentUser.id,
-            email: currentUser.email,  
-            usertype: currentUser.usertype
-          } : null
-        });
+        // console.log('👤 CAMBIO DE USUARIO DETECTADO:', {
+          // from: previousUser ? {
+            // id: previousUser.id,
+            // email: previousUser.email,
+            // usertype: previousUser.usertype
+          // } : null,
+          // to: currentUser ? {
+            // id: currentUser.id,
+            // email: currentUser.email,
+            // usertype: currentUser.usertype
+          // } : null
+        // });
 
         // Caso 1: Usuario se desloguea (logout)
         if (previousUser && !currentUser) {

@@ -27,7 +27,7 @@ export default function CustomAlert({
   onCancel,
   onConfirm
 }) {
-  console.log('🚨 CustomAlert renderizado:', { visible, type, title, message });
+  // console.log('🚨 CustomAlert renderizado:', { visible, type, title, message });
   const color = ALERT_COLORS[type] || ALERT_COLORS.info;
   return (
     <Modal 

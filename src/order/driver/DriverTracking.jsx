@@ -328,7 +328,7 @@ const DriverTracking = ({order}) => {
         
         {order?.payment_status === 'paid' ? (
           <>
-            {currentStatus == 'Open' && (
+            {(currentStatus == 'Open' || currentStatus == 'Abierto') && (
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => showConfirmationModal('accept')}>

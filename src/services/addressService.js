@@ -15,7 +15,7 @@ export const addressService = {
       
       const response = await axios.get(`${BASE_URL}/fetch_address/${userId}`);
       
-      console.log('🔍 Tipo de respuesta:', typeof response.data, 'Array?', Array.isArray(response.data));
+      // console.log('🔍 Tipo de respuesta:', typeof response.data, 'Array?', Array.isArray(response.data));
       
       // Manejar diferentes formatos de respuesta del backend
       if (response.data && Array.isArray(response.data)) {
@@ -23,10 +23,10 @@ export const addressService = {
       } else if (response.data?.addresses && Array.isArray(response.data.addresses)) {
         return response.data.addresses;
       } else if (response.data?.status === 'success' && response.data?.data) {
-        console.log('📋 Usando formato: {status: success, data: Array}');
+        // console.log('📋 Usando formato: {status: success, data: Array}');
         return Array.isArray(response.data.data) ? response.data.data : [];
       } else if (response.data?.success && response.data?.data) {
-        console.log('📋 Usando formato: {success: true, data: Array}');
+        // console.log('📋 Usando formato: {success: true, data: Array}');
         return Array.isArray(response.data.data) ? response.data.data : [];
       } else {
         return [];

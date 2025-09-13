@@ -38,4 +38,4 @@ export const IS_DEVELOPMENT = ENVIRONMENT === 'development';
 export const IS_PRODUCTION = ENVIRONMENT === 'production';
 
 // Log para confirmar configuración actual
-console.log(`🌐 Entorno activo: ${ENVIRONMENT_NAME} (${API_BASE_URL})`);
+// console.log(`🌐 Entorno activo: ${ENVIRONMENT_NAME} (${API_BASE_URL})`);

@@ -66,7 +66,7 @@ export const navigateToAddressForm = (navigation, preset, customParams = {}) => 
     ...customParams
   };
   
-  console.log(`🧭 Navegando a AddressFormUberStyle con preset: ${preset}`, finalParams);
+  // console.log(`🧭 Navegando a AddressFormUberStyle con preset: ${preset}`, finalParams);
   
   navigation.navigate('AddressFormUberStyle', finalParams);
 };

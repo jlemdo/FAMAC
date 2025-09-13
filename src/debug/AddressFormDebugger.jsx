@@ -275,28 +275,28 @@ export const useAddressFormDebugger = () => {
 
     return {
       log: (message, type = 'info', data = null) => {
-        console.log(`🐛 AddressForm [${type}]:`, message, data);
+        // console.log(`🐛 AddressForm [${type}]:`, message, data);
         
         if (debugInstance && debugInstance.addLog) {
           debugInstance.addLog(message, type, data);
         }
       },
       trackButton: (buttonId, state, additionalData = {}) => {
-        console.log(`🔘 Button [${buttonId}]:`, state, additionalData);
+        // console.log(`🔘 Button [${buttonId}]:`, state, additionalData);
         
         if (debugInstance && debugInstance.trackButton) {
           debugInstance.trackButton(buttonId, state, additionalData);
         }
       },
       trackNavigation: (from, to, params = {}) => {
-        console.log(`🧭 Navigation: ${from} → ${to}`, params);
+        // console.log(`🧭 Navigation: ${from} → ${to}`, params);
         
         if (debugInstance && debugInstance.trackNavigation) {
           debugInstance.trackNavigation(from, to, params);
         }
       },
       trackAsync: (functionName, stage, result = null) => {
-        console.log(`⚡ Async [${functionName}]: ${stage}`, result);
+        // console.log(`⚡ Async [${functionName}]: ${stage}`, result);
         
         if (debugInstance && debugInstance.trackAsync) {
           debugInstance.trackAsync(functionName, stage, result);

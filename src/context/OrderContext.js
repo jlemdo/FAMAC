@@ -17,15 +17,15 @@ export function OrderProvider({ children }) {
 
     // Función para obtener órdenes del servidor
     const fetchOrdersFromServer = useCallback(async () => {
-        console.log('🔍 FETCH ORDERS DEBUG:', {
-            hasUser: !!user,
-            userType: user?.usertype,
-            userId: user?.id,
-            userEmail: user?.email,
-            allowGuestOrders
-        });
+        // console.log('🔍 FETCH ORDERS DEBUG:', {
+            // hasUser: !!user,
+            // userType: user?.usertype,
+            // userId: user?.id,
+            // userEmail: user?.email,
+            // allowGuestOrders
+        // });
         
-        console.log('👤 USER COMPLETO:', JSON.stringify(user, null, 2));
+        // console.log('👤 USER COMPLETO:', JSON.stringify(user, null, 2));
 
         // ✅ Solo bloquear si no hay usuario o si es Guest sin permisos
         if (!user) {
@@ -62,7 +62,7 @@ export function OrderProvider({ children }) {
                 timeout: 10000
             };
             
-            console.log('📤 CONFIG DE REQUEST:', JSON.stringify(config, null, 2));
+            // console.log('📤 CONFIG DE REQUEST:', JSON.stringify(config, null, 2));
             
             // PRUEBA DEFINITIVA: usar fetch() en lugar de axios
             
@@ -94,10 +94,19 @@ export function OrderProvider({ children }) {
             
             const ordersData = fetchData.orders || [];
             
-            console.log('📦 Orders received:', {
-                count: ordersData.length,
-                response: fetchData
-            });
+            // 🔍 DEBUG TEMPORAL: Ver órdenes recibidas para drivers
+            if (user.usertype === 'driver') {
+                console.log('🚚 DRIVER ORDERS DEBUG:', {
+                    count: ordersData.length,
+                    orders: ordersData.map(order => ({
+                        id: order.id,
+                        status: order.status,
+                        payment_status: order.payment_status,
+                        driver_id: order.driver_id,
+                        user_email: order.user_email
+                    }))
+                });
+            }
             
             // 🔍 DEBUG TEMPORAL REMOVIDO - Ya no necesario
             
@@ -109,12 +118,14 @@ export function OrderProvider({ children }) {
                 // 1. Pago completado
                 // 2. Estados específicos de workflow del driver
                 filteredOrders = ordersData.filter(order => {
-                    const paymentValid = ['paid'].includes(order.payment_status);
-                    const statusValid = ['Open', 'On the Way', 'Delivered'].includes(order.status);
+                    // 🔍 TEMPORAL: Filtro más permisivo para debug
+                    const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
+                    const statusValid = ['Open', 'Abierto', 'On the Way', 'Delivered', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status);
                     
                     console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
                         payment_status: order.payment_status,
                         status: order.status,
+                        driver_id: order.driver_id,
                         paymentValid,
                         statusValid,
                         incluir: paymentValid && statusValid
@@ -123,7 +134,7 @@ export function OrderProvider({ children }) {
                     return paymentValid && statusValid;
                 });
                 
-                console.log(`✅ DRIVER FILTRADO: ${ordersData.length} → ${filteredOrders.length} órdenes válidas`);
+                // console.log(`✅ DRIVER FILTRADO: ${ordersData.length} → ${filteredOrders.length} órdenes válidas`);
             }
             
             // Ordenar por fecha descendente
@@ -136,8 +147,8 @@ export function OrderProvider({ children }) {
             // Contar órdenes activas según tipo de usuario
             let activeOrders;
             if (user.usertype === 'driver') {
-                // Para drivers: solo contar órdenes "Open" (disponibles para aceptar)
-                activeOrders = sortedOrders.filter(order => order.status === 'Open');
+                // Para drivers: contar órdenes asignadas y en progreso (incluyendo estados de asignación)
+                activeOrders = sortedOrders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
             } else {
                 // Para usuarios normales: contar órdenes no completadas
                 const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
@@ -148,10 +159,10 @@ export function OrderProvider({ children }) {
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());
 
-            console.log('✅ Orders processed:', {
-                total: sortedOrders.length,
-                active: activeOrders.length
-            });
+            // console.log('✅ Orders processed:', {
+                // total: sortedOrders.length,
+                // active: activeOrders.length
+            // });
             
         } catch (err) {
             
@@ -192,7 +203,7 @@ export function OrderProvider({ children }) {
 
     // ✅ DRIVER FIX: Función para refresh inmediato (útil para notificaciones push)
     const forceRefreshOrders = useCallback(() => {
-        console.log('🔄 FORCE REFRESH para driver - nueva orden asignada');
+        // console.log('🔄 FORCE REFRESH para driver - nueva orden asignada');
         fetchOrdersFromServer();
     }, [fetchOrdersFromServer]);
 

@@ -5,7 +5,7 @@ const API_BASE_URL = `${ENV_API_BASE_URL}/api`;
 const BASE_URL = ENV_API_BASE_URL;
 
 // Log para confirmar configuración
-console.log(`🔗 API configurada para: ${ENVIRONMENT_NAME}`);
+// console.log(`🔗 API configurada para: ${ENVIRONMENT_NAME}`);
 
 export const API_ENDPOINTS = {
   // Auth

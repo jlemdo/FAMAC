@@ -275,11 +275,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
       
-      console.log('🍎 Respuesta Apple recibida:', {
-        user: appleAuthRequestResponse.user,
-        hasToken: !!appleAuthRequestResponse.identityToken,
-        hasEmail: !!appleAuthRequestResponse.email
-      });
+      // console.log('🍎 Respuesta Apple recibida:', {
+        // user: appleAuthRequestResponse.user,
+        // hasToken: !!appleAuthRequestResponse.identityToken,
+        // hasEmail: !!appleAuthRequestResponse.email
+      // });
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
       
@@ -332,7 +332,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
               return;
             }
             
-            console.log('✅ FASE 1 Signup: Permisos + Token FCM exitosos (sin backend, sin listeners)');
+            // console.log('✅ FASE 1 Signup: Permisos + Token FCM exitosos (sin backend, sin listeners)');
             
             // 🚫 INTENCIONALMENTE NO llamamos:
             // - sendTokenToBackend() (lo probaremos en FASE 2)
@@ -444,12 +444,12 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         }
       }
     } catch (error) {
-      console.log('🚨 ERROR DE REGISTRO:', {
-        status: error.response?.status,
-        message: error.response?.data?.message,
-        errors: error.response?.data?.errors,
-        fullError: error.response?.data
-      });
+      // console.log('🚨 ERROR DE REGISTRO:', {
+        // status: error.response?.status,
+        // message: error.response?.data?.message,
+        // errors: error.response?.data?.errors,
+        // fullError: error.response?.data
+      // });
 
       // Manejar errores de validación específicos
       let errorMessage = 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.';

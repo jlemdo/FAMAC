@@ -130,16 +130,16 @@ export function CartProvider({ children }) {
                 payload.user_id = user.id;
             }
             
-            console.log('💾 GUARDANDO CARRITO EN BACKEND:', {
-                userType: user.usertype,
-                userId: user.id || user.email,
-                items: cart.length
-            });
+            // console.log('💾 GUARDANDO CARRITO EN BACKEND:', {
+                // userType: user.usertype,
+                // userId: user.id || user.email,
+                // items: cart.length
+            // });
 
             await axios.post('https://occr.pixelcrafters.digital/api/cart/save', payload);
             
         } catch (error) {
-            console.log('❌ Error guardando carrito en backend:', error.message);
+            // console.log('❌ Error guardando carrito en backend:', error.message);
             // Fallback: guardar localmente como respaldo
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
@@ -198,23 +198,23 @@ export function CartProvider({ children }) {
                 payload.user_id = user.id;
             }
             
-            console.log('📦 CARGANDO CARRITO DESDE BACKEND:', {
-                userType: user.usertype,
-                userId: user.id || user.email
-            });
+            // console.log('📦 CARGANDO CARRITO DESDE BACKEND:', {
+                // userType: user.usertype,
+                // userId: user.id || user.email
+            // });
             
             const response = await axios.post('https://occr.pixelcrafters.digital/api/cart/get', payload);
             
             if (response.data.success && response.data.cart.length > 0) {
-                console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del backend`);
+                // console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del backend`);
                 setCart(response.data.cart);
             } else {
-                console.log('📦 No hay carrito en backend o está vacío');
+                // console.log('📦 No hay carrito en backend o está vacío');
                 setCart([]);
             }
             
         } catch (error) {
-            console.log('❌ Error cargando carrito desde backend:', error.message);
+            // console.log('❌ Error cargando carrito desde backend:', error.message);
             // Fallback: intentar cargar desde AsyncStorage local
             try {
                 const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
@@ -227,12 +227,12 @@ export function CartProvider({ children }) {
                     const twentyFourHours = 24 * 60 * 60 * 1000;
                     
                     if (currentTime - timestamp < twentyFourHours && items.length > 0) {
-                        console.log(`🛒 Fallback: Restaurando ${items.length} items desde AsyncStorage`);
+                        // console.log(`🛒 Fallback: Restaurando ${items.length} items desde AsyncStorage`);
                         setCart(items);
                     }
                 }
             } catch (fallbackError) {
-                console.log('❌ Fallback también falló:', fallbackError.message);
+                // console.log('❌ Fallback también falló:', fallbackError.message);
             }
         }
     };
@@ -273,11 +273,11 @@ export function CartProvider({ children }) {
                 }
 
                 await axios.post('https://occr.pixelcrafters.digital/api/cart/clear', payload);
-                console.log('🧹 Carrito limpiado en backend');
+                // console.log('🧹 Carrito limpiado en backend');
             }
             
         } catch (error) {
-            console.log('❌ Error limpiando carrito:', error.message);
+            // console.log('❌ Error limpiando carrito:', error.message);
         }
     };
 

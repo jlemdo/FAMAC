@@ -113,7 +113,7 @@ export default function Cart() {
       // Solo para Guests con email y sin datos ya cargados
       if (user?.usertype === 'Guest' && user?.email && !email && !address) {
         try {
-          console.log('🔄 Cargando datos Guest desde BD para:', user.email);
+          // console.log('🔄 Cargando datos Guest desde BD para:', user.email);
           const guestData = await loadGuestDataFromDB(user.email);
           
           if (guestData) {
@@ -122,11 +122,11 @@ export default function Cart() {
             if (guestData.coordinates) {
               setLatlong(guestData.coordinates);
             }
-            console.log('✅ Datos Guest cargados desde BD:', {
-              email: guestData.email,
-              hasAddress: !!guestData.address,
-              hasCoordinates: !!guestData.coordinates
-            });
+            // console.log('✅ Datos Guest cargados desde BD:', {
+              // email: guestData.email,
+              // hasAddress: !!guestData.address,
+              // hasCoordinates: !!guestData.coordinates
+            // });
             
             // Calcular envío si tenemos datos completos
             const currentSubtotal = getSubtotal() - getDiscountAmount();
@@ -137,7 +137,7 @@ export default function Cart() {
             }
           }
         } catch (error) {
-          console.error('❌ Error cargando datos Guest desde BD:', error);
+          // console.error('❌ Error cargando datos Guest desde BD:', error);
         }
       }
     };
@@ -610,7 +610,7 @@ export default function Cart() {
       await newAddressService.saveGuestAddress(addressPayload);
       return true;
     } catch (error) {
-      console.error('❌ Error guardando datos Guest en BD:', error);
+      // console.error('❌ Error guardando datos Guest en BD:', error);
       return false;
     }
   };
@@ -634,7 +634,7 @@ export default function Cart() {
       }
       return null;
     } catch (error) {
-      console.error('❌ Error cargando datos Guest desde BD:', error);
+      // console.error('❌ Error cargando datos Guest desde BD:', error);
       return null;
     }
   };
@@ -886,7 +886,7 @@ export default function Cart() {
                 { address: tempGuestData.address },
                 tempGuestData.mapCoordinates
               );
-              console.log('✅ Datos Guest guardados automáticamente en BD');
+              // console.log('✅ Datos Guest guardados automáticamente en BD');
             }
             
             if (tempGuestData.preservedDeliveryInfo) {
@@ -958,9 +958,9 @@ export default function Cart() {
             { address: params.guestData.address },
             params.mapCoordinates
           ).then(() => {
-            console.log('✅ Datos Guest guardados en BD desde guestData');
+            // console.log('✅ Datos Guest guardados en BD desde guestData');
           }).catch((error) => {
-            console.error('❌ Error guardando datos Guest desde guestData:', error);
+            // console.error('❌ Error guardando datos Guest desde guestData:', error);
           });
         }
         
@@ -1162,21 +1162,21 @@ export default function Cart() {
     
     if (loading) return;
     
-    console.log('💳 COMPLETE ORDER DEBUG:', {
-      userType: user?.usertype,
-      userId: user?.id,
-      userEmail: user?.email,
-      deliveryInfo: !!deliveryInfo,
-      totalPrice: totalPrice,
-      subtotal: getSubtotal(),
-      shippingCost: shippingCost,
-      finalTotal: getFinalTotal(),
-      hasEmail: !!email?.trim(),
-      hasAddress: !!address?.trim(),
-      hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
-      guestJustCompletedAddress,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('💳 COMPLETE ORDER DEBUG:', {
+      // userType: user?.usertype,
+      // userId: user?.id,
+      // userEmail: user?.email,
+      // deliveryInfo: !!deliveryInfo,
+      // totalPrice: totalPrice,
+      // subtotal: getSubtotal(),
+      // shippingCost: shippingCost,
+      // finalTotal: getFinalTotal(),
+      // hasEmail: !!email?.trim(),
+      // hasAddress: !!address?.trim(),
+      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
+      // guestJustCompletedAddress,
+      // timestamp: new Date().toISOString()
+    // });
     
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
     
@@ -1718,24 +1718,24 @@ export default function Cart() {
       let fcmToken = null;
       try {
         fcmToken = NotificationService.token || await NotificationService.getToken();
-        console.log('🔔 FCM TOKEN DEBUG - Orden:', {
-          userType: user?.usertype,
-          userId: user?.id,
-          userEmail: user?.email,
-          hasToken: !!fcmToken,
-          tokenLength: fcmToken ? fcmToken.length : 0,
-          tokenPreview: fcmToken ? `${fcmToken.substring(0, 30)}...` : 'NULL',
-          notificationService: {
-            hasInstance: !!NotificationService,
-            cachedToken: !!NotificationService.token
-          }
-        });
+        // console.log('🔔 FCM TOKEN DEBUG - Orden:', {
+          // userType: user?.usertype,
+          // userId: user?.id,
+          // userEmail: user?.email,
+          // hasToken: !!fcmToken,
+          // tokenLength: fcmToken ? fcmToken.length : 0,
+          // tokenPreview: fcmToken ? `${fcmToken.substring(0, 30)}...` : 'NULL',
+          // notificationService: {
+            // hasInstance: !!NotificationService,
+            // cachedToken: !!NotificationService.token
+          // }
+        // });
       } catch (error) {
-        console.log('⚠️ ERROR FCM TOKEN:', {
-          userType: user?.usertype,
-          error: error.message,
-          stack: error.stack
-        });
+        // console.log('⚠️ ERROR FCM TOKEN:', {
+          // userType: user?.usertype,
+          // error: error.message,
+          // stack: error.stack
+        // });
       }
       
       const cartUpdateArr = cart.map(it => {

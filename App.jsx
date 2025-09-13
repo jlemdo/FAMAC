@@ -112,8 +112,8 @@ function MainTabs() {
     
     let activeOrders;
     if (user?.usertype === 'driver') {
-      // Para drivers: solo contar órdenes "Open" (disponibles para aceptar)
-      activeOrders = orders.filter(order => order.status === 'Open');
+      // Para drivers: contar órdenes asignadas y en progreso (incluyendo estados de asignación)
+      activeOrders = orders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
     } else {
       // Para usuarios normales: contar órdenes no completadas
       const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];

@@ -174,11 +174,11 @@ const Order = () => {
     if (user?.usertype !== 'driver') return orders;
     
     if (driverActiveTab === 'disponibles') {
-      // Tab "Disponibles": Solo órdenes Open
-      return orders.filter(order => order.status === 'Open');
+      // Tab "Disponibles": Órdenes asignadas y en progreso (incluyendo estados posibles de asignación)
+      return orders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
     } else {
-      // Tab "Mis Entregas": Órdenes On the Way y Delivered
-      return orders.filter(order => ['On the Way', 'Delivered'].includes(order.status));
+      // Tab "Mis Entregas": SOLO órdenes ya entregadas
+      return orders.filter(order => ['Delivered', 'delivered', 'entregado'].includes(order.status));
     }
   };
 

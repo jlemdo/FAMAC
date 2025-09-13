@@ -66,13 +66,13 @@ export const geocodeAddress = async (address, options = {}) => {
     const hasStreetName = address.split(' ').length >= 2;
     
     if (!hasStreetNumber || !hasStreetName) {
-      console.warn('⚠️ GEOCODING: Dirección incompleta (falta número o calle):', address);
+      // console.warn('⚠️ GEOCODING: Dirección incompleta (falta número o calle):', address);
       return useDefaultOnError ? GEOCODING_CONFIG.defaultCoords : null;
     }
   }
 
   try {
-    console.log('🧠 GEOCODING iniciado para:', address.substring(0, 50) + '...');
+    // console.log('🧠 GEOCODING iniciado para:', address.substring(0, 50) + '...');
     
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/geocode/json',

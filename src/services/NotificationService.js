@@ -205,13 +205,13 @@ class NotificationService {
         user_type: userType
       };
       
-      console.log('📡 SENDING TOKEN TO BACKEND:', {
-        endpoint: 'update-fcm-token',
-        userId,
-        userType,
-        tokenLength: this.token ? this.token.length : 0,
-        tokenPreview: this.token ? this.token.substring(0, 30) + '...' : 'NULL'
-      });
+      // console.log('📡 SENDING TOKEN TO BACKEND:', {
+        // endpoint: 'update-fcm-token',
+        // userId,
+        // userType,
+        // tokenLength: this.token ? this.token.length : 0,
+        // tokenPreview: this.token ? this.token.substring(0, 30) + '...' : 'NULL'
+      // });
 
       // ✅ USAR ENDPOINT ESPECÍFICO (no corrompe datos del perfil)
       const response = await fetch('https://occr.pixelcrafters.digital/api/update-fcm-token', {
@@ -224,24 +224,24 @@ class NotificationService {
       
       const responseData = await response.json();
       
-      console.log('📡 BACKEND TOKEN RESPONSE:', {
-        status: response.status,
-        ok: response.ok,
-        data: responseData,
-        userId,
-        userType
-      });
+      // console.log('📡 BACKEND TOKEN RESPONSE:', {
+        // status: response.status,
+        // ok: response.ok,
+        // data: responseData,
+        // userId,
+        // userType
+      // });
       
       if (!response.ok) {
         throw new Error(`Backend error ${response.status}: ${JSON.stringify(responseData)}`);
       }
       
     } catch (error) {
-      console.log('❌ SEND TOKEN ERROR:', {
-        error: error.message,
-        userId,
-        userType
-      });
+      // console.log('❌ SEND TOKEN ERROR:', {
+        // error: error.message,
+        // userId,
+        // userType
+      // });
       // Fallback temporal: si endpoint específico falla, no hacer nada
       // Esto evita corrupción de datos hasta que el backend esté actualizado
     }
@@ -250,31 +250,31 @@ class NotificationService {
   // ✅ NUEVO: Actualizar token cuando cambie el usuario/rol
   async updateTokenForUser(userId, userType = null) {
     try {
-      console.log('🔄 UPDATE TOKEN FOR USER:', { 
-        userId, 
-        userType,
-        hasToken: !!this.token,
-        tokenPreview: this.token ? `${this.token.substring(0, 30)}...` : 'NULL'
-      });
+      // console.log('🔄 UPDATE TOKEN FOR USER:', {
+        // userId,
+        // userType,
+        // hasToken: !!this.token,
+        // tokenPreview: this.token ? `${this.token.substring(0, 30)}...` : 'NULL'
+      // });
       
       // 1. Primero limpiar token del usuario anterior
-      console.log('🧹 REMOVING TOKEN FROM PREVIOUS USER...');
+      // console.log('🧹 REMOVING TOKEN FROM PREVIOUS USER...');
       await this.removeTokenFromPreviousUser();
-      console.log('✅ PREVIOUS TOKEN REMOVED');
+      // console.log('✅ PREVIOUS TOKEN REMOVED');
       
       // 2. Luego asociar token al nuevo usuario
-      console.log('📤 SENDING TOKEN TO BACKEND FOR USER:', { userId, userType });
+      // console.log('📤 SENDING TOKEN TO BACKEND FOR USER:', { userId, userType });
       await this.sendTokenToBackend(userId, userType);
-      console.log('✅ TOKEN SUCCESSFULLY SENT TO BACKEND');
+      // console.log('✅ TOKEN SUCCESSFULLY SENT TO BACKEND');
       
       return true;
     } catch (error) {
-      console.log('❌ UPDATE TOKEN ERROR:', {
-        error: error.message,
-        stack: error.stack,
-        userId,
-        userType
-      });
+      // console.log('❌ UPDATE TOKEN ERROR:', {
+        // error: error.message,
+        // stack: error.stack,
+        // userId,
+        // userType
+      // });
       return false;
     }
   }
@@ -420,11 +420,11 @@ class NotificationService {
     const notificationType = remoteMessage.data?.type;
     const orderId = remoteMessage.data?.order_id;
 
-    console.log('🔔 Manejando tap en notificación:', {
-      type: notificationType,
-      orderId,
-      hasNavigation: !!this.navigationRef
-    });
+    // console.log('🔔 Manejando tap en notificación:', {
+      // type: notificationType,
+      // orderId,
+      // hasNavigation: !!this.navigationRef
+    // });
 
     try {
       switch (notificationType) {
@@ -482,54 +482,54 @@ class NotificationService {
   // Inicializar servicio completo
   async initialize(userId = null, userType = null) {
     try {
-      console.log('🔔 NOTIFICATION SERVICE INITIALIZE:', {
-        userId,
-        userType,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🔔 NOTIFICATION SERVICE INITIALIZE:', {
+        // userId,
+        // userType,
+        // timestamp: new Date().toISOString()
+      // });
 
       // 1. Solicitar permisos
       const hasPermission = await this.requestPermission();
       if (!hasPermission) {
-        console.log('❌ NOTIFICATION PERMISSION DENIED');
+        // console.log('❌ NOTIFICATION PERMISSION DENIED');
         return false;
       }
-      console.log('✅ NOTIFICATION PERMISSION GRANTED');
+      // console.log('✅ NOTIFICATION PERMISSION GRANTED');
 
       // 2. Obtener token
       const token = await this.getToken();
       if (!token) {
-        console.log('❌ FCM TOKEN NOT OBTAINED');
+        // console.log('❌ FCM TOKEN NOT OBTAINED');
         return false;
       }
-      console.log('✅ FCM TOKEN OBTAINED:', {
-        tokenLength: token.length,
-        tokenPreview: `${token.substring(0, 30)}...`,
-        userType,
-        userId
-      });
+      // console.log('✅ FCM TOKEN OBTAINED:', {
+        // tokenLength: token.length,
+        // tokenPreview: `${token.substring(0, 30)}...`,
+        // userType,
+        // userId
+      // });
 
       // 3. Enviar token al backend si hay usuario
       if (userId) {
-        console.log('📤 SENDING TOKEN TO BACKEND...', { userId, userType });
+        // console.log('📤 SENDING TOKEN TO BACKEND...', { userId, userType });
         await this.updateTokenForUser(userId, userType);
-        console.log('✅ TOKEN SENT TO BACKEND');
+        // console.log('✅ TOKEN SENT TO BACKEND');
       } else {
-        console.log('⚠️ NO USER ID - SKIPPING BACKEND UPDATE');
+        // console.log('⚠️ NO USER ID - SKIPPING BACKEND UPDATE');
       }
 
       // 4. Configurar listeners
       this.setupNotificationListeners();
-      console.log('✅ NOTIFICATION LISTENERS CONFIGURED');
+      // console.log('✅ NOTIFICATION LISTENERS CONFIGURED');
 
       return true;
     } catch (error) {
-      console.log('❌ NOTIFICATION SERVICE INITIALIZE ERROR:', {
-        error: error.message,
-        stack: error.stack,
-        userId,
-        userType
-      });
+      // console.log('❌ NOTIFICATION SERVICE INITIALIZE ERROR:', {
+        // error: error.message,
+        // stack: error.stack,
+        // userId,
+        // userType
+      // });
       return false;
     }
   }

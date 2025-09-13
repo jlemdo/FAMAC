@@ -989,10 +989,10 @@ const AddressFormUberStyle = () => {
                 longitude: tempGuestData.mapCoordinates.driver_long,
                 phone: null
               });
-              console.log('✅ AddressForm: Datos Guest guardados en BD');
+              // console.log('✅ AddressForm: Datos Guest guardados en BD');
             }
           } catch (error) {
-            console.error('❌ AddressForm: Error guardando en BD:', error);
+            // console.error('❌ AddressForm: Error guardando en BD:', error);
             // Continuar con el flujo aunque falle el guardado en BD
           }
           
