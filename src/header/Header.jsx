@@ -265,19 +265,23 @@ const Header = ({onLogout}) => {
                             // 🔪 CIRUGÍA: Navegación específica desde campanita
                             setShowNotif(false); // Cerrar modal
                             
-                            // Extraer order_id del título si existe (formato "Pedido #123")
-                            const orderIdMatch = item.title.match(/Pedido #(\d+)/);
-                            const orderId = orderIdMatch ? orderIdMatch[1] : null;
-                            
+                            // Extraer order_id del título o descripción (formato "Pedido #123" o "#123")
+                            const titleMatch = item.title.match(/Pedido #(\d+)/);
+                            const descriptionMatch = item.description.match(/#(\d+)/);
+                            const orderId = titleMatch ? titleMatch[1] : (descriptionMatch ? descriptionMatch[1] : null);
+
+                            console.log('🔔 HEADER NOTIFICATION TAP:', {
+                              title: item.title,
+                              description: item.description,
+                              titleMatch,
+                              descriptionMatch,
+                              extractedOrderId: orderId,
+                              willNavigateTo: orderId ? 'OrderDetails' : 'Pedidos'
+                            });
+
                             if (orderId) {
-                              // Navegar al pedido específico
-                              navigation.navigate('MainTabs', {
-                                screen: 'Pedidos',
-                                params: {
-                                  screen: 'OrderDetail',
-                                  params: { orderId: orderId }
-                                }
-                              });
+                              // 🎯 NAVEGACIÓN DIRECTA A OrderDetails (igual que modal post-compra)
+                              navigation.navigate('OrderDetails', { orderId: orderId });
                             } else {
                               // Si no hay orderId, ir a lista de pedidos
                               navigation.navigate('MainTabs', { screen: 'Pedidos' });

@@ -301,6 +301,7 @@ class NotificationService {
 
     // Notificación cuando la app está en background y se abre
     messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log('🔔 BACKGROUND TAP DETECTED:', remoteMessage);
       this.handleNotificationPress(remoteMessage);
     });
 
@@ -309,6 +310,7 @@ class NotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
+          console.log('🔔 APP CLOSED TAP DETECTED:', remoteMessage);
           this.handleNotificationPress(remoteMessage);
         }
       });
@@ -420,11 +422,14 @@ class NotificationService {
     const notificationType = remoteMessage.data?.type;
     const orderId = remoteMessage.data?.order_id;
 
-    // console.log('🔔 Manejando tap en notificación:', {
-      // type: notificationType,
-      // orderId,
-      // hasNavigation: !!this.navigationRef
-    // });
+    console.log('🔔 Manejando tap en notificación:', {
+      type: notificationType,
+      orderId,
+      hasNavigation: !!this.navigationRef,
+      fullRemoteMessage: remoteMessage,
+      dataKeys: Object.keys(remoteMessage.data || {}),
+      dataValues: remoteMessage.data
+    });
 
     try {
       switch (notificationType) {

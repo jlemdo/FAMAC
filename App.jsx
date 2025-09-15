@@ -1,4 +1,4 @@
-import React, {useContext, useCallback, useMemo, useEffect} from 'react';
+import React, {useContext, useCallback, useMemo, useEffect, useRef} from 'react';
 import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
 import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
 import NotificationService from './src/services/NotificationService';
@@ -334,6 +334,7 @@ function RootStack() {
 function AuthFlow() {
   const {user} = useContext(AuthContext);
   const {addNotification} = useNotification();
+  const navigationRef = useRef();
 
   // ✅ NUEVO: Usar hook para manejar notificaciones y prevenir contaminación cruzada
   const {isInitialized, reinitializeNotifications} = useNotificationManager(user);
@@ -343,12 +344,20 @@ function AuthFlow() {
     NotificationService.setNotificationCallback(addNotification);
   }, [addNotification]);
 
+  // 🔧 CRÍTICO: Configurar navigationRef para que las notificaciones puedan navegar
+  useEffect(() => {
+    if (navigationRef.current) {
+      NotificationService.setNavigationRef(navigationRef.current);
+      console.log('✅ NAVIGATION REF CONFIGURED FOR NOTIFICATIONS');
+    }
+  }, [navigationRef.current]);
+
   if (user === undefined) {
     return <ActivityIndicator size="large" color="tomato" />;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {user ? <RootStack /> : <LoginStack />}
     </NavigationContainer>
   );
