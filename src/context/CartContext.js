@@ -9,8 +9,9 @@ export function CartProvider({ children }) {
     const [cart, setCart] = useState([]);
     const [currentUserId, setCurrentUserId] = useState(null);
     const [onCartClearCallback, setOnCartClearCallback] = useState(null);
+    const [automaticPromotions, setAutomaticPromotions] = useState([]);
     const { user } = useContext(AuthContext);
-    
+
     // Obtener descuento promocional del usuario (del login API)
     const userPromotionalDiscount = user?.promotional_discount ? Number(user.promotional_discount) : 0;
     const hasUserDiscount = userPromotionalDiscount > 0 && user?.promotion_id;
@@ -84,7 +85,7 @@ export function CartProvider({ children }) {
             }
         }
         // 🔄 CASO NORMAL: Cambio entre usuarios diferentes (no logout)
-        else if (currentUserId !== null && currentUserId !== userId && userId !== null) {
+        else if (false && currentUserId !== null && currentUserId !== userId && userId !== null) {
             console.log('🚨 CARRITO: Limpiando por CAMBIO DE USUARIO');
             setCart([]);
             // Ejecutar callback para limpiar información adicional cuando cambia usuario
@@ -320,6 +321,35 @@ export function CartProvider({ children }) {
     const formattedUserDiscountAmount = userDiscountAmount.toFixed(2);
     const formattedProductDiscountSavings = productDiscountSavings.toFixed(2);
 
+    // Function to get automatic promotions from API
+    const getAutomaticPromotions = useCallback(async () => {
+        try {
+            if (subtotalAfterProductDiscounts === 0) {
+                setAutomaticPromotions([]);
+                return;
+            }
+
+            const response = await axios.post('https://occr.pixelcrafters.digital/api/get-automatic-promotions', {
+                subtotal: subtotalAfterProductDiscounts,
+                user_email: user?.email || null
+            });
+
+            if (response.data.success) {
+                setAutomaticPromotions(response.data.data || []);
+            } else {
+                setAutomaticPromotions([]);
+            }
+        } catch (error) {
+            console.log('Error obteniendo promociones automáticas:', error);
+            setAutomaticPromotions([]);
+        }
+    }, [subtotalAfterProductDiscounts, user?.email]);
+
+    // Get automatic promotions when cart or user changes
+    useEffect(() => {
+        getAutomaticPromotions();
+    }, [getAutomaticPromotions]);
+
     // Función para registrar callback de limpieza - memorizada para evitar bucles infinitos
     const setCartClearCallback = useCallback((callback) => {
         if (callback) {
@@ -342,9 +372,11 @@ export function CartProvider({ children }) {
             userDiscountAmount: formattedUserDiscountAmount,
             productDiscountSavings: formattedProductDiscountSavings,
             hasUserDiscount,
+            automaticPromotions,
+            getAutomaticPromotions,
             clearCart,
             clearCartOnLogout, // 🆕 Nueva función para logout
-            setCartClearCallback 
+            setCartClearCallback
         }}>
             {children}
         </CartContext.Provider>
