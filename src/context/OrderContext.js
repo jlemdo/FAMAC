@@ -107,6 +107,24 @@ export function OrderProvider({ children }) {
                     }))
                 });
             }
+
+            // 🏪 DEBUG OXXO: Ver todas las órdenes para usuarios normales
+            if (user.usertype !== 'driver') {
+                console.log('🏪 OXXO DEBUG - All Orders Received:', {
+                    userType: user.usertype,
+                    userEmail: user.email,
+                    userId: user.id,
+                    totalOrders: ordersData.length,
+                    orders: ordersData.map(order => ({
+                        id: order.id,
+                        status: order.status,
+                        payment_status: order.payment_status,
+                        payment_method: order.payment_method,
+                        created_at: order.created_at,
+                        total: order.total
+                    }))
+                });
+            }
             
             // 🔍 DEBUG TEMPORAL REMOVIDO - Ya no necesario
             
@@ -152,9 +170,23 @@ export function OrderProvider({ children }) {
             } else {
                 // Para usuarios normales: contar órdenes no completadas
                 const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-                activeOrders = sortedOrders.filter(order => 
+                activeOrders = sortedOrders.filter(order =>
                     order.status && !completedStatuses.includes(order.status.toLowerCase())
                 );
+
+                // 🏪 DEBUG OXXO: Ver filtrado de órdenes activas
+                console.log('🏪 OXXO DEBUG - Active Orders Filter:', {
+                    userType: user.usertype,
+                    totalOrders: sortedOrders.length,
+                    activeOrders: activeOrders.length,
+                    completedStatuses: completedStatuses,
+                    allOrdersStatus: sortedOrders.map(order => ({
+                        id: order.id,
+                        status: order.status,
+                        payment_status: order.payment_status,
+                        isActive: order.status && !completedStatuses.includes(order.status.toLowerCase())
+                    }))
+                });
             }
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());

@@ -63,7 +63,7 @@ export default function Cart() {
     getAutomaticPromotions,
   } = useContext(CartContext);
   const {user, updateUser} = useContext(AuthContext);
-  const {refreshOrders, updateOrders} = useContext(OrderContext);
+  const {refreshOrders, updateOrders, enableGuestOrders} = useContext(OrderContext);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
@@ -1427,8 +1427,19 @@ export default function Cart() {
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
       
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
+      console.log('🚀 OXXO DEBUG - Starting order creation...');
       const orderData = await completeOrderFunc();
       const realOrderId = orderData?.order?.id;
+
+      // 🔧 DEBUG OXXO: Log de la orden creada
+      console.log('🏪 OXXO DEBUG - Order Created:', {
+        orderData: orderData,
+        realOrderId: realOrderId,
+        orderStatus: orderData?.order?.status,
+        paymentMethod: orderData?.order?.payment_method,
+        orderTotal: orderData?.order?.total,
+        timestamp: new Date().toISOString()
+      });
       
       if (!realOrderId) {
         throw new Error('No se pudo crear la orden correctamente.');
@@ -1463,11 +1474,24 @@ export default function Cart() {
       }
 
       // 1.2) Inicializar Stripe PaymentSheet
-      const {error: initError} = await initPaymentSheet({
+      // 🔧 DEBUG OXXO: Log de la configuración del payment sheet
+      const paymentSheetConfig = {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Sabores de Origen',
         allowsDelayedPaymentMethods: true, // CAMBIADO: true para OXXO y otros métodos delayed
         returnURL: 'occr-productos-app://stripe-redirect',
+      };
+
+      console.log('🏪 OXXO DEBUG - Payment Sheet Config:', {
+        hasClientSecret: !!clientSecret,
+        clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 30)}...` : null,
+        allowsDelayedPaymentMethods: paymentSheetConfig.allowsDelayedPaymentMethods,
+        merchantDisplayName: paymentSheetConfig.merchantDisplayName,
+        timestamp: new Date().toISOString()
+      });
+
+      const {error: initError} = await initPaymentSheet({
+        ...paymentSheetConfig,
         // Configuración de métodos de pago específicos para México
         defaultBillingDetails: {
           address: {
@@ -1516,7 +1540,16 @@ export default function Cart() {
       }
 
       // 1.3) Presentar la UI de pago
+      console.log('🏪 OXXO DEBUG - Presenting Payment Sheet...');
       const {error: paymentError} = await presentPaymentSheet();
+
+      // 🔧 DEBUG OXXO: Log después de presentar el payment sheet
+      console.log('🏪 OXXO DEBUG - Payment Sheet Result:', {
+        hasError: !!paymentError,
+        errorCode: paymentError?.code,
+        errorMessage: paymentError?.message,
+        timestamp: new Date().toISOString()
+      });
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
           showAlert({
@@ -1540,7 +1573,18 @@ export default function Cart() {
       try {
         const paymentIntentResult = await retrievePaymentIntent(clientSecret);
         const nextAction = paymentIntentResult?.paymentIntent?.nextAction;
-        
+
+        // 🔧 DEBUG OXXO: Logs detallados del payment intent
+        console.log('🏪 OXXO DEBUG - Payment Intent Result:', {
+          paymentIntentId: paymentIntentResult?.paymentIntent?.id,
+          status: paymentIntentResult?.paymentIntent?.status,
+          nextActionType: nextAction?.type,
+          paymentMethodType: paymentIntentResult?.paymentIntent?.paymentMethodTypes,
+          amount: paymentIntentResult?.paymentIntent?.amount,
+          currency: paymentIntentResult?.paymentIntent?.currency,
+          fullNextAction: nextAction
+        });
+
         if (nextAction?.type === 'oxxoVoucher') {
           oxxoInfo = {
             voucherNumber: nextAction.voucherNumber,
@@ -1548,8 +1592,13 @@ export default function Cart() {
             expiration: nextAction.expiration,
             amount: finalPrice
           };
+
+          console.log('🏪 OXXO VOUCHER DETECTED:', oxxoInfo);
+        } else {
+          console.log('🏪 OXXO DEBUG - No voucher found, next action type:', nextAction?.type);
         }
       } catch (error) {
+        console.log('❌ OXXO DEBUG - Error retrieving payment intent:', error);
       }
       
       // 1.4) Pago exitoso: la orden ya fue creada, solo actualizar usuario
@@ -1611,6 +1660,12 @@ export default function Cart() {
       
       // Actualizar órdenes
       refreshOrders();
+
+      // 🏪 FIX OXXO: Activar Guest orders si es un usuario Guest
+      if (user?.usertype === 'Guest') {
+        enableGuestOrders();
+        console.log('🏪 OXXO DEBUG - Guest orders enabled after payment');
+      }
       
       // 🆕 GUEST FIX: Actualizar badge para Guest después del pago
       if (user?.usertype === 'Guest' && orderData?.order) {
@@ -1656,6 +1711,17 @@ export default function Cart() {
         orderId: orderNumber ? orderNumber.toString() : null,
         oxxoInfo: oxxoInfo // 🏪 Información del voucher OXXO si existe
       };
+
+      // 🔧 DEBUG OXXO: Log del modal data completo
+      console.log('🏪 OXXO DEBUG - Success Modal Data:', {
+        modalData: modalData,
+        hasOxxoInfo: !!oxxoInfo,
+        oxxoVoucherNumber: oxxoInfo?.voucherNumber,
+        oxxoAmount: oxxoInfo?.amount,
+        orderIdForModal: modalData.orderId,
+        willShowOxxoVoucher: !!oxxoInfo,
+        timestamp: new Date().toISOString()
+      });
       
       
       // 🔧 NAVEGACIÓN DIRECTA SIMPLIFICADA - Evitar navegación anidada
@@ -1869,8 +1935,28 @@ export default function Cart() {
         // 🔑 CRÍTICO: Incluir FCM token para notificaciones push
         fcm_token: fcmToken || null,
       };
-      
+
+      // 🔧 DEBUG OXXO: Log completo del payload enviado al backend
+      console.log('🏪 OXXO DEBUG - Sending Payload to Backend:', {
+        endpoint: 'https://occr.pixelcrafters.digital/api/ordersubmit',
+        payload: payload,
+        userType: user?.usertype,
+        paymentExpected: 'OXXO_OR_OTHER',
+        timestamp: new Date().toISOString()
+      });
+
       const response = await axios.post('https://occr.pixelcrafters.digital/api/ordersubmit', payload);
+
+      // 🔧 DEBUG OXXO: Log de la respuesta del backend
+      console.log('🏪 OXXO DEBUG - Backend Response:', {
+        status: response.status,
+        data: response.data,
+        orderId: response.data?.order?.id,
+        orderStatus: response.data?.order?.status,
+        paymentMethod: response.data?.order?.payment_method,
+        timestamp: new Date().toISOString()
+      });
+
       return response.data;
     } catch (err) {
       
