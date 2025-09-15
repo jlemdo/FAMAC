@@ -112,8 +112,8 @@ export default function Cart() {
   // 🔄 NUEVO: Cargar automáticamente datos Guest desde BD al inicializar
   useEffect(() => {
     const loadGuestDataFromDatabase = async () => {
-      // Solo para Guests con email y sin datos ya cargados
-      if (user?.usertype === 'Guest' && user?.email && !email && !address) {
+      // Solo para Guests con email y sin coordenadas ya cargadas
+      if (user?.usertype === 'Guest' && user?.email && (!latlong?.driver_lat || !latlong?.driver_long)) {
         try {
           // console.log('🔄 Cargando datos Guest desde BD para:', user.email);
           const guestData = await loadGuestDataFromDB(user.email);
@@ -145,7 +145,7 @@ export default function Cart() {
     };
 
     loadGuestDataFromDatabase();
-  }, [user?.usertype, user?.email, email, address]);
+  }, [user?.usertype, user?.email, latlong?.driver_lat, latlong?.driver_long]);
   
   // 🔍 DEBUG: Monitorear cambios en coordenadas
   useEffect(() => {
@@ -1613,25 +1613,22 @@ export default function Cart() {
       refreshOrders();
       
       // 🆕 GUEST FIX: Actualizar badge para Guest después del pago
-      if (user?.usertype === 'Guest' && user?.email) {
-        // Forzar actualización del badge usando la misma lógica que Order.jsx
-        try {
-          const response = await axios.get(
-            `https://occr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(user.email.trim())}`,
-            { timeout: 10000 }
-          );
-          
-          if (response.data?.status === 'success') {
-            const guestOrders = response.data.orders.data || [];
-            if (guestOrders.length > 0) {
-              // Actualizar OrderContext para mostrar badge
-              updateOrders(guestOrders);
-              console.log('🎉 GUEST BADGE: Actualizado con', guestOrders.length, 'órdenes');
-            }
-          }
-        } catch (error) {
-          console.log('⚠️ No se pudo actualizar badge de Guest:', error.message);
-        }
+      if (user?.usertype === 'Guest' && orderData?.order) {
+        // Crear un array con la orden recién creada para actualizar el badge
+        const newGuestOrder = {
+          id: orderData.order.id,
+          status: orderData.order.status || 'pending',
+          payment_status: orderData.order.payment_status || 'paid',
+          user_email: user.email,
+          created_at: new Date().toISOString(),
+          // Agregar otros campos necesarios para el badge
+          total: totalPrice,
+          delivery_address: address
+        };
+
+        // Actualizar OrderContext con la nueva orden para mostrar badge inmediatamente
+        updateOrders([newGuestOrder]);
+        console.log('🎉 GUEST BADGE: Actualizado inmediatamente con nueva orden:', newGuestOrder.id);
       }
       
       // 🐛 DEBUG: Logs temporales para diagnóstico OXXO
@@ -2293,6 +2290,7 @@ export default function Cart() {
                 setIsChangingAddress={setIsChangingAddress} // ✅ NUEVA: Función para cambiar dirección
                 setShowAddressModal={setShowAddressModal} // ✅ NUEVA: Función para mostrar modal
                 userAddresses={userAddresses} // ✅ NUEVA: Lista de direcciones para condicionar botón
+                automaticPromotions={automaticPromotions} // ✅ FIX: Pasar automaticPromotions
               />
             }
             ListFooterComponentStyle={{paddingTop: 8}}
@@ -2634,6 +2632,7 @@ const CartFooter = ({
   goToMapFromCart, // ✅ NUEVA: Función para ir al mapa desde el carrito
   navigation, // ✅ NUEVA: Navigation para Guest address editing
   temporaryAddress, // ✅ NUEVA: Dirección temporal para cambio
+  automaticPromotions, // ✅ FIX: Agregar automaticPromotions a las props
   setIsChangingAddress, // ✅ NUEVA: Función para cambiar dirección
   setShowAddressModal, // ✅ NUEVA: Función para mostrar modal
   userAddresses, // ✅ NUEVA: Lista de direcciones para condicionar botón

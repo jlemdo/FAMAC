@@ -63,13 +63,13 @@ export const formatQuantityWithUnit = (quantity, unit, selectedUnits = 1) => {
         ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}kg`
         : `${totalMeasure}gr`;
     
-    case 'l':
-      return `${totalMeasure}l`;
+    case 'L':
+      return selectedUnits === 1 ? '1 Litro' : `${selectedUnits} Litros`;
     
     case 'ml':
       // Convertir a litros si es >= 1000ml
       return totalMeasure >= 1000
-        ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}l`
+        ? `${(totalMeasure / 1000).toFixed(totalMeasure % 1000 === 0 ? 0 : 2)}L`
         : `${totalMeasure}ml`;
     
     default:
@@ -99,7 +99,7 @@ export const formatProductMeasure = (quantity, unit) => {
       return `${quantityNum}gr`;
     
     case 'l':
-      return `${quantityNum}l`;
+      return `${quantityNum}L`;
     
     case 'ml':
       return `${quantityNum}ml`;

@@ -442,12 +442,8 @@ class NotificationService {
         case 'new_order_assigned':
           // Navegar a detalles de orden
           if (orderId && this.navigationRef) {
-            this.navigationRef.navigate('MainTabs', {
-              screen: 'Pedidos',
-              params: {
-                screen: 'OrderDetail',
-                params: { orderId: orderId }
-              }
+            this.navigationRef.navigate('OrderDetails', {
+              orderId: orderId
             });
           } else if (this.navigationRef) {
             // Si no hay orderId específico, ir a la lista de pedidos

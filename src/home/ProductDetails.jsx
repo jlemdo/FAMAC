@@ -1,4 +1,4 @@
-import React, {useState, useContext, useRef} from 'react';
+import React, {useState, useContext, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,11 @@ export default function ProductDetails() {
   // Animación para la alerta
   const alertOpacity = useRef(new Animated.Value(0)).current;
   const alertTranslateY = useRef(new Animated.Value(-50)).current;
+
+  // Resetear cantidad cuando cambia de producto
+  useEffect(() => {
+    setQuantity(1);
+  }, [product?.id]);
   
   const increaseQuantity = () => setQuantity(prev => prev + INCREMENT);
   const decreaseQuantity = () => quantity > MIN_QUANTITY && setQuantity(prev => prev - INCREMENT);

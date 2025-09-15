@@ -146,19 +146,18 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         // 📧 Email: Usar real si existe, sino marcar como ausente para backend
         const finalEmail = email || null; // null = Apple no proporcionó email
         
-        // 👤 Nombre: Usar real si existe, sino marcar como ausente
-        let processedName = null;
-        if (fullName && (fullName.givenName || fullName.familyName)) {
-          processedName = `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim();
-        }
-        
+        // 👤 Nombre: Separar first_name y last_name correctamente
+        const firstName = fullName?.givenName || null;
+        const lastName = fullName?.familyName || null;
+
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
           email: finalEmail, // Email real de Apple o null
-          full_name: processedName, // Nombre real de Apple o null
+          first_name: firstName, // Nombre separado
+          last_name: lastName, // Apellido separado
           has_real_email: !!email, // Flag para backend: true = email real/proxy, false = sin email
-          has_real_name: !!processedName, // Flag para backend: true = nombre real, false = sin nombre
+          has_real_name: !!(firstName || lastName), // Flag para backend: true = nombre real, false = sin nombre
         };
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
@@ -167,15 +166,14 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         
         setTimeout(() => {
           // ✅ Solo mostrar bienvenida personalizada si tenemos nombre REAL de Apple
-          // No mostrar para usuarios que usan fallbacks como "Usuario Privado"
-          const realAppleName = fullName?.givenName || fullName?.familyName;
-          
-          if (realAppleName && processedName) {
-            // Usuario Apple proporcionó nombre real
+          const realAppleName = firstName || lastName;
+
+          if (realAppleName) {
+            // Usuario Apple proporcionó nombre real - usar solo el primer nombre
             showAlert({
               type: 'success',
               title: 'Bienvenido',
-              message: `¡Hola ${realAppleName}!`,
+              message: `¡Hola ${firstName || lastName}!`,
               confirmText: 'Continuar',
             });
           } else {

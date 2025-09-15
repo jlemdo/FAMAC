@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Login from '../authentication/Login';
 import SignUp from '../authentication/Signup';
 import ForgotPassword from '../authentication/ForgotPassword';
@@ -17,6 +18,7 @@ import fonts from '../theme/fonts';
 
 function RegisterPrompt() {
   const {user} = useContext(AuthContext);
+  const navigation = useNavigation();
   const [mode, setMode] = useState('prompt');
   const [previousUserType, setPreviousUserType] = useState(user?.usertype);
   const [hasError, setHasError] = useState(false); // 🆕 Para manejar errores
@@ -24,11 +26,31 @@ function RegisterPrompt() {
   // Detectar cambio de Guest a usuario registrado
   useEffect(() => {
     if (previousUserType === 'Guest' && user?.usertype !== 'Guest' && user?.usertype) {
-      // Usuario acaba de autenticarse, no hacer nada más para evitar hooks
+      // Usuario acaba de autenticarse - navegar a Home
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MainTabs',
+              state: {
+                routes: [
+                  {
+                    name: 'Inicio',
+                    state: {
+                      routes: [{ name: 'CategoriesList' }]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        });
+      }, 1000); // Dar tiempo para que se complete el login
       return;
     }
     setPreviousUserType(user?.usertype);
-  }, [user?.usertype, previousUserType]);
+  }, [user?.usertype, previousUserType, navigation]);
 
   // Si el usuario ya no es Guest, no renderizar nada para evitar problemas de hooks
   if (user?.usertype !== 'Guest') {

@@ -429,10 +429,12 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         
         // Mostrar alert después de un breve delay para evitar conflictos
         setTimeout(() => {
+          // Usar el nombre del usuario recién registrado
+          const userName = values.first_name || data.user?.first_name || 'Usuario';
           showAlert({
             type: 'success',
             title: '¡Bienvenido!',
-            message: 'Registro exitoso',
+            message: `¡Hola ${userName}!`,
             confirmText: 'OK',
           });
         }, 500);

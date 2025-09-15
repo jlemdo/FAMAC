@@ -30,7 +30,6 @@ import Config from 'react-native-config';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
-import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
 

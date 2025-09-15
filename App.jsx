@@ -324,6 +324,7 @@ function RootStack() {
         <Stack.Screen name="AddressMap" component={AddressMap} />
         <Stack.Screen name="MapSelector" component={MapSelector} />
         <Stack.Screen name="GuestCheckout" component={GuestCheckout} />
+        <Stack.Screen name="OrderDetails" component={OrderDetails} />
         {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>
     </View>

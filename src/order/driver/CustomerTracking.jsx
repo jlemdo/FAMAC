@@ -21,6 +21,8 @@ const CustomerTracking = ({order}) => {
   const [routeCoords, setRouteCoords] = useState([]);
   const [isConnected, setIsConnected] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [isFollowingDriver, setIsFollowingDriver] = useState(true); // Auto-seguimiento del driver
+  const lastDriverLocationRef = useRef(null); // Para detectar cambios de ubicación
 
   const fetchDriverLocation = useCallback(async (attempt = 0) => {
     try {
@@ -32,11 +34,32 @@ const CustomerTracking = ({order}) => {
       const lastLocation = lastLoc[lastLoc.length - 1];
       
       if (lastLocation?.driver_lat && lastLocation?.driver_long) {
-        setDriverLocation({
+        const newLocation = {
           driver_lat: parseFloat(lastLocation.driver_lat),
           driver_long: parseFloat(lastLocation.driver_long),
-        });
-        
+        };
+
+        setDriverLocation(newLocation);
+
+        // Auto-zoom al driver si está en modo seguimiento
+        if (isFollowingDriver && mapRef.current) {
+          // Solo animar si la ubicación cambió significativamente
+          const prevLoc = lastDriverLocationRef.current;
+          if (!prevLoc ||
+              Math.abs(prevLoc.driver_lat - newLocation.driver_lat) > 0.0001 ||
+              Math.abs(prevLoc.driver_long - newLocation.driver_long) > 0.0001) {
+
+            mapRef.current.animateToRegion({
+              latitude: newLocation.driver_lat,
+              longitude: newLocation.driver_long,
+              latitudeDelta: 0.01, // Zoom cercano al driver
+              longitudeDelta: 0.01,
+            }, 1000); // Animación suave de 1 segundo
+          }
+        }
+
+        lastDriverLocationRef.current = newLocation;
+
         // Éxito: resetear contadores de error
         setIsConnected(true);
         setRetryCount(0);
@@ -178,21 +201,30 @@ const CustomerTracking = ({order}) => {
               }}
             />
 
-            {/* Marcadores */}
+            {/* Marcadores con iconos personalizados */}
             <Marker
               coordinate={{
                 latitude: driverLocation.driver_lat,
                 longitude: driverLocation.driver_long,
               }}
-              title="Conductor"
+              title="Repartidor"
               description="Tu repartidor está aquí"
-            />
+              anchor={{x: 0.5, y: 0.5}}
+            >
+              <View style={styles.markerContainer}>
+                <Text style={styles.cowIcon}>🐄</Text>
+              </View>
+            </Marker>
             <Marker
               coordinate={customer}
-              title="Cliente"
-              pinColor="#33A744"
-              description="Ubicación del cliente"
-            />
+              title="Tu ubicación"
+              description="Lugar de entrega"
+              anchor={{x: 0.5, y: 0.5}}
+            >
+              <View style={styles.markerContainer}>
+                <Text style={styles.houseIcon}>🏠</Text>
+              </View>
+            </Marker>
           </MapView>
           {eta && (
             <View style={styles.hud}>
@@ -202,18 +234,45 @@ const CustomerTracking = ({order}) => {
               </Text>
             </View>
           )}
+          {/* Botón para centrar en driver */}
           <TouchableOpacity
-            style={styles.recenterBtn}
+            style={[styles.recenterBtn, isFollowingDriver && styles.recenterBtnActive]}
             onPress={() => {
-              if (routeCoords.length) {
-                mapRef.current.fitToCoordinates(routeCoords, {
-                  edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
-                  animated: true,
-                });
+              if (isFollowingDriver) {
+                // Si está siguiendo, mostrar ruta completa
+                setIsFollowingDriver(false);
+                if (routeCoords.length) {
+                  mapRef.current.fitToCoordinates(routeCoords, {
+                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
+                    animated: true,
+                  });
+                }
+              } else {
+                // Si no está siguiendo, activar seguimiento del driver
+                setIsFollowingDriver(true);
+                if (driverLocation) {
+                  mapRef.current.animateToRegion({
+                    latitude: driverLocation.driver_lat,
+                    longitude: driverLocation.driver_long,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }, 1000);
+                }
               }
             }}>
-            <Ionicons name="locate-outline" size={24} color="#FFF" />
+            <Ionicons
+              name={isFollowingDriver ? "navigate" : "locate-outline"}
+              size={24}
+              color="#FFF"
+            />
           </TouchableOpacity>
+
+          {/* Indicador de modo seguimiento */}
+          {isFollowingDriver && (
+            <View style={styles.followingIndicator}>
+              <Text style={styles.followingText}>Siguiendo al repartidor</Text>
+            </View>
+          )}
         </View>
       ) : (
         <View style={styles.waitingCard}>
@@ -305,6 +364,36 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 24,
     elevation: 4,
+  },
+  recenterBtnActive: {
+    backgroundColor: '#D27F27', // Color naranja cuando está siguiendo
+  },
+  followingIndicator: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(210, 127, 39, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    elevation: 3,
+  },
+  followingText: {
+    color: '#FFF',
+    fontSize: fonts.size.tiny,
+    fontFamily: fonts.bold,
+  },
+  markerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cowIcon: {
+    fontSize: 32,
+    textAlign: 'center',
+  },
+  houseIcon: {
+    fontSize: 28,
+    textAlign: 'center',
   },
   
   // Connection Status Styles
