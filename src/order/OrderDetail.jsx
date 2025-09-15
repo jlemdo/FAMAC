@@ -384,15 +384,49 @@ const OrderDetails = () => {
           const isDelivered = status === 'delivered' || status === 'entregado' ||
                              status === 'completed' || status === 'completado';
 
-          // ESTADOS DE PAGO PENDIENTE
-          const isPendingPayment = status === 'processing payment' || status === 'pending payment' ||
-                                  status === 'processing' || status === 'pending';
+          // ESTADOS DE PAGO PENDIENTE (excluyendo OXXO)
+          const isPendingPayment = (status === 'processing payment' || status === 'pending payment' ||
+                                  status === 'processing' || status === 'pending') &&
+                                  !(order?.payment_status === 'requires_action' ||
+                                    order?.payment_status === 'pending' ||
+                                    order?.payment_status === 'requires_payment_method');
+
+          // ESTADOS ESPECÍFICOS PARA OXXO PENDIENTE
+          const isOxxoPending = (status === 'open' || status === 'processing payment' || status === 'processing') &&
+                               (order?.payment_status === 'requires_action' ||
+                                order?.payment_status === 'pending' ||
+                                order?.payment_status === 'requires_payment_method');
+
+          // 🔍 DEBUG: Ver valores reales
+          console.log('🔍 OXXO DEBUG:', {
+            status: order?.status,
+            payment_status: order?.payment_status,
+            isOxxoPending,
+            statusLower: status
+          });
 
           // ESTADOS ACTIVOS (driver aceptó y está en camino)
           const isActive = status === 'in progress' || status === 'on the way' ||
                           status === 'en camino' || status === 'preparing' || status === 'preparando';
 
-          // 1. PAGO PENDIENTE - Sin validar
+          // 1. OXXO PENDIENTE - Específico para pagos OXXO
+          if (isOxxoPending) {
+            return (
+              <View style={styles.oxxoPendingContainer}>
+                <View style={styles.oxxoPendingIconContainer}>
+                  <Ionicons name="receipt-outline" size={50} color="#FF9800" />
+                </View>
+                <Text style={styles.oxxoPendingTitle}>Pago Pendiente en OXXO</Text>
+                <Text style={styles.oxxoPendingMessage}>
+                  Tu pedido ha sido confirmado. Para completar el proceso,
+                  realiza el pago en cualquier tienda OXXO con el voucher
+                  que recibiste. Tu pedido se preparará una vez confirmado el pago.
+                </Text>
+              </View>
+            );
+          }
+
+          // 2. PAGO PENDIENTE - Sin validar (otros métodos)
           if (isPendingPayment) {
             return (
               <View style={styles.pendingContainer}>
@@ -408,7 +442,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 2. PEDIDO ENTREGADO - Sin mapa
+          // 3. PEDIDO ENTREGADO - Sin mapa
           if (isDelivered) {
             return (
               <View style={styles.deliveredContainer}>
@@ -428,7 +462,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 3. DRIVER - Ve mapa solo cuando acepta
+          // 4. DRIVER - Ve mapa solo cuando acepta
           if (isDriver && isActive) {
             return (
               <>
@@ -438,7 +472,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 4. USUARIO - Ve mapa solo cuando driver acepta
+          // 5. USUARIO - Ve mapa solo cuando driver acepta
           if (!isDriver && isActive && hasDriver) {
             return (
               <>
@@ -448,7 +482,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 5. DRIVER ASIGNADO PERO NO HA ACEPTADO
+          // 6. DRIVER ASIGNADO PERO NO HA ACEPTADO
           if (hasDriver && !isActive) {
             return (
               <View style={styles.assignedContainer}>
@@ -468,7 +502,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 6. PEDIDO CONFIRMADO SIN REPARTIDOR ASIGNADO
+          // 7. PEDIDO CONFIRMADO SIN REPARTIDOR ASIGNADO
           return (
             <View style={styles.confirmedContainer}>
               <View style={styles.confirmedIconContainer}>
@@ -1194,6 +1228,37 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   assignedMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Estilos para OXXO pendiente
+  oxxoPendingContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  oxxoPendingIconContainer: {
+    marginBottom: 20,
+  },
+  oxxoPendingTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#FF9800',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  oxxoPendingMessage: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#666',
