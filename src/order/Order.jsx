@@ -306,19 +306,34 @@ const Order = () => {
                   </>
                 )
               ) : user && user.usertype === 'driver' ? (
-                // Mensajes para Driver
-                <>
-                  <Text style={styles.userTitle}>🚚 ¡Hola Conductor!</Text>
-                  <Text style={styles.userText}>
-                    Aquí aparecerán todas las órdenes que has entregado.
-                  </Text>
-                  <Text style={styles.userHighlight}>
-                    📊 Tu historial de entregas te ayudará a llevar un control de tu trabajo
-                  </Text>
-                  <Text style={styles.userSubtext}>
-                    🎯 ¡Cada entrega exitosa suma a tu experiencia como conductor!
-                  </Text>
-                </>
+                // Mensajes para Driver - diferenciados por tab
+                driverActiveTab === 'disponibles' ? (
+                  <>
+                    <Text style={styles.userTitle}>📍 ¡Hola Conductor!</Text>
+                    <Text style={styles.userText}>
+                      Aquí aparecerán los pedidos que tengamos para ti.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      🔔 Te avisaremos en cuanto llegue uno nuevo
+                    </Text>
+                    <Text style={styles.userSubtext}>
+                      Mantén la app abierta para recibir notificaciones
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.userTitle}>🚚 ¡Hola Conductor!</Text>
+                    <Text style={styles.userText}>
+                      Aquí aparecerán todas las órdenes que has entregado.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      📊 Tu historial de entregas te ayudará a llevar un control de tu trabajo
+                    </Text>
+                    <Text style={styles.userSubtext}>
+                      🎯 ¡Cada entrega exitosa suma a tu experiencia como conductor!
+                    </Text>
+                  </>
+                )
               ) : (
                 // Mensajes para Usuario normal registrado
                 <>

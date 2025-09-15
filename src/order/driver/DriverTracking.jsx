@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
+import { OrderContext } from '../../context/OrderContext';
 import {
   View,
   Text,
@@ -18,6 +19,7 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
+  Alert,
 } from 'react-native';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import Geolocation from 'react-native-geolocation-service';
@@ -34,6 +36,7 @@ import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, st
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
+  const { orders } = useContext(OrderContext);
   const [latlong, setLatlong] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(order.status);
@@ -59,6 +62,21 @@ const DriverTracking = ({order}) => {
   };
 
   const handleAcceptOrder = async () => {
+    // Verificar si el driver ya tiene órdenes activas
+    const activeOrders = orders?.filter(o =>
+      o.driver_id === order.driver_id &&
+      ['On the Way', 'on the way', 'en camino', 'In Progress', 'in progress'].includes(o.status)
+    );
+
+    if (activeOrders && activeOrders.length > 0) {
+      Alert.alert(
+        '⚠️ Ya tienes un pedido activo',
+        'Debes completar tu pedido actual antes de aceptar uno nuevo.',
+        [{ text: 'Entendido', style: 'default' }]
+      );
+      return;
+    }
+
     await getCurrentLocation();
     submitDriverLocation();
   };
@@ -162,20 +180,7 @@ const DriverTracking = ({order}) => {
 
   const getCurrentLocation = async () => {
     try {
-      // ✅ UBICACIÓN FIJA TEMPORAL PARA DEBUGGING
-      const fakeDriverLocation = {
-        latitude: 19.4326,  // Centro CDMX
-        longitude: -99.1332
-      };
-      
-      
-      setLatlong({
-        driver_lat: fakeDriverLocation.latitude,
-        driver_long: fakeDriverLocation.longitude,
-      });
-      
-      // TODO: Reemplazar con ubicación real después del debug
-      /*
+      // Usar ubicación real con solicitud de permisos
       await getCurrentLocationUtil(
         'driver',
         (coordinates) => {
@@ -185,9 +190,14 @@ const DriverTracking = ({order}) => {
           });
         },
         (error) => {
+          console.log('Error obteniendo ubicación:', error);
+          // Fallback a ubicación de CDMX si falla
+          setLatlong({
+            driver_lat: 19.4326,
+            driver_long: -99.1332,
+          });
         }
       );
-      */
     } catch (error) {
     }
   };
