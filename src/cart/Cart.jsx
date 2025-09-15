@@ -59,6 +59,8 @@ export default function Cart() {
     totalPrice,
     clearCart,
     setCartClearCallback,
+    automaticPromotions,
+    getAutomaticPromotions,
   } = useContext(CartContext);
   const {user, updateUser} = useContext(AuthContext);
   const {refreshOrders} = useContext(OrderContext);
@@ -1577,13 +1579,15 @@ export default function Cart() {
         `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}` : 
         'Horario pendiente';
       
-      // Obtener número de orden de la respuesta - OXXO tiene estructura anidada
-      const orderNumber = orderData?.order_id || orderData?.id || orderData?.order?.id;
+      // Obtener número de orden de la respuesta del backend
+      const orderNumber = realOrderId || orderData?.order?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
-      
+
       console.log('🔍 ORDER ID DEBUG:', {
         orderData: orderData,
         orderNumber: orderNumber,
+        realOrderId: realOrderId,
+        backendOrderId: orderData?.order?.id,
         isValidOrderId: isValidOrderId,
         userType: user?.usertype
       });
@@ -2821,6 +2825,65 @@ const CartFooter = ({
       subtotal={subtotal}
       isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
     />
+
+    {/* Promociones Automáticas */}
+    {automaticPromotions && automaticPromotions.length > 0 && (
+      <View style={styles.automaticPromotionsContainer}>
+        <View style={styles.automaticPromotionsHeader}>
+          <Ionicons name="gift" size={20} color="#D27F27" style={{marginRight: 8}} />
+          <Text style={styles.automaticPromotionsTitle}>
+            ¡Promociones automáticas aplicadas!
+          </Text>
+        </View>
+
+        {automaticPromotions.map((promotion, index) => (
+          <View key={promotion.id || index} style={styles.automaticPromotionCard}>
+            <View style={styles.automaticPromotionInfo}>
+              <View style={styles.automaticPromotionHeader}>
+                <Text style={styles.automaticPromotionName}>{promotion.name}</Text>
+                <View style={[styles.automaticPromotionBadge,
+                  promotion.type === 'Birthday' && {backgroundColor: '#FF6B6B'},
+                  promotion.type === 'Global' && {backgroundColor: '#4ECDC4'},
+                  promotion.type === 'Normal' && {backgroundColor: '#45B7D1'},
+                  promotion.type === 'Google' && {backgroundColor: '#DB4437'},
+                  promotion.type === 'Apple' && {backgroundColor: '#000000'},
+                ]}>
+                  <Text style={[styles.automaticPromotionBadgeText,
+                    promotion.type === 'Apple' && {color: '#FFFFFF'}
+                  ]}>
+                    {promotion.type === 'Birthday' && '🎂 Cumpleaños'}
+                    {promotion.type === 'Global' && '🌍 Global'}
+                    {promotion.type === 'Normal' && '👤 Normal'}
+                    {promotion.type === 'Google' && '🔍 Google'}
+                    {promotion.type === 'Apple' && '🍎 Apple'}
+                    {promotion.type === 'Guest' && '👥 Guest'}
+                    {!['Birthday', 'Global', 'Normal', 'Google', 'Apple', 'Guest'].includes(promotion.type) && promotion.type}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.automaticPromotionDiscount}>
+                <Text style={styles.automaticPromotionDiscountText}>
+                  -{promotion.discount_type === 'percentage' ? `${promotion.discount}%` : `$${promotion.discount}`}
+                </Text>
+                <Text style={styles.automaticPromotionAmount}>
+                  Ahorro: ${promotion.discountAmount.toFixed(2)}
+                </Text>
+              </View>
+              {promotion.minAmount > 0 && (
+                <Text style={styles.automaticPromotionMinimum}>
+                  Mínimo: ${promotion.minAmount.toFixed(2)}
+                </Text>
+              )}
+            </View>
+            {promotion.type === 'Birthday' && (
+              <Text style={styles.birthdayMessage}>
+                ¡Feliz cumpleaños! 🎉
+              </Text>
+            )}
+          </View>
+        ))}
+      </View>
+    )}
 
     {/* Facturación (solo si hay deliveryInfo) */}
     {deliveryInfo && (

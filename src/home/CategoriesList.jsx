@@ -238,15 +238,15 @@ export default function CategoriesList() {
                      `📦 ${orderData.itemCount} producto${orderData.itemCount !== 1 ? 's' : ''}\n` +
                      `🚚 ${orderData.deliveryText}` +
                      `${orderData.needInvoice ? '\n🧾 Factura solicitada' : ''}`,
-            confirmText: orderData.orderId ? 'Ver pedido' : 'Mis pedidos',
+            confirmText: 'Ver pedido',
             cancelText: 'Continuar',
           onConfirm: () => {
             if (orderData.orderId) {
               // 🎯 IR DIRECTO A OrderDetails DE ESA ORDEN ESPECÍFICA
               navigation.navigate('OrderDetails', { orderId: orderData.orderId });
             } else {
-              // Navegar a lista de pedidos
-              navigation.navigate('MainTabs', { 
+              // Fallback: navegar a lista de pedidos si no hay orderId
+              navigation.navigate('MainTabs', {
                 screen: 'Pedidos'
               });
             }
