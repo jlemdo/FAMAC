@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
@@ -74,9 +74,27 @@ export default function Chat({ orderId, order }) {
     }, [fetchMessages]);
 
     return (
-        <View style={styles.chatCard}>
-            <ScrollView>
+        <KeyboardAvoidingView
+            style={styles.chatCard}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+            <View style={styles.chatContainer}>
                 <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
+
+                <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent}>
+                    {chatMessages.map((msg, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.chatBubble,
+                                msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
+                            ]}
+                        >
+                            <Text style={styles.chatText}>{msg.text}</Text>
+                        </View>
+                    ))}
+                </ScrollView>
 
                 <View style={styles.chatInputContainer}>
                     <TextInput
@@ -84,26 +102,16 @@ export default function Chat({ orderId, order }) {
                         placeholder="Escribe tu Mensaje..."
                         value={newMessage}
                         onChangeText={setNewMessage}
+                        multiline={false}
+                        returnKeyType="send"
+                        onSubmitEditing={handleSendMessage}
                     />
                     <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
                         <Ionicons name="send" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
-
-                {chatMessages.map((msg, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.chatBubble,
-                            msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
-                        ]}
-                    >
-
-                        <Text style={styles.chatText}>{msg.text}</Text>
-                    </View>
-                ))}
-            </ScrollView>
-        </View>
+            </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -122,6 +130,11 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
+        flex: 1,
+        minHeight: 300,
+    },
+    chatContainer: {
+        flex: 1,
     },
     sectionTitle: {
         fontSize: fonts.size.large,
@@ -129,13 +142,21 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         color: '#333',
     },
+    messagesContainer: {
+        flex: 1,
+        marginBottom: 10,
+    },
+    messagesContent: {
+        flexGrow: 1,
+        justifyContent: 'flex-end',
+    },
     chatInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
         borderTopWidth: 1,
         borderTopColor: '#ddd',
         paddingTop: 10,
+        backgroundColor: '#FFF',
     },
     chatInput: {
         flex: 1,

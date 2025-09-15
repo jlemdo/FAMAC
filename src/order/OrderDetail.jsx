@@ -374,37 +374,121 @@ const OrderDetails = () => {
             </View> */}
           </View>
 
-        {user.usertype === 'driver' ? (
-          // 2. Los drivers siempre ven todo
-          <>
-            <DriverTracking order={order} />
-            
-            
-            {/* Solo mostrar chat si la orden no está entregada */}
-            {order?.status?.toLowerCase() !== 'delivered' && order?.status?.toLowerCase() !== 'entregado' && (
-              <Chat orderId={orderId} order={order} />
-            )}
-          </>
-        ) : order.driver ? (
-          // 1. Clientes solo ven Tracking y Chat después de asignar driver
-          <>
-            <CustomerTracking order={order} />
-            {/* Solo mostrar chat si la orden no está entregada */}
-            {order?.status?.toLowerCase() !== 'delivered' && order?.status?.toLowerCase() !== 'entregado' && (
-              <Chat orderId={orderId} order={order} />
-            )}
-          </>
-        ) : (
-          // Mientras esté en “Open” (sin driver asignado)
-          <View style={styles.messageContainer}>
-            <Text style={styles.messageText}>
-              Este pedido aún no tiene repartidor. Vuelve a verificar más tarde.
-            </Text>
-          </View>
-        )}
+        {/* Lógica de visualización según estado real del pedido */}
+        {(() => {
+          const status = order?.status?.toLowerCase();
+          const hasDriver = order?.driver;
+          const isDriver = user?.usertype === 'driver';
 
-        {/* Botón de Atención al Cliente - Solo para usuarios, no drivers */}
-        {user?.usertype !== 'driver' && (
+          // ESTADOS DE ENTREGA COMPLETADA
+          const isDelivered = status === 'delivered' || status === 'entregado' ||
+                             status === 'completed' || status === 'completado';
+
+          // ESTADOS DE PAGO PENDIENTE
+          const isPendingPayment = status === 'processing payment' || status === 'pending payment' ||
+                                  status === 'processing' || status === 'pending';
+
+          // ESTADOS ACTIVOS (driver aceptó y está en camino)
+          const isActive = status === 'in progress' || status === 'on the way' ||
+                          status === 'en camino' || status === 'preparing' || status === 'preparando';
+
+          // 1. PAGO PENDIENTE - Sin validar
+          if (isPendingPayment) {
+            return (
+              <View style={styles.pendingContainer}>
+                <View style={styles.pendingIconContainer}>
+                  <Ionicons name="card-outline" size={50} color="#2196F3" />
+                </View>
+                <Text style={styles.pendingTitle}>Validando Pago</Text>
+                <Text style={styles.pendingMessage}>
+                  Tu pago aún no ha sido validado. En cuanto se confirme,
+                  procederemos con la preparación de tu pedido.
+                </Text>
+              </View>
+            );
+          }
+
+          // 2. PEDIDO ENTREGADO - Sin mapa
+          if (isDelivered) {
+            return (
+              <View style={styles.deliveredContainer}>
+                <View style={styles.deliveredIconContainer}>
+                  <Ionicons name="checkmark-circle" size={60} color="#4CAF50" />
+                </View>
+                <Text style={styles.deliveredTitle}>
+                  {isDriver ? '¡Entrega Completada!' : '¡Pedido Entregado!'}
+                </Text>
+                <Text style={styles.deliveredMessage}>
+                  {isDriver
+                    ? 'Has completado exitosamente la entrega de este pedido. ¡Excelente trabajo!'
+                    : 'Tu pedido ha sido entregado correctamente. ¡Esperamos que lo disfrutes!'
+                  }
+                </Text>
+              </View>
+            );
+          }
+
+          // 3. DRIVER - Ve mapa solo cuando acepta
+          if (isDriver && isActive) {
+            return (
+              <>
+                <DriverTracking order={order} />
+                <Chat orderId={orderId} order={order} />
+              </>
+            );
+          }
+
+          // 4. USUARIO - Ve mapa solo cuando driver acepta
+          if (!isDriver && isActive && hasDriver) {
+            return (
+              <>
+                <CustomerTracking order={order} />
+                <Chat orderId={orderId} order={order} />
+              </>
+            );
+          }
+
+          // 5. DRIVER ASIGNADO PERO NO HA ACEPTADO
+          if (hasDriver && !isActive) {
+            return (
+              <View style={styles.assignedContainer}>
+                <View style={styles.assignedIconContainer}>
+                  <Ionicons name="person-outline" size={50} color="#FF9800" />
+                </View>
+                <Text style={styles.assignedTitle}>Repartidor Asignado</Text>
+                <Text style={styles.assignedMessage}>
+                  {isDriver
+                    ? 'Se te ha asignado este pedido. Por favor confirma si puedes tomarlo.'
+                    : `Hemos asignado a ${order?.driver?.first_name
+                        ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                        : order?.driver?.name || 'un repartidor'} a tu pedido. Esperando confirmación para iniciar la entrega.`
+                  }
+                </Text>
+              </View>
+            );
+          }
+
+          // 6. PEDIDO CONFIRMADO SIN REPARTIDOR ASIGNADO
+          return (
+            <View style={styles.confirmedContainer}>
+              <View style={styles.confirmedIconContainer}>
+                <Ionicons name="checkmark-outline" size={50} color="#4CAF50" />
+              </View>
+              <Text style={styles.confirmedTitle}>Pedido Confirmado</Text>
+              <Text style={styles.confirmedMessage}>
+                Tu pedido ha sido confirmado y pagado. Nuestro equipo está
+                coordinando la asignación de un repartidor.
+              </Text>
+            </View>
+          );
+        })()}
+
+        {/* Botón de Atención al Cliente - Solo para usuarios después de entrega */}
+        {user?.usertype !== 'driver' &&
+         (order?.status?.toLowerCase() === 'delivered' ||
+          order?.status?.toLowerCase() === 'entregado' ||
+          order?.status?.toLowerCase() === 'completed' ||
+          order?.status?.toLowerCase() === 'completado') && (
           <TouchableOpacity
             style={styles.supportButton}
             onPress={() => setShowSupportModal(true)}
@@ -991,6 +1075,130 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#FFF',
     marginLeft: 8,
+  },
+
+  // Estilos para pedido entregado
+  deliveredContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  deliveredIconContainer: {
+    marginBottom: 20,
+  },
+  deliveredTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.xlarge,
+    color: '#4CAF50',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  deliveredMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Estilos para pago pendiente
+  pendingContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  pendingIconContainer: {
+    marginBottom: 20,
+  },
+  pendingTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#2196F3',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pendingMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Estilos para pedido confirmado sin repartidor
+  confirmedContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  confirmedIconContainer: {
+    marginBottom: 20,
+  },
+  confirmedTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#4CAF50',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  confirmedMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Estilos para repartidor asignado esperando confirmación
+  assignedContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  assignedIconContainer: {
+    marginBottom: 20,
+  },
+  assignedTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#FF9800',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  assignedMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

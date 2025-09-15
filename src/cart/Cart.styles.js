@@ -1050,6 +1050,98 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 16,
   },
+
+  // Estilos para promociones automáticas
+  automaticPromotionsContainer: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  automaticPromotionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  automaticPromotionsTitle: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
+  automaticPromotionCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.2)',
+  },
+  automaticPromotionInfo: {
+    flex: 1,
+  },
+  automaticPromotionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  automaticPromotionName: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    flex: 1,
+    marginRight: 8,
+  },
+  automaticPromotionBadge: {
+    backgroundColor: '#E0E0E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  automaticPromotionBadgeText: {
+    fontSize: fonts.size.tiny,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  automaticPromotionDiscount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  automaticPromotionDiscountText: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#33A744',
+  },
+  automaticPromotionAmount: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+  },
+  automaticPromotionMinimum: {
+    fontSize: fonts.size.tiny,
+    fontFamily: fonts.regular,
+    color: '#999',
+    marginTop: 4,
+  },
+  birthdayMessage: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FF6B6B',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 107, 107, 0.2)',
+  },
 });
 
 export default styles;

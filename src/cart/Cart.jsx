@@ -63,7 +63,7 @@ export default function Cart() {
     getAutomaticPromotions,
   } = useContext(CartContext);
   const {user, updateUser} = useContext(AuthContext);
-  const {refreshOrders} = useContext(OrderContext);
+  const {refreshOrders, updateOrders} = useContext(OrderContext);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
