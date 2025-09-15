@@ -89,43 +89,33 @@ export default function SpecificCategoryProduct() {
                   <View style={styles.topSection}>
                     <Image source={{uri: item.photo}} style={styles.image} />
                     
-                    <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-                    
-                    {/* Sección de precios - posición prominente */}
-                    <View style={styles.priceSection}>
-                    {discountNum > 0 ? (
-                      <>
-                        {/* Original tachado solo si hay descuento */}
-                        <Text style={styles.originalPriceStriked}>
-                          {formatPriceWithSymbol(item.price)}
-                        </Text>
-                        {/* Precio descontado */}
-                        <Text style={styles.discountedPrice}>
-                          {formatPriceWithSymbol(discountedPrice)}
-                        </Text>
-                        {/* Etiqueta "Ahorro" */}
-                        <View style={styles.savingsBadge}>
-                          <Text style={styles.savingsText}>
-                            ¡Ahorras ${discountNum}!
-                          </Text>
-                        </View>
-                      </>
-                    ) : (
-                      /* Si no hay descuento, solo muestro el precio normal */
-                      <Text style={styles.regularPrice}>{formatPriceWithSymbol(item.price)}</Text>
-                    )}
-                    </View>
-                    
-                    {/* Metadatos: peso y descripción */}
-                    <View style={styles.metadataSection}>
-                      <View style={styles.weightBadge}>
-                        <Text style={styles.weightText}>
-                          {formatProductMeasure(item.quantity, item.unit)}
-                        </Text>
-                      </View>
-                      <Text style={styles.description} numberOfLines={2}>
-                        {item.description}
+                    {/* Contenido inferior organizado */}
+                    <View style={styles.contentSection}>
+                      {/* Nombre del producto */}
+                      <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+
+                      {/* Medida del producto */}
+                      <Text style={styles.measure}>
+                        {formatProductMeasure(item.quantity, item.unit)}
                       </Text>
+
+                      {/* Sección de precios */}
+                      <View style={styles.priceContainer}>
+                        {discountNum > 0 ? (
+                          <View style={styles.priceWithDiscount}>
+                            <Text style={styles.discountedPrice}>
+                              {formatPriceWithSymbol(discountedPrice)}
+                            </Text>
+                            <Text style={styles.originalPrice}>
+                              {formatPriceWithSymbol(item.price)}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.regularPrice}>
+                            {formatPriceWithSymbol(item.price)}
+                          </Text>
+                        )}
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -175,26 +165,25 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: '#FFF',
-    padding: 12, // Reducido de 16 a 12
+    padding: 12,
     margin: cardSpacing,
     borderRadius: 16,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
-    width: cardWidth, // Ancho responsive calculado
-    minHeight: 300, // Altura mínima fija para uniformidad
+    width: cardWidth,
+    height: 320, // Altura fija para uniformidad
     borderWidth: 1,
     borderColor: 'rgba(139, 94, 60, 0.1)',
     position: 'relative',
     overflow: 'visible',
-    justifyContent: 'space-between', // Distribuir contenido uniformemente
   },
   topSection: {
     alignItems: 'center',
-    flex: 1, // Toma el espacio disponible
+    flex: 1,
+    justifyContent: 'flex-start',
   },
   promotionBanner: {
     position: 'absolute',
@@ -219,59 +208,62 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   image: {
-    width: cardWidth - 24, // Ancho de tarjeta menos padding
-    height: cardWidth - 24, // Alto igual al ancho para mantener aspecto cuadrado
+    width: cardWidth - 24,
+    height: 140, // Altura fija para uniformidad
     borderRadius: 12,
-    marginBottom: 8, // Reducido de 12 a 8
+    marginBottom: 12,
+    resizeMode: 'cover',
+  },
+  contentSection: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   name: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
-    textAlign: 'center',
-    marginBottom: 4, // Reducido de 6 a 4
-    paddingHorizontal: 4,
-    lineHeight: 18, // Mejor control de altura
-  },
-  description: {
-    fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.5)',
-    textAlign: 'center',
-    paddingHorizontal: 4,
-    fontFamily: fonts.regular,
-    lineHeight: 14,
-    marginTop: 4,
-  },
-  weightBadge: {
-    backgroundColor: 'rgba(139, 94, 60, 0.15)',
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    textAlign: 'left',
     marginBottom: 6,
+    lineHeight: 20,
+    minHeight: 40, // Altura fija para 2 líneas
   },
-  weightText: {
+  measure: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para pesos numéricos (250g)
+    fontFamily: fonts.regular,
     color: '#8B5E3C',
-  },
-  priceSection: {
-    alignItems: 'center',
-    marginVertical: 6,
+    backgroundColor: 'rgba(139, 94, 60, 0.1)',
+    paddingHorizontal: 8,
     paddingVertical: 4,
+    borderRadius: 8,
+    textAlign: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    overflow: 'hidden',
   },
-  metadataSection: {
-    alignItems: 'center',
+  priceContainer: {
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
     marginTop: 'auto',
-    paddingTop: 8,
+  },
+  priceWithDiscount: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   regularPrice: {
-    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
-    fontFamily: fonts.price, // ✅ Nueva fuente optimizada para precios
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 4,
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    textAlign: 'left',
+  },
+  originalPrice: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textDecorationLine: 'line-through',
+    textAlign: 'left',
+    marginTop: 2,
   },
   originalPriceStriked: {
     fontSize: fonts.size.small,
@@ -282,31 +274,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   discountedPrice: {
-    fontSize: fonts.size.small, // ✅ Mantiene autoscaling
-    fontFamily: fonts.price, // ✅ Nueva fuente optimizada para precios
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  savingsBadge: {
-    backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    paddingHorizontal: 6, // Reducido de 8 a 6
-    paddingVertical: 2, // Reducido de 3 a 2
-    borderRadius: 6, // Reducido de 8 a 6 para ser más sutil
-    marginBottom: 2, // Reducido de 4 a 2
-    borderWidth: 1,
-    borderColor: '#33A744',
-  },
-  savingsText: {
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
-    color: '#33A744',
-  },
-  priceSubtext: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: 'rgba(47,47,47,0.6)',
-    fontStyle: 'italic',
+    color: '#E63946',
+    textAlign: 'left',
   },
   noData: {
     textAlign: 'center',

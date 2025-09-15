@@ -159,21 +159,62 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
           has_real_email: !!email, // Flag para backend: true = email real/proxy, false = sin email
           has_real_name: !!(firstName || lastName), // Flag para backend: true = nombre real, false = sin nombre
         };
+
+        // Debug: Verificar qué datos se están enviando al backend
+        console.log('🍎 Apple Sign-in Payload:', {
+          first_name: firstName,
+          last_name: lastName,
+          email: finalEmail,
+          has_real_name: !!(firstName || lastName),
+          user_id: appleUserId
+        });
         
         const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
 
+        // Debug: Verificar qué datos devuelve el backend
+        console.log('🍎 Apple Backend Response:', {
+          user_first_name: data.user?.first_name,
+          user_last_name: data.user?.last_name,
+          user_email: data.user?.email,
+          user_name: data.user?.name,
+          full_user_object: data.user
+        });
+
         await login(data.user);
-        
+
+        // Verificar si el backend guardó los nombres correctamente
+        if ((firstName || lastName) && (!data.user.first_name || !data.user.last_name)) {
+          console.log('⚠️ Backend no guardó los nombres de Apple, intentando actualizar...');
+          try {
+            const updatePayload = {
+              userid: data.user.id,
+              first_name: firstName || data.user.first_name || '',
+              last_name: lastName || data.user.last_name || '',
+              email: data.user.email || '',
+              phone: data.user.phone || '',
+              address: data.user.address || '',
+            };
+
+            console.log('🔧 Actualizando perfil con:', updatePayload);
+            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
+            console.log('✅ Perfil actualizado exitosamente');
+          } catch (updateError) {
+            console.log('❌ Error actualizando perfil:', updateError);
+          }
+        }
+
         setTimeout(() => {
           // ✅ Solo mostrar bienvenida personalizada si tenemos nombre REAL de Apple
           const realAppleName = firstName || lastName;
+          // Usar nombre de Apple si está disponible, sino usar el del backend actualizado
+          const displayName = firstName || data.user.first_name || lastName || data.user.last_name;
 
-          if (realAppleName) {
+          if (realAppleName && displayName) {
             // Usuario Apple proporcionó nombre real - usar solo el primer nombre
             showAlert({
               type: 'success',
               title: 'Bienvenido',
-              message: `¡Hola ${firstName || lastName}!`,
+              message: `¡Hola ${displayName}!`,
               confirmText: 'Continuar',
             });
           } else {
