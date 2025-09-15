@@ -79,12 +79,10 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       const dayNumber = dayOfWeek === 0 ? 7 : dayOfWeek; // Domingo = 7
       
       if (activeDayNumbers.includes(dayNumber)) {
-        // Verificar que no sea hoy o que aún esté disponible hoy
+        // NUNCA incluir el día de hoy - solo días futuros
         const isToday = searchDate.toDateString() === today.toDateString();
-        const currentHour = today.getHours();
-        
-        // Si es hoy, verificar que no hayan pasado las 9pm (cutoff)
-        if (!isToday || currentHour < 21) {
+
+        if (!isToday) {
           dates.push(new Date(searchDate));
           daysFound++;
         }
@@ -238,160 +236,20 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ];
       }
       
-      // 🚫 TEMPORALMENTE COMENTADO - Filtrado de horarios deshabilitado
-      // Ahora se muestran TODOS los horarios que vienen del backend
-      /*
-      // 🆕 FILTRAR horarios SOLO para el día actual
-      const now = new Date();
-      const selectedDate = new Date(dateString);
-      const isToday = now.toDateString() === selectedDate.toDateString();
-      
-      let filteredSlots = slotsToProcess;
-      
-      // ⚡ SOLO aplicar filtros si es el día de HOY
-      if (isToday) {
-        const currentHour = now.getHours();
-        // console.log(`🕐 Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
-        
-        filteredSlots = slotsToProcess.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour, true);
-        });
-        
-        // Si ya pasaron las 9pm, este día ya no está disponible
-        if (currentHour >= 21) {
-          filteredSlots = []; // No hay slots disponibles
-        }
-      } else {
-        // 🎯 Para días FUTUROS, mostrar TODOS los horarios disponibles
-        // console.log(`📅 Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
-        filteredSlots = slotsToProcess; // Todos los slots disponibles
-      }
-      */
-      
-      // ✅ MOSTRAR TODOS LOS HORARIOS del backend sin filtrar
-      // console.log(`📅 Mostrando TODOS los horarios disponibles para ${dateString}`);
+      // ✅ MOSTRAR TODOS LOS HORARIOS del backend sin filtrar - Sin lógica de filtros
       setAvailableSlots(slotsToProcess);
       
     } catch (error) {
-      // Error fetching delivery slots - usar fallback con filtros
+      // Error fetching delivery slots - usar fallback sin filtros
       let fallbackSlots = [
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
         { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
       ];
-      
-      // 🚫 TEMPORALMENTE COMENTADO - Filtrado de fallback deshabilitado
-      /*
-      // 🆕 Aplicar la misma lógica al fallback - SOLO filtrar si es hoy
-      const now = new Date();
-      const selectedDate = new Date(dateString);
-      const isToday = now.toDateString() === selectedDate.toDateString();
-      
-      // ⚡ SOLO aplicar filtros si es el día de HOY
-      if (isToday) {
-        const currentHour = now.getHours();
-        // console.log(`🕐 FALLBACK - Filtrando horarios para HOY (${dateString}) - Hora actual: ${currentHour}`);
-        
-        fallbackSlots = fallbackSlots.filter(slot => {
-          return !isSlotPassed(slot.value, currentHour, true);
-        });
-        
-        // Si ya pasaron las 9pm, no hay slots disponibles
-        if (currentHour >= 21) {
-          fallbackSlots = [];
-        }
-      } else {
-        // 🎯 Para días FUTUROS, mostrar TODOS los horarios del fallback
-        // console.log(`📅 FALLBACK - Día futuro (${dateString}) - mostrando todos los horarios disponibles`);
-      }
-      */
-      
+
       // ✅ FALLBACK: Mostrar TODOS los horarios sin filtrar
-      // console.log(`📅 FALLBACK - Mostrando TODOS los horarios disponibles para ${dateString}`);
-      
       setAvailableSlots(fallbackSlots);
     } finally {
       setLoading(false);
-    }
-  };
-  
-  // 🆕 Helper function para determinar si un horario ya pasó - SOLO para día actual
-  const isSlotPassed = (slotValue, currentHour, isToday) => {
-    // ⚡ IMPORTANTE: Esta función SOLO debe usarse para el día actual
-    if (!isToday) {
-      return false; // Fechas futuras siempre tienen todos los slots disponibles
-    }
-    
-    const timeSlot = slotValue.toLowerCase();
-    // console.log(`🕐 Evaluando slot: "${timeSlot}" a las ${currentHour}:${new Date().getMinutes()}`);
-    
-    // 🆕 NUEVA LÓGICA: Extraer hora de fin del slot
-    const endHour = extractEndHourFromSlot(timeSlot);
-    
-    if (endHour === null) {
-      // console.warn(`⚠️ No se pudo extraer hora de fin del slot: ${timeSlot}`);
-      return false; // Si no podemos determinar la hora, no filtramos
-    }
-    
-    // Si la hora actual ya pasó la hora de fin del slot, está vencido
-    const isPassed = currentHour >= endHour;
-    
-    if (isPassed) {
-      // console.log(`❌ Slot "${timeSlot}" ya no disponible - pasó las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
-    } else {
-      // console.log(`✅ Slot "${timeSlot}" aún disponible - termina a las ${endHour}:00 (actual: ${currentHour}:${new Date().getMinutes()})`);
-    }
-    
-    return isPassed;
-  };
-
-  // 🆕 Helper para extraer la hora de fin de cualquier formato de slot
-  const extractEndHourFromSlot = (timeSlot) => {
-    try {
-      // Patrones comunes: "8am-11am", "9am-1pm", "4pm-12pm", "8:00 AM - 11:00 AM"
-      
-      // Buscar patrones de hora de fin
-      const patterns = [
-        // Formato: "8am-11am", "9am-1pm"
-        /-(\d{1,2})(am|pm)/,
-        // Formato: "8:00 AM - 11:00 AM"
-        /-\s*(\d{1,2}):\d{2}\s*(am|pm)/i,
-        // Formato: "4pm-12pm" (medianoche)
-        /-12pm/i,
-        // Formato: "4:00 PM - 12:00 PM"
-        /-\s*12:\d{2}\s*pm/i
-      ];
-      
-      let endHour = null;
-      
-      // Caso especial: "12pm" = medianoche = 24:00
-      if (timeSlot.includes('-12pm') || timeSlot.includes('- 12:')) {
-        // console.log('🌙 Slot termina a medianoche (24:00)');
-        return 24; // Medianoche
-      }
-      
-      // Intentar extraer la hora con los patrones
-      for (const pattern of patterns) {
-        const match = timeSlot.match(pattern);
-        if (match) {
-          const hour = parseInt(match[1]);
-          const period = match[2].toLowerCase();
-          
-          if (period === 'am') {
-            endHour = hour === 12 ? 0 : hour; // 12am = 0:00
-          } else { // pm
-            endHour = hour === 12 ? 12 : hour + 12; // 12pm = 12:00, 1pm = 13:00
-          }
-          
-          // console.log(`🔍 Extraído de "${timeSlot}": hora de fin = ${endHour}:00`);
-          return endHour;
-        }
-      }
-      
-      // console.warn(`⚠️ No se pudo extraer hora de fin de: "${timeSlot}"`);
-      return null;
-      
-    } catch (error) {
-      return null;
     }
   };
 

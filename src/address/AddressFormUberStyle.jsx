@@ -367,6 +367,94 @@ const AddressFormUberStyle = () => {
     // });
   };
 
+  // ✅ NUEVA: Función para parsear dirección guardada y extraer componentes
+  const parseAddressForEdit = (fullAddress) => {
+    if (!fullAddress || typeof fullAddress !== 'string') {
+      return {};
+    }
+
+    // Separar dirección principal de referencias si las hay
+    let mainAddress = fullAddress;
+    let extractedReferences = '';
+
+    // Buscar referencias al final (después de "Referencias:")
+    const refMatch = fullAddress.match(/(.*?),?\s*Referencias:\s*(.+)$/i);
+    if (refMatch) {
+      mainAddress = refMatch[1].trim();
+      extractedReferences = refMatch[2].trim();
+    }
+
+    // Intentar extraer componentes de la dirección
+    const addressComponents = {
+      street: '',
+      exteriorNumber: '',
+      interiorNumber: '',
+      neighborhood: '',
+      postalCode: '',
+      municipality: '',
+      state: 'CDMX',
+      references: extractedReferences
+    };
+
+    try {
+      // Dividir por comas y procesar cada parte
+      const parts = mainAddress.split(',').map(part => part.trim());
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+
+        // Buscar número (probable que sea el primer o segundo elemento)
+        if (i <= 1 && /\d+/.test(part)) {
+          const numberMatch = part.match(/(\d+)(.*)$/);
+          if (numberMatch) {
+            addressComponents.exteriorNumber = numberMatch[1];
+            // Lo que queda después del número podría ser el nombre de la calle
+            const remainder = numberMatch[2].trim();
+            if (remainder && !addressComponents.street) {
+              addressComponents.street = remainder;
+            }
+          }
+        }
+
+        // Buscar código postal (5 dígitos)
+        const postalMatch = part.match(/\b(\d{5})\b/);
+        if (postalMatch) {
+          addressComponents.postalCode = postalMatch[1];
+          continue;
+        }
+
+        // Si no tiene números, probablemente sea colonia, municipio o estado
+        if (!/\d/.test(part)) {
+          if (part.toLowerCase().includes('cdmx') || part.toLowerCase().includes('ciudad de méxico')) {
+            addressComponents.state = 'CDMX';
+          } else if (part.toLowerCase().includes('estado de méxico') || part.toLowerCase().includes('edomex')) {
+            addressComponents.state = 'Estado de México';
+          } else if (!addressComponents.neighborhood) {
+            addressComponents.neighborhood = part;
+          } else if (!addressComponents.municipality) {
+            addressComponents.municipality = part;
+          }
+        }
+
+        // Si no hemos asignado street y esta parte tiene letras sin números
+        if (!addressComponents.street && /^[a-záéíóúñü\s]+$/i.test(part)) {
+          addressComponents.street = part;
+        }
+      }
+
+      // Si no pudimos extraer componentes específicos, usar toda la dirección como street
+      if (!addressComponents.street && !addressComponents.neighborhood) {
+        addressComponents.street = mainAddress;
+      }
+
+    } catch (error) {
+      // Si falla el parsing, devolver la dirección completa como street
+      addressComponents.street = mainAddress;
+    }
+
+    return addressComponents;
+  };
+
   // Función para obtener ubicación actual usando locationUtils - CON DEBUG MEJORADO
   const handleGetCurrentLocation = async () => {
     setIsLoadingLocation(true);
@@ -1119,15 +1207,54 @@ const AddressFormUberStyle = () => {
   // ✅ NUEVO: Inicializar campos cuando es edición legacy
   useEffect(() => {
     if (isLegacyEdit && initialAddress) {
-      
+
       // Parsear y pre-llenar dirección
       parseLegacyAddress(initialAddress);
-      
+
       // Ir directamente al paso 2 (campos estructurados)
       setCurrentStep(2);
-      
+
     }
   }, [isLegacyEdit, initialAddress]);
+
+  // ✅ NUEVO: Inicializar campos cuando es edición desde AddressManager
+  useEffect(() => {
+    if (route.params?.editMode && route.params?.addressData) {
+      const addressData = route.params.addressData;
+
+      // Parsear la dirección completa para extraer componentes
+      try {
+        const addressComponents = parseAddressForEdit(addressData.address);
+
+        // Pre-llenar los campos con los datos existentes
+        setStreetName(addressComponents.street || '');
+        setExteriorNumber(addressComponents.exteriorNumber || '');
+        setInteriorNumber(addressComponents.interiorNumber || '');
+        setNeighborhood(addressComponents.neighborhood || '');
+        setPostalCode(addressComponents.postalCode || '');
+        setMunicipality(addressComponents.municipality || '');
+        setState(addressComponents.state || 'CDMX');
+        setReferences(addressComponents.references || '');
+
+        // Si hay coordenadas, establecerlas
+        if (addressData.latitude && addressData.longitude) {
+          setMapCoordinates({
+            latitude: addressData.latitude,
+            longitude: addressData.longitude
+          });
+          setUserHasConfirmedLocation(true);
+        }
+
+        // Ir directamente al paso 2 (campos estructurados)
+        setCurrentStep(2);
+
+      } catch (error) {
+        // Si falla el parsing, al menos llenar la dirección completa
+        setUserWrittenAddress(addressData.address || '');
+        setCurrentStep(2);
+      }
+    }
+  }, [route.params?.editMode, route.params?.addressData]);
 
   // ✅ CLEANUP: Limpiar callback del mapa al desmontar componente
   useEffect(() => {

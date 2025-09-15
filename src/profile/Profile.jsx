@@ -1631,51 +1631,6 @@ export default function Profile({ navigation, route }) {
         </Animated.View>
       )}
 
-      {/* 🔧 DEBUG PANEL VISUAL - APPLE SIGN-IN */}
-      <View style={styles.debugPanel}>
-        <Text style={styles.debugTitle}>🔧 DEBUG: Datos de Usuario</Text>
-
-        {/* Información básica del usuario */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugSectionTitle}>👤 Usuario Actual:</Text>
-          <Text style={styles.debugText}>ID: {user?.id || 'null'}</Text>
-          <Text style={styles.debugText}>Tipo: {user?.usertype || 'null'}</Text>
-          <Text style={styles.debugText}>Email: {user?.email || 'null'}</Text>
-        </View>
-
-        {/* Información del perfil */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugSectionTitle}>📋 Perfil Actual:</Text>
-          <Text style={styles.debugText}>Nombre: {profile?.first_name || 'null'}</Text>
-          <Text style={styles.debugText}>Apellido: {profile?.last_name || 'null'}</Text>
-          <Text style={styles.debugText}>Email Perfil: {profile?.email || 'null'}</Text>
-          <Text style={styles.debugText}>Teléfono: {profile?.phone || 'null'}</Text>
-        </View>
-
-        {/* Datos completos del user object */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugSectionTitle}>🍎 Objeto User Completo:</Text>
-          <Text style={styles.debugTextSmall}>
-            {JSON.stringify(user, null, 2)}
-          </Text>
-        </View>
-
-        {/* Datos completos del profile object */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugSectionTitle}>📊 Objeto Profile Completo:</Text>
-          <Text style={styles.debugTextSmall}>
-            {JSON.stringify(profile, null, 2)}
-          </Text>
-        </View>
-
-        {/* Información de AuthContext */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugSectionTitle}>🔐 Estados AuthContext:</Text>
-          <Text style={styles.debugText}>Loading: {loading ? 'true' : 'false'}</Text>
-          <Text style={styles.debugText}>Token: {user?.token ? 'presente' : 'ausente'}</Text>
-          <Text style={styles.debugText}>User Exists: {user ? 'true' : 'false'}</Text>
-        </View>
-      </View>
 
       </ScrollView>
     </Fragment>
@@ -2363,54 +2318,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // 🔧 DEBUG PANEL STYLES
-  debugPanel: {
-    backgroundColor: '#FFF3E0',
-    borderWidth: 2,
-    borderColor: '#FF9800',
-    borderRadius: 8,
-    margin: 16,
-    padding: 16,
-    marginTop: 20,
-  },
-  debugTitle: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
-    color: '#E65100',
-    textAlign: 'center',
-    marginBottom: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FFCC02',
-  },
-  debugSection: {
-    marginBottom: 16,
-    backgroundColor: '#FFFEF7',
-    padding: 12,
-    borderRadius: 6,
-    borderLeftWidth: 3,
-    borderLeftColor: '#FF9800',
-  },
-  debugSectionTitle: {
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    color: '#D84315',
-    marginBottom: 8,
-  },
-  debugText: {
-    fontSize: 12,
-    fontFamily: fonts.regular,
-    color: '#5D4037',
-    marginBottom: 4,
-    lineHeight: 16,
-  },
-  debugTextSmall: {
-    fontSize: 10,
-    fontFamily: fonts.regular,
-    color: '#6D4C41',
-    lineHeight: 14,
-    maxHeight: 150,
-    textAlign: 'left',
-  },
 
 });

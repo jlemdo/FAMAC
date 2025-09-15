@@ -883,6 +883,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#8B5E3C',
+    alignSelf: 'flex-start',
   },
   changeAddressButtonText: {
     fontSize: 12,
