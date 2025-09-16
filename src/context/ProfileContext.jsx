@@ -148,13 +148,15 @@ export const ProfileProvider = ({ children }) => {
       missing.push({ field: 'address', label: 'Dirección de entrega', reason: 'para recibir tus pedidos' });
     }
     
-    // Verificar fecha de cumpleaños (debe existir y ser una fecha válida)
-    if (!profileData.birthDate || 
-        !(profileData.birthDate instanceof Date) || 
-        isNaN(profileData.birthDate.getTime()) ||
-        profileData.birthDate.getFullYear() < 1900) {
-      missing.push({ field: 'birthDate', label: 'Fecha de cumpleaños', reason: 'para beneficios especiales en tu día' });
-    }
+    // ✅ APPLE COMPLIANCE: Fecha de cumpleaños es OPCIONAL
+    // Comentado para cumplir con App Store guidelines 5.1.1 - no requerir información personal no esencial
+    // La fecha de cumpleaños ahora es completamente opcional para el usuario
+    // if (!profileData.birthDate ||
+    //     !(profileData.birthDate instanceof Date) ||
+    //     isNaN(profileData.birthDate.getTime()) ||
+    //     profileData.birthDate.getFullYear() < 1900) {
+    //   missing.push({ field: 'birthDate', label: 'Fecha de cumpleaños', reason: 'para beneficios especiales en tu día' });
+    // }
     
     return missing;
   }, []);

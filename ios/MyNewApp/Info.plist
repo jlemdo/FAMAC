@@ -34,11 +34,11 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Necesitamos tu ubicación mientras usas la app para que puedas ver tu posición en el mapa.</string>
+	<string>La app necesita acceso a tu ubicación para: 1) Permitir a los clientes seleccionar direcciones de entrega en el mapa, 2) Calcular distancias y tiempos de entrega, 3) Permitir a los drivers de entrega navegar a las direcciones de los clientes.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Necesitamos acceder a la cámara para escanear códigos de producto y validar tus entregas.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Necesitamos tu ubicación incluso en segundo plano para rastrear tus entregas y mejorar la precisión del servicio.</string>
+	<string>Para drivers de entrega: Esta app necesita acceso continuo a la ubicación en segundo plano para rastrear las entregas en tiempo real, actualizar la posición del driver a los clientes, y proporcionar seguimiento preciso de las rutas de entrega. Esto permite a los clientes ver dónde está su pedido y mejorar la experiencia de entrega.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
