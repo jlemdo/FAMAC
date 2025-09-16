@@ -332,6 +332,8 @@ export function CartProvider({ children }) {
             const response = await axios.post('https://occr.pixelcrafters.digital/api/get-automatic-promotions', {
                 subtotal: subtotalAfterProductDiscounts,
                 user_email: user?.email || null
+            }, {
+                timeout: 5000 // 5 segundos de timeout
             });
 
             if (response.data.success) {
@@ -340,7 +342,11 @@ export function CartProvider({ children }) {
                 setAutomaticPromotions([]);
             }
         } catch (error) {
-            console.log('Error obteniendo promociones automáticas:', error);
+            // Solo loggear si es un error diferente a 500 (que indica que el endpoint no existe)
+            if (error.response?.status !== 500) {
+                console.log('Error obteniendo promociones automáticas:', error.message);
+            }
+            // Silenciosamente establecer array vacío para promociones automáticas
             setAutomaticPromotions([]);
         }
     }, [subtotalAfterProductDiscounts, user?.email]);

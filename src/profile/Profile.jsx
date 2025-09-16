@@ -164,6 +164,7 @@ export default function Profile({ navigation, route }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [showFounderTooltip, setShowFounderTooltip] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -363,6 +364,70 @@ export default function Profile({ navigation, route }) {
   const missingData = getMissingData();
 
   // Función para mostrar toast de éxito (similar a ProductDetails)
+  // ✅ FUNCIÓN: Manejar eliminación de cuenta
+  const handleDeleteAccount = async (password) => {
+    try {
+      setLoading(true);
+
+      let response;
+
+      // Usar el endpoint API recién creado
+      response = await axios.post(
+        'https://occr.pixelcrafters.digital/api/deleteuser',
+        {
+          userid: user.id,
+          password: password
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        showAlert({
+          type: 'success',
+          title: 'Cuenta eliminada',
+          message: 'Tu cuenta ha sido eliminada exitosamente. Lamentamos verte partir.',
+          confirmText: 'Entendido',
+          onConfirm: () => {
+            logout();
+          }
+        });
+      }
+    } catch (error) {
+      const errorData = error.response?.data;
+
+      if (error.response?.status === 401) {
+        showAlert({
+          type: 'error',
+          title: 'Contraseña incorrecta',
+          message: errorData?.message || 'La contraseña ingresada no es correcta.',
+          confirmText: 'Cerrar'
+        });
+      } else if (error.response?.status === 404) {
+        showAlert({
+          type: 'error',
+          title: 'Usuario no encontrado',
+          message: errorData?.message || 'No se encontró la cuenta de usuario.',
+          confirmText: 'Cerrar'
+        });
+      } else if (error.response?.status === 422) {
+        showAlert({
+          type: 'error',
+          title: 'Datos inválidos',
+          message: errorData?.message || 'Los datos proporcionados no son válidos.',
+          confirmText: 'Cerrar'
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: errorData?.message || 'No se pudo eliminar la cuenta. Intenta de nuevo más tarde.',
+          confirmText: 'Cerrar'
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ✅ FUNCIÓN: Manejar "Olvidé mi contraseña"
   const handleForgotPassword = async () => {
     try {
@@ -1347,6 +1412,16 @@ export default function Profile({ navigation, route }) {
 
       {/* Zona de Acciones de Cuenta */}
       <View style={styles.accountActions}>
+        {/* Solo mostrar eliminar cuenta para usuarios locales (no OAuth) */}
+        {!isOAuthUser() && (
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={() => setShowDeleteAccountConfirm(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.deleteAccountButtonText}>🗑️ Eliminar Cuenta</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={() => setShowLogoutConfirm(true)}
@@ -1574,6 +1649,113 @@ export default function Profile({ navigation, route }) {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* Modal de confirmación de eliminación de cuenta - Solo para usuarios locales */}
+      {!isOAuthUser() && (
+        <Modal
+          visible={showDeleteAccountConfirm}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteAccountConfirm(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            setShowDeleteAccountConfirm(false);
+          }}>
+            <View style={styles.deleteModalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.deleteModalContent}>
+                  <Text style={styles.deleteModalTitle}>⚠️ Eliminar Cuenta</Text>
+                  <Text style={styles.deleteModalMessage}>
+                    Esta acción no se puede deshacer. Se eliminarán todos tus datos, pedidos y preferencias.
+                  </Text>
+
+                  <Formik
+                    initialValues={{ password: '' }}
+                    validationSchema={Yup.object().shape({
+                      password: Yup.string().required('Contraseña requerida para confirmar')
+                    })}
+                    onSubmit={async (values, { setSubmitting }) => {
+                      await handleDeleteAccount(values.password);
+                      setSubmitting(false);
+                      setShowDeleteAccountConfirm(false);
+                    }}
+                    validateOnChange={false}
+                    validateOnBlur={false}>
+                    {({
+                      handleChange,
+                      handleSubmit,
+                      values,
+                      errors,
+                      isSubmitting,
+                      submitCount,
+                    }) => (
+                      <>
+                        <Text style={styles.deletePasswordLabel}>
+                          Ingresa tu contraseña para confirmar:
+                        </Text>
+                        <TextInput
+                          style={[
+                            styles.deletePasswordInput,
+                            submitCount > 0 && errors.password && styles.deletePasswordInputError
+                          ]}
+                          placeholder="Tu contraseña actual"
+                          placeholderTextColor="rgba(47,47,47,0.6)"
+                          secureTextEntry
+                          value={values.password}
+                          onChangeText={handleChange('password')}
+                          autoFocus={true}
+                          returnKeyType="done"
+                          onSubmitEditing={() => {
+                            if (values.password.trim()) {
+                              handleSubmit();
+                            }
+                          }}
+                        />
+                        {submitCount > 0 && errors.password && (
+                          <Text style={styles.deletePasswordError}>{errors.password}</Text>
+                        )}
+
+                        <View style={styles.deleteModalButtons}>
+                          <TouchableOpacity
+                            style={styles.deleteCancelButton}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setShowDeleteAccountConfirm(false);
+                            }}
+                            activeOpacity={0.8}>
+                            <Text style={styles.deleteCancelButtonText}>Cancelar</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.deleteConfirmButton,
+                              (!values.password.trim() || isSubmitting || loading) && styles.deleteConfirmButtonDisabled
+                            ]}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              handleSubmit();
+                            }}
+                            disabled={!values.password.trim() || isSubmitting || loading}
+                            activeOpacity={0.8}>
+                            {isSubmitting || loading ? (
+                              <ActivityIndicator color="#FFF" size="small" />
+                            ) : (
+                              <Text style={styles.deleteConfirmButtonText}>Eliminar Cuenta</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </Formik>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+      )}
 
       {/* Modal de Tooltip Usuario Fundador */}
       <Modal
@@ -2318,5 +2500,129 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // === ESTILOS PARA ELIMINAR CUENTA ===
+  deleteAccountButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#DC3545',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  deleteAccountButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#DC3545',
+    textAlign: 'center',
+  },
+
+  // === ESTILOS DEL MODAL DE ELIMINACIÓN DE CUENTA ===
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#DC3545',
+  },
+  deleteModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#DC3545',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  deleteModalMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  deletePasswordLabel: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  deletePasswordInput: {
+    borderWidth: 1.5,
+    borderColor: '#DC3545',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
+    backgroundColor: '#FFF',
+    marginBottom: 16,
+  },
+  deletePasswordInputError: {
+    borderColor: '#DC3545',
+    backgroundColor: 'rgba(220, 53, 69, 0.05)',
+  },
+  deletePasswordError: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#DC3545',
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  deleteCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  deleteConfirmButton: {
+    flex: 1,
+    backgroundColor: '#DC3545',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteConfirmButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
+  },
+  deleteConfirmButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
 
 });
