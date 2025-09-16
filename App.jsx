@@ -95,7 +95,7 @@ function MainTabs() {
   const {cart} = useContext(CartContext);
   // ✅ FIXED: Siempre llamar useProfile(), validar condicionalmente después
   const profileContext = useProfile();
-  const hasIncompleteProfile = user?.usertype !== 'driver' ? profileContext.hasIncompleteProfile : false;
+  const hasIncompleteProfile = (user?.usertype !== 'driver' && user?.usertype !== 'Guest') ? profileContext.hasIncompleteProfile : false;
   
   // Memoized cart badge calculation with real-time updates
   const cartBadge = useMemo(() => {
@@ -200,7 +200,11 @@ function MainTabs() {
     <View style={styles.container}>
       {/* <Header /> */}
       <Tab.Navigator
-        initialRouteName={user.usertype === 'driver' ? "Historial de Pedidos" : "Inicio"}
+        initialRouteName={
+          user.usertype === 'driver' ? "Historial de Pedidos" :
+          user.usertype === 'Guest' ? "Inicio" :
+          "Inicio"
+        }
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;
@@ -351,6 +355,19 @@ function AuthFlow() {
       console.log('✅ NAVIGATION REF CONFIGURED FOR NOTIFICATIONS');
     }
   }, [navigationRef.current]);
+
+  // 🎯 GUEST FIX: Forzar navegación a Inicio para usuarios Guest
+  useEffect(() => {
+    if (user?.usertype === 'Guest' && navigationRef.current) {
+      // Pequeño delay para asegurar que la navegación esté lista
+      setTimeout(() => {
+        navigationRef.current?.navigate('MainTabs', {
+          screen: 'Inicio',
+          params: { screen: 'CategoriesList' }
+        });
+      }, 100);
+    }
+  }, [user?.usertype]);
 
   if (user === undefined) {
     return <ActivityIndicator size="large" color="tomato" />;
