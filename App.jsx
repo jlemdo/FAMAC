@@ -2,6 +2,7 @@ import React, {useContext, useCallback, useMemo, useEffect, useRef} from 'react'
 import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
 import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
 import NotificationService from './src/services/NotificationService';
+import AutoUpdateService from './src/services/AutoUpdateService';
 import {NavigationContainer} from '@react-navigation/native';
 import CategoriesList from './src/home/CategoriesList';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
@@ -45,12 +46,13 @@ import {OrderContext} from './src/context/OrderContext';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// LIVE
-// const PUBLISHABLE_KEY =
-//   'pk_live_51RUatHIhBUbZl3CrIf9BW6LjracnlDnVMnpeRkhIk2Th6ULOdgZiSL3oGnEkGR8h42aLnzyrHy80gGIjv6pzmTp800PbiPa4Pe';
-  // SANDBOX
+// LIVE - PRODUCTION MODE ACTIVE
 const PUBLISHABLE_KEY =
-  'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
+  'pk_live_51RUatHIhBUbZl3CrIf9BW6LjracnlDnVMnpeRkhIk2Th6ULOdgZiSL3oGnEkGR8h42aLnzyrHy80gGIjv6pzmTp800PbiPa4Pe';
+
+// SANDBOX - DISABLED FOR PRODUCTION
+// const PUBLISHABLE_KEY =
+//   'pk_test_51RUatQIwltH9llH1Ihi6ZvEZ9O1ZqYgLEHdUBS3vQ3E890oQycuF0ITlgocwypo0igPl94uDE9t84fQ0R2VAQc1100XwsvKNjR';
 // const PUBLISHABLE_KEY =
 //   'pk_test_51OMmaHISCA0h3oYpdsnzpNlsLGm3WLtP7zb5mFyeEAKJqPZZXuP3J1ph7ShDzBUWiSJ64UHtfII8xmpbFkXbM4Bg00K0F4gAR9';
 
@@ -381,9 +383,12 @@ function AuthFlow() {
 }
 
 export default function App() {
-  // ✅ INICIALIZAR: Override global para fuentes numéricas
+  // ✅ INICIALIZAR: Override global para fuentes numéricas y actualizaciones
   React.useEffect(() => {
     initializeGlobalNumericFont();
+
+    // Inicializar sistema de actualizaciones automáticas
+    AutoUpdateService.initialize();
   }, []);
 
   return (

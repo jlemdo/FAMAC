@@ -32,6 +32,7 @@ import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
+import DriverTestStates from './DriverTestStates';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
@@ -61,27 +62,77 @@ const DriverTracking = ({order}) => {
   };
 
   const handleAcceptOrder = async () => {
-    // Verificar si el driver ya tiene órdenes activas
-    const activeOrders = orders?.filter(o =>
-      o.driver_id === order.driver_id &&
-      ['On the Way', 'on the way', 'en camino', 'In Progress', 'in progress'].includes(o.status)
-    );
+    try {
+      setLoading(true);
 
-    if (activeOrders && activeOrders.length > 0) {
+      // Verificar si el driver ya tiene órdenes activas
+      const activeOrders = orders?.filter(o =>
+        o.driver_id === order.driver_id &&
+        ['On the Way', 'on the way', 'en camino', 'In Progress', 'in progress'].includes(o.status)
+      );
+
+      if (activeOrders && activeOrders.length > 0) {
+        Alert.alert(
+          '⚠️ Ya tienes un pedido activo',
+          'Debes completar tu pedido actual antes de aceptar uno nuevo.',
+          [{ text: 'Entendido', style: 'default' }]
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Obtener ubicación actual del driver
+      await getCurrentLocation();
+
+      // Enviar ubicación al servidor que actualiza el estado automáticamente
+      await submitDriverLocation();
+
+      // Actualizar estado local inmediatamente
+      setCurrentStatus('On the Way');
+
       Alert.alert(
-        '⚠️ Ya tienes un pedido activo',
-        'Debes completar tu pedido actual antes de aceptar uno nuevo.',
+        '✅ Pedido Aceptado',
+        'Has aceptado este pedido. Dirígete a recoger los productos.',
         [{ text: 'Entendido', style: 'default' }]
       );
-      return;
-    }
 
-    await getCurrentLocation();
-    submitDriverLocation();
+    } catch (error) {
+      console.error('Error aceptando pedido:', error);
+      Alert.alert(
+        '❌ Error',
+        'No se pudo aceptar el pedido. Intenta nuevamente.',
+        [{ text: 'Entendido', style: 'default' }]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeliverOrder = async () => {
-    completeOrderFromDriver();
+    try {
+      setLoading(true);
+
+      await completeOrderFromDriver();
+
+      // Actualizar estado local inmediatamente
+      setCurrentStatus('Delivered');
+
+      Alert.alert(
+        '✅ Pedido Entregado',
+        '¡Excelente! Has marcado el pedido como entregado exitosamente.',
+        [{ text: 'Perfecto', style: 'default' }]
+      );
+
+    } catch (error) {
+      console.error('Error entregando pedido:', error);
+      Alert.alert(
+        '❌ Error',
+        'No se pudo marcar el pedido como entregado. Intenta nuevamente.',
+        [{ text: 'Entendido', style: 'default' }]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getModalContent = () => {
@@ -104,49 +155,89 @@ const DriverTracking = ({order}) => {
   };
 
   const submitDriverLocation = useCallback(async () => {
+    if (!latlong?.driver_lat || !latlong?.driver_long) {
+      console.log('⚠️ No hay coordenadas válidas para enviar');
+      return;
+    }
+
     const payload = {
       orderid: order.id,
       driver_lat: latlong.driver_lat,
       driver_long: latlong.driver_long,
     };
 
+    console.log('📍 Enviando ubicación del driver:', payload);
+
     try {
       const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/driverlocsubmit',
         payload,
       );
-      if (response.status == 201) {
-        fetchOrder();
+
+      console.log('📡 Respuesta del servidor:', response.status, response.data);
+
+      if (response.status === 201 || response.status === 200) {
+        console.log('✅ Ubicación enviada exitosamente');
+        await fetchOrder();
+      } else {
+        console.log('⚠️ Respuesta inesperada del servidor:', response.status);
       }
     } catch (error) {
+      console.error('❌ Error enviando ubicación:', error.response?.data || error.message);
     }
   }, [order.id, latlong, fetchOrder]);
 
   const fetchOrder = useCallback(async () => {
     try {
+      console.log(`🔄 Actualizando estado de orden ${order.id}...`);
+
       const res = await axios.get(
         `https://occr.pixelcrafters.digital/api/orderdetails/${order.id}`,
       );
-      setCurrentStatus(res?.data?.order?.status);
-      // if (res?.data?.order?.status == "On the Way") {
-      //     completeOrderFromDriver()
-      // }
+
+      const newStatus = res?.data?.order?.status;
+      console.log(`📊 Estado actualizado: "${currentStatus}" → "${newStatus}"`);
+
+      setCurrentStatus(newStatus);
+
+      // Log para debugging de estados
+      console.log('🔍 Estado completo de la orden:', {
+        id: order.id,
+        status: newStatus,
+        payment_status: res?.data?.order?.payment_status,
+        driver_id: res?.data?.order?.driver_id
+      });
+
     } catch (err) {
+      console.error('❌ Error obteniendo detalles de orden:', err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
-  }, [order.id]);
+  }, [order.id, currentStatus]);
 
   const completeOrderFromDriver = async () => {
     try {
+      console.log(`📦 Marcando orden ${order.id} como entregada...`);
+
       const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/orderdel',
         {
           orderid: order.id,
         },
       );
-      fetchOrder();
+
+      console.log('📡 Respuesta de entrega:', response.status, response.data);
+
+      if (response.status === 200 || response.status === 201) {
+        console.log('✅ Orden marcada como entregada exitosamente');
+        await fetchOrder();
+      } else {
+        throw new Error(`Respuesta inesperada del servidor: ${response.status}`);
+      }
+
     } catch (error) {
+      console.error('❌ Error marcando como entregado:', error.response?.data || error.message);
+      throw error; // Re-lanzar para que handleDeliverOrder lo capture
     }
   };
 
@@ -337,21 +428,82 @@ const DriverTracking = ({order}) => {
         
         {order?.payment_status === 'paid' ? (
           <>
-            {(currentStatus == 'Open' || currentStatus == 'Abierto') && (
+            {/* 🎯 BOTÓN ACEPTAR - Estados que permiten aceptar pedido */}
+            {(currentStatus === 'Open' ||
+              currentStatus === 'Abierto' ||
+              currentStatus === 'open' ||
+              currentStatus === 'abierto' ||
+              currentStatus === 'Pending' ||
+              currentStatus === 'pending' ||
+              currentStatus === 'Pendiente' ||
+              currentStatus === 'pendiente' ||
+              currentStatus === 'Confirmed' ||
+              currentStatus === 'confirmed' ||
+              currentStatus === 'Confirmado' ||
+              currentStatus === 'confirmado') && (
               <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => showConfirmationModal('accept')}>
-                <Text style={styles.actionButtonText}>Aceptar Pedido</Text>
+                style={[styles.actionButton, styles.acceptButton, loading && styles.buttonDisabled]}
+                onPress={() => showConfirmationModal('accept')}
+                disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.actionButtonText}>✅ Aceptar Pedido</Text>
+                )}
               </TouchableOpacity>
             )}
 
-            {currentStatus == 'On the Way' && (
+            {/* 🚚 BOTÓN EN CAMINO - Cuando ya está aceptado */}
+            {(currentStatus === 'On the Way' ||
+              currentStatus === 'on the way' ||
+              currentStatus === 'En camino' ||
+              currentStatus === 'en camino' ||
+              currentStatus === 'In Progress' ||
+              currentStatus === 'in progress' ||
+              currentStatus === 'En progreso' ||
+              currentStatus === 'en progreso') && (
               <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => showConfirmationModal('deliver')}>
-                <Text style={styles.actionButtonText}>Marcar como Entregado</Text>
+                style={[styles.actionButton, styles.deliverButton, loading && styles.buttonDisabled]}
+                onPress={() => showConfirmationModal('deliver')}
+                disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.actionButtonText}>📦 Marcar como Entregado</Text>
+                )}
               </TouchableOpacity>
             )}
+
+            {/* 🏁 ESTADO ENTREGADO - Solo mostrar información */}
+            {(currentStatus === 'Delivered' ||
+              currentStatus === 'delivered' ||
+              currentStatus === 'Entregado' ||
+              currentStatus === 'entregado' ||
+              currentStatus === 'Completed' ||
+              currentStatus === 'completed' ||
+              currentStatus === 'Completado' ||
+              currentStatus === 'completado') && (
+              <View style={styles.completedContainer}>
+                <Text style={styles.completedText}>✅ Pedido Entregado</Text>
+                <Text style={styles.completedSubtext}>Este pedido ha sido completado exitosamente</Text>
+              </View>
+            )}
+
+            {/* 🔍 DEBUG: Mostrar estado actual para desarrollo */}
+            <View style={styles.debugStatus}>
+              <Text style={styles.debugStatusText}>
+                Estado actual: "{currentStatus}" | Pago: "{order?.payment_status}"
+              </Text>
+            </View>
+
+            {/* 🧪 COMPONENTE DE PRUEBA: Probador de estados */}
+            <DriverTestStates
+              currentStatus={currentStatus}
+              onStateChange={(newStatus) => {
+                console.log(`🔄 Cambiando estado de prueba: "${currentStatus}" → "${newStatus}"`);
+                setCurrentStatus(newStatus);
+              }}
+            />
           </>
         ) : (
           <View style={styles.paymentPendingContainer}>
@@ -675,6 +827,57 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+
+  // 🆕 Estilos para botones específicos
+  acceptButton: {
+    backgroundColor: '#33A744', // Verde para aceptar
+  },
+  deliverButton: {
+    backgroundColor: '#2196F3', // Azul para entregar
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
+  // 🆕 Estilos para estado completado
+  completedContainer: {
+    backgroundColor: '#E8F5E8',
+    borderWidth: 1,
+    borderColor: '#33A744',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  completedText: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#1B5E20',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  completedSubtext: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#2E7D32',
+    textAlign: 'center',
+  },
+
+  // 🔍 Estilos para debug
+  debugStatus: {
+    backgroundColor: '#F3E5F5',
+    borderWidth: 1,
+    borderColor: '#9C27B0',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  debugStatusText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#4A148C',
+    textAlign: 'center',
   },
 });
 

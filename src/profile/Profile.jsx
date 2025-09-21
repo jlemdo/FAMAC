@@ -27,6 +27,7 @@ import { OrderContext } from '../context/OrderContext';
 import { useAlert } from '../context/AlertContext';
 import { useProfile } from '../context/ProfileContext';
 import fonts from '../theme/fonts';
+import { useAutoUpdate } from '../hooks/useAutoUpdate';
 import RegisterPrompt from './RegisterPrompt';
 import NotificationService from '../services/NotificationService';
 import {formatOrderId} from '../utils/orderIdFormatter';
@@ -169,7 +170,13 @@ export default function Profile({ navigation, route }) {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const formikRef = useRef(null);
-  
+
+  // Hook para actualizaciones automáticas
+  const { hasUpdate, isCriticalUpdate, manualCheck, isChecking } = useAutoUpdate({
+    checkOnMount: false,
+    showModalAutomatically: true
+  });
+
   // Referencias para animaciones de toast
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
@@ -741,17 +748,46 @@ export default function Profile({ navigation, route }) {
 
       {loading && <ActivityIndicator size="large" color="#33A744" style={styles.loading} />}
 
-      {/* ✅ DRIVER FIX: Ocultar Atención al Cliente para drivers */}
-      {user?.usertype !== 'driver' && (
-        <View style={styles.quickActions}>
+      {/* Acciones Rápidas */}
+      <View style={styles.quickActions}>
+        {/* ✅ DRIVER FIX: Ocultar Atención al Cliente para drivers */}
+        {user?.usertype !== 'driver' && (
           <TouchableOpacity
             style={styles.supportButton}
             onPress={() => setShowSupportModal(true)}
             activeOpacity={0.8}>
             <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+
+        {/* Botón de Actualizaciones - Sutil y no invasivo */}
+        <TouchableOpacity
+          style={[
+            styles.updateButton,
+            hasUpdate && styles.updateButtonHighlight,
+            isChecking && styles.updateButtonChecking
+          ]}
+          onPress={manualCheck}
+          disabled={isChecking}
+          activeOpacity={0.8}>
+          <Text style={[
+            styles.updateButtonText,
+            hasUpdate && styles.updateButtonTextHighlight
+          ]}>
+            {isChecking ? '🔄 Verificando...' :
+             hasUpdate ? (isCriticalUpdate ? '⚠️ Actualización Importante' : '🆕 Actualización Disponible') :
+             '📱 Verificar actualizaciones'}
+          </Text>
+          {hasUpdate && !isChecking && (
+            <View style={[
+              styles.updateBadge,
+              isCriticalUpdate && styles.updateBadgeCritical
+            ]}>
+              <Text style={styles.updateBadgeText}>•</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Información del Perfil */}
       <TouchableOpacity 
@@ -1961,9 +1997,56 @@ const styles = StyleSheet.create({
   // === BOTONES ESPECÍFICOS MIGRADOS AL TEMA ===
   supportButton: {
     ...buttons.support,
-    marginBottom: 16, // Reducir espacio para nuevo botón
+    marginBottom: 12, // Reducir espacio para nuevo botón
   },
   supportButtonText: buttonText.secondary,
+
+  // Estilos para botón de actualizaciones
+  updateButton: {
+    backgroundColor: '#F2EFE4',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'relative',
+  },
+  updateButtonHighlight: {
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderColor: '#33A744',
+  },
+  updateButtonChecking: {
+    opacity: 0.7,
+    backgroundColor: 'rgba(139, 94, 60, 0.1)',
+  },
+  updateButtonText: {
+    color: '#8B5E3C',
+    fontSize: 14,
+    fontFamily: 'Raleway-Medium',
+    flex: 1,
+  },
+  updateButtonTextHighlight: {
+    color: '#33A744',
+    fontFamily: 'Raleway-Bold',
+  },
+  updateBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#33A744',
+    marginLeft: 8,
+  },
+  updateBadgeCritical: {
+    backgroundColor: '#E63946',
+  },
+  updateBadgeText: {
+    fontSize: 8,
+    color: 'transparent',
+  },
   
   logoutButton: {
     ...buttons.logout,
