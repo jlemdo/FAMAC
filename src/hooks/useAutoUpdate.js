@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AutoUpdateService from '../services/AutoUpdateService';
 
 export const useAutoUpdate = (options = {}) => {
@@ -29,8 +29,8 @@ export const useAutoUpdate = (options = {}) => {
       setUpdateInfo(update);
       setLastChecked(new Date());
 
-      // Mostrar modal automáticamente si hay actualización disponible
-      if (update?.available && showModalAutomatically) {
+      // Mostrar modal automáticamente si hay actualización disponible (solo Android)
+      if (update?.available && showModalAutomatically && Platform.OS === 'android') {
         AutoUpdateService.showUpdateModal(update);
       }
 
@@ -44,10 +44,13 @@ export const useAutoUpdate = (options = {}) => {
   }, [showModalAutomatically]);
 
   /**
-   * Verificación manual (para botones)
+   * Verificación manual (para botones) - solo Android
    */
   const manualCheck = useCallback(async () => {
-    return await AutoUpdateService.manualCheck();
+    if (Platform.OS === 'android') {
+      return await AutoUpdateService.manualCheck();
+    }
+    return null;
   }, []);
 
   /**

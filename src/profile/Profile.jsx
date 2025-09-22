@@ -760,33 +760,35 @@ export default function Profile({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {/* Botón de Actualizaciones - Sutil y no invasivo */}
-        <TouchableOpacity
-          style={[
-            styles.updateButton,
-            hasUpdate && styles.updateButtonHighlight,
-            isChecking && styles.updateButtonChecking
-          ]}
-          onPress={manualCheck}
-          disabled={isChecking}
-          activeOpacity={0.8}>
-          <Text style={[
-            styles.updateButtonText,
-            hasUpdate && styles.updateButtonTextHighlight
-          ]}>
-            {isChecking ? '🔄 Verificando...' :
-             hasUpdate ? (isCriticalUpdate ? '⚠️ Actualización Importante' : '🆕 Actualización Disponible') :
-             '📱 Verificar actualizaciones'}
-          </Text>
-          {hasUpdate && !isChecking && (
-            <View style={[
-              styles.updateBadge,
-              isCriticalUpdate && styles.updateBadgeCritical
+        {/* Botón de Actualizaciones - Solo Android */}
+        {Platform.OS === 'android' && (
+          <TouchableOpacity
+            style={[
+              styles.updateButton,
+              hasUpdate && styles.updateButtonHighlight,
+              isChecking && styles.updateButtonChecking
+            ]}
+            onPress={manualCheck}
+            disabled={isChecking}
+            activeOpacity={0.8}>
+            <Text style={[
+              styles.updateButtonText,
+              hasUpdate && styles.updateButtonTextHighlight
             ]}>
-              <Text style={styles.updateBadgeText}>•</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+              {isChecking ? '🔄 Verificando...' :
+               hasUpdate ? (isCriticalUpdate ? '⚠️ Actualización Importante' : '🆕 Actualización Disponible') :
+               '📱 Verificar actualizaciones'}
+            </Text>
+            {hasUpdate && !isChecking && (
+              <View style={[
+                styles.updateBadge,
+                isCriticalUpdate && styles.updateBadgeCritical
+              ]}>
+                <Text style={styles.updateBadgeText}>•</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Información del Perfil */}

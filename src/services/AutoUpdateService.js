@@ -147,10 +147,15 @@ class AutoUpdateService {
   }
 
   /**
-   * Muestra modal de actualización al usuario
+   * Muestra modal de actualización al usuario (solo Android)
    * @param {Object} updateInfo - Información de la actualización
    */
   showUpdateModal(updateInfo) {
+    // Solo mostrar alertas en Android
+    if (Platform.OS !== 'android') {
+      console.log('iOS detectado - actualizaciones automáticas deshabilitadas');
+      return;
+    }
     const title = updateInfo.isCritical ? '🚨 Actualización Crítica' : '🆕 Nueva Versión Disponible';
     const message = `
 Versión actual: ${updateInfo.currentVersion}
@@ -218,9 +223,14 @@ ${updateInfo.isCritical ?
   }
 
   /**
-   * Verificación manual de actualizaciones (para botón en configuración)
+   * Verificación manual de actualizaciones (para botón en configuración) - solo Android
    */
   async manualCheck() {
+    // Solo permitir verificación manual en Android
+    if (Platform.OS !== 'android') {
+      console.log('iOS detectado - verificación manual de actualizaciones no disponible');
+      return null;
+    }
     Alert.alert(
       '🔍 Verificando...',
       'Buscando nuevas versiones disponibles...',
@@ -247,26 +257,30 @@ ${updateInfo.isCritical ?
   async initialize() {
     console.log('🚀 Inicializando AutoUpdateService...');
 
-    // Verificar actualizaciones al iniciar la app
-    setTimeout(() => {
-      this.checkForUpdates().then(updateInfo => {
-        if (updateInfo && updateInfo.available) {
-          // Esperar un poco antes de mostrar el modal para mejor UX
-          setTimeout(() => {
-            this.showUpdateModal(updateInfo);
-          }, 3000);
-        }
-      });
-    }, 5000); // Esperar 5 segundos después del inicio de la app
+    // Verificar actualizaciones al iniciar la app (solo Android)
+    if (Platform.OS === 'android') {
+      setTimeout(() => {
+        this.checkForUpdates().then(updateInfo => {
+          if (updateInfo && updateInfo.available) {
+            // Esperar un poco antes de mostrar el modal para mejor UX
+            setTimeout(() => {
+              this.showUpdateModal(updateInfo);
+            }, 3000);
+          }
+        });
+      }, 5000); // Esperar 5 segundos después del inicio de la app
+    }
 
-    // Configurar verificación periódica
-    setInterval(() => {
-      this.checkForUpdates().then(updateInfo => {
-        if (updateInfo && updateInfo.available && updateInfo.isCritical) {
-          this.showUpdateModal(updateInfo);
-        }
-      });
-    }, UPDATE_CONFIG.CHECK_INTERVAL);
+    // Configurar verificación periódica (solo Android)
+    if (Platform.OS === 'android') {
+      setInterval(() => {
+        this.checkForUpdates().then(updateInfo => {
+          if (updateInfo && updateInfo.available && updateInfo.isCritical) {
+            this.showUpdateModal(updateInfo);
+          }
+        });
+      }, UPDATE_CONFIG.CHECK_INTERVAL);
+    }
   }
 
   /**
