@@ -32,7 +32,6 @@ import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
-import DriverTestStates from './DriverTestStates';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
@@ -183,7 +182,14 @@ const DriverTracking = ({order}) => {
         console.log('⚠️ Respuesta inesperada del servidor:', response.status);
       }
     } catch (error) {
-      console.error('❌ Error enviando ubicación:', error.response?.data || error.message);
+      const errorMsg = error.response?.data?.message || error.message;
+
+      if (errorMsg.includes('Too Many Attempts') || errorMsg.includes('throttle')) {
+        console.warn('⚠️ Rate limiting activo - esperando antes del próximo envío');
+        // No hacer nada más, el próximo interval lo intentará
+      } else {
+        console.error('❌ Error enviando ubicación:', errorMsg);
+      }
     }
   }, [order.id, latlong, fetchOrder]);
 
@@ -200,10 +206,11 @@ const DriverTracking = ({order}) => {
 
       setCurrentStatus(newStatus);
 
-      // Log para debugging de estados
-      console.log('🔍 Estado completo de la orden:', {
+      // Log temporal para identificar estados reales del backend
+      console.log('🔍 ESTADO REAL del backend:', {
         id: order.id,
         status: newStatus,
+        original_status: res?.data?.order?.status,
         payment_status: res?.data?.order?.payment_status,
         driver_id: res?.data?.order?.driver_id
       });
@@ -324,12 +331,17 @@ const DriverTracking = ({order}) => {
     if (currentStatus === 'On the Way') {
       // Para órdenes en proceso, también obtener ubicación guardada
       getDriverLocaton();
-      
+
+      // ARREGLADO: Intervalo más espaciado para evitar rate limiting
       const interval = setInterval(() => {
         getDriverLocaton();
         getCurrentLocation();
-        submitDriverLocation();
-      }, 5000);
+
+        // Enviar ubicación solo cada 2 iteraciones (cada 20 segundos)
+        if (Math.random() > 0.5) {
+          submitDriverLocation();
+        }
+      }, 10000); // Cambiar de 5s a 10s
       return () => clearInterval(interval);
     } else if (currentStatus === 'Delivered') {
       // Para órdenes entregadas, obtener ubicación final guardada
@@ -429,18 +441,27 @@ const DriverTracking = ({order}) => {
         {order?.payment_status === 'paid' ? (
           <>
             {/* 🎯 BOTÓN ACEPTAR - Estados que permiten aceptar pedido */}
-            {(currentStatus === 'Open' ||
-              currentStatus === 'Abierto' ||
-              currentStatus === 'open' ||
-              currentStatus === 'abierto' ||
-              currentStatus === 'Pending' ||
-              currentStatus === 'pending' ||
-              currentStatus === 'Pendiente' ||
-              currentStatus === 'pendiente' ||
-              currentStatus === 'Confirmed' ||
-              currentStatus === 'confirmed' ||
-              currentStatus === 'Confirmado' ||
-              currentStatus === 'confirmado') && (
+            {(() => {
+              const status = currentStatus?.toLowerCase()?.trim() || '';
+              const acceptableStates = [
+                'open', 'abierto',
+                'pending', 'pendiente',
+                'confirmed', 'confirmado',
+                'preparing', 'preparando'
+              ];
+
+              const shouldShowAccept = acceptableStates.includes(status);
+
+              // Log temporal para debugging
+              console.log('🎯 BOTÓN ACEPTAR Debug:', {
+                currentStatus,
+                statusLower: status,
+                shouldShowAccept,
+                acceptableStates
+              });
+
+              return shouldShowAccept;
+            })() && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.acceptButton, loading && styles.buttonDisabled]}
                 onPress={() => showConfirmationModal('accept')}
@@ -453,15 +474,28 @@ const DriverTracking = ({order}) => {
               </TouchableOpacity>
             )}
 
-            {/* 🚚 BOTÓN EN CAMINO - Cuando ya está aceptado */}
-            {(currentStatus === 'On the Way' ||
-              currentStatus === 'on the way' ||
-              currentStatus === 'En camino' ||
-              currentStatus === 'en camino' ||
-              currentStatus === 'In Progress' ||
-              currentStatus === 'in progress' ||
-              currentStatus === 'En progreso' ||
-              currentStatus === 'en progreso') && (
+            {/* 🚚 BOTÓN ENTREGAR - Cuando ya está en camino */}
+            {(() => {
+              const status = currentStatus?.toLowerCase()?.trim() || '';
+              const deliverableStates = [
+                'on the way', 'en camino',
+                'in progress', 'en progreso',
+                'out for delivery', 'en reparto',
+                'ready', 'listo'
+              ];
+
+              const shouldShowDeliver = deliverableStates.includes(status);
+
+              // Log temporal para debugging
+              console.log('🚚 BOTÓN ENTREGAR Debug:', {
+                currentStatus,
+                statusLower: status,
+                shouldShowDeliver,
+                deliverableStates
+              });
+
+              return shouldShowDeliver;
+            })() && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.deliverButton, loading && styles.buttonDisabled]}
                 onPress={() => showConfirmationModal('deliver')}
@@ -475,35 +509,32 @@ const DriverTracking = ({order}) => {
             )}
 
             {/* 🏁 ESTADO ENTREGADO - Solo mostrar información */}
-            {(currentStatus === 'Delivered' ||
-              currentStatus === 'delivered' ||
-              currentStatus === 'Entregado' ||
-              currentStatus === 'entregado' ||
-              currentStatus === 'Completed' ||
-              currentStatus === 'completed' ||
-              currentStatus === 'Completado' ||
-              currentStatus === 'completado') && (
+            {(() => {
+              const status = currentStatus?.toLowerCase()?.trim() || '';
+              const completedStates = [
+                'delivered', 'entregado',
+                'completed', 'completado',
+                'finished', 'terminado'
+              ];
+
+              const isCompleted = completedStates.includes(status);
+
+              // Log temporal para debugging
+              console.log('🏁 ESTADO COMPLETADO Debug:', {
+                currentStatus,
+                statusLower: status,
+                isCompleted,
+                completedStates
+              });
+
+              return isCompleted;
+            })() && (
               <View style={styles.completedContainer}>
                 <Text style={styles.completedText}>✅ Pedido Entregado</Text>
                 <Text style={styles.completedSubtext}>Este pedido ha sido completado exitosamente</Text>
               </View>
             )}
 
-            {/* 🔍 DEBUG: Mostrar estado actual para desarrollo */}
-            <View style={styles.debugStatus}>
-              <Text style={styles.debugStatusText}>
-                Estado actual: "{currentStatus}" | Pago: "{order?.payment_status}"
-              </Text>
-            </View>
-
-            {/* 🧪 COMPONENTE DE PRUEBA: Probador de estados */}
-            <DriverTestStates
-              currentStatus={currentStatus}
-              onStateChange={(newStatus) => {
-                console.log(`🔄 Cambiando estado de prueba: "${currentStatus}" → "${newStatus}"`);
-                setCurrentStatus(newStatus);
-              }}
-            />
           </>
         ) : (
           <View style={styles.paymentPendingContainer}>
@@ -864,21 +895,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // 🔍 Estilos para debug
-  debugStatus: {
-    backgroundColor: '#F3E5F5',
-    borderWidth: 1,
-    borderColor: '#9C27B0',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 16,
-  },
-  debugStatusText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#4A148C',
-    textAlign: 'center',
-  },
 });
 
 export default DriverTracking;

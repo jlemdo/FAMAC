@@ -397,12 +397,27 @@ const OrderDetails = () => {
                                 order?.payment_status === 'pending' ||
                                 order?.payment_status === 'requires_payment_method');
 
-          // 🔍 DEBUG: Ver valores reales
-          console.log('🔍 OXXO DEBUG:', {
-            status: order?.status,
+          // 🔍 LOG: Estados del sistema para análisis
+          console.log('📊 ANÁLISIS DE ESTADOS:', {
+            order_id: order?.id,
+            status_original: order?.status,
+            status_lower: status,
             payment_status: order?.payment_status,
-            isOxxoPending,
-            statusLower: status
+            has_driver: !!hasDriver,
+            driver_id: order?.driver_id,
+            is_driver: isDriver,
+            states_detected: {
+              isOxxoPending,
+              isPendingPayment,
+              isDelivered,
+              isActive
+            },
+            conditions_check: {
+              'driver_asignado_no_activo': isDriver && hasDriver && !isActive,
+              'usuario_driver_asignado': !isDriver && hasDriver && !isActive,
+              'driver_activo': isDriver && isActive,
+              'usuario_driver_activo': !isDriver && isActive && hasDriver
+            }
           });
 
           // ESTADOS ACTIVOS (driver aceptó y está en camino)
@@ -411,6 +426,7 @@ const OrderDetails = () => {
 
           // 1. OXXO PENDIENTE - Específico para pagos OXXO
           if (isOxxoPending) {
+            console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
             return (
               <View style={styles.oxxoPendingContainer}>
                 <View style={styles.oxxoPendingIconContainer}>
@@ -428,6 +444,7 @@ const OrderDetails = () => {
 
           // 2. PAGO PENDIENTE - Sin validar (otros métodos)
           if (isPendingPayment) {
+            console.log('💳 ENTRANDO A: PAGO PENDIENTE');
             return (
               <View style={styles.pendingContainer}>
                 <View style={styles.pendingIconContainer}>
@@ -444,6 +461,7 @@ const OrderDetails = () => {
 
           // 3. PEDIDO ENTREGADO - Sin mapa
           if (isDelivered) {
+            console.log('📦 ENTRANDO A: PEDIDO ENTREGADO');
             return (
               <View style={styles.deliveredContainer}>
                 <View style={styles.deliveredIconContainer}>
@@ -464,6 +482,7 @@ const OrderDetails = () => {
 
           // 4. DRIVER - Ve mapa solo cuando acepta
           if (isDriver && isActive) {
+            console.log('🚚 ENTRANDO A: DRIVER ACTIVO');
             return (
               <>
                 <DriverTracking order={order} />
@@ -474,6 +493,7 @@ const OrderDetails = () => {
 
           // 5. USUARIO - Ve mapa solo cuando driver acepta
           if (!isDriver && isActive && hasDriver) {
+            console.log('👤 ENTRANDO A: USUARIO CON DRIVER ACTIVO');
             return (
               <>
                 <CustomerTracking order={order} />
@@ -482,8 +502,37 @@ const OrderDetails = () => {
             );
           }
 
-          // 6. DRIVER ASIGNADO PERO NO HA ACEPTADO
-          if (hasDriver && !isActive) {
+          // 6A. DRIVER ASIGNADO - Vista para DRIVER (mapa + botón + card)
+          if (isDriver && hasDriver && !isActive) {
+            console.log('🎯 ENTRANDO A VISTA DRIVER ASIGNADO:', {
+              isDriver,
+              hasDriver,
+              isActive,
+              condition: 'isDriver && hasDriver && !isActive',
+              result: true
+            });
+
+            return (
+              <>
+                {/* Mapa y botón para driver asignado */}
+                <DriverTracking order={order} />
+
+                {/* Card informativo */}
+                <View style={styles.assignedContainer}>
+                  <View style={styles.assignedIconContainer}>
+                    <Ionicons name="person-outline" size={50} color="#FF9800" />
+                  </View>
+                  <Text style={styles.assignedTitle}>Pedido Asignado</Text>
+                  <Text style={styles.assignedMessage}>
+                    Se te ha asignado este pedido. Revisa la ubicación del cliente en el mapa y confirma si puedes tomarlo.
+                  </Text>
+                </View>
+              </>
+            );
+          }
+
+          // 6B. DRIVER ASIGNADO - Vista para USUARIO (solo card como está)
+          if (!isDriver && hasDriver && !isActive) {
             return (
               <View style={styles.assignedContainer}>
                 <View style={styles.assignedIconContainer}>
@@ -491,12 +540,9 @@ const OrderDetails = () => {
                 </View>
                 <Text style={styles.assignedTitle}>Repartidor Asignado</Text>
                 <Text style={styles.assignedMessage}>
-                  {isDriver
-                    ? 'Se te ha asignado este pedido. Por favor confirma si puedes tomarlo.'
-                    : `Hemos asignado a ${order?.driver?.first_name
-                        ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
-                        : order?.driver?.name || 'un repartidor'} a tu pedido. Esperando confirmación para iniciar la entrega.`
-                  }
+                  Hemos asignado a {order?.driver?.first_name
+                    ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                    : order?.driver?.name || 'un repartidor'} a tu pedido. Esperando confirmación para iniciar la entrega.
                 </Text>
               </View>
             );

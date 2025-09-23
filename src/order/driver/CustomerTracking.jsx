@@ -65,16 +65,22 @@ const CustomerTracking = ({order}) => {
         setRetryCount(0);
       }
     } catch (err) {
-      // Manejo inteligente de errores con retry
+      // ARREGLADO: Manejo mejorado de errores y throttling
       const maxRetries = 3;
-      const isNetworkError = !err.response; // No response = network issue
-      
-      if (isNetworkError && attempt < maxRetries) {
-        // Retry con exponential backoff: 2s, 4s, 8s
-        const backoffDelay = Math.pow(2, attempt + 1) * 1000;
+      const isNetworkError = !err.response;
+      const isThrottleError = err.response?.data?.message?.includes('Too Many Attempts');
+
+      if (isThrottleError) {
+        // Throttling - no es un error real, solo esperamos más tiempo
+        console.warn('⚠️ Rate limiting en customer tracking - esperando');
+        setIsConnected(true); // Mantener como conectado
+        setRetryCount(0); // No contar como retry
+      } else if (isNetworkError && attempt < maxRetries) {
+        // Retry con exponential backoff: 3s, 6s, 12s (más conservador)
+        const backoffDelay = Math.pow(2, attempt + 1) * 1500;
         setIsConnected(false);
         setRetryCount(attempt + 1);
-        
+
         setTimeout(() => {
           fetchDriverLocation(attempt + 1);
         }, backoffDelay);
@@ -89,23 +95,23 @@ const CustomerTracking = ({order}) => {
   useEffect(() => {
     fetchDriverLocation();
     
-    // Polling inteligente basado en distancia/ETA
+    // Polling mejorado para evitar rate limiting
     const setupSmartPolling = () => {
       let interval;
       const updateInterval = () => {
-        // Determinar frecuencia basada en ETA
-        let pollRate = 8000; // Default: 8 segundos
-        
+        // ARREGLADO: Frecuencias más conservadoras para evitar throttling
+        let pollRate = 15000; // Default: 15 segundos (era 8s)
+
         if (eta.duration <= 5) {
-          pollRate = 3000; // Muy cerca: cada 3s
+          pollRate = 8000; // Muy cerca: cada 8s (era 3s)
         } else if (eta.duration <= 15) {
-          pollRate = 5000; // Cerca: cada 5s
+          pollRate = 12000; // Cerca: cada 12s (era 5s)
         } else if (eta.duration <= 30) {
-          pollRate = 8000; // Medio: cada 8s
+          pollRate = 15000; // Medio: cada 15s (era 8s)
         } else {
-          pollRate = 12000; // Lejos: cada 12s
+          pollRate = 20000; // Lejos: cada 20s (era 12s)
         }
-        
+
         clearInterval(interval);
         interval = setInterval(fetchDriverLocation, pollRate);
       };

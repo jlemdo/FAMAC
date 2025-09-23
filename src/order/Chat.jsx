@@ -74,15 +74,16 @@ export default function Chat({ orderId, order }) {
     }, [fetchMessages]);
 
     return (
-        <KeyboardAvoidingView
-            style={styles.chatCard}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-        >
+        <View style={styles.chatCard}>
             <View style={styles.chatContainer}>
                 <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
-                <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent}>
+                <ScrollView
+                    style={styles.messagesContainer}
+                    contentContainerStyle={styles.messagesContent}
+                    showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                >
                     {chatMessages.map((msg, index) => (
                         <View
                             key={index}
@@ -96,22 +97,28 @@ export default function Chat({ orderId, order }) {
                     ))}
                 </ScrollView>
 
-                <View style={styles.chatInputContainer}>
-                    <TextInput
-                        style={styles.chatInput}
-                        placeholder="Escribe tu Mensaje..."
-                        value={newMessage}
-                        onChangeText={setNewMessage}
-                        multiline={false}
-                        returnKeyType="send"
-                        onSubmitEditing={handleSendMessage}
-                    />
-                    <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
-                        <Ionicons name="send" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                >
+                    <View style={styles.chatInputContainer}>
+                        <TextInput
+                            style={styles.chatInput}
+                            placeholder="Escribe tu Mensaje..."
+                            value={newMessage}
+                            onChangeText={setNewMessage}
+                            multiline={false}
+                            returnKeyType="send"
+                            onSubmitEditing={handleSendMessage}
+                            blurOnSubmit={true}
+                        />
+                        <TouchableOpacity onPress={handleSendMessage} style={styles.sendButton}>
+                            <Ionicons name="send" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
             </View>
-        </KeyboardAvoidingView>
+        </View>
     );
 }
 
@@ -130,8 +137,8 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
-        flex: 1,
-        minHeight: 300,
+        height: 200, // Altura fija más pequeña
+        maxHeight: 250, // Máximo para pantallas pequeñas
     },
     chatContainer: {
         flex: 1,
