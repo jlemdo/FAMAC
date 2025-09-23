@@ -727,6 +727,37 @@ export default function Profile({ navigation, route }) {
               <View style={styles.statusDot} />
               <Text style={styles.statusText}>Activo</Text>
             </View>
+
+            {/* Botón de Actualizaciones - Solo Android y cuando hay updates */}
+            {Platform.OS === 'android' && hasUpdate && (
+              <TouchableOpacity
+                style={[
+                  styles.updateButtonSubtle,
+                  isCriticalUpdate && styles.updateButtonCritical
+                ]}
+                onPress={manualCheck}
+                disabled={isChecking}
+                activeOpacity={0.7}>
+                <View style={styles.updateButtonContent}>
+                  <Text style={styles.updateButtonIcon}>
+                    {isCriticalUpdate ? '⚠️' : '🆕'}
+                  </Text>
+                  <Text style={[
+                    styles.updateButtonTextSubtle,
+                    isCriticalUpdate && styles.updateButtonTextCritical
+                  ]}>
+                    {isChecking ? 'Verificando...' :
+                     isCriticalUpdate ? 'Actualización importante' : 'Actualización disponible'}
+                  </Text>
+                  {!isChecking && (
+                    <View style={[
+                      styles.updatePulse,
+                      isCriticalUpdate && styles.updatePulseCritical
+                    ]} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -760,35 +791,6 @@ export default function Profile({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {/* Botón de Actualizaciones - Solo Android */}
-        {Platform.OS === 'android' && (
-          <TouchableOpacity
-            style={[
-              styles.updateButton,
-              hasUpdate && styles.updateButtonHighlight,
-              isChecking && styles.updateButtonChecking
-            ]}
-            onPress={manualCheck}
-            disabled={isChecking}
-            activeOpacity={0.8}>
-            <Text style={[
-              styles.updateButtonText,
-              hasUpdate && styles.updateButtonTextHighlight
-            ]}>
-              {isChecking ? '🔄 Verificando...' :
-               hasUpdate ? (isCriticalUpdate ? '⚠️ Actualización Importante' : '🆕 Actualización Disponible') :
-               '📱 Verificar actualizaciones'}
-            </Text>
-            {hasUpdate && !isChecking && (
-              <View style={[
-                styles.updateBadge,
-                isCriticalUpdate && styles.updateBadgeCritical
-              ]}>
-                <Text style={styles.updateBadgeText}>•</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Información del Perfil */}
@@ -2049,7 +2051,55 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: 'transparent',
   },
-  
+
+  // Nuevos estilos para botón sutil dentro del card del usuario
+  updateButtonSubtle: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 167, 68, 0.3)',
+    alignSelf: 'flex-start',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  updateButtonCritical: {
+    backgroundColor: 'rgba(230, 57, 70, 0.1)',
+    borderColor: 'rgba(230, 57, 70, 0.3)',
+  },
+  updateButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  updateButtonIcon: {
+    fontSize: 12,
+  },
+  updateButtonTextSubtle: {
+    fontSize: 11,
+    fontFamily: 'Raleway-Medium',
+    color: '#33A744',
+  },
+  updateButtonTextCritical: {
+    color: '#E63946',
+    fontFamily: 'Raleway-Bold',
+  },
+  updatePulse: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#33A744',
+    opacity: 0.8,
+  },
+  updatePulseCritical: {
+    backgroundColor: '#E63946',
+  },
+
   logoutButton: {
     ...buttons.logout,
     marginBottom: 24, // Mantener espaciado original
