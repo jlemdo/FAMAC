@@ -49,6 +49,8 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import { useFocusEffect } from '@react-navigation/native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { appleAuth } from '@invertase/react-native-apple-authentication';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -507,33 +509,110 @@ export default function Profile({ navigation, route }) {
     }, 300); // Delay más largo para iOS
   };
 
-  // ✅ FUNCIÓN: Re-autenticación OAuth
+  // ✅ FUNCIÓN: Re-autenticación OAuth REAL
   const handleReAuthentication = async () => {
     try {
       setLoading(true);
 
-      // Aquí iría la re-autenticación real con Google/Apple
-      // Por ahora simulamos con un delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      let reAuthSuccess = false;
 
-      // Simular éxito de re-autenticación
-      showAlert({
-        type: 'success',
-        title: 'Re-autenticación exitosa',
-        message: 'Procediendo con la eliminación de cuenta...',
-        confirmText: 'Continuar',
-        onConfirm: handleOAuthDeleteAccount
-      });
+      // Re-autenticar según el proveedor
+      if (profile.provider === 'google') {
+        reAuthSuccess = await handleGoogleReAuth();
+      } else if (profile.provider === 'apple') {
+        reAuthSuccess = await handleAppleReAuth();
+      }
+
+      if (reAuthSuccess) {
+        showAlert({
+          type: 'success',
+          title: 'Identidad verificada',
+          message: 'Re-autenticación exitosa. Procediendo con la eliminación de cuenta...',
+          confirmText: 'Continuar',
+          onConfirm: handleOAuthDeleteAccount
+        });
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Verificación fallida',
+          message: 'No se pudo verificar tu identidad. La cuenta no fue eliminada por seguridad.',
+          confirmText: 'Cerrar'
+        });
+      }
 
     } catch (error) {
       showAlert({
         type: 'error',
         title: 'Error de autenticación',
-        message: 'No se pudo verificar tu identidad. La cuenta no fue eliminada.',
+        message: 'Ocurrió un error durante la verificación. La cuenta no fue eliminada.',
         confirmText: 'Cerrar'
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ FUNCIÓN: Re-autenticación Google
+  const handleGoogleReAuth = async () => {
+    try {
+      // Verificar si Google Sign-In está disponible
+      await GoogleSignin.hasPlayServices();
+
+      // Intentar obtener tokens actuales (usuario ya logueado)
+      const userInfo = await GoogleSignin.getCurrentUser();
+
+      if (userInfo && userInfo.user.email === profile.email) {
+        // Usuario ya está autenticado y el email coincide
+        return true;
+      }
+
+      // Si no está autenticado o email no coincide, pedir re-login
+      await GoogleSignin.signOut(); // Forzar logout
+      const result = await GoogleSignin.signIn(); // Nueva autenticación
+
+      // Verificar que el email coincida con el perfil actual
+      if (result.user.email === profile.email) {
+        return true;
+      } else {
+        return false; // Email no coincide
+      }
+
+    } catch (error) {
+      // Si el usuario cancela o hay error, fallar silenciosamente
+      return false;
+    }
+  };
+
+  // ✅ FUNCIÓN: Re-autenticación Apple
+  const handleAppleReAuth = async () => {
+    try {
+      // Verificar disponibilidad de Apple Sign-In
+      if (!appleAuth.isSupported) {
+        return false;
+      }
+
+      // Solicitar nueva autenticación con Apple
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL],
+      });
+
+      // Verificar estado de las credenciales
+      const credentialState = await appleAuth.getCredentialStateForUser(
+        appleAuthRequestResponse.user
+      );
+
+      // Verificar que esté autorizado
+      if (credentialState === appleAuth.State.AUTHORIZED) {
+        // Apple re-autenticación exitosa
+        return true;
+      }
+
+      return false;
+
+    } catch (error) {
+      // Si el usuario cancela o hay error, fallar silenciosamente
+      return false;
     }
   };
 
@@ -542,11 +621,12 @@ export default function Profile({ navigation, route }) {
     try {
       setLoading(true);
 
-      // Usar el mismo endpoint pero sin password
+      // Usar el mismo endpoint con password null para OAuth
       const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/deleteuser',
         {
           userid: user.id,
+          password: "", // OAuth no tiene password (string vacío para backend)
           provider: profile.provider, // Indicar que es OAuth
         }
       );
