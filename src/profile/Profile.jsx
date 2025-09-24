@@ -532,11 +532,18 @@ export default function Profile({ navigation, route }) {
           onConfirm: handleOAuthDeleteAccount
         });
       } else {
+        // FALLBACK: Ofercer confirmación alternativa
         showAlert({
-          type: 'error',
-          title: 'Verificación fallida',
-          message: 'No se pudo verificar tu identidad. La cuenta no fue eliminada por seguridad.',
-          confirmText: 'Cerrar'
+          type: 'warning',
+          title: 'Re-autenticación no disponible',
+          message: `No se pudo verificar con ${getProviderName()}. ¿Confirmas que quieres eliminar tu cuenta? Esta acción no se puede deshacer.`,
+          showCancel: true,
+          confirmText: 'Sí, eliminar cuenta',
+          cancelText: 'Cancelar',
+          onConfirm: handleOAuthDeleteAccount,
+          onCancel: () => {
+            // Usuario decidió cancelar
+          }
         });
       }
 
@@ -552,66 +559,122 @@ export default function Profile({ navigation, route }) {
     }
   };
 
-  // ✅ FUNCIÓN: Re-autenticación Google
+  // ✅ FUNCIÓN: Re-autenticación Google SEGURA
   const handleGoogleReAuth = async () => {
     try {
-      // Verificar si Google Sign-In está disponible
-      await GoogleSignin.hasPlayServices();
+      // 1. Verificar disponibilidad paso a paso
+      const hasPlayServices = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
+      if (!hasPlayServices) {
+        console.log('Google Play Services no disponible');
+        return false;
+      }
 
-      // Intentar obtener tokens actuales (usuario ya logueado)
-      const userInfo = await GoogleSignin.getCurrentUser();
+      // 2. Verificar configuración existente
+      const isConfigured = await GoogleSignin.isSignedIn();
+      console.log('Google Sign-In configured:', isConfigured);
 
-      if (userInfo && userInfo.user.email === profile.email) {
-        // Usuario ya está autenticado y el email coincide
+      // 3. Obtener usuario actual de forma segura
+      let currentUser = null;
+      try {
+        currentUser = await GoogleSignin.getCurrentUser();
+      } catch (getUserError) {
+        console.log('No hay usuario actual:', getUserError.message);
+      }
+
+      // 4. Si hay usuario y email coincide, success directo
+      if (currentUser && currentUser.user?.email === profile.email) {
+        console.log('Usuario ya autenticado con email correcto');
         return true;
       }
 
-      // Si no está autenticado o email no coincide, pedir re-login
-      await GoogleSignin.signOut(); // Forzar logout
-      const result = await GoogleSignin.signIn(); // Nueva autenticación
+      // 5. Logout seguro (solo si hay usuario)
+      try {
+        if (currentUser) {
+          await GoogleSignin.signOut();
+          console.log('Logout exitoso');
+        }
+      } catch (signOutError) {
+        console.log('Error en logout (ignorando):', signOutError.message);
+      }
 
-      // Verificar que el email coincida con el perfil actual
-      if (result.user.email === profile.email) {
+      // 6. Nueva autenticación
+      console.log('Solicitando nueva autenticación...');
+      const result = await GoogleSignin.signIn();
+
+      // 7. Verificar email del resultado
+      if (result?.user?.email === profile.email) {
+        console.log('Re-autenticación exitosa');
         return true;
       } else {
-        return false; // Email no coincide
+        console.log('Email no coincide después de re-auth');
+        return false;
       }
 
     } catch (error) {
-      // Si el usuario cancela o hay error, fallar silenciosamente
+      console.log('Error en Google re-auth:', error.message || error);
       return false;
     }
   };
 
-  // ✅ FUNCIÓN: Re-autenticación Apple
+  // ✅ FUNCIÓN: Re-autenticación Apple SEGURA
   const handleAppleReAuth = async () => {
     try {
-      // Verificar disponibilidad de Apple Sign-In
-      if (!appleAuth.isSupported) {
+      // 1. Verificar plataforma y soporte
+      if (Platform.OS !== 'ios') {
+        console.log('Apple Sign-In solo disponible en iOS');
         return false;
       }
 
-      // Solicitar nueva autenticación con Apple
+      if (!appleAuth.isSupported) {
+        console.log('Apple Sign-In no soportado en este dispositivo');
+        return false;
+      }
+
+      // 2. Verificar disponibilidad de API
+      const isAvailable = appleAuth.isSupported;
+      console.log('Apple Sign-In disponible:', isAvailable);
+
+      // 3. Solicitar autenticación con manejo de errores específicos
+      console.log('Solicitando Apple Sign-In...');
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
-        requestedScopes: [appleAuth.Scope.EMAIL],
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
 
-      // Verificar estado de las credenciales
+      console.log('Apple response:', appleAuthRequestResponse);
+
+      // 4. Verificar que obtuvimos una respuesta válida
+      if (!appleAuthRequestResponse || !appleAuthRequestResponse.user) {
+        console.log('Apple response inválida');
+        return false;
+      }
+
+      // 5. Verificar estado de credenciales
       const credentialState = await appleAuth.getCredentialStateForUser(
         appleAuthRequestResponse.user
       );
 
-      // Verificar que esté autorizado
+      console.log('Apple credential state:', credentialState);
+
+      // 6. Validar estado autorizado
       if (credentialState === appleAuth.State.AUTHORIZED) {
-        // Apple re-autenticación exitosa
+        console.log('Apple re-autenticación exitosa');
         return true;
+      } else {
+        console.log('Apple credential state no autorizado:', credentialState);
+        return false;
       }
 
-      return false;
-
     } catch (error) {
-      // Si el usuario cancela o hay error, fallar silenciosamente
+      console.log('Error en Apple re-auth:', error.message || error);
+
+      // Manejar errores específicos de Apple
+      if (error.code === '1001') {
+        console.log('Usuario canceló Apple Sign-In');
+      } else if (error.code === '1000') {
+        console.log('Apple Sign-In falló');
+      }
+
       return false;
     }
   };
