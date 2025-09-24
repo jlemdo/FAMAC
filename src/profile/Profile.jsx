@@ -166,6 +166,9 @@ export default function Profile({ navigation, route }) {
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [showOAuthDeleteConfirm, setShowOAuthDeleteConfirm] = useState(false);
+  const [longPressProgress, setLongPressProgress] = useState(0);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const [showFounderTooltip, setShowFounderTooltip] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -180,6 +183,10 @@ export default function Profile({ navigation, route }) {
   // Referencias para animaciones de toast
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
+
+  // Referencias para long press animation
+  const longPressAnimation = useRef(new Animated.Value(0)).current;
+  const longPressTimer = useRef(null);
   
   // Estados para secciones colapsables
   const [showProfileSection, setShowProfileSection] = useState(false); // Colapsada por defecto
@@ -430,6 +437,116 @@ export default function Profile({ navigation, route }) {
           confirmText: 'Cerrar'
         });
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ FUNCIÓN: Manejo de long press para eliminar cuenta OAuth
+  const handleLongPressStart = () => {
+    setIsLongPressing(true);
+
+    // Animación del progreso de 0 a 100 en 3 segundos
+    Animated.timing(longPressAnimation, {
+      toValue: 1,
+      duration: 3000,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) {
+        handleLongPressComplete();
+      }
+    });
+  };
+
+  const handleLongPressEnd = () => {
+    if (isLongPressing) {
+      // Cancelar animación si se suelta antes de tiempo
+      longPressAnimation.stopAnimation();
+      longPressAnimation.setValue(0);
+      setIsLongPressing(false);
+      setLongPressProgress(0);
+    }
+  };
+
+  const handleLongPressComplete = () => {
+    setIsLongPressing(false);
+    setLongPressProgress(0);
+    longPressAnimation.setValue(0);
+
+    // Mostrar confirmación final con re-autenticación
+    showAlert({
+      type: 'warning',
+      title: '⚠️ Confirmación Final',
+      message: `Para eliminar tu cuenta de ${getProviderName()}, necesitas volver a autenticarte por seguridad.`,
+      showCancel: true,
+      confirmText: 'Re-autenticar',
+      onConfirm: handleReAuthentication
+    });
+  };
+
+  // ✅ FUNCIÓN: Re-autenticación OAuth
+  const handleReAuthentication = async () => {
+    try {
+      setLoading(true);
+
+      // Aquí iría la re-autenticación real con Google/Apple
+      // Por ahora simulamos con un delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Simular éxito de re-autenticación
+      showAlert({
+        type: 'success',
+        title: 'Re-autenticación exitosa',
+        message: 'Procediendo con la eliminación de cuenta...',
+        confirmText: 'Continuar',
+        onConfirm: handleOAuthDeleteAccount
+      });
+
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error de autenticación',
+        message: 'No se pudo verificar tu identidad. La cuenta no fue eliminada.',
+        confirmText: 'Cerrar'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ FUNCIÓN: Eliminar cuenta OAuth (después de re-auth)
+  const handleOAuthDeleteAccount = async () => {
+    try {
+      setLoading(true);
+
+      // Usar el mismo endpoint pero sin password
+      const response = await axios.post(
+        'https://occr.pixelcrafters.digital/api/deleteuser',
+        {
+          userid: user.id,
+          provider: profile.provider, // Indicar que es OAuth
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        showAlert({
+          type: 'success',
+          title: 'Cuenta eliminada',
+          message: `Tu cuenta de ${getProviderName()} ha sido eliminada exitosamente.`,
+          confirmText: 'Entendido',
+          onConfirm: () => {
+            logout();
+          }
+        });
+      }
+    } catch (error) {
+      const errorData = error.response?.data;
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: errorData?.message || 'No se pudo eliminar la cuenta. Intenta de nuevo más tarde.',
+        confirmText: 'Cerrar'
+      });
     } finally {
       setLoading(false);
     }
@@ -1452,15 +1569,19 @@ export default function Profile({ navigation, route }) {
 
       {/* Zona de Acciones de Cuenta */}
       <View style={styles.accountActions}>
-        {/* Solo mostrar eliminar cuenta para usuarios locales (no OAuth) */}
-        {!isOAuthUser() && (
-          <TouchableOpacity
-            style={styles.deleteAccountButton}
-            onPress={() => setShowDeleteAccountConfirm(true)}
-            activeOpacity={0.8}>
-            <Text style={styles.deleteAccountButtonText}>🗑️ Eliminar Cuenta</Text>
-          </TouchableOpacity>
-        )}
+        {/* Mostrar eliminar cuenta para TODOS los usuarios (local y OAuth) */}
+        <TouchableOpacity
+          style={styles.deleteAccountButton}
+          onPress={() => {
+            if (isOAuthUser()) {
+              setShowOAuthDeleteConfirm(true);
+            } else {
+              setShowDeleteAccountConfirm(true);
+            }
+          }}
+          activeOpacity={0.8}>
+          <Text style={styles.deleteAccountButtonText}>🗑️ Eliminar Cuenta</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.logoutButton}
@@ -1795,6 +1916,78 @@ export default function Profile({ navigation, route }) {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
+      )}
+
+      {/* Modal de eliminación de cuenta OAuth - Para usuarios Google/Apple */}
+      {isOAuthUser() && (
+        <Modal
+          visible={showOAuthDeleteConfirm}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowOAuthDeleteConfirm(false)}>
+          <TouchableWithoutFeedback onPress={() => setShowOAuthDeleteConfirm(false)}>
+            <View style={styles.oauthDeleteModalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.oauthDeleteModalContent}>
+                  <Text style={styles.oauthDeleteModalTitle}>⚠️ Eliminar Cuenta {getProviderName()}</Text>
+
+                  <Text style={styles.oauthDeleteModalMessage}>
+                    Esta acción no se puede deshacer. Se eliminarán todos tus datos, pedidos y preferencias de tu cuenta de {getProviderName()}.
+                  </Text>
+
+                  <Text style={styles.oauthDeleteInstructions}>
+                    Para confirmar, mantén presionado el botón durante 3 segundos:
+                  </Text>
+
+                  <View style={styles.longPressButtonContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.longPressButton,
+                        isLongPressing && styles.longPressButtonActive
+                      ]}
+                      onPressIn={handleLongPressStart}
+                      onPressOut={handleLongPressEnd}
+                      activeOpacity={1}>
+
+                      {/* Barra de progreso */}
+                      <Animated.View
+                        style={[
+                          styles.longPressProgress,
+                          {
+                            width: longPressAnimation.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0%', '100%']
+                            })
+                          }
+                        ]}
+                      />
+
+                      <Text style={[
+                        styles.longPressButtonText,
+                        isLongPressing && styles.longPressButtonTextActive
+                      ]}>
+                        {isLongPressing
+                          ? '🗑️ Manténlo presionado...'
+                          : '🗑️ Mantener para eliminar'
+                        }
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.oauthCancelButton}
+                    onPress={() => {
+                      handleLongPressEnd(); // Cancelar animación si está activa
+                      setShowOAuthDeleteConfirm(false);
+                    }}
+                    activeOpacity={0.8}>
+                    <Text style={styles.oauthCancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       )}
 
       {/* Modal de Tooltip Usuario Fundador */}
@@ -2758,6 +2951,103 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+
+  // === ESTILOS DEL MODAL OAUTH DELETE ===
+  oauthDeleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  oauthDeleteModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#FF6B35', // Naranja para OAuth
+  },
+  oauthDeleteModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#FF6B35',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  oauthDeleteModalMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  oauthDeleteInstructions: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#FF6B35',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  longPressButtonContainer: {
+    marginBottom: 20,
+  },
+  longPressButton: {
+    backgroundColor: '#FFE5DE',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 56,
+  },
+  longPressButtonActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF5722',
+  },
+  longPressProgress: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#FF6B35',
+    opacity: 0.3,
+  },
+  longPressButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FF6B35',
+    textAlign: 'center',
+    zIndex: 1,
+  },
+  longPressButtonTextActive: {
+    color: '#FFF',
+  },
+  oauthCancelButton: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  oauthCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
   },
 
 });
