@@ -684,13 +684,13 @@ export default function Profile({ navigation, route }) {
     try {
       setLoading(true);
 
-      // Usar el mismo endpoint con password null para OAuth
+      // Usar el mismo endpoint pero diferente payload para OAuth
       const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/deleteuser',
         {
           userid: user.id,
-          password: "", // OAuth no tiene password (string vacío para backend)
-          provider: profile.provider, // Indicar que es OAuth
+          provider: profile.provider, // Indicar que es OAuth (google/apple)
+          // NO enviar password para usuarios OAuth
         }
       );
 
