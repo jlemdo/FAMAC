@@ -184,8 +184,7 @@ export default function Profile({ navigation, route }) {
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTranslateY = useRef(new Animated.Value(-50)).current;
 
-  // Referencias para long press animation
-  const longPressAnimation = useRef(new Animated.Value(0)).current;
+  // Referencias para long press timer (más estable que animaciones)
   const longPressTimer = useRef(null);
   
   // Estados para secciones colapsables
@@ -199,6 +198,12 @@ export default function Profile({ navigation, route }) {
       return () => {
         setShowProfileSection(false);
         setShowPasswordSection(false);
+        // Limpiar timer si existe
+        if (longPressTimer.current) {
+          clearInterval(longPressTimer.current);
+          setIsLongPressing(false);
+          setLongPressProgress(0);
+        }
       };
     }, [])
   );
@@ -442,27 +447,36 @@ export default function Profile({ navigation, route }) {
     }
   };
 
-  // ✅ FUNCIÓN: Manejo de long press para eliminar cuenta OAuth
+  // ✅ FUNCIÓN: Manejo de long press MEJORADO (iOS estable)
   const handleLongPressStart = () => {
     setIsLongPressing(true);
+    setLongPressProgress(0);
 
-    // Animación del progreso de 0 a 100 en 3 segundos
-    Animated.timing(longPressAnimation, {
-      toValue: 1,
-      duration: 3000,
-      useNativeDriver: false,
-    }).start(({ finished }) => {
-      if (finished) {
-        handleLongPressComplete();
-      }
-    });
+    // Sistema de timer simple (más estable que animaciones)
+    const totalDuration = 3000; // 3 segundos
+    const updateInterval = 50; // Actualizar cada 50ms
+    const increment = (updateInterval / totalDuration) * 100;
+
+    longPressTimer.current = setInterval(() => {
+      setLongPressProgress(prevProgress => {
+        const newProgress = prevProgress + increment;
+
+        if (newProgress >= 100) {
+          clearInterval(longPressTimer.current);
+          handleLongPressComplete();
+          return 100;
+        }
+
+        return newProgress;
+      });
+    }, updateInterval);
   };
 
   const handleLongPressEnd = () => {
-    if (isLongPressing) {
-      // Cancelar animación si se suelta antes de tiempo
-      longPressAnimation.stopAnimation();
-      longPressAnimation.setValue(0);
+    if (isLongPressing && longPressTimer.current) {
+      // Cancelar timer y resetear
+      clearInterval(longPressTimer.current);
+      longPressTimer.current = null;
       setIsLongPressing(false);
       setLongPressProgress(0);
     }
@@ -471,17 +485,26 @@ export default function Profile({ navigation, route }) {
   const handleLongPressComplete = () => {
     setIsLongPressing(false);
     setLongPressProgress(0);
-    longPressAnimation.setValue(0);
 
-    // Mostrar confirmación final con re-autenticación
-    showAlert({
-      type: 'warning',
-      title: '⚠️ Confirmación Final',
-      message: `Para eliminar tu cuenta de ${getProviderName()}, necesitas volver a autenticarte por seguridad.`,
-      showCancel: true,
-      confirmText: 'Re-autenticar',
-      onConfirm: handleReAuthentication
-    });
+    // Cerrar modal OAuth primero para evitar conflictos
+    setShowOAuthDeleteConfirm(false);
+
+    // Delay más largo para iOS + limpiar cualquier timer restante
+    if (longPressTimer.current) {
+      clearInterval(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    setTimeout(() => {
+      showAlert({
+        type: 'warning',
+        title: '⚠️ Confirmación Final',
+        message: `Para eliminar tu cuenta de ${getProviderName()}, necesitas volver a autenticarte por seguridad.`,
+        showCancel: true,
+        confirmText: 'Re-autenticar',
+        onConfirm: handleReAuthentication
+      });
+    }, 300); // Delay más largo para iOS
   };
 
   // ✅ FUNCIÓN: Re-autenticación OAuth
@@ -1924,8 +1947,14 @@ export default function Profile({ navigation, route }) {
           visible={showOAuthDeleteConfirm}
           transparent
           animationType="fade"
-          onRequestClose={() => setShowOAuthDeleteConfirm(false)}>
-          <TouchableWithoutFeedback onPress={() => setShowOAuthDeleteConfirm(false)}>
+          onRequestClose={() => {
+            handleLongPressEnd(); // Limpiar timer
+            setShowOAuthDeleteConfirm(false);
+          }}>
+          <TouchableWithoutFeedback onPress={() => {
+            handleLongPressEnd(); // Limpiar timer
+            setShowOAuthDeleteConfirm(false);
+          }}>
             <View style={styles.oauthDeleteModalOverlay}>
               <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.oauthDeleteModalContent}>
@@ -1949,15 +1978,12 @@ export default function Profile({ navigation, route }) {
                       onPressOut={handleLongPressEnd}
                       activeOpacity={1}>
 
-                      {/* Barra de progreso */}
-                      <Animated.View
+                      {/* Barra de progreso SIMPLE */}
+                      <View
                         style={[
                           styles.longPressProgress,
                           {
-                            width: longPressAnimation.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: ['0%', '100%']
-                            })
+                            width: `${longPressProgress}%`
                           }
                         ]}
                       />
@@ -1977,7 +2003,7 @@ export default function Profile({ navigation, route }) {
                   <TouchableOpacity
                     style={styles.oauthCancelButton}
                     onPress={() => {
-                      handleLongPressEnd(); // Cancelar animación si está activa
+                      handleLongPressEnd(); // Cancelar timer si está activo
                       setShowOAuthDeleteConfirm(false);
                     }}
                     activeOpacity={0.8}>
