@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   appleIcon: {
-    width: 26,
-    height: 26,
+    width: 32,
+    height: 32,
     marginRight: 12,
     // tintColor: '#FFF',
   },
