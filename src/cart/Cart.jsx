@@ -210,12 +210,12 @@ export default function Cart() {
   // 🛒 NUEVO: Verificar expiración del carrito (24h)
   useEffect(() => {
     const checkCartExpiration = async () => {
-      console.log('🔍 VERIFICANDO EXPIRACIÓN CARRITO:', { 
-        userId: user?.id, 
-        email: user?.email, 
-        type: user?.usertype,
-        cartLength: cart.length 
-      });
+      // console.log('🔍 VERIFICANDO EXPIRACIÓN CARRITO:', {
+      // userId: user?.id,
+      // email: user?.email,
+      // type: user?.usertype,
+      // cartLength: cart.length
+      // });
       try {
         // Solo verificar cuando el usuario esté definido
         if (user === undefined) return;
@@ -250,15 +250,15 @@ export default function Cart() {
         const response = await axios.post('https://occr.pixelcrafters.digital/api/cart-cleanup', payload);
         
         if (response.data.expired) {
-          console.log('🗑️ Carrito expirado, limpiando...', {
-            hours_since_activity: response.data.hours_since_activity,
-            last_modified: response.data.last_modified,
-            userInfo: { id: user?.id, email: user?.email, type: user?.usertype }
-          });
+          // console.log('🗑️ Carrito expirado, limpiando...', {
+          // hours_since_activity: response.data.hours_since_activity,
+          // last_modified: response.data.last_modified,
+          // userInfo: { id: user?.id, email: user?.email, type: user?.usertype }
+          // });
           
           // 🚨 TEMPORAL: Deshabilitar limpieza automática para debug
           // clearCart();
-          console.log('🚨 CARRITO EXPIRATION DISABLED - NO SE LIMPIA AUTOMÁTICAMENTE');
+          // console.log('🚨 CARRITO EXPIRATION DISABLED - NO SE LIMPIA AUTOMÁTICAMENTE');
         } else {
           // console.log('✅ Carrito válido, no expirado', {
             // hours_since_activity: response.data.hours_since_activity
@@ -803,7 +803,7 @@ export default function Cart() {
       const hasAddress = user?.address && user?.address?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
       setAddress(hasAddress ? user.address : '');
-      console.log('🔄 GUEST: Inicializando email y dirección:', { email: user?.email, address: user?.address });
+      // console.log('🔄 GUEST: Inicializando email y dirección:', { email: user?.email, address: user?.address });
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
@@ -1427,19 +1427,19 @@ export default function Cart() {
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
       
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
-      console.log('🚀 OXXO DEBUG - Starting order creation...');
+      // console.log('🚀 OXXO DEBUG - Starting order creation...');
       const orderData = await completeOrderFunc();
       const realOrderId = orderData?.order?.id;
 
       // 🔧 DEBUG OXXO: Log de la orden creada
-      console.log('🏪 OXXO DEBUG - Order Created:', {
-        orderData: orderData,
-        realOrderId: realOrderId,
-        orderStatus: orderData?.order?.status,
-        paymentMethod: orderData?.order?.payment_method,
-        orderTotal: orderData?.order?.total,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Order Created:', {
+      // orderData: orderData,
+      // realOrderId: realOrderId,
+      // orderStatus: orderData?.order?.status,
+      // paymentMethod: orderData?.order?.payment_method,
+      // orderTotal: orderData?.order?.total,
+      // timestamp: new Date().toISOString()
+      // });
       
       if (!realOrderId) {
         throw new Error('No se pudo crear la orden correctamente.');
@@ -1482,13 +1482,13 @@ export default function Cart() {
         returnURL: 'occr-productos-app://stripe-redirect',
       };
 
-      console.log('🏪 OXXO DEBUG - Payment Sheet Config:', {
-        hasClientSecret: !!clientSecret,
-        clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 30)}...` : null,
-        allowsDelayedPaymentMethods: paymentSheetConfig.allowsDelayedPaymentMethods,
-        merchantDisplayName: paymentSheetConfig.merchantDisplayName,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Payment Sheet Config:', {
+      // hasClientSecret: !!clientSecret,
+      // clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 30)}...` : null,
+      // allowsDelayedPaymentMethods: paymentSheetConfig.allowsDelayedPaymentMethods,
+      // merchantDisplayName: paymentSheetConfig.merchantDisplayName,
+      // timestamp: new Date().toISOString()
+      // });
 
       const {error: initError} = await initPaymentSheet({
         ...paymentSheetConfig,
@@ -1540,16 +1540,16 @@ export default function Cart() {
       }
 
       // 1.3) Presentar la UI de pago
-      console.log('🏪 OXXO DEBUG - Presenting Payment Sheet...');
+      // console.log('🏪 OXXO DEBUG - Presenting Payment Sheet...');
       const {error: paymentError} = await presentPaymentSheet();
 
       // 🔧 DEBUG OXXO: Log después de presentar el payment sheet
-      console.log('🏪 OXXO DEBUG - Payment Sheet Result:', {
-        hasError: !!paymentError,
-        errorCode: paymentError?.code,
-        errorMessage: paymentError?.message,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Payment Sheet Result:', {
+      // hasError: !!paymentError,
+      // errorCode: paymentError?.code,
+      // errorMessage: paymentError?.message,
+      // timestamp: new Date().toISOString()
+      // });
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
           showAlert({
@@ -1575,15 +1575,15 @@ export default function Cart() {
         const nextAction = paymentIntentResult?.paymentIntent?.nextAction;
 
         // 🔧 DEBUG OXXO: Logs detallados del payment intent
-        console.log('🏪 OXXO DEBUG - Payment Intent Result:', {
-          paymentIntentId: paymentIntentResult?.paymentIntent?.id,
-          status: paymentIntentResult?.paymentIntent?.status,
-          nextActionType: nextAction?.type,
-          paymentMethodType: paymentIntentResult?.paymentIntent?.paymentMethodTypes,
-          amount: paymentIntentResult?.paymentIntent?.amount,
-          currency: paymentIntentResult?.paymentIntent?.currency,
-          fullNextAction: nextAction
-        });
+        // console.log('🏪 OXXO DEBUG - Payment Intent Result:', {
+        // paymentIntentId: paymentIntentResult?.paymentIntent?.id,
+        // status: paymentIntentResult?.paymentIntent?.status,
+        // nextActionType: nextAction?.type,
+        // paymentMethodType: paymentIntentResult?.paymentIntent?.paymentMethodTypes,
+        // amount: paymentIntentResult?.paymentIntent?.amount,
+        // currency: paymentIntentResult?.paymentIntent?.currency,
+        // fullNextAction: nextAction
+        // });
 
         if (nextAction?.type === 'oxxoVoucher') {
           oxxoInfo = {
@@ -1593,12 +1593,12 @@ export default function Cart() {
             amount: finalPrice
           };
 
-          console.log('🏪 OXXO VOUCHER DETECTED:', oxxoInfo);
+          // console.log('🏪 OXXO VOUCHER DETECTED:', oxxoInfo);
         } else {
-          console.log('🏪 OXXO DEBUG - No voucher found, next action type:', nextAction?.type);
+          // console.log('🏪 OXXO DEBUG - No voucher found, next action type:', nextAction?.type);
         }
       } catch (error) {
-        console.log('❌ OXXO DEBUG - Error retrieving payment intent:', error);
+        // console.log('❌ OXXO DEBUG - Error retrieving payment intent:', error);
       }
       
       // 1.4) Pago exitoso: la orden ya fue creada, solo actualizar usuario
@@ -1632,14 +1632,14 @@ export default function Cart() {
       const orderNumber = realOrderId || orderData?.order?.id;
       const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
 
-      console.log('🔍 ORDER ID DEBUG:', {
-        orderData: orderData,
-        orderNumber: orderNumber,
-        realOrderId: realOrderId,
-        backendOrderId: orderData?.order?.id,
-        isValidOrderId: isValidOrderId,
-        userType: user?.usertype
-      });
+      // console.log('🔍 ORDER ID DEBUG:', {
+      // orderData: orderData,
+      // orderNumber: orderNumber,
+      // realOrderId: realOrderId,
+      // backendOrderId: orderData?.order?.id,
+      // isValidOrderId: isValidOrderId,
+      // userType: user?.usertype
+      // });
       
       
       // Limpiar datos inmediatamente después del pedido exitoso
@@ -1658,13 +1658,17 @@ export default function Cart() {
         clearSavedCoordinates(user.id);
       }
       
-      // Actualizar órdenes
-      refreshOrders();
+      // ✅ ACTUALIZACIÓN AGRESIVA: Badge siempre actualizado
+      refreshOrders(); // Refresh inmediato
+
+      // Refresh adicionales para asegurar sincronización
+      setTimeout(() => refreshOrders(), 2000);  // 2s después
+      setTimeout(() => refreshOrders(), 5000);  // 5s después
 
       // 🏪 FIX OXXO: Activar Guest orders si es un usuario Guest
       if (user?.usertype === 'Guest') {
         enableGuestOrders();
-        console.log('🏪 OXXO DEBUG - Guest orders enabled after payment');
+        // console.log('🏪 OXXO DEBUG - Guest orders enabled after payment');
       }
       
       // 🆕 GUEST FIX: Actualizar badge para Guest después del pago
@@ -1683,7 +1687,7 @@ export default function Cart() {
 
         // Actualizar OrderContext con la nueva orden para mostrar badge inmediatamente
         updateOrders([newGuestOrder]);
-        console.log('🎉 GUEST BADGE: Actualizado inmediatamente con nueva orden:', newGuestOrder.id);
+        // console.log('🎉 GUEST BADGE: Actualizado inmediatamente con nueva orden:', newGuestOrder.id);
       }
       
       // 🐛 DEBUG: Logs temporales para diagnóstico OXXO
@@ -1713,15 +1717,15 @@ export default function Cart() {
       };
 
       // 🔧 DEBUG OXXO: Log del modal data completo
-      console.log('🏪 OXXO DEBUG - Success Modal Data:', {
-        modalData: modalData,
-        hasOxxoInfo: !!oxxoInfo,
-        oxxoVoucherNumber: oxxoInfo?.voucherNumber,
-        oxxoAmount: oxxoInfo?.amount,
-        orderIdForModal: modalData.orderId,
-        willShowOxxoVoucher: !!oxxoInfo,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Success Modal Data:', {
+      // modalData: modalData,
+      // hasOxxoInfo: !!oxxoInfo,
+      // oxxoVoucherNumber: oxxoInfo?.voucherNumber,
+      // oxxoAmount: oxxoInfo?.amount,
+      // orderIdForModal: modalData.orderId,
+      // willShowOxxoVoucher: !!oxxoInfo,
+      // timestamp: new Date().toISOString()
+      // });
       
       
       // 🔧 NAVEGACIÓN DIRECTA SIMPLIFICADA - Evitar navegación anidada
@@ -1937,25 +1941,25 @@ export default function Cart() {
       };
 
       // 🔧 DEBUG OXXO: Log completo del payload enviado al backend
-      console.log('🏪 OXXO DEBUG - Sending Payload to Backend:', {
-        endpoint: 'https://occr.pixelcrafters.digital/api/ordersubmit',
-        payload: payload,
-        userType: user?.usertype,
-        paymentExpected: 'OXXO_OR_OTHER',
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Sending Payload to Backend:', {
+      // endpoint: 'https://occr.pixelcrafters.digital/api/ordersubmit',
+      // payload: payload,
+      // userType: user?.usertype,
+      // paymentExpected: 'OXXO_OR_OTHER',
+      // timestamp: new Date().toISOString()
+      // });
 
       const response = await axios.post('https://occr.pixelcrafters.digital/api/ordersubmit', payload);
 
       // 🔧 DEBUG OXXO: Log de la respuesta del backend
-      console.log('🏪 OXXO DEBUG - Backend Response:', {
-        status: response.status,
-        data: response.data,
-        orderId: response.data?.order?.id,
-        orderStatus: response.data?.order?.status,
-        paymentMethod: response.data?.order?.payment_method,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🏪 OXXO DEBUG - Backend Response:', {
+      // status: response.status,
+      // data: response.data,
+      // orderId: response.data?.order?.id,
+      // orderStatus: response.data?.order?.status,
+      // paymentMethod: response.data?.order?.payment_method,
+      // timestamp: new Date().toISOString()
+      // });
 
       return response.data;
     } catch (err) {

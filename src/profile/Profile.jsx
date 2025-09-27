@@ -361,9 +361,17 @@ export default function Profile({ navigation, route }) {
   // Función para verificar datos faltantes
   const getMissingData = useCallback(() => {
     const missing = [];
-    
+
     if (!profile.phone || profile.phone.trim() === '') {
-      missing.push({ field: 'phone', label: 'Teléfono', reason: 'para recibir notificaciones de tu pedido' });
+      // ✅ PUNTO 15: Mensaje personalizado para Apple sin correo
+      const isAppleWithoutEmail = profile.provider === 'apple' &&
+        profile.email && profile.email.includes('@interno.app');
+
+      const phoneReason = isAppleWithoutEmail
+        ? 'si quieres recibir notificaciones, compártenos tu celular'
+        : 'para recibir notificaciones de tu pedido';
+
+      missing.push({ field: 'phone', label: 'Teléfono', reason: phoneReason });
     }
     
     // Validar direcciones usando el nuevo sistema
@@ -1296,12 +1304,21 @@ export default function Profile({ navigation, route }) {
               <Text style={styles.errorText}>{errors.last_name}</Text>
             )}
 
-            <TextInput
-              style={[styles.input, styles.disabledInput]}
-              editable={false}
-              placeholder="Correo electrónico"
-              value={profile.email}
-            />
+            {/* ✅ PUNTO 16: Para usuarios Apple que no compartieron email, mostrar solo "Apple ID" */}
+            {profile.provider === 'apple' && profile.email && profile.email.includes('@interno.app') ? (
+              <View style={[styles.input, styles.disabledInput, { justifyContent: 'center' }]}>
+                <Text style={[styles.inputText, { color: '#666', fontStyle: 'italic' }]}>
+                  Apple ID
+                </Text>
+              </View>
+            ) : (
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                editable={false}
+                placeholder="Correo electrónico"
+                value={profile.email}
+              />
+            )}
 
             {/* ✅ DRIVER FIX: Ocultar teléfono para drivers */}
             {user?.usertype !== 'driver' && (
@@ -2339,6 +2356,11 @@ const styles = StyleSheet.create({
   inputErrorNoMargin: inputs.errorNoMargin, // Para inputs con error sin margin
   disabledInput: inputs.disabled,
   errorText: inputLabels.error, // Usar el error text del tema
+  inputText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#333',
+  },
   
   // === TÍTULOS MIGRADOS AL TEMA ===
   sectionTitle: {

@@ -1,0 +1,133 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build & upload a TestFlight beta with correct Bundle ID and signing"
+  lane :beta do
+    setup_ci
+    # 0️⃣ Bundle ID
+    update_app_identifier(
+      xcodeproj:  "ios/MyNewApp.xcodeproj",
+      plist_path: "MyNewApp/Info.plist",
+      app_identifier: "com.occr.productos"
+    )
+
+    # 🍎 FORZAR ENTITLEMENTS DE APPLE SIGN-IN
+    update_code_signing_settings(
+      path: "ios/MyNewApp.xcodeproj",
+      targets: ["MyNewApp"],
+      entitlements_file_path: "MyNewApp/MyNewApp.entitlements"
+    )
+
+    # 1️⃣ Team ID
+    update_project_team(
+      path:    "ios/MyNewApp.xcodeproj",
+      targets: ["MyNewApp"],
+      teamid:  ENV["DEVELOPMENT_TEAM"]
+    )
+
+    # 2️⃣ Signing manual para Release
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path:                  "ios/MyNewApp.xcodeproj",
+      team_id:               ENV["DEVELOPMENT_TEAM"],
+      targets:               ["MyNewApp"],
+      build_configurations:  ["Release"],
+      code_sign_identity:    "Apple Distribution",
+      profile_name:          "match AppStore com.occr.productos"
+    )
+
+    # ➡️ AÑADIMOS AQUÍ
+    increment_build_number(
+      xcodeproj:   "ios/MyNewApp.xcodeproj",
+      build_number: Time.now.strftime("%Y%m%d%H%M")
+    )
+
+
+    # 3️⃣ Match readonly
+    api_key = app_store_connect_api_key(
+      key_id:      ENV['APP_STORE_CONNECT_API_KEY_KEY_ID'],
+      issuer_id:   ENV['APP_STORE_CONNECT_API_KEY_ISSUER_ID'],
+      key_content: ENV['APP_STORE_CONNECT_API_KEY_CONTENT'].gsub("\\n", "\n")
+    )
+
+    # Regenerar profiles para incluir Apple Pay + Push Notifications capability
+    match(
+      type: "appstore", 
+      api_key: api_key, 
+      readonly: false,  # Cambiar a false para regenerar profiles con Apple Pay + Push
+      clone_branch_directly: true,
+      force_for_new_devices: true,  # Fuerza regeneración
+      force_for_new_certificates: true  # 🔥 FORCE: Descargar nuevo profile con Push Notifications
+    )
+
+    # 1️⃣ Bundling RN para iOS
+    sh(<<-CMD)
+      cd #{Dir.pwd} &&
+      npx react-native bundle \
+        --entry-file index.js \
+        --platform ios \
+        --dev false \
+        --bundle-output ios/main.jsbundle \
+        --assets-dest ios/assets
+    CMD
+
+    # 2️⃣ Abort si no existe el bundle
+    unless File.exist?("ios/main.jsbundle")
+      UI.user_error!("❌ No se generó ios/main.jsbundle — abortando deploy.")
+    end
+
+    # 🔥 FIREBASE: Copiar GoogleService-Info.plist al bundle antes de compilar
+    UI.message("🔥 Copying GoogleService-Info.plist to ensure it's included in bundle...")
+    firebase_source = "ios/MyNewApp/GoogleService-Info.plist"
+    firebase_dest = "ios/GoogleService-Info.plist"
+    
+    if File.exist?(firebase_source)
+      FileUtils.cp(firebase_source, firebase_dest)
+      UI.success("✅ GoogleService-Info.plist copied to: #{firebase_dest}")
+    else
+      UI.error("❌ GoogleService-Info.plist not found at: #{firebase_source}")
+    end
+
+    # 🔍 DEBUG: Verificar configuración antes de compilar
+    UI.message("🔍 VERIFICANDO CONFIGURACIÓN APPLE SIGN-IN...")
+    sh("plutil -p ios/MyNewApp/MyNewApp.entitlements | grep -A1 applesignin || echo 'NO APPLE SIGN-IN ENTITLEMENT'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep PRODUCT_BUNDLE_IDENTIFIER | head -1 || echo 'NO BUNDLE ID'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep DEVELOPMENT_TEAM | head -1 || echo 'NO TEAM ID'")
+    sh("xcodebuild -showBuildSettings -workspace ios/MyNewApp.xcworkspace -scheme MyNewApp | grep CODE_SIGN_ENTITLEMENTS | head -1 || echo 'NO ENTITLEMENTS PATH'")
+
+    # 4️⃣ Compilar con Gym
+    begin
+      # 🔧 Listar SDKs disponibles para debugging
+      sh("xcodebuild -showsdks | grep iphoneos || echo 'No iPhone OS SDKs found'")
+      
+      build_app(
+        workspace:        "ios/MyNewApp.xcworkspace",
+        scheme:           "MyNewApp",
+        configuration:    "Release",
+        clean:            true,
+        export_method:    "app-store",
+        output_directory: "build",
+        output_name:      "MyNewApp",
+        sdk:              "iphoneos18.4",  # 🎯 FORZAR iOS 18.4 SDK (disponible)
+        export_options: {
+          provisioningProfiles: {
+            "com.occr.productos" => "match AppStore com.occr.productos"
+          }
+        }
+      )
+    rescue => exception
+      sh("echo '----- GYM LOG COMPLETO -----'")
+      sh("find ~/Library/Logs/gym -name '*.log' -type f | head -1 | xargs cat || echo 'Log file not found'")
+      sh("echo '----- ERRORES DE COMPILACIÓN -----'") 
+      sh("find ~/Library/Logs/gym -name '*.log' -type f | head -1 | xargs grep -i 'error\\|failed\\|failure' || echo 'No se encontraron errores específicos'")
+      raise exception
+    end
+
+    ipa_path = Actions.lane_context[SharedValues::IPA_OUTPUT_PATH] # => "/Users/.../build/MyNewApp.ipa"
+    sh("unzip -l #{ipa_path} | grep -i main.jsbundle")
+
+
+    # 5️⃣ Subir a TestFlight
+    upload_to_testflight(api_key: api_key)
+  end
+end

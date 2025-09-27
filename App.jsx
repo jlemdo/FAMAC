@@ -1,5 +1,5 @@
 import React, {useContext, useCallback, useMemo, useEffect, useRef} from 'react';
-import {View, StyleSheet, ActivityIndicator, Platform, Dimensions} from 'react-native';
+import {View, StyleSheet, ActivityIndicator, Platform, Dimensions, AppState} from 'react-native';
 import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
 import NotificationService from './src/services/NotificationService';
 import AutoUpdateService from './src/services/AutoUpdateService';
@@ -93,7 +93,7 @@ function HomeStack() {
 
 function MainTabs() {
   const {user} = useContext(AuthContext);
-  const {orders} = useContext(OrderContext);
+  const {orders, refreshOrders} = useContext(OrderContext);
   const {cart} = useContext(CartContext);
   // ✅ FIXED: Siempre llamar useProfile(), validar condicionalmente después
   const profileContext = useProfile();
@@ -127,6 +127,19 @@ function MainTabs() {
     if (activeOrders.length === 0) return null;
     return activeOrders.length > 99 ? '+99' : activeOrders.length;
   }, [orders, user?.usertype]);
+
+  // ✅ REFRESH AUTOMÁTICO: Actualizar badge cuando app regresa del background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'active' && user) {
+        // console.log('📱 App regresó del background - refrescando pedidos');
+        refreshOrders();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [user, refreshOrders]);
 
   // Función para obtener altura del bottom tab basada en el dispositivo
   const getTabBarHeight = () => {

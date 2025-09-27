@@ -301,7 +301,7 @@ class NotificationService {
 
     // Notificación cuando la app está en background y se abre
     messaging().onNotificationOpenedApp(remoteMessage => {
-      console.log('🔔 BACKGROUND TAP DETECTED:', remoteMessage);
+      // console.log('🔔 BACKGROUND TAP DETECTED:', remoteMessage);
       this.handleNotificationPress(remoteMessage);
     });
 
@@ -310,7 +310,7 @@ class NotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
-          console.log('🔔 APP CLOSED TAP DETECTED:', remoteMessage);
+          // console.log('🔔 APP CLOSED TAP DETECTED:', remoteMessage);
           this.handleNotificationPress(remoteMessage);
         }
       });
@@ -406,7 +406,21 @@ class NotificationService {
         enhancedTitle = '📦 Nuevo pedido asignado';
         enhancedBody = `Se te ha asignado el pedido #${orderId}. ¡Revisa los detalles!`;
         break;
-        
+
+      case 'chat_message':
+        const senderName = remoteMessage.data?.sender_name;
+        const senderType = remoteMessage.data?.sender_type;
+        const messagePreview = remoteMessage.data?.message_preview;
+
+        if (senderType === 'driver') {
+          enhancedTitle = '💬 Mensaje de tu repartidor';
+          enhancedBody = `${senderName}: ${messagePreview}`;
+        } else {
+          enhancedTitle = `💬 Mensaje - Pedido #${orderId}`;
+          enhancedBody = `${senderName}: ${messagePreview}`;
+        }
+        break;
+
       default:
         // Intentar mejorar notificaciones genéricas
         if (orderId) {
@@ -422,14 +436,14 @@ class NotificationService {
     const notificationType = remoteMessage.data?.type;
     const orderId = remoteMessage.data?.order_id;
 
-    console.log('🔔 Manejando tap en notificación:', {
-      type: notificationType,
-      orderId,
-      hasNavigation: !!this.navigationRef,
-      fullRemoteMessage: remoteMessage,
-      dataKeys: Object.keys(remoteMessage.data || {}),
-      dataValues: remoteMessage.data
-    });
+    // console.log('🔔 Manejando tap en notificación:', {
+    // type: notificationType,
+    // orderId,
+    // hasNavigation: !!this.navigationRef,
+    // fullRemoteMessage: remoteMessage,
+    // dataKeys: Object.keys(remoteMessage.data || {}),
+    // dataValues: remoteMessage.data
+    // });
 
     try {
       switch (notificationType) {
@@ -452,6 +466,19 @@ class NotificationService {
             });
           } else if (this.navigationRef) {
             // Si no hay orderId específico, ir a la lista de pedidos
+            this.navigationRef.navigate('MainTabs', { screen: 'Pedidos' });
+          }
+          break;
+
+        case 'chat_message':
+          // Navegar directamente al chat del pedido
+          if (orderId && this.navigationRef) {
+            this.navigationRef.navigate('OrderDetails', {
+              orderId: orderId,
+              openChat: true // Flag para abrir automáticamente el chat
+            });
+          } else if (this.navigationRef) {
+            // Fallback a lista de pedidos
             this.navigationRef.navigate('MainTabs', { screen: 'Pedidos' });
           }
           break;

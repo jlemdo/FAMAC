@@ -270,14 +270,14 @@ const Header = ({onLogout}) => {
                             const descriptionMatch = item.description.match(/#(\d+)/);
                             const orderId = titleMatch ? titleMatch[1] : (descriptionMatch ? descriptionMatch[1] : null);
 
-                            console.log('🔔 HEADER NOTIFICATION TAP:', {
-                              title: item.title,
-                              description: item.description,
-                              titleMatch,
-                              descriptionMatch,
-                              extractedOrderId: orderId,
-                              willNavigateTo: orderId ? 'OrderDetails' : 'Pedidos'
-                            });
+                            // console.log('🔔 HEADER NOTIFICATION TAP:', {
+                            // title: item.title,
+                            // description: item.description,
+                            // titleMatch,
+                            // descriptionMatch,
+                            // extractedOrderId: orderId,
+                            // willNavigateTo: orderId ? 'OrderDetails' : 'Pedidos'
+                            // });
 
                             if (orderId) {
                               // 🎯 NAVEGACIÓN DIRECTA A OrderDetails (igual que modal post-compra)

@@ -1,0 +1,6 @@
+# fastlane/Matchfile
+
+git_url("git@github.com:jlemdo/certi-ios.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["com.occr.productos"])

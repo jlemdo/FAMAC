@@ -96,7 +96,7 @@ const DriverTracking = ({order}) => {
       );
 
     } catch (error) {
-      console.error('Error aceptando pedido:', error);
+      // console.error('Error aceptando pedido:', error);
       Alert.alert(
         '❌ Error',
         'No se pudo aceptar el pedido. Intenta nuevamente.',
@@ -123,7 +123,7 @@ const DriverTracking = ({order}) => {
       );
 
     } catch (error) {
-      console.error('Error entregando pedido:', error);
+      // console.error('Error entregando pedido:', error);
       Alert.alert(
         '❌ Error',
         'No se pudo marcar el pedido como entregado. Intenta nuevamente.',
@@ -155,7 +155,7 @@ const DriverTracking = ({order}) => {
 
   const submitDriverLocation = useCallback(async () => {
     if (!latlong?.driver_lat || !latlong?.driver_long) {
-      console.log('⚠️ No hay coordenadas válidas para enviar');
+      // console.log('⚠️ No hay coordenadas válidas para enviar');
       return;
     }
 
@@ -165,7 +165,7 @@ const DriverTracking = ({order}) => {
       driver_long: latlong.driver_long,
     };
 
-    console.log('📍 Enviando ubicación del driver:', payload);
+    // console.log('📍 Enviando ubicación del driver:', payload);
 
     try {
       const response = await axios.post(
@@ -173,50 +173,50 @@ const DriverTracking = ({order}) => {
         payload,
       );
 
-      console.log('📡 Respuesta del servidor:', response.status, response.data);
+      // console.log('📡 Respuesta del servidor:', response.status, response.data);
 
       if (response.status === 201 || response.status === 200) {
-        console.log('✅ Ubicación enviada exitosamente');
+        // console.log('✅ Ubicación enviada exitosamente');
         await fetchOrder();
       } else {
-        console.log('⚠️ Respuesta inesperada del servidor:', response.status);
+        // console.log('⚠️ Respuesta inesperada del servidor:', response.status);
       }
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
 
       if (errorMsg.includes('Too Many Attempts') || errorMsg.includes('throttle')) {
-        console.warn('⚠️ Rate limiting activo - esperando antes del próximo envío');
+        // console.warn('⚠️ Rate limiting activo - esperando antes del próximo envío');
         // No hacer nada más, el próximo interval lo intentará
       } else {
-        console.error('❌ Error enviando ubicación:', errorMsg);
+        // console.error('❌ Error enviando ubicación:', errorMsg);
       }
     }
   }, [order.id, latlong, fetchOrder]);
 
   const fetchOrder = useCallback(async () => {
     try {
-      console.log(`🔄 Actualizando estado de orden ${order.id}...`);
+      // console.log(`🔄 Actualizando estado de orden ${order.id}...`);
 
       const res = await axios.get(
         `https://occr.pixelcrafters.digital/api/orderdetails/${order.id}`,
       );
 
       const newStatus = res?.data?.order?.status;
-      console.log(`📊 Estado actualizado: "${currentStatus}" → "${newStatus}"`);
+      // console.log(`📊 Estado actualizado: "${currentStatus}" → "${newStatus}"`);
 
       setCurrentStatus(newStatus);
 
       // Log temporal para identificar estados reales del backend
-      console.log('🔍 ESTADO REAL del backend:', {
-        id: order.id,
-        status: newStatus,
-        original_status: res?.data?.order?.status,
-        payment_status: res?.data?.order?.payment_status,
-        driver_id: res?.data?.order?.driver_id
-      });
+      // console.log('🔍 ESTADO REAL del backend:', {
+      // id: order.id,
+      // status: newStatus,
+      // original_status: res?.data?.order?.status,
+      // payment_status: res?.data?.order?.payment_status,
+      // driver_id: res?.data?.order?.driver_id
+      // });
 
     } catch (err) {
-      console.error('❌ Error obteniendo detalles de orden:', err.response?.data || err.message);
+      // console.error('❌ Error obteniendo detalles de orden:', err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
@@ -224,7 +224,7 @@ const DriverTracking = ({order}) => {
 
   const completeOrderFromDriver = async () => {
     try {
-      console.log(`📦 Marcando orden ${order.id} como entregada...`);
+      // console.log(`📦 Marcando orden ${order.id} como entregada...`);
 
       const response = await axios.post(
         'https://occr.pixelcrafters.digital/api/orderdel',
@@ -233,17 +233,17 @@ const DriverTracking = ({order}) => {
         },
       );
 
-      console.log('📡 Respuesta de entrega:', response.status, response.data);
+      // console.log('📡 Respuesta de entrega:', response.status, response.data);
 
       if (response.status === 200 || response.status === 201) {
-        console.log('✅ Orden marcada como entregada exitosamente');
+        // console.log('✅ Orden marcada como entregada exitosamente');
         await fetchOrder();
       } else {
         throw new Error(`Respuesta inesperada del servidor: ${response.status}`);
       }
 
     } catch (error) {
-      console.error('❌ Error marcando como entregado:', error.response?.data || error.message);
+      // console.error('❌ Error marcando como entregado:', error.response?.data || error.message);
       throw error; // Re-lanzar para que handleDeliverOrder lo capture
     }
   };
@@ -287,11 +287,11 @@ const DriverTracking = ({order}) => {
           });
         },
         (error) => {
-          console.log('Error obteniendo ubicación:', error);
-          // Fallback a ubicación de CDMX si falla
+          // console.log('Error obteniendo ubicación:', error);
+          // Fallback a ubicación de origen del reparto (Av México Coyoacán 371, Col Xoco)
           setLatlong({
-            driver_lat: 19.4326,
-            driver_long: -99.1332,
+            driver_lat: 19.3611652,
+            driver_long: -99.1652658,
           });
         }
       );
@@ -453,12 +453,12 @@ const DriverTracking = ({order}) => {
               const shouldShowAccept = acceptableStates.includes(status);
 
               // Log temporal para debugging
-              console.log('🎯 BOTÓN ACEPTAR Debug:', {
-                currentStatus,
-                statusLower: status,
-                shouldShowAccept,
-                acceptableStates
-              });
+              // console.log('🎯 BOTÓN ACEPTAR Debug:', {
+              // currentStatus,
+              // statusLower: status,
+              // shouldShowAccept,
+              // acceptableStates
+              // });
 
               return shouldShowAccept;
             })() && (
@@ -487,12 +487,12 @@ const DriverTracking = ({order}) => {
               const shouldShowDeliver = deliverableStates.includes(status);
 
               // Log temporal para debugging
-              console.log('🚚 BOTÓN ENTREGAR Debug:', {
-                currentStatus,
-                statusLower: status,
-                shouldShowDeliver,
-                deliverableStates
-              });
+              // console.log('🚚 BOTÓN ENTREGAR Debug:', {
+              // currentStatus,
+              // statusLower: status,
+              // shouldShowDeliver,
+              // deliverableStates
+              // });
 
               return shouldShowDeliver;
             })() && (
@@ -520,12 +520,12 @@ const DriverTracking = ({order}) => {
               const isCompleted = completedStates.includes(status);
 
               // Log temporal para debugging
-              console.log('🏁 ESTADO COMPLETADO Debug:', {
-                currentStatus,
-                statusLower: status,
-                isCompleted,
-                completedStates
-              });
+              // console.log('🏁 ESTADO COMPLETADO Debug:', {
+              // currentStatus,
+              // statusLower: status,
+              // isCompleted,
+              // completedStates
+              // });
 
               return isCompleted;
             })() && (

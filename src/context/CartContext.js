@@ -18,7 +18,7 @@ export function CartProvider({ children }) {
 
     // Add item to cart
     const addToCart = (product, quantityToAdd = 1) => {
-        console.log('🛒 AGREGANDO al carrito:', product.name, 'cantidad:', quantityToAdd);
+        // console.log('🛒 AGREGANDO al carrito:', product.name, 'cantidad:', quantityToAdd);
         setCart((prevCart) => {
             const existingItem = prevCart.find((item) => item.id === product.id);
             if (existingItem) {
@@ -47,7 +47,7 @@ export function CartProvider({ children }) {
 
     // Remove item from cart
     const removeFromCart = (id) => {
-        console.log('🛒 REMOVIENDO del carrito:', id);
+        // console.log('🛒 REMOVIENDO del carrito:', id);
         setCart((prevCart) => prevCart.filter((item) => item.id !== id));
     };
 
@@ -68,27 +68,35 @@ export function CartProvider({ children }) {
     useEffect(() => {
         const userId = user?.id || user?.email || null; // Para guests usar email, para registrados usar id
         
-        console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
-            currentUserId,
-            newUserId: userId,
-            userType: user?.usertype,
-            shouldClear: currentUserId !== null && currentUserId !== userId,
-            cartLength: cart.length
-        });
+        // console.log('🛒 CARTCONTEXT: Verificando cambio de usuario:', {
+        // currentUserId,
+        // newUserId: userId,
+        // userType: user?.usertype,
+        // shouldClear: currentUserId !== null && currentUserId !== userId,
+        // cartLength: cart.length
+        // });
         
         // 🚨 CASO CRÍTICO: Usuario hace logout (user cambia a null)
         if (currentUserId !== null && userId === null) {
-            console.log('🚨 CARRITO: Limpiando por LOGOUT');
+            // console.log('🚨 CARRITO: Limpiando por LOGOUT');
             clearCartOnLogout(); // Limpiar TODOS los carritos de storage
             if (onCartClearCallback) {
                 onCartClearCallback();
             }
         }
-        // 🔄 CASO NORMAL: Cambio entre usuarios diferentes (no logout)
-        else if (false && currentUserId !== null && currentUserId !== userId && userId !== null) {
-            console.log('🚨 CARRITO: Limpiando por CAMBIO DE USUARIO');
+        // 🔄 CASO CRÍTICO: Cambio entre usuarios diferentes (Guest ↔ Registrado)
+        else if (currentUserId !== null && currentUserId !== userId && userId !== null) {
+            console.log('🚨 CARRITO: Limpiando por CAMBIO DE USUARIO:', {
+                from: currentUserId,
+                to: userId,
+                previousUserType: currentUserId?.toString().includes('@') ? 'Guest' : 'User',
+                newUserType: userId?.toString().includes('@') ? 'Guest' : 'User'
+            });
+
+            // Limpiar carrito actual INMEDIATAMENTE
             setCart([]);
-            // Ejecutar callback para limpiar información adicional cuando cambia usuario
+
+            // Ejecutar callback para limpiar información adicional (deliveryInfo, etc.)
             if (onCartClearCallback) {
                 onCartClearCallback();
             }
@@ -101,6 +109,11 @@ export function CartProvider({ children }) {
     // 📦 CORREGIDO: Cargar carrito DESPUÉS de cambio de usuario para evitar race conditions
     useEffect(() => {
         if (user !== undefined) { // user !== undefined significa que AuthContext ya cargó
+            console.log('📦 CARTCONTEXT: Cargando carrito para usuario:', {
+                userType: user?.usertype,
+                userId: user?.id || user?.email,
+                currentCartItems: cart.length
+            });
             // Delay pequeño para asegurar que limpieza de usuario anterior termine primero
             setTimeout(() => loadCartFromBackend(), 50);
         }
@@ -212,10 +225,10 @@ export function CartProvider({ children }) {
             const response = await axios.post('https://occr.pixelcrafters.digital/api/cart/get', payload);
             
             if (response.data.success && response.data.cart.length > 0) {
-                // console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del backend`);
+                console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del BACKEND para ${user?.usertype}:`, user?.id || user?.email);
                 setCart(response.data.cart);
             } else {
-                // console.log('📦 No hay carrito en backend o está vacío');
+                console.log(`📦 No hay carrito en backend para ${user?.usertype} ${user?.id || user?.email} - iniciando carrito vacío`);
                 setCart([]);
             }
             
@@ -257,7 +270,7 @@ export function CartProvider({ children }) {
 
     // 🆕 NUEVO: Limpiar carrito completamente (memoria + backend)
     const clearCart = async () => {
-        console.log('🚨 CLEAR CART EJECUTADO - Stack trace:', new Error().stack);
+        // console.log('🚨 CLEAR CART EJECUTADO - Stack trace:', new Error().stack);
         try {
             // Limpiar memoria
             setCart([]);
@@ -344,7 +357,7 @@ export function CartProvider({ children }) {
         } catch (error) {
             // Solo loggear si es un error diferente a 500 (que indica que el endpoint no existe)
             if (error.response?.status !== 500) {
-                console.log('Error obteniendo promociones automáticas:', error.message);
+                // console.log('Error obteniendo promociones automáticas:', error.message);
             }
             // Silenciosamente establecer array vacío para promociones automáticas
             setAutomaticPromotions([]);

@@ -1,0 +1,55 @@
+name: iOS Quick Debug
+
+on:
+  workflow_dispatch:  # dispara manualmente desde Actions
+
+jobs:
+  quick-debug:
+    name: Quick Debug iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install JS deps
+        run: yarn install --frozen-lockfile
+
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods
+
+      - name: Install iOS pods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.2'
+
+      - name: Build for Simulator
+        run: |
+          xcodebuild \
+            -workspace ios/MyNewApp.xcworkspace \
+            -scheme MyNewApp \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath ios/build \
+            | xcpretty
+
+      - name: Boot Simulator
+        run: |
+          xcrun simctl boot "iPhone 15" || true
+
+      - name: Install & Launch on Simulator
+        run: |
+          APP_PATH=ios/build/Build/Products/Debug-iphonesimulator/MyNewApp.app
+          xcrun simctl install boot "$APP_PATH"
+          # Lanza la app y muestra logs/crashes en la salida de Actions
+          xcrun simctl launch boot com.occr.productos
+

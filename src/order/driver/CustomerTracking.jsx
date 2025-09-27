@@ -72,7 +72,7 @@ const CustomerTracking = ({order}) => {
 
       if (isThrottleError) {
         // Throttling - no es un error real, solo esperamos más tiempo
-        console.warn('⚠️ Rate limiting en customer tracking - esperando');
+        // console.warn('⚠️ Rate limiting en customer tracking - esperando');
         setIsConnected(true); // Mantener como conectado
         setRetryCount(0); // No contar como retry
       } else if (isNetworkError && attempt < maxRetries) {
@@ -146,7 +146,7 @@ const CustomerTracking = ({order}) => {
         <View style={styles.paymentWarning}>
           <Ionicons name="warning-outline" size={16} color="#FF9800" />
           <Text style={styles.paymentWarningText}>
-            ⚠️ Pago pendiente - El conductor no puede procesar esta orden aún
+            ⚠️ Pago pendiente - El repartidor no puede procesar esta orden aún
           </Text>
         </View>
       )}

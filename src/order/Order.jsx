@@ -309,7 +309,7 @@ const Order = () => {
                 // Mensajes para Driver - diferenciados por tab
                 driverActiveTab === 'disponibles' ? (
                   <>
-                    <Text style={styles.userTitle}>📍 ¡Hola Conductor!</Text>
+                    <Text style={styles.userTitle}>📍 ¡Hola Repartidor!</Text>
                     <Text style={styles.userText}>
                       Aquí aparecerán los pedidos que tengamos para ti.
                     </Text>
@@ -322,7 +322,7 @@ const Order = () => {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.userTitle}>🚚 ¡Hola Conductor!</Text>
+                    <Text style={styles.userTitle}>🚚 ¡Hola Repartidor!</Text>
                     <Text style={styles.userText}>
                       Aquí aparecerán todas las órdenes que has entregado.
                     </Text>
@@ -330,7 +330,7 @@ const Order = () => {
                       📊 Tu historial de entregas te ayudará a llevar un control de tu trabajo
                     </Text>
                     <Text style={styles.userSubtext}>
-                      🎯 ¡Cada entrega exitosa suma a tu experiencia como conductor!
+                      🎯 ¡Cada entrega exitosa suma a tu experiencia como repartidor!
                     </Text>
                   </>
                 )

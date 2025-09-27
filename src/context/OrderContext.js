@@ -96,34 +96,34 @@ export function OrderProvider({ children }) {
             
             // 🔍 DEBUG TEMPORAL: Ver órdenes recibidas para drivers
             if (user.usertype === 'driver') {
-                console.log('🚚 DRIVER ORDERS DEBUG:', {
-                    count: ordersData.length,
-                    orders: ordersData.map(order => ({
-                        id: order.id,
-                        status: order.status,
-                        payment_status: order.payment_status,
-                        driver_id: order.driver_id,
-                        user_email: order.user_email
-                    }))
-                });
+                // console.log('🚚 DRIVER ORDERS DEBUG:', {
+                // count: ordersData.length,
+                // orders: ordersData.map(order => ({
+                // id: order.id,
+                // status: order.status,
+                // payment_status: order.payment_status,
+                // driver_id: order.driver_id,
+                // user_email: order.user_email
+                // }))
+                // });
             }
 
             // 🏪 DEBUG OXXO: Ver todas las órdenes para usuarios normales
             if (user.usertype !== 'driver') {
-                console.log('🏪 OXXO DEBUG - All Orders Received:', {
-                    userType: user.usertype,
-                    userEmail: user.email,
-                    userId: user.id,
-                    totalOrders: ordersData.length,
-                    orders: ordersData.map(order => ({
-                        id: order.id,
-                        status: order.status,
-                        payment_status: order.payment_status,
-                        payment_method: order.payment_method,
-                        created_at: order.created_at,
-                        total: order.total
-                    }))
-                });
+                // console.log('🏪 OXXO DEBUG - All Orders Received:', {
+                // userType: user.usertype,
+                // userEmail: user.email,
+                // userId: user.id,
+                // totalOrders: ordersData.length,
+                // orders: ordersData.map(order => ({
+                // id: order.id,
+                // status: order.status,
+                // payment_status: order.payment_status,
+                // payment_method: order.payment_method,
+                // created_at: order.created_at,
+                // total: order.total
+                // }))
+                // });
             }
             
             // 🔍 DEBUG TEMPORAL REMOVIDO - Ya no necesario
@@ -140,14 +140,14 @@ export function OrderProvider({ children }) {
                     const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
                     const statusValid = ['Open', 'Abierto', 'On the Way', 'Delivered', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status);
                     
-                    console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
-                        payment_status: order.payment_status,
-                        status: order.status,
-                        driver_id: order.driver_id,
-                        paymentValid,
-                        statusValid,
-                        incluir: paymentValid && statusValid
-                    });
+                    // console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
+                    // payment_status: order.payment_status,
+                    // status: order.status,
+                    // driver_id: order.driver_id,
+                    // paymentValid,
+                    // statusValid,
+                    // incluir: paymentValid && statusValid
+                    // });
                     
                     return paymentValid && statusValid;
                 });
@@ -175,18 +175,18 @@ export function OrderProvider({ children }) {
                 );
 
                 // 🏪 DEBUG OXXO: Ver filtrado de órdenes activas
-                console.log('🏪 OXXO DEBUG - Active Orders Filter:', {
-                    userType: user.usertype,
-                    totalOrders: sortedOrders.length,
-                    activeOrders: activeOrders.length,
-                    completedStatuses: completedStatuses,
-                    allOrdersStatus: sortedOrders.map(order => ({
-                        id: order.id,
-                        status: order.status,
-                        payment_status: order.payment_status,
-                        isActive: order.status && !completedStatuses.includes(order.status.toLowerCase())
-                    }))
-                });
+                // console.log('🏪 OXXO DEBUG - Active Orders Filter:', {
+                // userType: user.usertype,
+                // totalOrders: sortedOrders.length,
+                // activeOrders: activeOrders.length,
+                // completedStatuses: completedStatuses,
+                // allOrdersStatus: sortedOrders.map(order => ({
+                // id: order.id,
+                // status: order.status,
+                // payment_status: order.payment_status,
+                // isActive: order.status && !completedStatuses.includes(order.status.toLowerCase())
+                // }))
+                // });
             }
             setOrderCount(activeOrders.length);
             setLastFetch(new Date());
@@ -245,8 +245,8 @@ export function OrderProvider({ children }) {
             // Fetch inicial
             fetchOrdersFromServer();
             
-            // ✅ DRIVER FIX: Auto-refresh más frecuente para drivers (5s vs 30s)
-            const refreshInterval = user.usertype === 'driver' ? 5000 : 30000;
+            // ✅ AUTO-REFRESH MEJORADO: Más frecuente para todos los usuarios
+            const refreshInterval = user.usertype === 'driver' ? 5000 : 15000; // Drivers: 5s, Users: 15s (antes 30s)
             
             const interval = setInterval(() => {
                 fetchOrdersFromServer();

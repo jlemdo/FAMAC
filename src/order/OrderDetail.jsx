@@ -90,6 +90,13 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportLoading, setSupportLoading] = useState(false);
+  // ✅ PUNTO 21: Estados para problema con pedido
+  const [showProblemModal, setShowProblemModal] = useState(false);
+  const [problemLoading, setProblemLoading] = useState(false);
+  // ✅ PUNTO 23: Estados para entrega del driver
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [distanceToCustomer, setDistanceToCustomer] = useState(null);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -150,6 +157,186 @@ const OrderDetails = () => {
     } finally {
       setSupportLoading(false);
       setSubmitting(false);
+    }
+  };
+
+  // ✅ PUNTO 21 + 22: Función para detectar si mostrar botón de problema
+  const shouldShowProblemButton = () => {
+    if (!order) return false;
+
+    // 1. Solo para pedidos en tránsito/camino
+    const inTransitStatuses = ['en camino', 'on the way', 'on_the_way', 'assigned', 'asignado'];
+    const orderStatus = order.status?.toLowerCase();
+
+    if (!inTransitStatuses.includes(orderStatus)) return false;
+
+    // 2. ✅ PUNTO 22: Verificar si ha pasado más del 15% del tiempo estimado
+    const deliveryTime = order.delivery_time; // Tiempo estimado en minutos
+    const assignedTime = order.assigned_at || order.updated_at; // Cuando se asignó el driver
+
+    if (!deliveryTime || !assignedTime) return false;
+
+    // Calcular tiempo transcurrido desde asignación
+    const now = new Date();
+    const assignedDate = new Date(assignedTime);
+    const elapsedMinutes = (now - assignedDate) / (1000 * 60);
+
+    // Calcular 15% del tiempo estimado
+    const timeThreshold = deliveryTime * 0.15;
+
+    // Mostrar botón si ha pasado más del 15% del tiempo estimado
+    const shouldShow = elapsedMinutes > timeThreshold;
+
+    // DEBUG: Log para testing (remover en producción)
+    if (shouldShow) {
+      console.log('🚨 PROBLEMA CON PEDIDO:', {
+        orderId: order.id,
+        deliveryTime: deliveryTime + ' min',
+        elapsedMinutes: Math.round(elapsedMinutes) + ' min',
+        threshold: Math.round(timeThreshold) + ' min',
+        shouldShow
+      });
+    }
+
+    return shouldShow;
+    // TODO: Agregar lógica de proximidad del driver cuando esté disponible
+  };
+
+  // ✅ PUNTO 21: Función para manejar problema con pedido
+  const handleProblemSubmit = async () => {
+    setProblemLoading(true);
+    try {
+      const response = await axios.post('https://food.siliconsoft.pk/api/compsubmit', {
+        orderno: order?.id?.toString() || '',
+        message: 'Tengo un problema con mi pedido',
+      });
+
+      if (response.status === 200) {
+        showAlert({
+          type: 'success',
+          title: '⚠️ Problema Reportado',
+          message: 'Hemos recibido tu reporte. Nuestro equipo se comunicará contigo pronto.',
+          confirmText: 'OK',
+        });
+        setShowProblemModal(false);
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo enviar tu reporte. Inténtalo de nuevo',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setProblemLoading(false);
+    }
+  };
+
+  // ✅ PUNTO 23: Función para calcular distancia entre dos coordenadas (fórmula de Haversine)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c * 1000; // Convertir a metros
+    return distance;
+  };
+
+  // ✅ PUNTO 23: Función para obtener ubicación del driver y calcular distancia
+  const checkDriverProximity = useCallback(async () => {
+    if (user?.usertype !== 'driver' || !order?.delivery_lat || !order?.delivery_long) return;
+
+    try {
+      // Obtener ubicación actual del driver
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setDriverLocation({ lat: latitude, lng: longitude });
+
+          // Calcular distancia al cliente
+          const distance = calculateDistance(
+            latitude,
+            longitude,
+            parseFloat(order.delivery_lat),
+            parseFloat(order.delivery_long)
+          );
+
+          setDistanceToCustomer(distance);
+
+          // DEBUG: Log para testing
+          console.log('📍 DRIVER PROXIMITY:', {
+            driverLat: latitude,
+            driverLng: longitude,
+            customerLat: order.delivery_lat,
+            customerLng: order.delivery_long,
+            distance: Math.round(distance) + ' metros',
+            within500m: distance <= 500
+          });
+        },
+        (error) => {
+          console.log('❌ Error obteniendo ubicación del driver:', error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000
+        }
+      );
+    } catch (error) {
+      console.log('❌ Error en checkDriverProximity:', error);
+    }
+  }, [user?.usertype, order?.delivery_lat, order?.delivery_long]);
+
+  // ✅ PUNTO 23: Función para detectar si mostrar botón de entrega
+  const shouldShowDeliveryButton = () => {
+    if (user?.usertype !== 'driver') return false;
+    if (!order) return false;
+
+    // Solo para pedidos en tránsito/asignados
+    const inTransitStatuses = ['en camino', 'on the way', 'on_the_way', 'assigned', 'asignado'];
+    const orderStatus = order.status?.toLowerCase();
+
+    if (!inTransitStatuses.includes(orderStatus)) return false;
+
+    // Verificar si está dentro de 500 metros
+    return distanceToCustomer !== null && distanceToCustomer <= 500;
+  };
+
+  // ✅ PUNTO 23: Función para manejar entrega del pedido
+  const handleDeliverySubmit = async () => {
+    setDeliveryLoading(true);
+    try {
+      // TODO: Implementar endpoint del backend para marcar como entregado
+      const response = await axios.post(`https://occr.pixelcrafters.digital/api/orders/${order.id}/deliver`, {
+        driver_lat: driverLocation?.lat,
+        driver_lng: driverLocation?.lng,
+        delivery_time: new Date().toISOString()
+      });
+
+      if (response.status === 200) {
+        showAlert({
+          type: 'success',
+          title: '✅ Pedido Entregado',
+          message: 'El pedido ha sido marcado como entregado exitosamente.',
+          confirmText: 'OK',
+        });
+
+        // Recargar datos de la orden
+        fetchOrder();
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo marcar el pedido como entregado. Inténtalo de nuevo',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setDeliveryLoading(false);
     }
   };
 
@@ -281,22 +468,22 @@ const OrderDetails = () => {
                     <Text style={styles.deliveryLabel}>Cliente</Text>
                   </View>
                   <Text style={styles.deliveryValue}>
-                    {order.customer?.first_name 
-                      ? `${order.customer.first_name} ${order.customer.last_name || ''}`.trim()
+                    {order.customer?.first_name
+                      ? order.customer.first_name
                       : order.customer?.email || 'Cliente'}
                   </Text>
                 </View>
               )}
               
-              {/* Información del conductor (para usuarios) */}
+              {/* Información del repartidor (para usuarios) */}
               {user?.usertype !== 'driver' && order?.driver && (
                 <View style={styles.deliveryRow}>
                   <View style={styles.deliveryLabelContainer}>
                     <Ionicons name="car-outline" size={16} color="#D27F27" />
-                    <Text style={styles.deliveryLabel}>Conductor</Text>
+                    <Text style={styles.deliveryLabel}>Repartidor</Text>
                   </View>
                   <Text style={styles.deliveryValue}>
-                    {order.driver?.first_name 
+                    {order.driver?.first_name
                       ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
                       : order.driver?.name || 'Tu repartidor'}
                   </Text>
@@ -354,7 +541,7 @@ const OrderDetails = () => {
                 <View style={styles.driverAssignedInfo}>
                   <Ionicons name="person-circle" size={20} color="#33A744" />
                   <Text style={styles.driverAssignedText}>
-                    Repartidor asignado: {order.driver.name || 'Conductor'}
+                    Repartidor asignado: {order.driver.name || 'Repartidor'}
                   </Text>
                 </View>
               ) : (
@@ -398,27 +585,27 @@ const OrderDetails = () => {
                                 order?.payment_status === 'requires_payment_method');
 
           // 🔍 LOG: Estados del sistema para análisis
-          console.log('📊 ANÁLISIS DE ESTADOS:', {
-            order_id: order?.id,
-            status_original: order?.status,
-            status_lower: status,
-            payment_status: order?.payment_status,
-            has_driver: !!hasDriver,
-            driver_id: order?.driver_id,
-            is_driver: isDriver,
-            states_detected: {
-              isOxxoPending,
-              isPendingPayment,
-              isDelivered,
-              isActive
-            },
-            conditions_check: {
-              'driver_asignado_no_activo': isDriver && hasDriver && !isActive,
-              'usuario_driver_asignado': !isDriver && hasDriver && !isActive,
-              'driver_activo': isDriver && isActive,
-              'usuario_driver_activo': !isDriver && isActive && hasDriver
-            }
-          });
+          // console.log('📊 ANÁLISIS DE ESTADOS:', {
+          // order_id: order?.id,
+          // status_original: order?.status,
+          // status_lower: status,
+          // payment_status: order?.payment_status,
+          // has_driver: !!hasDriver,
+          // driver_id: order?.driver_id,
+          // is_driver: isDriver,
+          // states_detected: {
+          // isOxxoPending,
+          // isPendingPayment,
+          // isDelivered,
+          // isActive
+          // },
+          // conditions_check: {
+          // 'driver_asignado_no_activo': isDriver && hasDriver && !isActive,
+          // 'usuario_driver_asignado': !isDriver && hasDriver && !isActive,
+          // 'driver_activo': isDriver && isActive,
+          // 'usuario_driver_activo': !isDriver && isActive && hasDriver
+          // }
+          // });
 
           // ESTADOS ACTIVOS (driver aceptó y está en camino)
           const isActive = status === 'in progress' || status === 'on the way' ||
@@ -426,7 +613,7 @@ const OrderDetails = () => {
 
           // 1. OXXO PENDIENTE - Específico para pagos OXXO
           if (isOxxoPending) {
-            console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
+            // console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
             return (
               <View style={styles.oxxoPendingContainer}>
                 <View style={styles.oxxoPendingIconContainer}>
@@ -444,7 +631,7 @@ const OrderDetails = () => {
 
           // 2. PAGO PENDIENTE - Sin validar (otros métodos)
           if (isPendingPayment) {
-            console.log('💳 ENTRANDO A: PAGO PENDIENTE');
+            // console.log('💳 ENTRANDO A: PAGO PENDIENTE');
             return (
               <View style={styles.pendingContainer}>
                 <View style={styles.pendingIconContainer}>
@@ -461,7 +648,7 @@ const OrderDetails = () => {
 
           // 3. PEDIDO ENTREGADO - Sin mapa
           if (isDelivered) {
-            console.log('📦 ENTRANDO A: PEDIDO ENTREGADO');
+            // console.log('📦 ENTRANDO A: PEDIDO ENTREGADO');
             return (
               <View style={styles.deliveredContainer}>
                 <View style={styles.deliveredIconContainer}>
@@ -482,7 +669,7 @@ const OrderDetails = () => {
 
           // 4. DRIVER - Ve mapa solo cuando acepta
           if (isDriver && isActive) {
-            console.log('🚚 ENTRANDO A: DRIVER ACTIVO');
+            // console.log('🚚 ENTRANDO A: DRIVER ACTIVO');
             return (
               <>
                 <DriverTracking order={order} />
@@ -493,7 +680,7 @@ const OrderDetails = () => {
 
           // 5. USUARIO - Ve mapa solo cuando driver acepta
           if (!isDriver && isActive && hasDriver) {
-            console.log('👤 ENTRANDO A: USUARIO CON DRIVER ACTIVO');
+            // console.log('👤 ENTRANDO A: USUARIO CON DRIVER ACTIVO');
             return (
               <>
                 <CustomerTracking order={order} />
@@ -504,13 +691,13 @@ const OrderDetails = () => {
 
           // 6A. DRIVER ASIGNADO - Vista para DRIVER (mapa + botón + card)
           if (isDriver && hasDriver && !isActive) {
-            console.log('🎯 ENTRANDO A VISTA DRIVER ASIGNADO:', {
-              isDriver,
-              hasDriver,
-              isActive,
-              condition: 'isDriver && hasDriver && !isActive',
-              result: true
-            });
+            // console.log('🎯 ENTRANDO A VISTA DRIVER ASIGNADO:', {
+            // isDriver,
+            // hasDriver,
+            // isActive,
+            // condition: 'isDriver && hasDriver && !isActive',
+            // result: true
+            // });
 
             return (
               <>
@@ -542,7 +729,7 @@ const OrderDetails = () => {
                 <Text style={styles.assignedMessage}>
                   Hemos asignado a {order?.driver?.first_name
                     ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
-                    : order?.driver?.name || 'un repartidor'} a tu pedido. Esperando confirmación para iniciar la entrega.
+                    : order?.driver?.name || 'un repartidor'} a tu pedido. Prepárate para el día de tu entrega{order?.delivery_date ? ` el ${new Date(order.delivery_date).toLocaleDateString('es-MX')}` : ''}{order?.delivery_slot ? ` a las ${order.delivery_slot}` : ''}. Da seguimiento a tu fecha de entrega.
                 </Text>
               </View>
             );
@@ -574,6 +761,16 @@ const OrderDetails = () => {
             onPress={() => setShowSupportModal(true)}
             activeOpacity={0.8}>
             <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ✅ PUNTO 21: Botón de Problema con Pedido - Solo para pedidos en tránsito */}
+        {user?.usertype !== 'driver' && shouldShowProblemButton() && (
+          <TouchableOpacity
+            style={styles.problemButton}
+            onPress={() => setShowProblemModal(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.problemButtonText}>⚠️ Tengo un problema con mi pedido</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -693,6 +890,67 @@ const OrderDetails = () => {
                 </ScrollView>
               </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ✅ PUNTO 21: Modal de Problema con Pedido */}
+      <Modal
+        visible={showProblemModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowProblemModal(false)}>
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          setShowProblemModal(false);
+        }}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.modalKeyboardContainer}>
+                <View style={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>⚠️ Problema con Pedido</Text>
+
+                  <View style={styles.problemInfoContainer}>
+                    <Text style={styles.problemInfoText}>
+                      📦 Orden: #{order?.id}
+                    </Text>
+                    <Text style={styles.problemMessageText}>
+                      Se enviará automáticamente el siguiente mensaje:
+                    </Text>
+                    <View style={styles.problemMessageContainer}>
+                      <Text style={styles.problemMessagePreview}>
+                        "Tengo un problema con mi pedido"
+                      </Text>
+                    </View>
+                    <Text style={styles.problemWarningText}>
+                      Nuestro equipo se comunicará contigo lo antes posible.
+                    </Text>
+                  </View>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.modalCancelButton}
+                      onPress={() => setShowProblemModal(false)}
+                      disabled={problemLoading}>
+                      <Text style={styles.modalCancelButtonText}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.problemSendButton}
+                      onPress={handleProblemSubmit}
+                      disabled={problemLoading}>
+                      {problemLoading ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <Text style={styles.problemSendButtonText}>⚠️ Reportar Problema</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -928,6 +1186,82 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   supportButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ PUNTO 21: Estilos del botón de Problema con Pedido
+  problemButton: {
+    backgroundColor: '#FF6B35', // Color naranja/rojo para alerta
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  problemButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ PUNTO 21: Estilos del modal de problema
+  problemInfoContainer: {
+    backgroundColor: '#FFF8E1', // Fondo amarillo claro
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800', // Borde naranja
+  },
+  problemInfoText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#E65100',
+    marginBottom: 8,
+  },
+  problemMessageText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#666',
+    marginBottom: 8,
+  },
+  problemMessageContainer: {
+    backgroundColor: '#F5F5F5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  problemMessagePreview: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#333',
+    fontStyle: 'italic',
+  },
+  problemWarningText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#E65100',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  problemSendButton: {
+    backgroundColor: '#FF5722', // Rojo más intenso para el botón de envío
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  problemSendButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',

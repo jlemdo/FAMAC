@@ -1,0 +1,60 @@
+name: 🍎 Apple Pay Certificate Setup (One-time)
+
+on:
+  workflow_dispatch:  # Solo trigger manual
+
+jobs:
+  generate-csr:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Generate Apple Pay CSR
+        run: |
+          echo "🍎 Generating Apple Pay Certificate Signing Request..."
+          
+          # Generar ECC private key (256-bit) para Apple Pay
+          openssl ecparam -name prime256v1 -genkey -noout -out apple-pay-private.key
+          
+          # Generar CSR usando ECC key
+          openssl req -new -key apple-pay-private.key \
+            -out apple-pay-csr.csr \
+            -subj "/CN=merchant.com.occr.productos/OU=E-commerce/O=OCCR Productos/L=Mexico City/ST=CDMX/C=MX"
+          
+          # Verificar que el CSR es válido y usa ECC
+          echo "🔍 Validating CSR..."
+          openssl req -in apple-pay-csr.csr -text -noout
+          
+          echo ""
+          echo "🔑 Key algorithm verification:"
+          openssl req -in apple-pay-csr.csr -text -noout | grep "Public Key Algorithm" || echo "ECC key used"
+          
+          echo ""
+          echo "✅ CSR Generated successfully!"
+          echo ""
+          echo "📋 COPY THE FOLLOWING CSR CONTENT TO APPLE DEVELOPER CONSOLE:"
+          echo "================================================================="
+          cat apple-pay-csr.csr
+          echo "================================================================="
+          echo ""
+          echo "📝 Instructions:"
+          echo "1. Copy the CSR content above (including BEGIN/END lines)"
+          echo "2. Go to Apple Developer Console → Your Merchant ID"
+          echo "3. Create Certificate → Upload this CSR"
+          echo "4. Download the .cer file from Apple"
+          echo "5. Upload the .cer file to Stripe Dashboard"
+          echo ""
+          echo "🔐 Private key saved as: apple-pay-private.key (keep secure!)"
+
+      - name: Upload CSR file as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-pay-csr-file
+          path: apple-pay-csr.csr
+          retention-days: 7
+
+      - name: Upload Private Key as downloadable artifact  
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-pay-private-key
+          path: apple-pay-private.key
+          retention-days: 7

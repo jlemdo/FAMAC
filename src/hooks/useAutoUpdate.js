@@ -25,6 +25,22 @@ export const useAutoUpdate = (options = {}) => {
     setIsChecking(true);
 
     try {
+      // 🧪 MODO DESARROLLO: Simular actualización para preview
+      const DEV_MODE = false; // Cambiar a true para ver el botón
+
+      if (DEV_MODE && Platform.OS === 'android') {
+        const mockUpdate = {
+          available: true,
+          currentVersion: '1.0.0',
+          latestVersion: '1.0.1',
+          isCritical: false, // Cambiar a true para ver versión crítica
+          releaseNotes: 'Mejoras y correcciones'
+        };
+        setUpdateInfo(mockUpdate);
+        setLastChecked(new Date());
+        return mockUpdate;
+      }
+
       const update = await AutoUpdateService.checkForUpdates();
       setUpdateInfo(update);
       setLastChecked(new Date());
@@ -36,7 +52,7 @@ export const useAutoUpdate = (options = {}) => {
 
       return update;
     } catch (error) {
-      console.error('Error en useAutoUpdate:', error);
+      // console.error('Error en useAutoUpdate:', error);
       return null;
     } finally {
       setIsChecking(false);

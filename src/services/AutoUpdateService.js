@@ -39,19 +39,19 @@ class AutoUpdateService {
    */
   async checkForUpdates() {
     if (this.isChecking) {
-      console.log('🔄 Ya hay una verificación en curso...');
+      // console.log('🔄 Ya hay una verificación en curso...');
       return null;
     }
 
     this.isChecking = true;
 
     try {
-      console.log('🔍 Verificando actualizaciones...');
+      // console.log('🔍 Verificando actualizaciones...');
 
       // Verificar si es momento de revisar actualizaciones
       const shouldCheck = await this.shouldCheckForUpdates();
       if (!shouldCheck) {
-        console.log('⏰ Aún no es momento de verificar actualizaciones');
+        // console.log('⏰ Aún no es momento de verificar actualizaciones');
         this.isChecking = false;
         return null;
       }
@@ -65,7 +65,7 @@ class AutoUpdateService {
       });
 
       const updateInfo = response.data;
-      console.log('📱 Información de versión recibida:', updateInfo);
+      // console.log('📱 Información de versión recibida:', updateInfo);
 
       // Guardar timestamp de última verificación
       await AsyncStorage.setItem('lastUpdateCheck', Date.now().toString());
@@ -74,7 +74,7 @@ class AutoUpdateService {
       const needsUpdate = this.compareVersions(UPDATE_CONFIG.CURRENT_VERSION, updateInfo.latest_version);
 
       if (needsUpdate) {
-        console.log('🆕 Nueva versión disponible!', updateInfo.latest_version);
+        // console.log('🆕 Nueva versión disponible!', updateInfo.latest_version);
         return {
           available: true,
           currentVersion: UPDATE_CONFIG.CURRENT_VERSION,
@@ -85,17 +85,17 @@ class AutoUpdateService {
           minRequiredVersion: updateInfo.min_required_version,
         };
       } else {
-        console.log('✅ App está actualizada');
+        // console.log('✅ App está actualizada');
         return { available: false };
       }
 
     } catch (error) {
-      console.error('❌ Error verificando actualizaciones:', error);
+      // console.error('❌ Error verificando actualizaciones:', error);
 
       // Implementar reintentos
       if (this.retryCount < UPDATE_CONFIG.MAX_RETRIES) {
         this.retryCount++;
-        console.log(`🔄 Reintentando... (${this.retryCount}/${UPDATE_CONFIG.MAX_RETRIES})`);
+        // console.log(`🔄 Reintentando... (${this.retryCount}/${UPDATE_CONFIG.MAX_RETRIES})`);
 
         setTimeout(() => {
           this.checkForUpdates();
@@ -120,7 +120,7 @@ class AutoUpdateService {
       const timeSinceLastCheck = Date.now() - parseInt(lastCheck);
       return timeSinceLastCheck > UPDATE_CONFIG.CHECK_INTERVAL;
     } catch (error) {
-      console.error('Error verificando timestamp:', error);
+      // console.error('Error verificando timestamp:', error);
       return true; // Si hay error, mejor verificar
     }
   }
@@ -153,7 +153,7 @@ class AutoUpdateService {
   showUpdateModal(updateInfo) {
     // Solo mostrar alertas en Android
     if (Platform.OS !== 'android') {
-      console.log('iOS detectado - actualizaciones automáticas deshabilitadas');
+      // console.log('iOS detectado - actualizaciones automáticas deshabilitadas');
       return;
     }
     const title = updateInfo.isCritical ? '🚨 Actualización Crítica' : '🆕 Nueva Versión Disponible';
@@ -186,7 +186,7 @@ ${updateInfo.isCritical ?
    */
   async downloadUpdate(downloadUrl) {
     try {
-      console.log('📥 Iniciando descarga de actualización...');
+      // console.log('📥 Iniciando descarga de actualización...');
 
       if (Platform.OS === 'android') {
         // Para Android, abrir URL de descarga
@@ -213,7 +213,7 @@ ${updateInfo.isCritical ?
       }
 
     } catch (error) {
-      console.error('❌ Error descargando actualización:', error);
+      // console.error('❌ Error descargando actualización:', error);
       Alert.alert(
         'Error de Descarga',
         'No se pudo iniciar la descarga. Por favor, contacta con soporte.',
@@ -228,7 +228,7 @@ ${updateInfo.isCritical ?
   async manualCheck() {
     // Solo permitir verificación manual en Android
     if (Platform.OS !== 'android') {
-      console.log('iOS detectado - verificación manual de actualizaciones no disponible');
+      // console.log('iOS detectado - verificación manual de actualizaciones no disponible');
       return null;
     }
     Alert.alert(
@@ -255,7 +255,7 @@ ${updateInfo.isCritical ?
    * Inicializa el servicio de actualizaciones automáticas
    */
   async initialize() {
-    console.log('🚀 Inicializando AutoUpdateService...');
+    // console.log('🚀 Inicializando AutoUpdateService...');
 
     // Verificar actualizaciones al iniciar la app (solo Android)
     if (Platform.OS === 'android') {
@@ -292,7 +292,7 @@ ${updateInfo.isCritical ?
       const updateInfo = await this.checkForUpdates();
       return updateInfo && updateInfo.available ? updateInfo : null;
     } catch (error) {
-      console.error('Error obteniendo actualización pendiente:', error);
+      // console.error('Error obteniendo actualización pendiente:', error);
       return null;
     }
   }
