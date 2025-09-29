@@ -435,6 +435,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
+				DISPLAY_NAME = "Sabores BETA";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -465,6 +466,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1;
+				DISPLAY_NAME = "Sabores BETA";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
