@@ -468,14 +468,17 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   )}
                 </TouchableOpacity>
 
-                {/* Separador */}
+                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Separador */}
+                {/*
                 <View style={styles.separator}>
                   <View style={styles.separatorLine} />
                   <Text style={styles.separatorText}>o continúa con</Text>
                   <View style={styles.separatorLine} />
                 </View>
+                */}
 
-                {/* Botón Apple Sign-In - Solo iOS */}
+                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Apple Sign-In */}
+                {/*
                 {Platform.OS === 'ios' && appleAuth && (
                   <TouchableOpacity
                     style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
@@ -486,7 +489,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                       <ActivityIndicator color="#FFF" size="small" />
                     ) : (
                       <>
-                        <Image 
+                        <Image
                           source={require('../assets/apple/apple-logo-white.png')}
                           style={styles.appleIcon}
                           resizeMode="contain"
@@ -496,8 +499,10 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     )}
                   </TouchableOpacity>
                 )}
+                */}
 
-                {/* Botón Google Sign-In */}
+                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Google Sign-In */}
+                {/*
                 <TouchableOpacity
                   style={[styles.googleButton, (isSubmitting || googleLoading) && styles.buttonDisabled]}
                   onPress={handleGoogleLogin}
@@ -507,7 +512,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     <ActivityIndicator color="#2F2F2F" size="small" />
                   ) : (
                     <>
-                      <Image 
+                      <Image
                         source={{uri: 'https://developers.google.com/identity/images/g-logo.png'}}
                         style={styles.googleIcon}
                       />
@@ -515,8 +520,10 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     </>
                   )}
                 </TouchableOpacity>
+                */}
 
-                {/* Continuar como invitado */}
+                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Continuar como invitado */}
+                {/*
                 {showGuest && (
                   <TouchableOpacity
                     style={styles.secondaryBtn}
@@ -530,10 +537,12 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
                   </TouchableOpacity>
                 )}
+                */}
 
-                {/* Link a registro */}
+                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Link a registro */}
+                {/*
                 {!onSignUp && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.registerButton}
                     onPress={() => navigation.navigate('SignUp')}
                     activeOpacity={0.8}>
@@ -542,6 +551,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     </Text>
                   </TouchableOpacity>
                 )}
+                */}
               </>
             )}
           </Formik>

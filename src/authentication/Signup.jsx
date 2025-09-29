@@ -904,14 +904,17 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
               )}
             </TouchableOpacity>
 
-            {/* Separador */}
+            {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Separador */}
+            {/*
             <View style={styles.separator}>
               <View style={styles.separatorLine} />
               <Text style={styles.separatorText}>o regístrate con</Text>
               <View style={styles.separatorLine} />
             </View>
+            */}
 
-            {/* Botón Google Sign-Up */}
+            {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Google Sign-Up */}
+            {/*
             <TouchableOpacity
               style={[styles.googleButton, (isSubmitting || googleLoading) && styles.buttonDisabled]}
               onPress={handleGoogleSignup}
@@ -921,7 +924,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 <ActivityIndicator color="#2F2F2F" size="small" />
               ) : (
                 <>
-                  <Image 
+                  <Image
                     source={{uri: 'https://developers.google.com/identity/images/g-logo.png'}}
                     style={styles.googleIcon}
                   />
@@ -929,8 +932,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 </>
               )}
             </TouchableOpacity>
+            */}
 
-            {/* Botón Apple Sign-Up - Solo iOS */}
+            {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Apple Sign-Up */}
+            {/*
             {Platform.OS === 'ios' && appleAuth && (
               <TouchableOpacity
                 style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
@@ -941,7 +946,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                   <ActivityIndicator color="#FFF" size="small" />
                 ) : (
                   <>
-                    <Image 
+                    <Image
                       source={require('../assets/apple/apple-logo-white.png')}
                       style={styles.appleIcon}
                       resizeMode="contain"
@@ -951,9 +956,11 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 )}
               </TouchableOpacity>
             )}
+            */}
 
-            {/* Ya tienes cuenta */}
-            <TouchableOpacity 
+            {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Ya tienes cuenta */}
+            {/*
+            <TouchableOpacity
               style={styles.loginButton}
               onPress={() => {
                 if (onLogin) {
@@ -967,6 +974,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 ✨ ¿Ya tienes cuenta? Inicia sesión
               </Text>
             </TouchableOpacity>
+            */}
           </>
         )}
       </Formik>
