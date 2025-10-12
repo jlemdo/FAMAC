@@ -32,6 +32,7 @@ import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import NotificationService from '../services/NotificationService';
+import SMSVerification from '../components/SMSVerification';
 
 // Apple Authentication solo disponible en iOS
 let appleAuth = null;
@@ -75,7 +76,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  
+  const [phoneVerified, setPhoneVerified] = useState(false);
+
   // 🔧 Hook para manejo profesional del teclado
   const { 
     scrollViewRef, 
@@ -573,6 +575,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 style={[
                   styles.input,
                   touched.phone && errors.phone && styles.inputError,
+                  phoneVerified && styles.inputVerified,
                 ]}
                 placeholder="Teléfono (ej: 55 1234 5678)"
                 placeholderTextColor="#999"
@@ -581,15 +584,48 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                 onChangeText={(text) => {
                   const formatted = formatMexicanPhone(text);
                   handleChange('phone')(formatted);
+                  setPhoneVerified(false); // Reset verificación si cambia el teléfono
                 }}
                 onBlur={handleBlur('phone')}
                 onFocus={createFocusHandler('phone')}
                 returnKeyType="next"
+                editable={!phoneVerified} // Deshabilitar si ya está verificado
               />
+              {phoneVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#33A744" />
+                  <Text style={styles.verifiedText}>Teléfono verificado</Text>
+                </View>
+              )}
               {touched.phone && errors.phone && (
                 <Text style={styles.error}>{errors.phone}</Text>
               )}
             </View>
+
+            {/* Verificación SMS */}
+            {values.phone && values.phone.length >= 10 && !errors.phone && !phoneVerified && (
+              <SMSVerification
+                phone={values.phone}
+                type="signup"
+                onVerified={() => {
+                  setPhoneVerified(true);
+                  showAlert({
+                    type: 'success',
+                    title: 'Verificado',
+                    message: '¡Teléfono verificado correctamente!',
+                    confirmText: 'Continuar',
+                  });
+                }}
+                onError={(error) => {
+                  showAlert({
+                    type: 'error',
+                    title: 'Error',
+                    message: error,
+                    confirmText: 'OK',
+                  });
+                }}
+              />
+            )}
 
             {/* Fecha de nacimiento */}
             <View style={styles.inputGroup}>
@@ -1393,5 +1429,28 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 6,
+  },
+
+  // ✅ Estilos para verificación SMS
+  inputVerified: {
+    borderColor: '#33A744',
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.05)',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  verifiedText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
+    color: '#33A744',
+    marginLeft: 4,
   },
 });

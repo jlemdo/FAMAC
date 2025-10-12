@@ -48,6 +48,7 @@ import {
 } from '../theme/theme';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import SMSVerification from '../components/SMSVerification';
 import { useFocusEffect } from '@react-navigation/native';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
@@ -272,7 +273,8 @@ export default function Profile({ navigation, route }) {
   
   // Estado para el teléfono formateado visualmente
   const [formattedPhone, setFormattedPhone] = useState('');
-  
+  const [phoneVerified, setPhoneVerified] = useState(false);
+
   // Estado para direcciones del usuario (para validación)
   const [userAddresses, setUserAddresses] = useState([]);
 
@@ -1330,6 +1332,7 @@ export default function Profile({ navigation, route }) {
                     (submitCount > 0 && errors.phone) ? styles.inputNoMargin : styles.input,
                     submitCount > 0 && errors.phone && styles.inputErrorNoMargin,
                     !isEditingProfile && styles.disabledInput,
+                    phoneVerified && styles.inputVerified,
                     fonts.numericStyles.tabular // ✅ Aplicar estilo para números
                   ]}
                   placeholder="Teléfono (ej: 55 1234 5678)"
@@ -1339,13 +1342,45 @@ export default function Profile({ navigation, route }) {
                   onChangeText={(text) => {
                     const formatted = formatMexicanPhone(text);
                     handleChange('phone')(formatted);
+                    setPhoneVerified(false); // Reset verificación si cambia el teléfono
                   }}
                   onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
-                  editable={isEditingProfile}
+                  editable={isEditingProfile && !phoneVerified}
                   returnKeyType="done"
                 />
+                {phoneVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color="#33A744" />
+                    <Text style={styles.verifiedText}>Teléfono verificado</Text>
+                  </View>
+                )}
                 {submitCount > 0 && errors.phone && (
                   <Text style={styles.errorText}>{errors.phone}</Text>
+                )}
+
+                {/* Verificación SMS en modo edición */}
+                {isEditingProfile && values.phone && values.phone.length >= 10 && !(submitCount > 0 && errors.phone) && !phoneVerified && (
+                  <SMSVerification
+                    phone={values.phone}
+                    type="profile_update"
+                    onVerified={() => {
+                      setPhoneVerified(true);
+                      showAlert({
+                        type: 'success',
+                        title: 'Verificado',
+                        message: '¡Teléfono verificado correctamente!',
+                        confirmText: 'Continuar',
+                      });
+                    }}
+                    onError={(error) => {
+                      showAlert({
+                        type: 'error',
+                        title: 'Error',
+                        message: error,
+                        confirmText: 'OK',
+                      });
+                    }}
+                  />
                 )}
               </>
             )}
@@ -3239,6 +3274,30 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#8B5E3C',
+  },
+
+  // ✅ Estilos para verificación SMS
+  inputVerified: {
+    borderColor: '#33A744',
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 167, 68, 0.05)',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  verifiedText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
+    color: '#33A744',
+    marginLeft: 6,
   },
 
 });
