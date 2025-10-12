@@ -813,7 +813,7 @@ const AddressFormUberStyle = () => {
         
         // Primero obtener datos actuales del usuario para no sobrescribir nada
         const userDetailsResponse = await axios.get(
-          `https://occr.pixelcrafters.digital/api/userdetails/${userId}`,
+          `https://awsoccr.pixelcrafters.digital/api/userdetails/${userId}`,
           { timeout: 10000 } // Timeout de 10 segundos
         );
         
@@ -848,7 +848,7 @@ const AddressFormUberStyle = () => {
         
         // USAR newAddressService PARA ACTUALIZAR DIRECCIÓN DEL PERFIL
         const updateResponse = await axios.post(
-          'https://occr.pixelcrafters.digital/api/updateuserprofile',
+          'https://awsoccr.pixelcrafters.digital/api/updateuserprofile',
           payload,
           { timeout: 15000 } // Timeout de 15 segundos para actualización del perfil
         );
@@ -929,7 +929,7 @@ const AddressFormUberStyle = () => {
           
           // ✅ LÓGICA: Primera dirección automáticamente predeterminada
           // Verificar si el usuario no tiene ninguna dirección (ni en perfil ni adicionales)
-          const userResponse = await axios.get(`https://occr.pixelcrafters.digital/api/userdetails/${user.id}`);
+          const userResponse = await axios.get(`https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`);
           const currentUserData = userResponse.data?.data?.[0];
           const hasProfileAddress = currentUserData?.address && currentUserData.address.trim() !== '';
           
@@ -967,7 +967,7 @@ const AddressFormUberStyle = () => {
               profilePayload.dob = currentUserData.dob;
             }
             
-            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', profilePayload);
+            await axios.post('https://awsoccr.pixelcrafters.digital/api/updateuserprofile', profilePayload);
             
             // Actualizar contexto local
             await updateUser({

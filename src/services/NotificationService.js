@@ -178,7 +178,7 @@ class NotificationService {
     if (!this.token) return;
 
     try {
-      await fetch('https://occr.pixelcrafters.digital/api/remove-fcm-token', {
+      await fetch('https://awsoccr.pixelcrafters.digital/api/remove-fcm-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ class NotificationService {
       // });
 
       // ✅ USAR ENDPOINT ESPECÍFICO (no corrompe datos del perfil)
-      const response = await fetch('https://occr.pixelcrafters.digital/api/update-fcm-token', {
+      const response = await fetch('https://awsoccr.pixelcrafters.digital/api/update-fcm-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

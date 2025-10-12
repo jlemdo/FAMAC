@@ -93,7 +93,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   // 3️⃣ Función que llama al endpoint
   const handleLogin = async (values, {setSubmitting}) => {
     try {
-      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/login', {
+      const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/login', {
         email: values.email,
         password: values.password,
       });
@@ -169,7 +169,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         // user_id: appleUserId
         // });
         
-        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
+        const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/apple', payload);
 
         // Debug: Verificar qué datos devuelve el backend
         // console.log('🍎 Apple Backend Response:', {
@@ -196,7 +196,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             };
 
             // console.log('🔧 Actualizando perfil con:', updatePayload);
-            await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
+            await axios.post('https://awsoccr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
             // console.log('✅ Perfil actualizado exitosamente');
           } catch (updateError) {
             // console.log('❌ Error actualizando perfil:', updateError);
@@ -285,7 +285,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       
 
       // Enviar el ID token CON los datos del usuario para el backend
-      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/google', {
+      const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/google', {
         id_token: idToken,
         first_name: user.givenName,
         last_name: user.familyName,
@@ -310,7 +310,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             address: data.user.address || '',
           };
           
-          await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
+          await axios.post('https://awsoccr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
         } catch (updateError) {
           // Error actualizando datos de Google
         }
@@ -468,17 +468,14 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   )}
                 </TouchableOpacity>
 
-                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Separador */}
-                {/*
+                {/* Separador */}
                 <View style={styles.separator}>
                   <View style={styles.separatorLine} />
                   <Text style={styles.separatorText}>o continúa con</Text>
                   <View style={styles.separatorLine} />
                 </View>
-                */}
 
-                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Apple Sign-In */}
-                {/*
+                {/* Botón Apple Sign-In - Solo iOS */}
                 {Platform.OS === 'ios' && appleAuth && (
                   <TouchableOpacity
                     style={[styles.appleButton, (isSubmitting || appleLoading) && styles.buttonDisabled]}
@@ -499,7 +496,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     )}
                   </TouchableOpacity>
                 )}
-                */}
 
                 {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Google Sign-In */}
                 {/*

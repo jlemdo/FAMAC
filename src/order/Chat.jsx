@@ -33,7 +33,7 @@ export default function Chat({ orderId, order }) {
 
     const fetchMessages = useCallback(async (forceScroll = false) => {
         try {
-            const response = await axios.get(`https://occr.pixelcrafters.digital/api/msgfetch/${orderId}`);
+            const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/msgfetch/${orderId}`);
             if (response.data) {
                 const formattedMessages = response.data.data.reverse().map(msg => ({
                     sender: msg.sender,
@@ -131,7 +131,7 @@ export default function Chat({ orderId, order }) {
                 sender: user.usertype,
                 message: newMessage,
             };
-            const response = await axios.post('https://occr.pixelcrafters.digital/api/msgsubmit', payload);
+            const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/msgsubmit', payload);
 
             if (response) {
                 setNewMessage('');

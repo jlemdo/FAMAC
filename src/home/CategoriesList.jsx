@@ -168,7 +168,7 @@ export default function CategoriesList() {
   // Fetch categories from the API
   useEffect(() => {
     axios
-      .get('https://occr.pixelcrafters.digital/api/productscats')
+      .get('https://awsoccr.pixelcrafters.digital/api/productscats')
       .then(response => {
         const originalCategories = response.data.data;
         const sortedCategories = sortCategoriesByOrder(originalCategories);

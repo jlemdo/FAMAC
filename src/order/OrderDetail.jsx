@@ -101,7 +101,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://occr.pixelcrafters.digital/api/orderdetails/${orderId}`,
+        `https://awsoccr.pixelcrafters.digital/api/orderdetails/${orderId}`,
       );
       setOrder(res.data.order); // adjust according to your response shape
     } catch (err) {
@@ -125,7 +125,7 @@ const OrderDetails = () => {
     setSupportLoading(true);
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/compsubmit',
+        'https://awsoccr.pixelcrafters.digital/api/compsubmit',
         {
           orderno: order?.id?.toString() || '',
           message: values.message,
@@ -311,7 +311,7 @@ const OrderDetails = () => {
     setDeliveryLoading(true);
     try {
       // TODO: Implementar endpoint del backend para marcar como entregado
-      const response = await axios.post(`https://occr.pixelcrafters.digital/api/orders/${order.id}/deliver`, {
+      const response = await axios.post(`https://awsoccr.pixelcrafters.digital/api/orders/${order.id}/deliver`, {
         driver_lat: driverLocation?.lat,
         driver_lng: driverLocation?.lng,
         delivery_time: new Date().toISOString()

@@ -309,7 +309,7 @@ export default function Profile({ navigation, route }) {
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
+        `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       
@@ -402,7 +402,7 @@ export default function Profile({ navigation, route }) {
 
       // Usar el endpoint API recién creado
       response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/deleteuser',
+        'https://awsoccr.pixelcrafters.digital/api/deleteuser',
         {
           userid: user.id,
           password: password
@@ -694,7 +694,7 @@ export default function Profile({ navigation, route }) {
 
       // Usar el mismo endpoint pero diferente payload para OAuth
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/deleteuser',
+        'https://awsoccr.pixelcrafters.digital/api/deleteuser',
         {
           userid: user.id,
           provider: profile.provider, // Indicar que es OAuth (google/apple)
@@ -755,7 +755,7 @@ export default function Profile({ navigation, route }) {
       setLoading(true);
       
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/forgetpasswordlink',
+        'https://awsoccr.pixelcrafters.digital/api/forgetpasswordlink',
         { email: profile.email.trim() }
       );
 
@@ -913,7 +913,7 @@ export default function Profile({ navigation, route }) {
     setSupportLoading(true);
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/compsubmit',
+        'https://awsoccr.pixelcrafters.digital/api/compsubmit',
         {
           orderno: values.orderno || '',
           message: values.message,
@@ -1143,7 +1143,7 @@ export default function Profile({ navigation, route }) {
             let currentServerData = {};
             try {
               const currentRes = await axios.get(
-                `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
+                `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
               );
               currentServerData = currentRes.data?.data?.[0] || {};
             } catch (error) {
@@ -1182,7 +1182,7 @@ export default function Profile({ navigation, route }) {
             // Ahora enviamos DOB junto con otros datos en un solo request
             
             const res = await axios.post(
-              'https://occr.pixelcrafters.digital/api/updateuserprofile',
+              'https://awsoccr.pixelcrafters.digital/api/updateuserprofile',
               payload
             );
             if (res.status === 200) {
@@ -1628,7 +1628,7 @@ export default function Profile({ navigation, route }) {
           setLoading(true);
           try {
             const res = await axios.post(
-              'https://occr.pixelcrafters.digital/api/updateusepassword',
+              'https://awsoccr.pixelcrafters.digital/api/updateusepassword',
               {
                 userid:                user.id,
                 current_password:      values.current_password,

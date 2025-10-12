@@ -172,7 +172,7 @@ export const ProfileProvider = ({ children }) => {
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `https://occr.pixelcrafters.digital/api/userdetails/${user.id}`
+        `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       

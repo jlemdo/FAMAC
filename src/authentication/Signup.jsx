@@ -178,7 +178,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       
 
       // Enviar el ID token CON los datos del usuario para el backend
-      const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/google', {
+      const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/google', {
         id_token: idToken,
         first_name: user.givenName,
         last_name: user.familyName,
@@ -203,7 +203,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
             address: data.user.address || '',
           };
           
-          await axios.post('https://occr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
+          await axios.post('https://awsoccr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
         } catch (updateError) {
           // Error actualizando datos de Google
         }
@@ -309,7 +309,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         };
         
         
-        const {data} = await axios.post('https://occr.pixelcrafters.digital/api/auth/apple', payload);
+        const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/apple', payload);
         
 
         // Login directo sin alerts molestos
@@ -421,7 +421,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
 
     try {
       const {status, data} = await axios.post(
-        'https://occr.pixelcrafters.digital/api/register',
+        'https://awsoccr.pixelcrafters.digital/api/register',
         payload,
       );
       if (status === 201) {

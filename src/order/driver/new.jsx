@@ -144,7 +144,7 @@ const OrderDetails = () => {
 
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/driverlocsubmit',
+        'https://awsoccr.pixelcrafters.digital/api/driverlocsubmit',
         payload,
       );
     } catch (error) {
@@ -155,7 +155,7 @@ const OrderDetails = () => {
   const completeOrderFromDriver = async () => {
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/orderdel',
+        'https://awsoccr.pixelcrafters.digital/api/orderdel',
         {
           orderid: order.id,
         },
@@ -177,7 +177,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://occr.pixelcrafters.digital/api/order/${order.id}`,
+        `https://awsoccr.pixelcrafters.digital/api/order/${order.id}`,
       );
       setOrder(res.data.data); // adjust according to your response shape
     } catch (err) {
@@ -234,7 +234,7 @@ const OrderDetails = () => {
   const fetchMessages = useCallback(async () => {
     try {
       const response = await axios.get(
-        `https://occr.pixelcrafters.digital/api/msgfetch/${order.id}`,
+        `https://awsoccr.pixelcrafters.digital/api/msgfetch/${order.id}`,
       );
       if (response.data) {
         const formattedMessages = response.data.data.reverse().map(msg => ({
@@ -253,7 +253,7 @@ const OrderDetails = () => {
     setLoadingLocation(true);
     try {
       const response = await axios.get(
-        `https://occr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
+        `https://awsoccr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
       );
       // if (response?.data?.data?.length) {
       const locations = response.data.data;
@@ -285,7 +285,7 @@ const OrderDetails = () => {
         message: newMessage,
       };
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/msgsubmit',
+        'https://awsoccr.pixelcrafters.digital/api/msgsubmit',
         payload,
       );
 

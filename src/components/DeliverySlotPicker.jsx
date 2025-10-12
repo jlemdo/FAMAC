@@ -18,7 +18,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   // Obtener días activos desde el backend
   const fetchDeliveryDaysFromBackend = async () => {
     try {
-      const response = await axios.get('https://occr.pixelcrafters.digital/api/delivery-days');
+      const response = await axios.get('https://awsoccr.pixelcrafters.digital/api/delivery-days');
       
       if (response.data && response.data.status === 'success') {
         const backendDays = response.data.data;
@@ -218,7 +218,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const fetchDeliverySlots = async (dateString) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://occr.pixelcrafters.digital/api/fetch_ddates/${dateString}`);
+      const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/fetch_ddates/${dateString}`);
       
       let slotsToProcess = [];
       

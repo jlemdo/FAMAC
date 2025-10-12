@@ -29,7 +29,7 @@ export default function SpecificCategoryProduct() {
     const fetchProducts = async () => {
       try {
         const response = await axios.get(
-          `https://occr.pixelcrafters.digital/api/products/${categoryName}`,
+          `https://awsoccr.pixelcrafters.digital/api/products/${categoryName}`,
         );
         setProducts(response.data.data || []);
       } catch (err) {

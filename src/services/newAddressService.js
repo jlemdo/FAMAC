@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'https://occr.pixelcrafters.digital/api';
+const BASE_URL = 'https://awsoccr.pixelcrafters.digital/api';
 
 // 🆕 NUEVO SERVICIO DE DIRECCIONES - SISTEMA COMPLETO Y PROFESIONAL
 export const newAddressService = {

@@ -169,7 +169,7 @@ const DriverTracking = ({order}) => {
 
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/driverlocsubmit',
+        'https://awsoccr.pixelcrafters.digital/api/driverlocsubmit',
         payload,
       );
 
@@ -198,7 +198,7 @@ const DriverTracking = ({order}) => {
       // console.log(`🔄 Actualizando estado de orden ${order.id}...`);
 
       const res = await axios.get(
-        `https://occr.pixelcrafters.digital/api/orderdetails/${order.id}`,
+        `https://awsoccr.pixelcrafters.digital/api/orderdetails/${order.id}`,
       );
 
       const newStatus = res?.data?.order?.status;
@@ -227,7 +227,7 @@ const DriverTracking = ({order}) => {
       // console.log(`📦 Marcando orden ${order.id} como entregada...`);
 
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/orderdel',
+        'https://awsoccr.pixelcrafters.digital/api/orderdel',
         {
           orderid: order.id,
         },
@@ -302,7 +302,7 @@ const DriverTracking = ({order}) => {
   const getDriverLocaton = useCallback(async () => {
     try {
       const response = await axios.get(
-        `https://occr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
+        `https://awsoccr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
       );
 
       const locations = response.data.data;

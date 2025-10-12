@@ -62,7 +62,7 @@ const Order = () => {
   };
 
   const handleInvoices = order => {
-    const invoiceURL = `https://occr.pixelcrafters.digital/invoices/${order.invoice}`;
+    const invoiceURL = `https://awsoccr.pixelcrafters.digital/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
       alert('Unable to open invoice. Please try again.');
     });
@@ -94,7 +94,7 @@ const Order = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `https://occr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
+        `https://awsoccr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
         { timeout: 10000 }
       );
       

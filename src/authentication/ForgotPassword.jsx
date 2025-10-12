@@ -48,7 +48,7 @@ export default function ForgotPassword({ onBackToLogin }) {
     setSubmitting(true);
     try {
       const response = await axios.post(
-        'https://occr.pixelcrafters.digital/api/forgetpasswordlink',
+        'https://awsoccr.pixelcrafters.digital/api/forgetpasswordlink',
         { email: values.email.trim() }
       );
       

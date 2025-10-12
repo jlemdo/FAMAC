@@ -45,12 +45,12 @@ export function OrderProvider({ children }) {
         
         try {
             if (user.usertype === 'driver') {
-                url = `https://occr.pixelcrafters.digital/api/orderhistorydriver/${user.id}`;
+                url = `https://awsoccr.pixelcrafters.digital/api/orderhistorydriver/${user.id}`;
             } else if (user.usertype === 'Guest' && allowGuestOrders) {
                 // ✅ Para Guest, usar email como user_id en el endpoint normal
-                url = `https://occr.pixelcrafters.digital/api/orderhistory/${encodeURIComponent(user.email)}`;
+                url = `https://awsoccr.pixelcrafters.digital/api/orderhistory/${encodeURIComponent(user.email)}`;
             } else {
-                url = `https://occr.pixelcrafters.digital/api/orderhistory/${user.id}`;
+                url = `https://awsoccr.pixelcrafters.digital/api/orderhistory/${user.id}`;
             }
 
             
@@ -67,7 +67,7 @@ export function OrderProvider({ children }) {
             // PRUEBA DEFINITIVA: usar fetch() en lugar de axios
             
             // PRIMERA: Probar endpoint que SÍ funciona (login)
-            const testResponse = await fetch('https://occr.pixelcrafters.digital/api/auth/google', {
+            const testResponse = await fetch('https://awsoccr.pixelcrafters.digital/api/auth/google', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

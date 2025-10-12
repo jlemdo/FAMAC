@@ -42,7 +42,7 @@ const EmailVerification = ({
   const sendOTP = async () => {
     setSending(true);
     try {
-      const response = await axios.post('https://occr.pixelcrafters.digital/api/otp/send', {
+      const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/otp/send', {
         email: email,
         type: type
       });
@@ -81,7 +81,7 @@ const EmailVerification = ({
 
     setLoading(true);
     try {
-      const response = await axios.post('https://occr.pixelcrafters.digital/api/otp/verify', {
+      const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/otp/verify', {
         email: email,
         otp: otpCode,
         type: type

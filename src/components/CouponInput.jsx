@@ -36,7 +36,7 @@ const CouponInput = ({
   const { user } = useContext(AuthContext);
 
   // API endpoint para validación de cupones
-  const API_BASE_URL = 'https://occr.pixelcrafters.digital/api';
+  const API_BASE_URL = 'https://awsoccr.pixelcrafters.digital/api';
 
   // Función para validar y aplicar cupón
   const validateAndApplyCoupon = async (code) => {
