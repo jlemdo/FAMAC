@@ -20,6 +20,7 @@ import {
   Platform,
   Modal,
   Alert,
+  Clipboard,
 } from 'react-native';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import Geolocation from 'react-native-geolocation-service';
@@ -420,15 +421,51 @@ const DriverTracking = ({order}) => {
                 </Text>
               </View>
             )}
-            
-            {/* Solo botón de navegación */}
+          </View>
+
+          {/* Botones de navegación debajo del mapa */}
+          <View style={styles.navigationButtonsContainer}>
+            {/* Botón Waze */}
             <TouchableOpacity
-              style={styles.navigateMapBtn}
+              style={[styles.navigationButton, styles.wazeButton]}
+              onPress={() => {
+                const url = `waze://?ll=${customer.latitude},${customer.longitude}&navigate=yes`;
+                Linking.canOpenURL(url).then(supported => {
+                  if (supported) {
+                    Linking.openURL(url);
+                  } else {
+                    Alert.alert('Waze no está instalado', 'Por favor instala Waze para usar esta función.');
+                  }
+                });
+              }}
+              activeOpacity={0.8}>
+              <Ionicons name="navigate" size={22} color="#FFF" />
+              <Text style={styles.navigationButtonText}>Waze</Text>
+            </TouchableOpacity>
+
+            {/* Botón Google Maps */}
+            <TouchableOpacity
+              style={[styles.navigationButton, styles.mapsButton]}
               onPress={() => {
                 const url = `https://www.google.com/maps/dir/?api=1&destination=${customer.latitude},${customer.longitude}`;
                 Linking.openURL(url);
-              }}>
-              <Ionicons name="navigate-outline" size={20} color="#FFF" />
+              }}
+              activeOpacity={0.8}>
+              <Ionicons name="map" size={22} color="#FFF" />
+              <Text style={styles.navigationButtonText}>Google Maps</Text>
+            </TouchableOpacity>
+
+            {/* Botón Copiar Dirección */}
+            <TouchableOpacity
+              style={[styles.navigationButton, styles.copyButton]}
+              onPress={() => {
+                const address = order?.delivery_address || `${customer.latitude}, ${customer.longitude}`;
+                Clipboard.setString(address);
+                Alert.alert('Dirección copiada', 'La dirección se ha copiado al portapapeles.');
+              }}
+              activeOpacity={0.8}>
+              <Ionicons name="copy-outline" size={22} color="#FFF" />
+              <Text style={styles.navigationButtonText}>Copiar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -710,18 +747,42 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: fonts.size.small,
   },
-  navigateMapBtn: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: '#2196F3',
-    padding: 12,
-    borderRadius: 24,
-    elevation: 4,
+
+  // 🆕 Estilos para botones de navegación
+  navigationButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 16,
+  },
+  navigationButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     shadowOffset: {width: 0, height: 2},
+  },
+  wazeButton: {
+    backgroundColor: '#33CCFF',
+  },
+  mapsButton: {
+    backgroundColor: '#4285F4',
+  },
+  copyButton: {
+    backgroundColor: '#8B5E3C',
+  },
+  navigationButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#FFF',
+    marginLeft: 6,
   },
   
   // 🆕 Payment Validation Styles
