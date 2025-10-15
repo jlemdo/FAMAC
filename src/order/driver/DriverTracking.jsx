@@ -45,7 +45,7 @@ const DriverTracking = ({order}) => {
   const mapRef = useRef(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalAction, setModalAction] = useState(null);
-
+  const lastDriverLocationRef = useRef(null); // Para detectar cambios significativos
 
   const showConfirmationModal = (action) => {
     setModalAction(action);
@@ -325,10 +325,10 @@ const DriverTracking = ({order}) => {
 
   // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
   useEffect(() => {
-    
+
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
-    
+
     if (currentStatus === 'On the Way') {
       // Para órdenes en proceso, también obtener ubicación guardada
       getDriverLocaton();
@@ -349,6 +349,40 @@ const DriverTracking = ({order}) => {
       getDriverLocaton();
     }
   }, [order.id]); // Dependencia simple para ejecutar solo al cargar
+
+  // 🆕 ACTUALIZACIÓN DEL MAPA: Animar cuando cambie la ubicación del driver
+  useEffect(() => {
+    if (!latlong?.driver_lat || !latlong?.driver_long || !mapRef.current) {
+      return;
+    }
+
+    const newLocation = {
+      driver_lat: latlong.driver_lat,
+      driver_long: latlong.driver_long,
+    };
+
+    // Solo animar si la ubicación cambió significativamente (más de ~11 metros)
+    const prevLoc = lastDriverLocationRef.current;
+    if (prevLoc) {
+      const latDiff = Math.abs(prevLoc.driver_lat - newLocation.driver_lat);
+      const longDiff = Math.abs(prevLoc.driver_long - newLocation.driver_long);
+
+      // Si el cambio es muy pequeño, no animar
+      if (latDiff < 0.0001 && longDiff < 0.0001) {
+        return;
+      }
+    }
+
+    // Animar la cámara hacia la nueva ubicación del driver
+    mapRef.current.animateToRegion({
+      latitude: newLocation.driver_lat,
+      longitude: newLocation.driver_long,
+      latitudeDelta: 0.015, // Zoom moderado
+      longitudeDelta: 0.015,
+    }, 1500); // Animación suave de 1.5 segundos
+
+    lastDriverLocationRef.current = newLocation;
+  }, [latlong?.driver_lat, latlong?.driver_long]);
 
   return (
     <>
@@ -401,16 +435,24 @@ const DriverTracking = ({order}) => {
                 }}
                 title="Mi Ubicación"
                 description="Estás aquí"
-                pinColor="#D27F27"
-              />
+                anchor={{x: 0.5, y: 0.5}}
+              >
+                <View style={styles.driverMarker}>
+                  <Text style={styles.driverIcon}>🐄</Text>
+                </View>
+              </Marker>
 
               {/* Marcador del Cliente */}
               <Marker
                 coordinate={customer}
                 title="Cliente"
                 description="Destino de entrega"
-                pinColor="#33A744"
-              />
+                anchor={{x: 0.5, y: 0.5}}
+              >
+                <View style={styles.customerMarker}>
+                  <Text style={styles.customerIcon}>🏠</Text>
+                </View>
+              </Marker>
             </MapView>
             
             {/* HUD con información de ETA */}
@@ -784,7 +826,25 @@ const styles = StyleSheet.create({
     color: '#FFF',
     marginLeft: 6,
   },
-  
+
+  // 🆕 Estilos para marcadores personalizados
+  driverMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverIcon: {
+    fontSize: 32,
+    textAlign: 'center',
+  },
+  customerMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerIcon: {
+    fontSize: 28,
+    textAlign: 'center',
+  },
+
   // 🆕 Payment Validation Styles
   paymentPendingContainer: {
     backgroundColor: '#FFF3E0',
