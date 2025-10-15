@@ -46,6 +46,23 @@ const DriverTracking = ({order}) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalAction, setModalAction] = useState(null);
   const lastDriverLocationRef = useRef(null); // Para detectar cambios significativos
+  const [distanceToCustomer, setDistanceToCustomer] = useState(null); // Distancia en metros
+
+  // 🆕 FUNCIÓN: Calcular distancia entre dos coordenadas usando fórmula de Haversine
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distancia en metros
+  }, []);
 
   const showConfirmationModal = (action) => {
     setModalAction(action);
@@ -361,6 +378,15 @@ const DriverTracking = ({order}) => {
       driver_long: latlong.driver_long,
     };
 
+    // Calcular distancia al cliente
+    const distance = calculateDistance(
+      latlong.driver_lat,
+      latlong.driver_long,
+      customer.latitude,
+      customer.longitude
+    );
+    setDistanceToCustomer(distance);
+
     // Solo animar si la ubicación cambió significativamente (más de ~11 metros)
     const prevLoc = lastDriverLocationRef.current;
     if (prevLoc) {
@@ -382,7 +408,7 @@ const DriverTracking = ({order}) => {
     }, 1500); // Animación suave de 1.5 segundos
 
     lastDriverLocationRef.current = newLocation;
-  }, [latlong?.driver_lat, latlong?.driver_long]);
+  }, [latlong?.driver_lat, latlong?.driver_long, calculateDistance, customer.latitude, customer.longitude]);
 
   return (
     <>
@@ -553,7 +579,7 @@ const DriverTracking = ({order}) => {
               </TouchableOpacity>
             )}
 
-            {/* 🚚 BOTÓN ENTREGAR - Cuando ya está en camino */}
+            {/* 🚚 BOTÓN ENTREGAR - Solo cuando está en camino Y cerca del cliente (≤250m) */}
             {(() => {
               const status = currentStatus?.toLowerCase()?.trim() || '';
               const deliverableStates = [
@@ -563,12 +589,16 @@ const DriverTracking = ({order}) => {
                 'ready', 'listo'
               ];
 
-              const shouldShowDeliver = deliverableStates.includes(status);
+              const isDeliverableStatus = deliverableStates.includes(status);
+              const isNearCustomer = distanceToCustomer !== null && distanceToCustomer <= 250; // 250 metros
+              const shouldShowDeliver = isDeliverableStatus && isNearCustomer;
 
               // Log temporal para debugging
               // console.log('🚚 BOTÓN ENTREGAR Debug:', {
               // currentStatus,
               // statusLower: status,
+              // distanceToCustomer: distanceToCustomer ? Math.round(distanceToCustomer) + 'm' : 'null',
+              // isNearCustomer,
               // shouldShowDeliver,
               // deliverableStates
               // });
