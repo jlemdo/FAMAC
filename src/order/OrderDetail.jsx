@@ -361,107 +361,53 @@ const OrderDetails = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.orderInfo}>
-          <View style={styles.infoHeader}>
-            <View style={styles.orderIdSection}>
-              <Text style={styles.orderIdLabel}>Pedido:</Text>
-              <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
+        {/* 🚚 VISTA PARA DRIVERS - Card unificada sin precios */}
+        {user?.usertype === 'driver' ? (
+          <View style={styles.driverOrderCard}>
+            {/* Header con ID y estado */}
+            <View style={styles.driverHeader}>
+              <View style={styles.orderIdSection}>
+                <Text style={styles.orderIdLabel}>Pedido:</Text>
+                <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
+              </View>
+              <View style={styles.statusSection}>
+                <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
+              </View>
             </View>
-            <View style={styles.statusSection}>
-              <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
-              {/* 🆕 Nuevo: Payment Status */}
-              <Text style={[
-                styles.paymentStatusText,
-                order?.payment_status === 'pending' && styles.paymentStatusPending,
-                order?.payment_status === 'paid' && styles.paymentStatusCompleted,
-                order?.payment_status === 'failed' && styles.paymentStatusFailed
-              ]}>
-                Pago: {translatePaymentStatus(order?.payment_status)}
-              </Text>
-            </View>
-          </View>
-          
-          <Text style={styles.orderDate}>
-            {new Date(order?.created_at).toLocaleString('es-MX', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            })}
-          </Text>
 
-          <Text style={styles.sectionTitle}>Artículos</Text>
-          {order?.order_details?.length > 0 ? (
-            order.order_details.map((product, i) => (
-              <View key={i} style={styles.itemRow}>
-                <Image
-                  source={{uri: product.item_image}}
-                  style={styles.itemImage}
-                />
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemText}>
-                    {product.item_qty}× {product.item_name}
-                  </Text>
-                  <Text style={styles.itemPrice}>
-                    {new Intl.NumberFormat('es-MX', {
-                      style: 'currency',
-                      currency: 'MXN',
-                    }).format(product.item_price)}
-                  </Text>
+            <Text style={styles.orderDate}>
+              {new Date(order?.created_at).toLocaleString('es-MX', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}
+            </Text>
+
+            {/* Artículos sin precios */}
+            <Text style={styles.sectionTitle}>Artículos del pedido</Text>
+            {order?.order_details?.length > 0 ? (
+              order.order_details.map((product, i) => (
+                <View key={i} style={styles.driverItemRow}>
+                  <Image
+                    source={{uri: product.item_image}}
+                    style={styles.itemImage}
+                  />
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemText}>
+                      {product.item_qty}× {product.item_name}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.noItems}>No hay artículos en este pedido</Text>
-          )}
+              ))
+            ) : (
+              <Text style={styles.noItems}>No hay artículos en este pedido</Text>
+            )}
 
-          {/* 🚚 Desglose de precios */}
-          <View style={styles.priceBreakdown}>
-            {/* Subtotal de productos */}
-            {order?.subtotal && order.subtotal > 0 && (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Subtotal productos</Text>
-                <Text style={styles.priceValue}>
-                  {formatPriceWithSymbol(order.subtotal)}
-                </Text>
-              </View>
-            )}
-            
-            {/* Costo de envío */}
-            {order?.shipping_cost && order.shipping_cost > 0 && (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Costo de envío</Text>
-                <Text style={styles.priceValue}>
-                  {formatPriceWithSymbol(order.shipping_cost)}
-                </Text>
-              </View>
-            )}
-            
-            {/* Descuento */}
-            {order?.discount_amount && order.discount_amount > 0 && (
-              <View style={styles.priceRow}>
-                <Text style={[styles.priceLabel, styles.discountLabel]}>Descuento</Text>
-                <Text style={[styles.priceValue, styles.discountValue]}>
-                  -{formatPriceWithSymbol(order.discount_amount)}
-                </Text>
-              </View>
-            )}
-            
-            {/* Total */}
-            <View style={[styles.priceRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Precio total</Text>
-              <Text style={styles.totalValue}>
-                {formatPriceWithSymbol(order?.total_amount || order?.total_price)}
-              </Text>
-            </View>
-          </View>
-        </View>
+            {/* Información del cliente */}
+            <View style={styles.driverCustomerSection}>
+              <Text style={styles.sectionTitle}>📦 Información del Cliente</Text>
 
-         {/* 🆕 Sección de información de entrega */}
-          <View style={styles.deliveryInfoSection}>
-            <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
-            
-            <View style={styles.deliveryBreakdown}>
-              {/* Nombre del cliente (para drivers) */}
-              {user?.usertype === 'driver' && (order?.customer?.first_name || order?.customer?.email) && (
+              {/* Nombre del cliente */}
+              {(order?.customer?.first_name || order?.customer?.email) && (
                 <View style={styles.deliveryRow}>
                   <View style={styles.deliveryLabelContainer}>
                     <Ionicons name="person-outline" size={16} color="#2196F3" />
@@ -474,22 +420,7 @@ const OrderDetails = () => {
                   </Text>
                 </View>
               )}
-              
-              {/* Información del repartidor (para usuarios) */}
-              {user?.usertype !== 'driver' && order?.driver && (
-                <View style={styles.deliveryRow}>
-                  <View style={styles.deliveryLabelContainer}>
-                    <Ionicons name="car-outline" size={16} color="#D27F27" />
-                    <Text style={styles.deliveryLabel}>Repartidor</Text>
-                  </View>
-                  <Text style={styles.deliveryValue}>
-                    {order.driver?.first_name
-                      ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
-                      : order.driver?.name || 'Tu repartidor'}
-                  </Text>
-                </View>
-              )}
-              
+
               {/* Fecha programada */}
               {order?.delivery_date && (
                 <View style={styles.deliveryRow}>
@@ -501,7 +432,7 @@ const OrderDetails = () => {
                     {new Date(order.delivery_date).toLocaleDateString('es-MX', {
                       weekday: 'long',
                       year: 'numeric',
-                      month: 'long', 
+                      month: 'long',
                       day: 'numeric'
                     })}
                   </Text>
@@ -534,32 +465,171 @@ const OrderDetails = () => {
                 </View>
               )}
             </View>
-
-            {/* Estado del repartidor y mensaje informativo */}
-            {/* <View style={styles.driverStatusContainer}>
-              {order.driver ? (
-                <View style={styles.driverAssignedInfo}>
-                  <Ionicons name="person-circle" size={20} color="#33A744" />
-                  <Text style={styles.driverAssignedText}>
-                    Repartidor asignado: {order.driver.name || 'Repartidor'}
+          </View>
+        ) : (
+          /* 👤 VISTA PARA CLIENTES - Cards separadas con precios */
+          <>
+            <View style={styles.orderInfo}>
+              <View style={styles.infoHeader}>
+                <View style={styles.orderIdSection}>
+                  <Text style={styles.orderIdLabel}>Pedido:</Text>
+                  <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
+                </View>
+                <View style={styles.statusSection}>
+                  <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
+                  {/* 🆕 Nuevo: Payment Status */}
+                  <Text style={[
+                    styles.paymentStatusText,
+                    order?.payment_status === 'pending' && styles.paymentStatusPending,
+                    order?.payment_status === 'paid' && styles.paymentStatusCompleted,
+                    order?.payment_status === 'failed' && styles.paymentStatusFailed
+                  ]}>
+                    Pago: {translatePaymentStatus(order?.payment_status)}
                   </Text>
                 </View>
+              </View>
+
+              <Text style={styles.orderDate}>
+                {new Date(order?.created_at).toLocaleString('es-MX', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </Text>
+
+              <Text style={styles.sectionTitle}>Artículos</Text>
+              {order?.order_details?.length > 0 ? (
+                order.order_details.map((product, i) => (
+                  <View key={i} style={styles.itemRow}>
+                    <Image
+                      source={{uri: product.item_image}}
+                      style={styles.itemImage}
+                    />
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemText}>
+                        {product.item_qty}× {product.item_name}
+                      </Text>
+                      <Text style={styles.itemPrice}>
+                        {new Intl.NumberFormat('es-MX', {
+                          style: 'currency',
+                          currency: 'MXN',
+                        }).format(product.item_price)}
+                      </Text>
+                    </View>
+                  </View>
+                ))
               ) : (
-                <View style={styles.driverPendingInfo}>
-                  <Ionicons name="hourglass-outline" size={20} color="#D27F27" />
-                  <View style={styles.driverPendingTextContainer}>
-                    <Text style={styles.driverPendingTitle}>Buscando repartidor</Text>
-                    <Text style={styles.driverPendingMessage}>
-                      {(order?.delivery_date || order?.delivery_slot) 
-                        ? `Tu pedido será enviado ${order?.delivery_date ? 'el ' + new Date(order.delivery_date).toLocaleDateString('es-MX') : ''} ${order?.delivery_slot ? 'en el horario ' + order.delivery_slot : ''}. Te avisaremos en cuanto te asignemos un repartidor.`
-                        : 'Te avisaremos en cuanto te asignemos un repartidor y confirmemos la hora de entrega.'
-                      }
+                <Text style={styles.noItems}>No hay artículos en este pedido</Text>
+              )}
+
+              {/* 🚚 Desglose de precios */}
+              <View style={styles.priceBreakdown}>
+                {/* Subtotal de productos */}
+                {order?.subtotal && order.subtotal > 0 && (
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>Subtotal productos</Text>
+                    <Text style={styles.priceValue}>
+                      {formatPriceWithSymbol(order.subtotal)}
                     </Text>
                   </View>
+                )}
+
+                {/* Costo de envío */}
+                {order?.shipping_cost && order.shipping_cost > 0 && (
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>Costo de envío</Text>
+                    <Text style={styles.priceValue}>
+                      {formatPriceWithSymbol(order.shipping_cost)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Descuento */}
+                {order?.discount_amount && order.discount_amount > 0 && (
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.priceLabel, styles.discountLabel]}>Descuento</Text>
+                    <Text style={[styles.priceValue, styles.discountValue]}>
+                      -{formatPriceWithSymbol(order.discount_amount)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Total */}
+                <View style={[styles.priceRow, styles.totalRow]}>
+                  <Text style={styles.totalLabel}>Precio total</Text>
+                  <Text style={styles.totalValue}>
+                    {formatPriceWithSymbol(order?.total_amount || order?.total_price)}
+                  </Text>
                 </View>
-              )}
-            </View> */}
-          </View>
+              </View>
+            </View>
+
+            {/* 🆕 Sección de información de entrega */}
+            <View style={styles.deliveryInfoSection}>
+              <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
+
+              <View style={styles.deliveryBreakdown}>
+                {/* Información del repartidor (para usuarios) */}
+                {order?.driver && (
+                  <View style={styles.deliveryRow}>
+                    <View style={styles.deliveryLabelContainer}>
+                      <Ionicons name="car-outline" size={16} color="#D27F27" />
+                      <Text style={styles.deliveryLabel}>Repartidor</Text>
+                    </View>
+                    <Text style={styles.deliveryValue}>
+                      {order.driver?.first_name
+                        ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                        : order.driver?.name || 'Tu repartidor'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Fecha programada */}
+                {order?.delivery_date && (
+                  <View style={styles.deliveryRow}>
+                    <View style={styles.deliveryLabelContainer}>
+                      <Ionicons name="calendar-outline" size={16} color="#33A744" />
+                      <Text style={styles.deliveryLabel}>Fecha programada</Text>
+                    </View>
+                    <Text style={styles.deliveryValue}>
+                      {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Horario programado */}
+                {order?.delivery_slot && (
+                  <View style={styles.deliveryRow}>
+                    <View style={styles.deliveryLabelContainer}>
+                      <Ionicons name="time-outline" size={16} color="#D27F27" />
+                      <Text style={styles.deliveryLabel}>Horario</Text>
+                    </View>
+                    <Text style={styles.deliveryValue}>
+                      {order.delivery_slot}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Dirección de entrega */}
+                {order?.delivery_address && (
+                  <View style={[styles.deliveryRow, styles.addressRow]}>
+                    <View style={styles.deliveryLabelContainer}>
+                      <Ionicons name="location-outline" size={16} color="#8B5E3C" />
+                      <Text style={styles.deliveryLabel}>Dirección</Text>
+                    </View>
+                    <Text style={[styles.deliveryValue, styles.addressValue]}>
+                      {order.delivery_address}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </>
+        )}
 
         {/* Lógica de visualización según estado real del pedido */}
         {(() => {
@@ -1374,6 +1444,42 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+  },
+
+  // 🚚 Estilos para vista de drivers
+  driverOrderCard: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  driverHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  driverItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+  },
+  driverCustomerSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    borderTopColor: '#8B5E3C',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
   },
 
   // 🆕 Estilos para sección de información de entrega

@@ -35,10 +35,12 @@ export default function Chat({ orderId, order }) {
         try {
             const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/msgfetch/${orderId}`);
             if (response.data) {
-                const formattedMessages = response.data.data.reverse().map(msg => ({
+                // ✅ FIX: SIN reverse() para que mensajes viejos estén arriba (como WhatsApp)
+                const formattedMessages = response.data.data.map(msg => ({
                     sender: msg.sender,
                     senderName: msg.sender === 'driver' ? 'Driver' : 'Customer',
                     text: msg.message,
+                    created_at: msg.created_at, // Para debugging
                 }));
 
                 // ✅ PUNTO 13: Verificar si hay nuevos mensajes
@@ -144,25 +146,20 @@ export default function Chat({ orderId, order }) {
     };
 
     return (
-        <View style={styles.chatCard}>
-            <KeyboardAvoidingView
-                style={styles.chatContainer}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-            >
+        <KeyboardAvoidingView
+            style={styles.chatCard}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+            <View style={styles.chatContainer}>
                 <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
                 <ScrollView
                     ref={scrollViewRef}
-                    style={[
-                        styles.messagesContainer,
-                        Platform.OS === 'ios' && keyboardHeight > 0 && {
-                            maxHeight: 150 - (keyboardHeight * 0.1) // Ajuste dinámico para iOS
-                        }
-                    ]}
+                    style={styles.messagesContainer}
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
-                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
                 >
                     {chatMessages.map((msg, index) => (
                         <View
@@ -181,7 +178,7 @@ export default function Chat({ orderId, order }) {
                     <TextInput
                         ref={textInputRef}
                         style={styles.chatInput}
-                        placeholder="Escribe tu Mensaje..."
+                        placeholder="Escribe tu mensaje..."
                         value={newMessage}
                         onChangeText={setNewMessage}
                         multiline={false}
@@ -189,13 +186,14 @@ export default function Chat({ orderId, order }) {
                         onSubmitEditing={handleSendMessageWithRefresh}
                         onFocus={handleInputFocus}
                         blurOnSubmit={true}
+                        enablesReturnKeyAutomatically={true}
                     />
                     <TouchableOpacity onPress={handleSendMessageWithRefresh} style={styles.sendButton}>
                         <Ionicons name="send" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>
-            </KeyboardAvoidingView>
-        </View>
+            </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -214,11 +212,12 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
-        height: 200, // Altura fija más pequeña
-        maxHeight: 250, // Máximo para pantallas pequeñas
+        minHeight: 300, // ✅ FIX: Altura mínima más alta
+        flex: 1, // ✅ FIX: Permitir que crezca con el teclado
     },
     chatContainer: {
         flex: 1,
+        justifyContent: 'space-between', // ✅ FIX: Separar mensajes del input
     },
     sectionTitle: {
         fontSize: fonts.size.large,

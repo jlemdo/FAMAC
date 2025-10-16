@@ -407,6 +407,16 @@ class NotificationService {
         enhancedBody = `Se te ha asignado el pedido #${orderId}. ¡Revisa los detalles!`;
         break;
 
+      case 'order_arriving':
+        const distanceMeters = remoteMessage.data?.distance_meters;
+        enhancedTitle = '📍 ¡Tu pedido está llegando!';
+        if (distanceMeters) {
+          enhancedBody = `Tu repartidor está a solo ${distanceMeters} metros de tu ubicación. ¡Prepárate para recibirlo!`;
+        } else {
+          enhancedBody = `Tu repartidor está muy cerca de tu ubicación. ¡Prepárate para recibirlo!`;
+        }
+        break;
+
       case 'chat_message':
         const senderName = remoteMessage.data?.sender_name;
         const senderType = remoteMessage.data?.sender_type;
@@ -459,6 +469,7 @@ class NotificationService {
         case 'delivery_delay':
         case 'driver_assigned':
         case 'new_order_assigned':
+        case 'order_arriving':
           // Navegar a detalles de orden
           if (orderId && this.navigationRef) {
             this.navigationRef.navigate('OrderDetails', {
