@@ -43,27 +43,29 @@ export default function CategoriesList() {
   const [fullscreenMuted, setFullscreenMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   
-  // Videos locales - listos para reemplazar con tus videos descargados
-  const videos = [
+  // Estados para videos de Instagram
+  const [videos, setVideos] = useState([
+    // Videos de respaldo en caso de que no cargue la API
     {
       id: 1,
       title: "100% Productos Naturales",
-      description: "Sin conservadores artificiales, directo del campo a tu mesa",  
-      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video1.mp4 cuando tengas el archivo
+      description: "Sin conservadores artificiales, directo del campo a tu mesa",
+      source: require('../assets/welcome.mp4'),
     },
     {
       id: 2,
       title: "Trato Ético con Animales",
       description: "Cuidamos el bienestar animal en cada paso del proceso",
-      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video2.mp4 cuando tengas el archivo
+      source: require('../assets/welcome.mp4'),
     },
     {
       id: 3,
-      title: "Amor en Cada Producto", 
+      title: "Amor en Cada Producto",
       description: "Elaborados con dedicación y respeto por la naturaleza",
-      source: require('../assets/welcome.mp4'), // Temporal: cambiar por video3.mp4 cuando tengas el archivo
+      source: require('../assets/welcome.mp4'),
     },
-  ];
+  ]);
+  const [instagramLoading, setInstagramLoading] = useState(false);
 
   // Funciones para el video en pantalla completa
   const openFullscreenVideo = (index) => {
@@ -180,6 +182,34 @@ export default function CategoriesList() {
           'Error al cargar las categorías. Por favor, inténtalo de nuevo más tarde.',
         );
         setLoading(false);
+      });
+  }, []);
+
+  // Fetch Instagram videos from API
+  useEffect(() => {
+    setInstagramLoading(true);
+    axios
+      .get('https://awsoccr.pixelcrafters.digital/api/instagram-feed')
+      .then(response => {
+        if (response.data.success && response.data.data.length > 0) {
+          const instagramVideos = response.data.data.map(post => ({
+            id: post.id,
+            title: post.title,
+            description: post.description,
+            source: { uri: post.media_url },
+            thumbnail: post.thumbnail_url,
+            instagramUrl: post.instagram_url,
+            type: post.type,
+          }));
+          setVideos(instagramVideos);
+        }
+        // Si no hay videos en la API, mantiene los videos de respaldo
+        setInstagramLoading(false);
+      })
+      .catch(err => {
+        console.log('Instagram feed no disponible, usando videos de respaldo');
+        setInstagramLoading(false);
+        // Mantiene los videos de respaldo si la API falla
       });
   }, []);
 

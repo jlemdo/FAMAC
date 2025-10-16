@@ -1059,21 +1059,17 @@ const OrderDetails = () => {
           Keyboard.dismiss();
           setShowSupportModal(false);
         }}>
-        <TouchableWithoutFeedback 
-          onPress={() => {
-            Keyboard.dismiss();
-            setShowSupportModal(false);
-          }}>
-          <View style={styles.modalContainer}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.keyboardAvoidingView}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{flex: 1}}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              Keyboard.dismiss();
+            }}>
+            <View style={styles.modalContainer}>
               <TouchableWithoutFeedback onPress={() => {}}>
-                <ScrollView
-                  contentContainerStyle={styles.modalContent}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={false}>
+                <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Atención al Cliente</Text>
                   
                   <Formik
@@ -1162,11 +1158,11 @@ const OrderDetails = () => {
                       </>
                     )}
                   </Formik>
-                </ScrollView>
+                </View>
               </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ✅ PUNTO 21: Modal de Problema con Pedido */}
@@ -1174,17 +1170,21 @@ const OrderDetails = () => {
         visible={showProblemModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowProblemModal(false)}>
-        <TouchableWithoutFeedback onPress={() => {
+        onRequestClose={() => {
           Keyboard.dismiss();
           setShowProblemModal(false);
         }}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.modalKeyboardContainer}>
-                <View style={styles.modalContainer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{flex: 1}}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              Keyboard.dismiss();
+            }}>
+            <View style={styles.modalContainer}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalKeyboardContainer}>
                   <Text style={styles.modalTitle}>⚠️ Problema con Pedido</Text>
 
                   <View style={styles.problemInfoContainer}>
@@ -1224,10 +1224,10 @@ const OrderDetails = () => {
                     </TouchableOpacity>
                   </View>
                 </View>
-              </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ✅ Modal de Cancelar Pedido */}
@@ -1239,20 +1239,17 @@ const OrderDetails = () => {
           Keyboard.dismiss();
           setShowCancelModal(false);
         }}>
-        <TouchableWithoutFeedback onPress={() => {
-          Keyboard.dismiss();
-          setShowCancelModal(false);
-        }}>
-          <View style={styles.modalContainer}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.keyboardAvoidingView}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{flex: 1}}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              Keyboard.dismiss();
+            }}>
+            <View style={styles.modalContainer}>
               <TouchableWithoutFeedback onPress={() => {}}>
-                <ScrollView
-                  contentContainerStyle={styles.modalContent}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled={true}
-                  showsVerticalScrollIndicator={false}>
+                <View style={styles.modalContent}>
                   <View style={styles.cancelModalHeader}>
                     <Ionicons name="close-circle" size={50} color="#E63946" />
                     <Text style={styles.cancelModalTitle}>
@@ -1346,11 +1343,11 @@ const OrderDetails = () => {
                       )}
                     </TouchableOpacity>
                   </View>
-                </ScrollView>
+                </View>
               </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

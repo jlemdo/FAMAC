@@ -195,9 +195,14 @@ const Order = () => {
       // Tab "Activas": Órdenes que NO están entregadas ni canceladas
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
+        const paymentStatus = order.payment_status?.toLowerCase();
+
+        // Incluir órdenes con pago completado (paid) O pendientes de pago OXXO (pending)
+        const hasValidPayment = paymentStatus === 'paid' || paymentStatus === 'pending';
+
         return status &&
                !['delivered', 'entregado', 'completed', 'completado', 'cancelled', 'cancelado'].includes(status) &&
-               order.payment_status === 'paid'; // Solo órdenes pagadas
+               hasValidPayment; // Incluye paid y pending (OXXO)
       });
     } else if (userActiveTab === 'entregadas') {
       // Tab "Entregadas": SOLO órdenes completadas/entregadas
