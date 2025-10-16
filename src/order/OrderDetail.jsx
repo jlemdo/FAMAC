@@ -97,6 +97,10 @@ const OrderDetails = () => {
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [driverLocation, setDriverLocation] = useState(null);
   const [distanceToCustomer, setDistanceToCustomer] = useState(null);
+  // ✅ Estados para cancelación de pedido
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -337,6 +341,83 @@ const OrderDetails = () => {
       });
     } finally {
       setDeliveryLoading(false);
+    }
+  };
+
+  // ✅ Función para detectar si mostrar botón de cancelar
+  const shouldShowCancelButton = () => {
+    if (!order) return false;
+
+    // Solo para usuarios normales (no drivers)
+    if (user?.usertype === 'driver') return false;
+
+    const status = order.status?.toLowerCase();
+
+    // No mostrar si ya está cancelado, entregado o completado
+    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
+    if (finishedStatuses.includes(status)) return false;
+
+    return true;
+  };
+
+  // ✅ Función para manejar cancelación de pedido (USUARIO)
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      showAlert({
+        type: 'error',
+        title: 'Campo requerido',
+        message: 'Por favor ingresa un motivo de cancelación',
+        confirmText: 'OK',
+      });
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      const response = await axios.post(
+        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        {
+          order_id: order?.id,
+          cancellation_reason: cancelReason.trim(),
+          cancelled_by: 'customer'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        showAlert({
+          type: 'success',
+          title: '✅ Pedido Cancelado',
+          message: 'Tu pedido ha sido cancelado exitosamente.',
+          confirmText: 'OK',
+        });
+
+        setShowCancelModal(false);
+        setCancelReason('');
+
+        // Recargar datos de la orden
+        fetchOrder();
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: response.data.message || 'No se pudo cancelar el pedido',
+          confirmText: 'Cerrar',
+        });
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: error.response?.data?.message || 'No se pudo cancelar el pedido. Inténtalo de nuevo',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -637,6 +718,9 @@ const OrderDetails = () => {
           const hasDriver = order?.driver;
           const isDriver = user?.usertype === 'driver';
 
+          // ESTADOS DE CANCELACIÓN
+          const isCancelled = status === 'cancelled' || status === 'cancelado';
+
           // ESTADOS DE ENTREGA COMPLETADA
           const isDelivered = status === 'delivered' || status === 'entregado' ||
                              status === 'completed' || status === 'completado';
@@ -681,7 +765,25 @@ const OrderDetails = () => {
           const isActive = status === 'in progress' || status === 'on the way' ||
                           status === 'en camino' || status === 'preparing' || status === 'preparando';
 
-          // 1. OXXO PENDIENTE - Específico para pagos OXXO
+          // 1. PEDIDO CANCELADO - Prioridad máxima
+          if (isCancelled) {
+            return (
+              <View style={styles.cancelledContainer}>
+                <View style={styles.cancelledIconContainer}>
+                  <Ionicons name="close-circle" size={60} color="#E63946" />
+                </View>
+                <Text style={styles.cancelledTitle}>Pedido Cancelado</Text>
+                <Text style={styles.cancelledMessage}>
+                  {isDriver
+                    ? 'Este pedido ha sido cancelado. No es necesario realizar ninguna acción.'
+                    : 'Tu pedido ha sido cancelado. Si tienes alguna duda, contáctanos.'
+                  }
+                </Text>
+              </View>
+            );
+          }
+
+          // 2. OXXO PENDIENTE - Específico para pagos OXXO
           if (isOxxoPending) {
             // console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
             return (
@@ -699,7 +801,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 2. PAGO PENDIENTE - Sin validar (otros métodos)
+          // 3. PAGO PENDIENTE - Sin validar (otros métodos)
           if (isPendingPayment) {
             // console.log('💳 ENTRANDO A: PAGO PENDIENTE');
             return (
@@ -841,6 +943,17 @@ const OrderDetails = () => {
             onPress={() => setShowProblemModal(true)}
             activeOpacity={0.8}>
             <Text style={styles.problemButtonText}>⚠️ Tengo un problema con mi pedido</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ✅ Botón de Cancelar Pedido - Para usuarios */}
+        {shouldShowCancelButton() && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setShowCancelModal(true)}
+            activeOpacity={0.8}>
+            <Ionicons name="close-circle-outline" size={20} color="#FFF" />
+            <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -1021,6 +1134,110 @@ const OrderDetails = () => {
                 </View>
               </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ✅ Modal de Cancelar Pedido */}
+      <Modal
+        visible={showCancelModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowCancelModal(false);
+        }}>
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          setShowCancelModal(false);
+        }}>
+          <View style={styles.modalContainer}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <ScrollView
+                  contentContainerStyle={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}>
+                  <View style={styles.cancelModalHeader}>
+                    <Ionicons name="close-circle" size={50} color="#E63946" />
+                    <Text style={styles.cancelModalTitle}>Cancelar Pedido</Text>
+                  </View>
+
+                  <View style={styles.cancelWarningBox}>
+                    <Text style={styles.cancelWarningText}>
+                      ⚠️ Esta acción no se puede deshacer. Tu pedido será cancelado de inmediato.
+                    </Text>
+                  </View>
+
+                  {/* Información de la orden */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={styles.modalLabel}>Orden a cancelar</Text>
+                    <View style={styles.orderInfoBox}>
+                      <Text style={styles.orderInfoText}>
+                        Pedido {order?.order_number || formatOrderId(order?.created_at)} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                      <Text style={styles.orderInfoPrice}>
+                        {formatPriceWithSymbol(order?.total_amount || order?.total_price || 0)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Motivo de cancelación */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={styles.modalLabel}>Motivo de cancelación *</Text>
+                    <TextInput
+                      style={[
+                        styles.modalTextArea,
+                        !cancelReason.trim() && cancelLoading && styles.modalInputError
+                      ]}
+                      placeholder="Por favor cuéntanos por qué deseas cancelar tu pedido..."
+                      placeholderTextColor="rgba(47,47,47,0.6)"
+                      value={cancelReason}
+                      onChangeText={setCancelReason}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      returnKeyType="done"
+                    />
+                  </View>
+
+                  {/* Botones */}
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.modalCancelButton}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowCancelModal(false);
+                        setCancelReason('');
+                      }}
+                      disabled={cancelLoading}>
+                      <Text style={styles.modalCancelButtonText}>No, mantener pedido</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.confirmCancelButton}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        handleCancelOrder();
+                      }}
+                      disabled={cancelLoading}>
+                      {cancelLoading ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <Text style={styles.confirmCancelButtonText}>Sí, cancelar</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -1597,6 +1814,39 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
+  // Estilos para pedido cancelado
+  cancelledContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    margin: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#E63946',
+  },
+  cancelledIconContainer: {
+    marginBottom: 20,
+  },
+  cancelledTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.xlarge,
+    color: '#E63946',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  cancelledMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
   // Estilos para pedido entregado
   deliveredContainer: {
     backgroundColor: '#FFF',
@@ -1750,6 +2000,82 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+
+  // ✅ Estilos para botón de cancelar pedido
+  cancelButton: {
+    backgroundColor: '#E63946',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    gap: 8,
+  },
+  cancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ Estilos para modal de cancelación
+  cancelModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cancelModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#E63946',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  cancelWarningBox: {
+    backgroundColor: '#FFE5E7',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E63946',
+  },
+  cancelWarningText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#C1121F',
+    textAlign: 'center',
+  },
+  confirmCancelButton: {
+    flex: 1,
+    backgroundColor: '#E63946',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ Falta modalOverlay para el modal de problema (usado en problema modal)
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalKeyboardContainer: {
+    width: '90%',
+    maxWidth: 500,
   },
 });
 

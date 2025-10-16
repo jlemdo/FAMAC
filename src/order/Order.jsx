@@ -34,7 +34,8 @@ const Order = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [guestOrders, setGuestOrders] = useState([]);
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
-  const [driverActiveTab, setDriverActiveTab] = useState('disponibles'); // 'disponibles' o 'entregas'
+  const [driverActiveTab, setDriverActiveTab] = useState('disponibles'); // 'disponibles', 'entregas' o 'canceladas'
+  const [userActiveTab, setUserActiveTab] = useState('activas'); // 'activas', 'entregadas' o 'canceladas'
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
 
   // ✅ Backend ahora envía estados directamente en español - No necesitamos traducir
@@ -172,14 +173,46 @@ const Order = () => {
   // 🚚 FUNCIÓN: Filtrar órdenes para drivers según tab activa
   const getFilteredDriverOrders = () => {
     if (user?.usertype !== 'driver') return orders;
-    
+
     if (driverActiveTab === 'disponibles') {
       // Tab "Disponibles": Órdenes asignadas y en progreso (incluyendo estados posibles de asignación)
       return orders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
-    } else {
+    } else if (driverActiveTab === 'entregas') {
       // Tab "Mis Entregas": SOLO órdenes ya entregadas
       return orders.filter(order => ['Delivered', 'delivered', 'entregado'].includes(order.status));
+    } else if (driverActiveTab === 'canceladas') {
+      // Tab "Canceladas": SOLO órdenes canceladas
+      return orders.filter(order => ['Cancelled', 'cancelled', 'cancelado'].includes(order.status));
     }
+    return orders;
+  };
+
+  // 👤 FUNCIÓN: Filtrar órdenes para usuarios según tab activa
+  const getFilteredUserOrders = () => {
+    const ordersToFilter = showingGuestOrders ? guestOrders : orders;
+
+    if (userActiveTab === 'activas') {
+      // Tab "Activas": Órdenes que NO están entregadas ni canceladas
+      return ordersToFilter.filter(order => {
+        const status = order.status?.toLowerCase();
+        return status &&
+               !['delivered', 'entregado', 'completed', 'completado', 'cancelled', 'cancelado'].includes(status) &&
+               order.payment_status === 'paid'; // Solo órdenes pagadas
+      });
+    } else if (userActiveTab === 'entregadas') {
+      // Tab "Entregadas": SOLO órdenes completadas/entregadas
+      return ordersToFilter.filter(order => {
+        const status = order.status?.toLowerCase();
+        return ['delivered', 'entregado', 'completed', 'completado'].includes(status);
+      });
+    } else if (userActiveTab === 'canceladas') {
+      // Tab "Canceladas": SOLO órdenes canceladas
+      return ordersToFilter.filter(order => {
+        const status = order.status?.toLowerCase();
+        return ['cancelled', 'cancelado'].includes(status);
+      });
+    }
+    return ordersToFilter;
   };
 
   // 🔍 DEBUG TEMPORAL - para ver qué está pasando
@@ -236,9 +269,31 @@ const Order = () => {
                   styles.driverTabText,
                   driverActiveTab === 'entregas' && styles.driverTabTextActive
                 ]}>
-                  🚚 Mis Entregas
+                  ✅ Entregas
                 </Text>
                 {driverActiveTab === 'entregas' && (
+                  <View style={styles.driverTabBadge}>
+                    <Text style={styles.driverTabBadgeText}>
+                      {getFilteredDriverOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.driverTab,
+                  driverActiveTab === 'canceladas' && styles.driverTabActive
+                ]}
+                onPress={() => setDriverActiveTab('canceladas')}
+              >
+                <Text style={[
+                  styles.driverTabText,
+                  driverActiveTab === 'canceladas' && styles.driverTabTextActive
+                ]}>
+                  ❌ Canceladas
+                </Text>
+                {driverActiveTab === 'canceladas' && (
                   <View style={styles.driverTabBadge}>
                     <Text style={styles.driverTabBadgeText}>
                       {getFilteredDriverOrders().length}
@@ -249,11 +304,82 @@ const Order = () => {
             </View>
           )}
 
+          {/* 👤 TABS ESPECÍFICOS PARA USUARIOS */}
+          {user?.usertype !== 'driver' && (
+            <View style={styles.userTabsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.userTab,
+                  userActiveTab === 'activas' && styles.userTabActive
+                ]}
+                onPress={() => setUserActiveTab('activas')}
+              >
+                <Text style={[
+                  styles.userTabText,
+                  userActiveTab === 'activas' && styles.userTabTextActive
+                ]}>
+                  🔄 Activas
+                </Text>
+                {userActiveTab === 'activas' && (
+                  <View style={styles.userTabBadge}>
+                    <Text style={styles.userTabBadgeText}>
+                      {getFilteredUserOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.userTab,
+                  userActiveTab === 'entregadas' && styles.userTabActive
+                ]}
+                onPress={() => setUserActiveTab('entregadas')}
+              >
+                <Text style={[
+                  styles.userTabText,
+                  userActiveTab === 'entregadas' && styles.userTabTextActive
+                ]}>
+                  ✅ Entregadas
+                </Text>
+                {userActiveTab === 'entregadas' && (
+                  <View style={styles.userTabBadge}>
+                    <Text style={styles.userTabBadgeText}>
+                      {getFilteredUserOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.userTab,
+                  userActiveTab === 'canceladas' && styles.userTabActive
+                ]}
+                onPress={() => setUserActiveTab('canceladas')}
+              >
+                <Text style={[
+                  styles.userTabText,
+                  userActiveTab === 'canceladas' && styles.userTabTextActive
+                ]}>
+                  ❌ Canceladas
+                </Text>
+                {userActiveTab === 'canceladas' && (
+                  <View style={styles.userTabBadge}>
+                    <Text style={styles.userTabBadgeText}>
+                      {getFilteredUserOrders().length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           <FlatList
             data={
-              user?.usertype === 'driver' 
-                ? getFilteredDriverOrders() 
-                : (showingGuestOrders ? guestOrders : orders)
+              user?.usertype === 'driver'
+                ? getFilteredDriverOrders()
+                : getFilteredUserOrders()
             }
           keyExtractor={item => showingGuestOrders ? `guest-${item.id}` : item.id.toString()}
           showsVerticalScrollIndicator={false}
@@ -320,9 +446,9 @@ const Order = () => {
                       Mantén la app abierta para recibir notificaciones
                     </Text>
                   </>
-                ) : (
+                ) : driverActiveTab === 'entregas' ? (
                   <>
-                    <Text style={styles.userTitle}>🚚 ¡Hola Repartidor!</Text>
+                    <Text style={styles.userTitle}>🚚 Mis Entregas</Text>
                     <Text style={styles.userText}>
                       Aquí aparecerán todas las órdenes que has entregado.
                     </Text>
@@ -333,21 +459,56 @@ const Order = () => {
                       🎯 ¡Cada entrega exitosa suma a tu experiencia como repartidor!
                     </Text>
                   </>
+                ) : (
+                  <>
+                    <Text style={styles.userTitle}>❌ Pedidos Cancelados</Text>
+                    <Text style={styles.userText}>
+                      No tienes pedidos cancelados.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      Los pedidos que no pudiste entregar aparecerán aquí
+                    </Text>
+                  </>
                 )
               ) : (
-                // Mensajes para Usuario normal registrado
-                <>
-                  <Text style={styles.userTitle}>🛒 ¡Hola {user?.first_name || 'Usuario'}!</Text>
-                  <Text style={styles.userText}>
-                    Aún no has realizado ningún pedido. ¡Es hora de explorar nuestros deliciosos productos!
-                  </Text>
-                  <Text style={styles.userHighlight}>
-                    🌟 Descubre nuestros sabores auténticos y productos artesanales
-                  </Text>
-                  <Text style={styles.userSubtext}>
-                    📱 Tus pedidos aparecerán aquí automáticamente después de cada compra
-                  </Text>
-                </>
+                // Mensajes para Usuario normal registrado - diferenciados por tab
+                userActiveTab === 'activas' ? (
+                  <>
+                    <Text style={styles.userTitle}>🔄 Sin Pedidos Activos</Text>
+                    <Text style={styles.userText}>
+                      No tienes pedidos en proceso en este momento.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      🌟 ¡Explora nuestros productos y haz un nuevo pedido!
+                    </Text>
+                    <Text style={styles.userSubtext}>
+                      Tus pedidos activos aparecerán aquí
+                    </Text>
+                  </>
+                ) : userActiveTab === 'entregadas' ? (
+                  <>
+                    <Text style={styles.userTitle}>✅ Sin Pedidos Entregados</Text>
+                    <Text style={styles.userText}>
+                      Aún no tienes pedidos completados.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      📦 Tus pedidos entregados aparecerán aquí
+                    </Text>
+                    <Text style={styles.userSubtext}>
+                      Podrás ver todo tu historial de compras
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.userTitle}>❌ Sin Pedidos Cancelados</Text>
+                    <Text style={styles.userText}>
+                      No tienes pedidos cancelados.
+                    </Text>
+                    <Text style={styles.userHighlight}>
+                      Los pedidos que canceles aparecerán aquí
+                    </Text>
+                  </>
+                )
               )}
             </View>
           }
@@ -876,7 +1037,62 @@ const styles = StyleSheet.create({
     color: '#FFF',
     textAlign: 'center',
   },
-  
+
+  // 👤 ESTILOS PARA TABS DE USUARIO (estilo más user-friendly)
+  userTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 3,
+  },
+  userTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    position: 'relative',
+  },
+  userTabActive: {
+    backgroundColor: '#33A744', // Verde más amigable para usuarios
+  },
+  userTabText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#666',
+    textAlign: 'center',
+  },
+  userTabTextActive: {
+    color: '#FFF',
+  },
+  userTabBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 6,
+    backgroundColor: '#D27F27',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  userTabBadgeText: {
+    fontSize: fonts.size.XS,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+
 });
 
 export default Order;

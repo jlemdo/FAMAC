@@ -10,6 +10,10 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
+  Modal,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -65,6 +69,10 @@ const OrderDetails = () => {
   const [buttontxt, setButtontxt] = useState(null);
   const [getLocation, setGetLocation] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(order.status);
+  // ✅ Estados para cancelación de pedido
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // get current location
   // const getCurrentLocation = async () => {
@@ -297,6 +305,58 @@ const OrderDetails = () => {
     }
   };
 
+  // ✅ Función para detectar si mostrar botón de cancelar
+  const shouldShowCancelButton = () => {
+    if (!order) return false;
+
+    const status = order.status?.toLowerCase();
+
+    // No mostrar si ya está cancelado, entregado o completado
+    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
+    if (finishedStatuses.includes(status)) return false;
+
+    return true;
+  };
+
+  // ✅ Función para manejar cancelación de pedido (DRIVER)
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      alert('Por favor ingresa un motivo de cancelación');
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      const response = await axios.post(
+        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        {
+          order_id: order?.id,
+          cancellation_reason: cancelReason.trim(),
+          cancelled_by: 'driver'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        alert('Pedido cancelado exitosamente');
+        setShowCancelModal(false);
+        setCancelReason('');
+        // Recargar datos de la orden
+        fetchOrder();
+      } else {
+        alert(response.data.message || 'No se pudo cancelar el pedido');
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'No se pudo cancelar el pedido. Inténtalo de nuevo');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
@@ -447,7 +507,118 @@ const OrderDetails = () => {
             </View>
           ))}
         </View>
+
+        {/* ✅ Botón de Cancelar Pedido - Para drivers */}
+        {shouldShowCancelButton() && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setShowCancelModal(true)}
+            activeOpacity={0.8}>
+            <Ionicons name="close-circle-outline" size={20} color="#FFF" />
+            <Text style={styles.cancelButtonText}>No puedo entregar</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      {/* ✅ Modal de Cancelar Pedido */}
+      <Modal
+        visible={showCancelModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowCancelModal(false);
+        }}>
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          setShowCancelModal(false);
+        }}>
+          <View style={styles.modalContainer}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoidingView}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <ScrollView
+                  contentContainerStyle={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}>
+                  <View style={styles.cancelModalHeader}>
+                    <Ionicons name="close-circle" size={50} color="#E63946" />
+                    <Text style={styles.cancelModalTitle}>No Puedo Entregar</Text>
+                  </View>
+
+                  <View style={styles.cancelWarningBox}>
+                    <Text style={styles.cancelWarningText}>
+                      ⚠️ Esta acción cancelará el pedido y notificará al cliente.
+                    </Text>
+                  </View>
+
+                  {/* Información de la orden */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={styles.modalLabel}>Orden a cancelar</Text>
+                    <View style={styles.orderInfoBox}>
+                      <Text style={styles.orderInfoText}>
+                        Orden #{order?.id}
+                      </Text>
+                      <Text style={styles.orderInfoPrice}>
+                        Total: ${order?.total_price}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Motivo de cancelación */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={styles.modalLabel}>Motivo *</Text>
+                    <TextInput
+                      style={[
+                        styles.modalTextArea,
+                        !cancelReason.trim() && cancelLoading && styles.modalInputError
+                      ]}
+                      placeholder="Por favor explica por qué no puedes entregar este pedido..."
+                      placeholderTextColor="rgba(47,47,47,0.6)"
+                      value={cancelReason}
+                      onChangeText={setCancelReason}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      returnKeyType="done"
+                    />
+                  </View>
+
+                  {/* Botones */}
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.modalCancelButton}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowCancelModal(false);
+                        setCancelReason('');
+                      }}
+                      disabled={cancelLoading}>
+                      <Text style={styles.modalCancelButtonText}>Volver</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.confirmCancelButton}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        handleCancelOrder();
+                      }}
+                      disabled={cancelLoading}>
+                      {cancelLoading ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                      ) : (
+                        <Text style={styles.confirmCancelButtonText}>Confirmar Cancelación</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -629,6 +800,153 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
+  },
+
+  // ✅ Estilos para botón de cancelar pedido
+  cancelButton: {
+    backgroundColor: '#E63946',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    gap: 8,
+  },
+  cancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ Estilos para modal de cancelación
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  keyboardAvoidingView: {
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+    flexGrow: 1,
+  },
+  cancelModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cancelModalTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.large,
+    color: '#E63946',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  cancelWarningBox: {
+    backgroundColor: '#FFE5E7',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E63946',
+  },
+  cancelWarningText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#C1121F',
+    textAlign: 'center',
+  },
+  modalInputGroup: {
+    marginBottom: 16,
+  },
+  modalLabel: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    marginBottom: 8,
+  },
+  orderInfoBox: {
+    backgroundColor: '#F2EFE4',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+  },
+  orderInfoText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    marginBottom: 4,
+  },
+  orderInfoPrice: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#33A744',
+  },
+  modalTextArea: {
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    backgroundColor: '#FFF',
+  },
+  modalInputError: {
+    borderColor: '#E63946',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
+  },
+  confirmCancelButton: {
+    flex: 1,
+    backgroundColor: '#E63946',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmCancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
   },
 });
 
