@@ -19,12 +19,14 @@ import { AuthContext } from '../context/AuthContext';
  * @param {Function} props.onCouponRemove - Callback cuando se remueve un cupón
  * @param {Object} props.appliedCoupon - Cupón aplicado actualmente {code, discount, type}
  * @param {number} props.subtotal - Subtotal para calcular descuentos
+ * @param {number} props.shippingCost - Costo de envío para cupones de envío
  */
-const CouponInput = ({ 
-  onCouponApply, 
-  onCouponRemove, 
-  appliedCoupon, 
+const CouponInput = ({
+  onCouponApply,
+  onCouponRemove,
+  appliedCoupon,
   subtotal = 0,
+  shippingCost = 0,
   isValid = true // Nuevo prop para indicar si el cupón aún es válido
 }) => {
   const [couponCode, setCouponCode] = useState('');
@@ -56,6 +58,7 @@ const CouponInput = ({
         body: JSON.stringify({
           coupon_code: code.trim(),
           subtotal: subtotal,
+          shipping_cost: shippingCost,
           user_email: userEmail
         }),
       });
@@ -74,6 +77,7 @@ const CouponInput = ({
           code: data.coupon.code,
           discount: data.coupon.discount,
           type: data.coupon.discount_type, // 'percentage' o 'fixed'
+          appliesTo: data.coupon.applies_to || 'total', // 'total' o 'shipping'
           description: data.coupon.description,
           minAmount: data.coupon.minimum_amount,
           discountAmount: data.coupon.discount_amount

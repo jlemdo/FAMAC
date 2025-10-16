@@ -435,28 +435,41 @@ export default function Cart() {
   
   const getDiscountAmount = () => {
     if (!appliedCoupon) return 0;
-    
+
     const subtotal = getSubtotal();
-    
+
     // Verificar si aún cumple el monto mínimo
     if (subtotal < appliedCoupon.minAmount) {
       return 0; // No aplica descuento si no cumple mínimo
     }
-    
-    // Recalcular descuento basado en nuevo subtotal
+
+    // Determinar sobre qué base aplicar el descuento
+    const appliesTo = appliedCoupon.appliesTo || 'total';
+    const baseAmount = appliesTo === 'shipping' ? shippingCost : subtotal;
+
+    // Recalcular descuento basado en el monto base correspondiente
     let newDiscountAmount = 0;
     if (appliedCoupon.type === 'percentage') {
-      newDiscountAmount = (subtotal * appliedCoupon.discount) / 100;
+      newDiscountAmount = (baseAmount * appliedCoupon.discount) / 100;
     } else {
       newDiscountAmount = appliedCoupon.discount;
     }
-    
-    return Math.min(newDiscountAmount, subtotal); // No puede exceder subtotal
+
+    // Asegurar que el descuento no exceda el monto base
+    return Math.min(newDiscountAmount, baseAmount);
   };
   
   const getFinalTotal = () => {
     const subtotal = getSubtotal();
     const discount = getDiscountAmount();
+
+    // Si el cupón aplica a envío, restar descuento del shipping
+    if (appliedCoupon && appliedCoupon.appliesTo === 'shipping') {
+      const discountedShipping = Math.max(0, shippingCost - discount);
+      return Math.max(0, subtotal + discountedShipping);
+    }
+
+    // Si aplica a total, restar descuento del subtotal y luego agregar shipping
     return Math.max(0, subtotal - discount + shippingCost);
   };
 
@@ -2912,6 +2925,7 @@ const CartFooter = ({
       onCouponRemove={onCouponRemove}
       appliedCoupon={appliedCoupon}
       subtotal={subtotal}
+      shippingCost={shippingCost}
       isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
     />
 
