@@ -344,7 +344,7 @@ const OrderDetails = () => {
     }
   };
 
-  // ✅ Función para detectar si mostrar botón de cancelar
+  // ✅ Función para detectar si mostrar botón de cancelar (USUARIOS)
   const shouldShowCancelButton = () => {
     if (!order) return false;
 
@@ -352,6 +352,26 @@ const OrderDetails = () => {
     if (user?.usertype === 'driver') return false;
 
     const status = order.status?.toLowerCase();
+
+    // No mostrar si ya está cancelado, entregado o completado
+    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
+    if (finishedStatuses.includes(status)) return false;
+
+    return true;
+  };
+
+  // ✅ Función para detectar si mostrar botón de cancelar (DRIVERS)
+  const shouldShowDriverCancelButton = () => {
+    if (!order) return false;
+
+    // Solo para drivers
+    if (user?.usertype !== 'driver') return false;
+
+    const status = order.status?.toLowerCase();
+
+    // Solo mostrar en estados activos (cuando el driver ya aceptó la orden)
+    const activeStatuses = ['assigned', 'asignado', 'on the way', 'en camino', 'on_the_way', 'preparing', 'preparando'];
+    if (!activeStatuses.includes(status)) return false;
 
     // No mostrar si ya está cancelado, entregado o completado
     const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
@@ -380,6 +400,67 @@ const OrderDetails = () => {
           order_id: order?.id,
           cancellation_reason: cancelReason.trim(),
           cancelled_by: 'customer'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        showAlert({
+          type: 'success',
+          title: '✅ Pedido Cancelado',
+          message: 'Tu pedido ha sido cancelado exitosamente.',
+          confirmText: 'OK',
+        });
+
+        setShowCancelModal(false);
+        setCancelReason('');
+
+        // Recargar datos de la orden
+        fetchOrder();
+      } else {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: response.data.message || 'No se pudo cancelar el pedido',
+          confirmText: 'Cerrar',
+        });
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: error.response?.data?.message || 'No se pudo cancelar el pedido. Inténtalo de nuevo',
+        confirmText: 'Cerrar',
+      });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  // ✅ Función para manejar cancelación de pedido (DRIVER)
+  const handleDriverCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      showAlert({
+        type: 'error',
+        title: 'Campo requerido',
+        message: 'Por favor ingresa un motivo por el cual no puedes entregar',
+        confirmText: 'OK',
+      });
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      const response = await axios.post(
+        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        {
+          order_id: order?.id,
+          cancellation_reason: cancelReason.trim(),
+          cancelled_by: 'driver'
         },
         {
           headers: {
@@ -956,6 +1037,17 @@ const OrderDetails = () => {
             <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
           </TouchableOpacity>
         )}
+
+        {/* ✅ Botón de Cancelar Pedido - Para drivers */}
+        {shouldShowDriverCancelButton() && (
+          <TouchableOpacity
+            style={styles.driverCancelButton}
+            onPress={() => setShowCancelModal(true)}
+            activeOpacity={0.8}>
+            <Ionicons name="close-circle-outline" size={20} color="#FFF" />
+            <Text style={styles.driverCancelButtonText}>No puedo entregar</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Modal de Atención al Cliente */}
@@ -1163,18 +1255,25 @@ const OrderDetails = () => {
                   showsVerticalScrollIndicator={false}>
                   <View style={styles.cancelModalHeader}>
                     <Ionicons name="close-circle" size={50} color="#E63946" />
-                    <Text style={styles.cancelModalTitle}>Cancelar Pedido</Text>
+                    <Text style={styles.cancelModalTitle}>
+                      {user?.usertype === 'driver' ? 'No puedo entregar' : 'Cancelar Pedido'}
+                    </Text>
                   </View>
 
                   <View style={styles.cancelWarningBox}>
                     <Text style={styles.cancelWarningText}>
-                      ⚠️ Esta acción no se puede deshacer. Tu pedido será cancelado de inmediato.
+                      ⚠️ Esta acción no se puede deshacer.
+                      {user?.usertype === 'driver'
+                        ? ' El pedido será cancelado y el cliente será notificado.'
+                        : ' Tu pedido será cancelado de inmediato.'}
                     </Text>
                   </View>
 
                   {/* Información de la orden */}
                   <View style={styles.modalInputGroup}>
-                    <Text style={styles.modalLabel}>Orden a cancelar</Text>
+                    <Text style={styles.modalLabel}>
+                      {user?.usertype === 'driver' ? 'Orden que no puedes entregar' : 'Orden a cancelar'}
+                    </Text>
                     <View style={styles.orderInfoBox}>
                       <Text style={styles.orderInfoText}>
                         Pedido {order?.order_number || formatOrderId(order?.created_at)} - {new Date(order?.created_at).toLocaleDateString('es-ES', {
@@ -1183,21 +1282,29 @@ const OrderDetails = () => {
                           year: 'numeric'
                         })}
                       </Text>
-                      <Text style={styles.orderInfoPrice}>
-                        {formatPriceWithSymbol(order?.total_amount || order?.total_price || 0)}
-                      </Text>
+                      {user?.usertype !== 'driver' && (
+                        <Text style={styles.orderInfoPrice}>
+                          {formatPriceWithSymbol(order?.total_amount || order?.total_price || 0)}
+                        </Text>
+                      )}
                     </View>
                   </View>
 
                   {/* Motivo de cancelación */}
                   <View style={styles.modalInputGroup}>
-                    <Text style={styles.modalLabel}>Motivo de cancelación *</Text>
+                    <Text style={styles.modalLabel}>
+                      {user?.usertype === 'driver' ? 'Motivo por el cual no puedes entregar *' : 'Motivo de cancelación *'}
+                    </Text>
                     <TextInput
                       style={[
                         styles.modalTextArea,
                         !cancelReason.trim() && cancelLoading && styles.modalInputError
                       ]}
-                      placeholder="Por favor cuéntanos por qué deseas cancelar tu pedido..."
+                      placeholder={
+                        user?.usertype === 'driver'
+                          ? "Por favor cuéntanos por qué no puedes entregar este pedido..."
+                          : "Por favor cuéntanos por qué deseas cancelar tu pedido..."
+                      }
                       placeholderTextColor="rgba(47,47,47,0.6)"
                       value={cancelReason}
                       onChangeText={setCancelReason}
@@ -1218,20 +1325,24 @@ const OrderDetails = () => {
                         setCancelReason('');
                       }}
                       disabled={cancelLoading}>
-                      <Text style={styles.modalCancelButtonText}>No, mantener pedido</Text>
+                      <Text style={styles.modalCancelButtonText}>
+                        Mantener pedido
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.confirmCancelButton}
                       onPress={() => {
                         Keyboard.dismiss();
-                        handleCancelOrder();
+                        user?.usertype === 'driver' ? handleDriverCancelOrder() : handleCancelOrder();
                       }}
                       disabled={cancelLoading}>
                       {cancelLoading ? (
                         <ActivityIndicator color="#FFF" size="small" />
                       ) : (
-                        <Text style={styles.confirmCancelButtonText}>Sí, cancelar</Text>
+                        <Text style={styles.confirmCancelButtonText}>
+                          Cancelar pedido
+                        </Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -2002,7 +2113,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // ✅ Estilos para botón de cancelar pedido
+  // ✅ Estilos para botón de cancelar pedido (USUARIOS)
   cancelButton: {
     backgroundColor: '#E63946',
     flexDirection: 'row',
@@ -2021,6 +2132,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cancelButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+    color: '#FFF',
+  },
+
+  // ✅ Estilos para botón de cancelar pedido (DRIVERS)
+  driverCancelButton: {
+    backgroundColor: '#FF6B35', // Naranja más suave para drivers
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    gap: 8,
+  },
+  driverCancelButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',

@@ -134,12 +134,12 @@ export function OrderProvider({ children }) {
             if (user.usertype === 'driver') {
                 // Solo mostrar órdenes válidas para drivers:
                 // 1. Pago completado
-                // 2. Estados específicos de workflow del driver
+                // 2. Estados específicos de workflow del driver (incluyendo canceladas)
                 filteredOrders = ordersData.filter(order => {
                     // 🔍 TEMPORAL: Filtro más permisivo para debug
                     const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
-                    const statusValid = ['Open', 'Abierto', 'On the Way', 'Delivered', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status);
-                    
+                    const statusValid = ['Open', 'Abierto', 'On the Way', 'Delivered', 'Assigned', 'Pending', 'assigned', 'pending', 'Cancelled', 'cancelled', 'cancelado'].includes(order.status);
+
                     // console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
                     // payment_status: order.payment_status,
                     // status: order.status,
@@ -148,10 +148,10 @@ export function OrderProvider({ children }) {
                     // statusValid,
                     // incluir: paymentValid && statusValid
                     // });
-                    
+
                     return paymentValid && statusValid;
                 });
-                
+
                 // console.log(`✅ DRIVER FILTRADO: ${ordersData.length} → ${filteredOrders.length} órdenes válidas`);
             }
             
