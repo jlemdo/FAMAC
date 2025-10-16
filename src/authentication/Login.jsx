@@ -497,8 +497,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   </TouchableOpacity>
                 )}
 
-                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Botón Google Sign-In */}
-                {/*
+                {/* Botón Google Sign-In */}
                 <TouchableOpacity
                   style={[styles.googleButton, (isSubmitting || googleLoading) && styles.buttonDisabled]}
                   onPress={handleGoogleLogin}
@@ -516,7 +515,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     </>
                   )}
                 </TouchableOpacity>
-                */}
 
                 {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Continuar como invitado */}
                 {/*
