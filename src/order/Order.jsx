@@ -548,11 +548,22 @@ const Order = () => {
                     <Text style={styles.orderIdLabel}>Pedido:</Text>
                     <Text style={styles.orderIdText}>{formattedOrderId}</Text>
                   </View>
-                  <Text style={styles.total}>
-                    {formatPriceWithSymbol(totalPrice)}
-                  </Text>
+                  <View style={styles.orderPriceSection}>
+                    <Text style={styles.total}>
+                      {formatPriceWithSymbol(totalPrice)}
+                    </Text>
+                    {/* 🆕 Estado del pedido debajo del precio */}
+                    <Text style={[
+                      styles.orderStatusText,
+                      itemStatus.toLowerCase().includes('entrega') && styles.orderStatusDelivered,
+                      itemStatus.toLowerCase().includes('cancel') && styles.orderStatusCancelled,
+                      itemStatus.toLowerCase().includes('camino') && styles.orderStatusInTransit,
+                    ]}>
+                      {item.status_spanish || itemStatus}
+                    </Text>
+                  </View>
                 </View>
-                
+
                 <Text style={styles.orderDate}>
                   {new Date(createdAt).toLocaleString('es-MX', {
                     dateStyle: 'medium',
@@ -1091,6 +1102,27 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.XS,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+
+  // 🆕 Estilos para estado del pedido debajo del precio
+  orderPriceSection: {
+    alignItems: 'flex-end',
+  },
+  orderStatusText: {
+    fontSize: fonts.size.XS,
+    fontFamily: fonts.numericBold,
+    color: '#666',
+    marginTop: 4,
+    textTransform: 'capitalize',
+  },
+  orderStatusDelivered: {
+    color: '#33A744',
+  },
+  orderStatusCancelled: {
+    color: '#E63946',
+  },
+  orderStatusInTransit: {
+    color: '#2196F3',
   },
 
 });

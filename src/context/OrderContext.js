@@ -162,16 +162,21 @@ export function OrderProvider({ children }) {
 
             setOrders(sortedOrders);
             
-            // Contar órdenes activas según tipo de usuario
+            // 🎯 Contar SOLO órdenes activas según tipo de usuario
             let activeOrders;
             if (user.usertype === 'driver') {
-                // Para drivers: contar órdenes asignadas y en progreso (incluyendo estados de asignación)
-                activeOrders = sortedOrders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
+                // Para drivers: contar SOLO órdenes asignadas y en progreso (EXCLUIR entregadas y canceladas)
+                const activeDriverStatuses = ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'];
+                activeOrders = sortedOrders.filter(order =>
+                    activeDriverStatuses.includes(order.status) &&
+                    ['paid', 'pending', 'completed'].includes(order.payment_status)
+                );
             } else {
-                // Para usuarios normales: contar órdenes no completadas
+                // Para usuarios normales: contar SOLO órdenes activas (EXCLUIR entregadas, completadas y canceladas)
                 const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
                 activeOrders = sortedOrders.filter(order =>
-                    order.status && !completedStatuses.includes(order.status.toLowerCase())
+                    order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
+                    order.payment_status === 'paid' // Solo contar órdenes con pago confirmado
                 );
 
                 // 🏪 DEBUG OXXO: Ver filtrado de órdenes activas
