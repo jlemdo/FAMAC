@@ -147,20 +147,20 @@ export default function Chat({ orderId, order }) {
     };
 
     return (
-        <View style={styles.chatCard}>
+        <KeyboardAwareScrollView
+            ref={scrollViewRef}
+            style={styles.chatCard}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            enableOnAndroid={true}
+            enableAutomaticScroll={true}
+            extraScrollHeight={20}
+            keyboardOpeningTime={0}
+        >
             <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
-            <KeyboardAwareScrollView
-                ref={scrollViewRef}
-                style={styles.messagesContainer}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                enableOnAndroid={true}
-                enableAutomaticScroll={true}
-                extraScrollHeight={20}
-                keyboardOpeningTime={0}
-            >
+            <View style={styles.messagesContainer}>
                 {chatMessages.map((msg, index) => (
                     <View
                         key={index}
@@ -172,7 +172,7 @@ export default function Chat({ orderId, order }) {
                         <Text style={styles.chatText}>{msg.text}</Text>
                     </View>
                 ))}
-            </KeyboardAwareScrollView>
+            </View>
 
             <View style={styles.chatInputContainer}>
                 <TextInput
@@ -192,7 +192,7 @@ export default function Chat({ orderId, order }) {
                     <Ionicons name="send" size={20} color="#fff" />
                 </TouchableOpacity>
             </View>
-        </View>
+        </KeyboardAwareScrollView>
     );
 }
 
@@ -204,7 +204,6 @@ const styles = StyleSheet.create({
     chatCard: {
         backgroundColor: '#FFF',
         borderRadius: 12,
-        padding: 16,
         marginBottom: 16,
         shadowColor: '#000',
         shadowOpacity: 0.05,
@@ -213,6 +212,10 @@ const styles = StyleSheet.create({
         elevation: 3,
         flex: 1,
     },
+    chatContent: {
+        padding: 16,
+        flexGrow: 1,
+    },
     sectionTitle: {
         fontSize: fonts.size.large,
         fontFamily: fonts.bold,
@@ -220,13 +223,8 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     messagesContainer: {
-        flex: 1,
-        marginBottom: 10,
-    },
-    messagesContent: {
         flexGrow: 1,
-        justifyContent: 'flex-end',
-        paddingBottom: 10,
+        marginBottom: 10,
     },
     chatInputContainer: {
         flexDirection: 'row',
