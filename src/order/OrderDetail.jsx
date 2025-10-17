@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect, useCallback} from 'react';
+import React, {useContext, useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -101,6 +101,8 @@ const OrderDetails = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+  // ✅ Ref para el intervalo de auto-refresh
+  const refreshIntervalRef = useRef(null);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -115,8 +117,25 @@ const OrderDetails = () => {
     }
   }, [orderId]);
 
+  // ✅ Auto-refresh: Actualizar estado del pedido cada 5 segundos
   useEffect(() => {
-    if (orderId) {fetchOrder();}
+    if (!orderId) return;
+
+    // Fetch inicial
+    fetchOrder();
+
+    // Configurar intervalo de auto-refresh (5 segundos)
+    refreshIntervalRef.current = setInterval(() => {
+      fetchOrder();
+    }, 5000);
+
+    // Cleanup: Limpiar intervalo al desmontar
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, [orderId, fetchOrder]);
 
   // Schema de validación para el formulario de soporte
