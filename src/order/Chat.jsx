@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, AppState, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AuthContext } from '../context/AuthContext';
 import NotificationService from '../services/NotificationService';
@@ -146,54 +147,52 @@ export default function Chat({ orderId, order }) {
     };
 
     return (
-        <KeyboardAvoidingView
-            style={styles.chatCard}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-        >
-            <View style={styles.chatContainer}>
-                <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
+        <View style={styles.chatCard}>
+            <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
-                <ScrollView
-                    ref={scrollViewRef}
-                    style={styles.messagesContainer}
-                    contentContainerStyle={styles.messagesContent}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    {chatMessages.map((msg, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                styles.chatBubble,
-                                msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
-                            ]}
-                        >
-                            <Text style={styles.chatText}>{msg.text}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
+            <KeyboardAwareScrollView
+                ref={scrollViewRef}
+                style={styles.messagesContainer}
+                contentContainerStyle={styles.messagesContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                enableOnAndroid={true}
+                enableAutomaticScroll={true}
+                extraScrollHeight={20}
+                keyboardOpeningTime={0}
+            >
+                {chatMessages.map((msg, index) => (
+                    <View
+                        key={index}
+                        style={[
+                            styles.chatBubble,
+                            msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
+                        ]}
+                    >
+                        <Text style={styles.chatText}>{msg.text}</Text>
+                    </View>
+                ))}
+            </KeyboardAwareScrollView>
 
-                <View style={styles.chatInputContainer}>
-                    <TextInput
-                        ref={textInputRef}
-                        style={styles.chatInput}
-                        placeholder="Escribe tu mensaje..."
-                        value={newMessage}
-                        onChangeText={setNewMessage}
-                        multiline={false}
-                        returnKeyType="send"
-                        onSubmitEditing={handleSendMessageWithRefresh}
-                        onFocus={handleInputFocus}
-                        blurOnSubmit={true}
-                        enablesReturnKeyAutomatically={true}
-                    />
-                    <TouchableOpacity onPress={handleSendMessageWithRefresh} style={styles.sendButton}>
-                        <Ionicons name="send" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
+            <View style={styles.chatInputContainer}>
+                <TextInput
+                    ref={textInputRef}
+                    style={styles.chatInput}
+                    placeholder="Escribe tu mensaje..."
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    multiline={false}
+                    returnKeyType="send"
+                    onSubmitEditing={handleSendMessageWithRefresh}
+                    onFocus={handleInputFocus}
+                    blurOnSubmit={true}
+                    enablesReturnKeyAutomatically={true}
+                />
+                <TouchableOpacity onPress={handleSendMessageWithRefresh} style={styles.sendButton}>
+                    <Ionicons name="send" size={20} color="#fff" />
+                </TouchableOpacity>
             </View>
-        </KeyboardAvoidingView>
+        </View>
     );
 }
 
@@ -212,12 +211,7 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
-        minHeight: 300, // ✅ FIX: Altura mínima más alta
-        flex: 1, // ✅ FIX: Permitir que crezca con el teclado
-    },
-    chatContainer: {
         flex: 1,
-        justifyContent: 'space-between', // ✅ FIX: Separar mensajes del input
     },
     sectionTitle: {
         fontSize: fonts.size.large,
@@ -232,6 +226,7 @@ const styles = StyleSheet.create({
     messagesContent: {
         flexGrow: 1,
         justifyContent: 'flex-end',
+        paddingBottom: 10,
     },
     chatInputContainer: {
         flexDirection: 'row',
