@@ -28,6 +28,7 @@ import { useAlert } from '../context/AlertContext';
 import { useProfile } from '../context/ProfileContext';
 import fonts from '../theme/fonts';
 import { useAutoUpdate } from '../hooks/useAutoUpdate';
+import packageJson from '../../package.json';
 import RegisterPrompt from './RegisterPrompt';
 import NotificationService from '../services/NotificationService';
 import {formatOrderId} from '../utils/orderIdFormatter';
@@ -2267,6 +2268,12 @@ export default function Profile({ navigation, route }) {
         </Animated.View>
       )}
 
+      {/* Versión de la app */}
+      <View style={styles.versionContainer}>
+        <Text style={styles.versionText}>
+          Sabores de Origen v{packageJson.version}
+        </Text>
+      </View>
 
       </ScrollView>
     </Fragment>
@@ -3298,6 +3305,21 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     color: '#33A744',
     marginLeft: 6,
+  },
+
+  // ✅ Estilos para versión de la app
+  versionContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  versionText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textAlign: 'center',
   },
 
 });
