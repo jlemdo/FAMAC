@@ -275,6 +275,7 @@ export default function Profile({ navigation, route }) {
   // Estado para el teléfono formateado visualmente
   const [formattedPhone, setFormattedPhone] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [lastVerifiedPhone, setLastVerifiedPhone] = useState(''); // Track último teléfono verificado
 
   // Estado para direcciones del usuario (para validación)
   const [userAddresses, setUserAddresses] = useState([]);
@@ -354,8 +355,13 @@ export default function Profile({ navigation, route }) {
         // Refrescar datos del perfil y direcciones para actualizar badge del navbar
         fetchUserDetails();
         refreshAddresses(); // Actualizar badge del navbar cuando regresa de AddressManager
+
+        // Inicializar teléfono verificado con el teléfono actual del perfil
+        if (profile.phone) {
+          setLastVerifiedPhone(getPlainPhone(profile.phone));
+        }
       }
-    }, [user?.id, fetchUserDetails, refreshAddresses])
+    }, [user?.id, fetchUserDetails, refreshAddresses, profile.phone])
   );
   
   // 🔧 ELIMINADO: Legacy address handling - ahora usamos newAddressService + AddressManager
@@ -1117,12 +1123,29 @@ export default function Profile({ navigation, route }) {
         onSubmit={async (values, { setSubmitting }) => {
           setLoading(true);
           try {
+            // 🔒 VALIDACIÓN SMS: Verificar OTP si el teléfono cambió
+            const currentPhonePlain = getPlainPhone(profile.phone || '');
+            const newPhonePlain = getPlainPhone(values.phone || '');
+            const phoneChanged = currentPhonePlain !== newPhonePlain;
+
+            if (phoneChanged && !phoneVerified) {
+              setLoading(false);
+              setSubmitting(false);
+              showAlert({
+                type: 'error',
+                title: 'Verificación requerida',
+                message: '❌ Debes verificar tu número de teléfono con el código SMS antes de guardarlo.',
+                confirmText: 'Entendido',
+              });
+              return;
+            }
+
             // DOB Logic: Solo establecer UNA VEZ, nunca actualizar
             // Verificar si el usuario YA tiene DOB establecido desde el backend
             let dobFormatted = null;
             const hasExistingBirthDate = profile.birthDate && !isNaN(profile.birthDate.getTime());
             const isUserTryingToChangeBirthDate = values.birthDate && (!profile.birthDate || values.birthDate.getTime() !== profile.birthDate.getTime());
-            
+
             // Solo bloquear si el usuario TIENE fecha y está INTENTANDO cambiarla
             if (hasExistingBirthDate && isUserTryingToChangeBirthDate) {
               showAlert({
@@ -1212,6 +1235,10 @@ export default function Profile({ navigation, route }) {
                 phone: getPlainPhone(values.phone),
               });
               
+              // Resetear estado de verificación tras guardado exitoso
+              setPhoneVerified(false);
+              setLastVerifiedPhone(getPlainPhone(values.phone));
+
               showAlert({
                 type: 'success',
                 title: '✅ ¡Datos personales actualizados!',
@@ -1346,13 +1373,13 @@ export default function Profile({ navigation, route }) {
                     setPhoneVerified(false); // Reset verificación si cambia el teléfono
                   }}
                   onFocus={isEditingProfile ? createMainFocusHandler('phone', 20) : undefined}
-                  editable={isEditingProfile && !phoneVerified}
+                  editable={isEditingProfile}
                   returnKeyType="done"
                 />
                 {phoneVerified && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={16} color="#33A744" />
-                    <Text style={styles.verifiedText}>Teléfono verificado</Text>
+                    <Text style={styles.verifiedText}>✅ Verificado (puedes cambiarlo si deseas)</Text>
                   </View>
                 )}
                 {submitCount > 0 && errors.phone && (
@@ -1366,10 +1393,11 @@ export default function Profile({ navigation, route }) {
                     type="profile_update"
                     onVerified={() => {
                       setPhoneVerified(true);
+                      setLastVerifiedPhone(getPlainPhone(values.phone)); // Guardar teléfono verificado
                       showAlert({
                         type: 'success',
                         title: 'Verificado',
-                        message: '¡Teléfono verificado correctamente!',
+                        message: '✅ ¡Teléfono verificado correctamente! Ahora puedes guardar tus cambios.',
                         confirmText: 'Continuar',
                       });
                     }}

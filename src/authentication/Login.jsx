@@ -533,8 +533,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                 )}
                 */}
 
-                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Link a registro */}
-                {/*
+                {/* Link a registro */}
                 {!onSignUp && (
                   <TouchableOpacity
                     style={styles.registerButton}
@@ -545,7 +544,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     </Text>
                   </TouchableOpacity>
                 )}
-                */}
               </>
             )}
           </Formik>

@@ -400,6 +400,18 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
 
   // 5️⃣ Envío de formulario
   const onSubmit = async (values, {setSubmitting}) => {
+    // 🔒 VALIDACIÓN SMS: Verificar que el teléfono fue verificado con OTP
+    if (values.phone && values.phone.length >= 10 && !phoneVerified) {
+      setSubmitting(false);
+      showAlert({
+        type: 'error',
+        title: 'Verificación requerida',
+        message: '❌ Debes verificar tu número de teléfono con el código SMS antes de continuar con el registro.',
+        confirmText: 'Entendido',
+      });
+      return;
+    }
+
     let dob = null;
     if (values.birthDate) {
       const opts = {month: 'long', year: 'numeric'};
@@ -413,7 +425,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       email: values.email,
       password: values.password,
       password_confirmation: values.confirmPassword,
-      skip_otp: true, // 🆕 Saltar verificación OTP por ahora
+      skip_otp: true, // 🆕 Saltar verificación OTP por ahora (ya verificado con SMS)
     };
 
     // Solo agregar dob si existe
