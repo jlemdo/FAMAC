@@ -9,7 +9,7 @@
  */
 
 // 👇 CAMBIAR AQUÍ MANUALMENTE 👇
-const ENVIRONMENT = 'development'; // Cambiar a 'production' cuando necesites
+const ENVIRONMENT = 'production'; // Cambiar a 'production' cuando necesites
 
 const config = {
   development: {
