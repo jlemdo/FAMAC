@@ -516,8 +516,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   )}
                 </TouchableOpacity>
 
-                {/* COMENTADO PARA SOLO EMAIL/PASSWORD - Continuar como invitado */}
-                {/*
+                {/* Continuar como invitado - Requerido por Apple App Review */}
                 {showGuest && (
                   <TouchableOpacity
                     style={styles.secondaryBtn}
@@ -531,7 +530,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                     <Text style={styles.btnTextGuest}>Continuar como invitado</Text>
                   </TouchableOpacity>
                 )}
-                */}
 
                 {/* Link a registro */}
                 {!onSignUp && (
