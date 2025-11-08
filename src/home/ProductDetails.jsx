@@ -29,18 +29,27 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1); // Empezar con 1 unidad (250g)
   const [modalVisible, setModalVisible] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0); // Para el carrusel
+
   // Incrementos de 1 unidad (cada unidad = 250g)
   const INCREMENT = 1;
   const MIN_QUANTITY = 1;
-  
+
   // Animación para la alerta
   const alertOpacity = useRef(new Animated.Value(0)).current;
   const alertTranslateY = useRef(new Animated.Value(-50)).current;
 
-  // Resetear cantidad cuando cambia de producto
+  // Obtener todas las imágenes del producto (compatibilidad con sistema nuevo de múltiples imágenes)
+  const productImages = product?.images && Array.isArray(product.images) && product.images.length > 0
+    ? product.images.map(img => img.photo || img.image_path || img)
+    : product?.photo
+      ? [product.photo]
+      : [];
+
+  // Resetear cantidad e índice de imagen cuando cambia de producto
   useEffect(() => {
     setQuantity(1);
+    setCurrentImageIndex(0);
   }, [product?.id]);
   
   const increaseQuantity = () => setQuantity(prev => prev + INCREMENT);
@@ -135,7 +144,45 @@ export default function ProductDetails() {
             </View>
           )}
           
-          <Image source={{uri: product.photo}} style={styles.image} />
+          {/* Carrusel de imágenes o imagen única */}
+          {productImages.length > 0 && (
+            <View style={styles.imageCarouselContainer}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(event) => {
+                  const slideSize = event.nativeEvent.layoutMeasurement.width;
+                  const index = Math.floor(event.nativeEvent.contentOffset.x / slideSize);
+                  setCurrentImageIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {productImages.map((imageUrl, index) => (
+                  <Image
+                    key={`${product?.id}-${index}`}
+                    source={{uri: imageUrl}}
+                    style={styles.image}
+                  />
+                ))}
+              </ScrollView>
+
+              {/* Indicadores de puntos (solo si hay más de una imagen) */}
+              {productImages.length > 1 && (
+                <View style={styles.dotsContainer}>
+                  {productImages.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        index === currentImageIndex && styles.dotActive
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
           
           {/* Precio total dinámico */}
           <View style={styles.totalPriceContainer}>
@@ -325,11 +372,35 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'visible',
   },
-  image: {
+  imageCarouselContainer: {
     width: '100%',
+    position: 'relative',
+    marginBottom: 12,
+  },
+  image: {
+    width: Dimensions.get('window').width - 64, // ancho completo menos padding (16*2 del scroll + 16*2 del card)
     height: 240,
     borderRadius: 12,
-    marginBottom: 12,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CCC',
+    marginHorizontal: 4,
+  },
+  dotActive: {
+    backgroundColor: '#D27F27',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   // Etiqueta de descuento en esquina (similar a Suggestions.jsx)
   discountCornerBadge: {
