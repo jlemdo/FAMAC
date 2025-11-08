@@ -33,6 +33,7 @@ import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import NotificationService from '../services/NotificationService';
 import SMSVerification from '../components/SMSVerification';
+import { useOtpStatus } from '../hooks/useOtpStatus';
 
 // Apple Authentication solo disponible en iOS
 let appleAuth = null;
@@ -77,6 +78,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+
+  // 🔐 Hook para verificar si OTP/SMS está habilitado
+  const { otpEnabled } = useOtpStatus();
 
   // 🔧 Hook para manejo profesional del teclado
   const { 
@@ -400,8 +404,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
 
   // 5️⃣ Envío de formulario
   const onSubmit = async (values, {setSubmitting}) => {
-    // 🔒 VALIDACIÓN SMS: Verificar que el teléfono fue verificado con OTP
-    if (values.phone && values.phone.length >= 10 && !phoneVerified) {
+    // 🔒 VALIDACIÓN SMS: Solo requerir verificación si OTP está habilitado
+    if (otpEnabled && values.phone && values.phone.length >= 10 && !phoneVerified) {
       setSubmitting(false);
       showAlert({
         type: 'error',

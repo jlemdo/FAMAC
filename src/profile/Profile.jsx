@@ -51,6 +51,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import SMSVerification from '../components/SMSVerification';
 import { useFocusEffect } from '@react-navigation/native';
+import { useOtpStatus } from '../hooks/useOtpStatus';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
 
@@ -276,6 +277,9 @@ export default function Profile({ navigation, route }) {
   const [formattedPhone, setFormattedPhone] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [lastVerifiedPhone, setLastVerifiedPhone] = useState(''); // Track último teléfono verificado
+
+  // 🔐 Hook para verificar si OTP/SMS está habilitado
+  const { otpEnabled } = useOtpStatus();
 
   // Estado para direcciones del usuario (para validación)
   const [userAddresses, setUserAddresses] = useState([]);
@@ -1128,7 +1132,8 @@ export default function Profile({ navigation, route }) {
             const newPhonePlain = getPlainPhone(values.phone || '');
             const phoneChanged = currentPhonePlain !== newPhonePlain;
 
-            if (phoneChanged && !phoneVerified) {
+            // 🔒 Solo requerir verificación si OTP está habilitado
+            if (otpEnabled && phoneChanged && !phoneVerified) {
               setLoading(false);
               setSubmitting(false);
               showAlert({
