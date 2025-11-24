@@ -19,28 +19,25 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const fetchDeliveryDaysFromBackend = async () => {
     try {
       const response = await axios.get('https://awsoccr.pixelcrafters.digital/api/delivery-days');
-      
+
       if (response.data && response.data.status === 'success') {
         const backendDays = response.data.data;
-        
-        // Generar fechas basadas en los días activos del backend
-        const deliveryDates = generateDeliveryDatesFromBackend(backendDays);
-        
-        const tempDays = [];
-        deliveryDates.forEach((date, i) => {
-          const dayObj = {
+
+        // 🎯 USAR DIRECTAMENTE LAS FECHAS QUE EL BACKEND CALCULA (CON LÓGICA DE CORTE)
+        const tempDays = backendDays.map((backendDay, i) => {
+          // El backend ya envía el campo 'date' con la fecha calculada
+          const date = new Date(backendDay.date);
+
+          return {
             date,
             label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
-            isoDate: date.toISOString().split('T')[0],
+            isoDate: backendDay.date, // Usar directamente el ISO date del backend
             isClosest: i === 0, // Solo el primer día (más cercano) tiene estrella
           };
-          
-          // console.log(`Día ${i}:`, dayObj.label, 'isClosest:', dayObj.isClosest);
-          tempDays.push(dayObj);
         });
-        
+
         setDays(tempDays);
-        
+
         if (tempDays.length > 0) {
           setSelectedDateIndex(0);
         }
@@ -99,16 +96,34 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     return dates;
   };
 
-  // Fallback usando lógica anterior si falla el backend
+  // Fallback simple si falla el backend (casi nunca se usa)
   const useFallbackDays = () => {
-    const deliveryDates = getDeliveryDatesBasedOnLogic();
-    const tempDays = deliveryDates.map((date, i) => ({
-      date,
-      label: date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
-      isoDate: date.toISOString().split('T')[0],
-      isClosest: i === 0,
-    }));
-    
+    // Generar fechas simples: próximos 4 jueves y lunes
+    const today = new Date();
+    const tempDays = [];
+
+    // Simplemente mostrar próximos jueves y lunes sin lógica compleja
+    let searchDate = new Date(today);
+    searchDate.setDate(searchDate.getDate() + 1); // Empezar desde mañana
+
+    let found = 0;
+    while (found < 4 && searchDate.getTime() - today.getTime() < 30 * 24 * 60 * 60 * 1000) {
+      const dayOfWeek = searchDate.getDay();
+
+      // 1=Lunes, 4=Jueves
+      if (dayOfWeek === 1 || dayOfWeek === 4) {
+        tempDays.push({
+          date: new Date(searchDate),
+          label: searchDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+          isoDate: searchDate.toISOString().split('T')[0],
+          isClosest: found === 0,
+        });
+        found++;
+      }
+
+      searchDate.setDate(searchDate.getDate() + 1);
+    }
+
     setDays(tempDays);
     if (tempDays.length > 0) {
       setSelectedDateIndex(0);
