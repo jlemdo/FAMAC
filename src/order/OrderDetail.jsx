@@ -147,12 +147,25 @@ const OrderDetails = () => {
   const handleSupportSubmit = async (values, { setSubmitting, resetForm }) => {
     setSupportLoading(true);
     try {
+      // ✅ MEJORADO: Enviar información completa del remitente al backend
+      const payload = {
+        orderno: order?.id?.toString() || '',
+        message: values.message,
+        // Información del remitente (cliente)
+        sender_type: 'customer',
+        sender_id: user?.id || null,
+        sender_name: user?.first_name && user?.last_name
+          ? `${user.first_name} ${user.last_name}`
+          : null,
+        sender_email: user?.email || null,
+        sender_phone: user?.phone || null,
+        category: 'consulta',
+        priority: 'media',
+      };
+
       const response = await axios.post(
         'https://awsoccr.pixelcrafters.digital/api/compsubmit',
-        {
-          orderno: order?.id?.toString() || '',
-          message: values.message,
-        },
+        payload,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -229,10 +242,23 @@ const OrderDetails = () => {
   const handleProblemSubmit = async () => {
     setProblemLoading(true);
     try {
-      const response = await axios.post('https://food.siliconsoft.pk/api/compsubmit', {
+      // ✅ MEJORADO: Enviar información completa del remitente al backend
+      const payload = {
         orderno: order?.id?.toString() || '',
         message: 'Tengo un problema con mi pedido',
-      });
+        // Información del remitente (cliente)
+        sender_type: 'customer',
+        sender_id: user?.id || null,
+        sender_name: user?.first_name && user?.last_name
+          ? `${user.first_name} ${user.last_name}`
+          : null,
+        sender_email: user?.email || null,
+        sender_phone: user?.phone || null,
+        category: 'problema',  // Esta es una categoría de problema
+        priority: 'alta',       // Los problemas tienen prioridad alta
+      };
+
+      const response = await axios.post('https://food.siliconsoft.pk/api/compsubmit', payload);
 
       if (response.status === 200) {
         showAlert({

@@ -925,12 +925,25 @@ export default function Profile({ navigation, route }) {
   const handleSupportSubmit = async (values, { setSubmitting, resetForm }) => {
     setSupportLoading(true);
     try {
+      // ✅ MEJORADO: Enviar información completa del remitente al backend
+      const payload = {
+        orderno: values.orderno || '',
+        message: values.message,
+        // Información del remitente (cliente)
+        sender_type: 'customer',
+        sender_id: user?.id || null,
+        sender_name: user?.first_name && user?.last_name
+          ? `${user.first_name} ${user.last_name}`
+          : null,
+        sender_email: user?.email || null,
+        sender_phone: user?.phone || null,
+        category: 'consulta', // Por defecto es consulta
+        priority: 'media',    // Por defecto prioridad media
+      };
+
       const response = await axios.post(
         'https://awsoccr.pixelcrafters.digital/api/compsubmit',
-        {
-          orderno: values.orderno || '',
-          message: values.message,
-        },
+        payload,
         {
           headers: {
             'Content-Type': 'application/json',
