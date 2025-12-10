@@ -18,9 +18,9 @@ const config = {
     ENVIRONMENT_NAME: 'Desarrollo Local',
   },
   production: {
-    API_BASE_URL: 'https://awsoccr.pixelcrafters.digital',
-    WS_BASE_URL: 'wss://awsoccr.pixelcrafters.digital',
-    ENVIRONMENT_NAME: 'Producción AWS',
+    API_BASE_URL: 'https://occrproductos.com.mx',
+    WS_BASE_URL: 'wss://occrproductos.com.mx',
+    ENVIRONMENT_NAME: 'Producción',
   }
 };
 

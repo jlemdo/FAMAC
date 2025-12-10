@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+﻿import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import Config from 'react-native-config';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 const CustomerTracking = ({order}) => {
   const [driverLocation, setDriverLocation] = useState(null);
@@ -27,7 +28,7 @@ const CustomerTracking = ({order}) => {
   const fetchDriverLocation = useCallback(async (attempt = 0) => {
     try {
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
+        `/api/driverlocationsagainstorder/${order.id}`,
         { timeout: 8000 } // 8s timeout
       );
       const lastLoc = res.data.data;

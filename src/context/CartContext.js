@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { AuthContext } from './AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
 export const CartContext = createContext();
 
@@ -155,7 +156,7 @@ export function CartProvider({ children }) {
                 // items: cart.length
             // });
 
-            await axios.post('https://awsoccr.pixelcrafters.digital/api/cart/save', payload);
+            await axios.post(`${API_BASE_URL}/api/cart/save`, payload);
             
         } catch (error) {
             // console.log('❌ Error guardando carrito en backend:', error.message);
@@ -187,7 +188,7 @@ export function CartProvider({ children }) {
             };
             
             // Llamada opcional al backend - fallar silenciosamente si hay error
-            await fetch('https://awsoccr.pixelcrafters.digital/api/cart-activity', {
+            await fetch(`${API_BASE_URL}/api/cart-activity`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -222,7 +223,7 @@ export function CartProvider({ children }) {
                 // userId: user.id || user.email
             // });
             
-            const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/cart/get', payload);
+            const response = await axios.post(`${API_BASE_URL}/api/cart/get`, payload);
             
             if (response.data.success && response.data.cart.length > 0) {
                 console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del BACKEND para ${user?.usertype}:`, user?.id || user?.email);
@@ -292,7 +293,7 @@ export function CartProvider({ children }) {
                     payload.user_id = user.id;
                 }
 
-                await axios.post('https://awsoccr.pixelcrafters.digital/api/cart/clear', payload);
+                await axios.post(`${API_BASE_URL}/api/cart/clear`, payload);
                 // console.log('🧹 Carrito limpiado en backend');
             }
             
@@ -342,7 +343,7 @@ export function CartProvider({ children }) {
                 return;
             }
 
-            const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/get-automatic-promotions', {
+            const response = await axios.post(`${API_BASE_URL}/api/get-automatic-promotions`, {
                 subtotal: subtotalAfterProductDiscounts,
                 user_email: user?.email || null
             }, {

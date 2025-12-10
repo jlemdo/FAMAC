@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useContext, useCallback} from 'react';
+﻿import React, {useEffect, useState, useContext, useCallback} from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import {migrateGuestOrders} from '../utils/orderMigration';
+import { API_BASE_URL } from '../config/environment';
 
 // Import AsyncStorage para limpieza temporal
 let AsyncStorage;
@@ -63,7 +64,7 @@ const Order = () => {
   };
 
   const handleInvoices = order => {
-    const invoiceURL = `https://awsoccr.pixelcrafters.digital/invoices/${order.invoice}`;
+    const invoiceURL = `/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
       alert('Unable to open invoice. Please try again.');
     });
@@ -95,7 +96,7 @@ const Order = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
+        `/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
         { timeout: 10000 }
       );
       

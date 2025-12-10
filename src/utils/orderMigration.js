@@ -1,5 +1,6 @@
-// src/utils/orderMigration.js
+﻿// src/utils/orderMigration.js
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
 /**
  * Migra las órdenes de un usuario Guest a su cuenta registrada
@@ -9,7 +10,7 @@ import axios from 'axios';
 export const migrateGuestOrders = async (guestEmail) => {
   try {
     
-    const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/migrateorders', {
+    const response = await axios.post(`${API_BASE_URL}/api/migrateorders`, {
       user_email: guestEmail,
       need_invoice: "true", // Campo requerido por el backend actualizado
       tax_details: "" // Campo requerido, vacío para migración

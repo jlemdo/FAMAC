@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useContext,
   useState,
   useEffect,
@@ -33,6 +33,7 @@ import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
+import { API_BASE_URL } from '../config/environment';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
@@ -187,7 +188,7 @@ const DriverTracking = ({order}) => {
 
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/driverlocsubmit',
+        `${API_BASE_URL}/api/driverlocsubmit`,
         payload,
       );
 
@@ -216,7 +217,7 @@ const DriverTracking = ({order}) => {
       // console.log(`🔄 Actualizando estado de orden ${order.id}...`);
 
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/orderdetails/${order.id}`,
+        `/api/orderdetails/${order.id}`,
       );
 
       const newStatus = res?.data?.order?.status;
@@ -245,7 +246,7 @@ const DriverTracking = ({order}) => {
       // console.log(`📦 Marcando orden ${order.id} como entregada...`);
 
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/orderdel',
+        `${API_BASE_URL}/api/orderdel`,
         {
           orderid: order.id,
         },
@@ -320,7 +321,7 @@ const DriverTracking = ({order}) => {
   const getDriverLocaton = useCallback(async () => {
     try {
       const response = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
+        `/api/driverlocationsagainstorder/${order.id}`,
       );
 
       const locations = response.data.data;

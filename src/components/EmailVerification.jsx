@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 const EmailVerification = ({ 
   isVisible,
@@ -42,7 +43,7 @@ const EmailVerification = ({
   const sendOTP = async () => {
     setSending(true);
     try {
-      const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/otp/send', {
+      const response = await axios.post(`${API_BASE_URL}/api/otp/send`, {
         email: email,
         type: type
       });
@@ -81,7 +82,7 @@ const EmailVerification = ({
 
     setLoading(true);
     try {
-      const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/otp/verify', {
+      const response = await axios.post(`${API_BASE_URL}/api/otp/verify`, {
         email: email,
         otp: otpCode,
         type: type

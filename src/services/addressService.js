@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
-const BASE_URL = 'https://awsoccr.pixelcrafters.digital/api';
+const BASE_URL = `${API_BASE_URL}/api`;
 
 // Servicio completo para gestión de direcciones múltiples
 export const addressService = {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, FlatList, Keyboard, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
@@ -18,7 +19,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   // Obtener días activos desde el backend
   const fetchDeliveryDaysFromBackend = async () => {
     try {
-      const response = await axios.get('https://awsoccr.pixelcrafters.digital/api/delivery-days');
+      const response = await axios.get(`${API_BASE_URL}/api/delivery-days`);
 
       if (response.data && response.data.status === 'success') {
         const backendDays = response.data.data;
@@ -233,7 +234,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
   const fetchDeliverySlots = async (dateString) => {
     setLoading(true);
     try {
-      const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/fetch_ddates/${dateString}`);
+      const response = await axios.get(`${API_BASE_URL}/api/fetch_ddates/${dateString}`);
       
       let slotsToProcess = [];
       

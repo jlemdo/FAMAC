@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+﻿import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatProductMeasure} from '../utils/unitFormatter';
+import { API_BASE_URL } from '../config/environment';
 
 export default function SpecificCategoryProduct() {
   const route = useRoute();
@@ -29,7 +30,7 @@ export default function SpecificCategoryProduct() {
     const fetchProducts = async () => {
       try {
         const response = await axios.get(
-          `https://awsoccr.pixelcrafters.digital/api/products/${categoryName}`,
+          `/api/products/${categoryName}`,
         );
         setProducts(response.data.data || []);
       } catch (err) {

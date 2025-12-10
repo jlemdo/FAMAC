@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { newAddressService } from '../services/newAddressService';
+import { API_BASE_URL } from '../config/environment';
 
 // Helper function para parsear fechas (igual que en Profile.jsx)
 const parseFlexibleDate = (dateValue) => {
@@ -172,7 +173,7 @@ export const ProfileProvider = ({ children }) => {
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
+        `/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       

@@ -1,4 +1,4 @@
-// src/authentication/ForgotPassword.jsx
+﻿// src/authentication/ForgotPassword.jsx
 import React, { useContext } from 'react';
 import {
   View,
@@ -21,6 +21,7 @@ import axios from 'axios';
 import fonts from '../theme/fonts';
 import { useAlert } from '../context/AlertContext';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
+import { API_BASE_URL } from '../config/environment';
 
 export default function ForgotPassword({ onBackToLogin }) {
   const navigation = useNavigation();
@@ -48,7 +49,7 @@ export default function ForgotPassword({ onBackToLogin }) {
     setSubmitting(true);
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/forgetpasswordlink',
+        `${API_BASE_URL}/api/forgetpasswordlink`,
         { email: values.email.trim() }
       );
       

@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useContext,
   useEffect,
@@ -30,6 +30,7 @@ import {useNotification} from '../context/NotificationContext';
 import axios from 'axios';
 import debounce from 'lodash.debounce'; // instala lodash.debounce
 import fonts from '../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 const Header = ({onLogout}) => {
   const navigation = useNavigation();
@@ -67,7 +68,7 @@ const Header = ({onLogout}) => {
       // Si no hemos cargado aún el catálogo, lo pedimos una sola vez
       if (!allProductsRef.current) {
         const resp = await axios.get(
-          'https://awsoccr.pixelcrafters.digital/api/products',
+          `${API_BASE_URL}/api/products`,
           {cancelToken: cancelTokenRef.current.token},
         );
         allProductsRef.current = resp.data?.data || [];

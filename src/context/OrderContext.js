@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
 export const OrderContext = createContext();
 
@@ -45,12 +46,12 @@ export function OrderProvider({ children }) {
         
         try {
             if (user.usertype === 'driver') {
-                url = `https://awsoccr.pixelcrafters.digital/api/orderhistorydriver/${user.id}`;
+                url = `/api/orderhistorydriver/${user.id}`;
             } else if (user.usertype === 'Guest' && allowGuestOrders) {
                 // ✅ Para Guest, usar email como user_id en el endpoint normal
-                url = `https://awsoccr.pixelcrafters.digital/api/orderhistory/${encodeURIComponent(user.email)}`;
+                url = `/api/orderhistory/${encodeURIComponent(user.email)}`;
             } else {
-                url = `https://awsoccr.pixelcrafters.digital/api/orderhistory/${user.id}`;
+                url = `/api/orderhistory/${user.id}`;
             }
 
             
@@ -67,7 +68,7 @@ export function OrderProvider({ children }) {
             // PRUEBA DEFINITIVA: usar fetch() en lugar de axios
             
             // PRIMERA: Probar endpoint que SÍ funciona (login)
-            const testResponse = await fetch('https://awsoccr.pixelcrafters.digital/api/auth/google', {
+            const testResponse = await fetch(`${API_BASE_URL}/api/auth/google`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

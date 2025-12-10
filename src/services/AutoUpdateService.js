@@ -7,14 +7,15 @@
 import { Alert, Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
 // Configuración del servicio
 const UPDATE_CONFIG = {
   // URL de tu servidor donde alojarás la información de versiones
-  VERSION_CHECK_URL: 'https://awsoccr.pixelcrafters.digital/api/app-version',
+  VERSION_CHECK_URL: `${API_BASE_URL}/api/app-version`,
 
   // URL donde alojarás los APKs para descarga
-  APK_DOWNLOAD_URL: 'https://awsoccr.pixelcrafters.digital/downloads/sabores-de-origen-latest.apk',
+  APK_DOWNLOAD_URL: `${API_BASE_URL}/downloads/sabores-de-origen-latest.apk`,
 
   // Intervalo de verificación (en milisegundos)
   CHECK_INTERVAL: 24 * 60 * 60 * 1000, // 24 horas

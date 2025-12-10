@@ -1,4 +1,4 @@
-// import React, { useEffect, useState } from 'react';
+﻿// import React, { useEffect, useState } from 'react';
 // import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 // import axios from 'axios';
 // import { useNavigation, useRoute } from '@react-navigation/native';
@@ -14,7 +14,7 @@
 //   useEffect(() => {
 //     const fetchResults = async () => {
 //       try {
-//         const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/searchproducts?cat=&product=${query}`);
+//         const response = await axios.get(`/api/searchproducts?cat=&product=${query}`);
 //         setResults(response.data?.products || []); // adjust according to your API response shape
 //       } catch (err) {
 //       } finally {
@@ -65,6 +65,7 @@ import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { CartContext } from '../context/CartContext';
 import fonts from '../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 const SearchResults = () => {
   const route = useRoute();
@@ -78,7 +79,7 @@ const SearchResults = () => {
 useEffect(() => {
   const fetchResults = async () => {
     try {
-      const response = await axios.get('https://awsoccr.pixelcrafters.digital/api/products');
+      const response = await axios.get(`${API_BASE_URL}/api/products`);
       const all = response.data?.data || [];
 
       const filtered = all.filter(p =>

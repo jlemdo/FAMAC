@@ -11,6 +11,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from '../theme/fonts';
 import { scaleSpacing, scaleFontSize } from '../utils/responsiveUtils';
 import { AuthContext } from '../context/AuthContext';
+import { API_BASE_URL } from '../config/environment';
 
 /**
  * Componente de entrada de cupones de descuento
@@ -33,12 +34,9 @@ const CouponInput = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isExpanded, setIsExpanded] = useState(false); // 🆕 Estado para colapsar/expandir
-  
+
   // Obtener información del usuario del contexto
   const { user } = useContext(AuthContext);
-
-  // API endpoint para validación de cupones
-  const API_BASE_URL = 'https://awsoccr.pixelcrafters.digital/api';
 
   // Función para validar y aplicar cupón
   const validateAndApplyCoupon = async (code) => {
@@ -49,7 +47,7 @@ const CouponInput = ({
       // Obtener email del usuario para tracking de uso único
       const userEmail = user?.email || null;
 
-      const response = await fetch(`${API_BASE_URL}/validate-coupon`, {
+      const response = await fetch(`${API_BASE_URL}/api/validate-coupon`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

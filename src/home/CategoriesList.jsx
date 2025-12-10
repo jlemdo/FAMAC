@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+﻿import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import {useNavigation, useRoute} from '@react-navigation/native';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 import {useAlert} from '../context/AlertContext';
+import { API_BASE_URL } from '../config/environment';
 
 export default function CategoriesList() {
   const navigation = useNavigation();
@@ -170,7 +171,7 @@ export default function CategoriesList() {
   // Fetch categories from the API
   useEffect(() => {
     axios
-      .get('https://awsoccr.pixelcrafters.digital/api/productscats')
+      .get(`${API_BASE_URL}/api/productscats`)
       .then(response => {
         const originalCategories = response.data.data;
         const sortedCategories = sortCategoriesByOrder(originalCategories);
@@ -189,7 +190,7 @@ export default function CategoriesList() {
   useEffect(() => {
     setInstagramLoading(true);
     axios
-      .get('https://awsoccr.pixelcrafters.digital/api/instagram-feed')
+      .get(`${API_BASE_URL}/api/instagram-feed`)
       .then(response => {
         if (response.data.success && response.data.data.length > 0) {
           const instagramVideos = response.data.data.map(post => ({

@@ -1,4 +1,4 @@
-// src/authentication/Profile.jsx
+﻿// src/authentication/Profile.jsx
 import React, { useEffect, useState, useContext, useCallback, Fragment, useRef } from 'react';
 import {
   View,
@@ -54,6 +54,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useOtpStatus } from '../hooks/useOtpStatus';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
+import { API_BASE_URL } from '../config/environment';
 
 // Helper function para parsear fechas en múltiples formatos
 const parseFlexibleDate = (dateValue) => {
@@ -317,7 +318,7 @@ export default function Profile({ navigation, route }) {
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
+        `/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       
@@ -415,7 +416,7 @@ export default function Profile({ navigation, route }) {
 
       // Usar el endpoint API recién creado
       response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/deleteuser',
+        `${API_BASE_URL}/api/deleteuser`,
         {
           userid: user.id,
           password: password
@@ -707,7 +708,7 @@ export default function Profile({ navigation, route }) {
 
       // Usar el mismo endpoint pero diferente payload para OAuth
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/deleteuser',
+        `${API_BASE_URL}/api/deleteuser`,
         {
           userid: user.id,
           provider: profile.provider, // Indicar que es OAuth (google/apple)
@@ -768,7 +769,7 @@ export default function Profile({ navigation, route }) {
       setLoading(true);
       
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/forgetpasswordlink',
+        `${API_BASE_URL}/api/forgetpasswordlink`,
         { email: profile.email.trim() }
       );
 
@@ -942,7 +943,7 @@ export default function Profile({ navigation, route }) {
       };
 
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/compsubmit',
+        `${API_BASE_URL}/api/compsubmit`,
         payload,
         {
           headers: {
@@ -1187,7 +1188,7 @@ export default function Profile({ navigation, route }) {
             let currentServerData = {};
             try {
               const currentRes = await axios.get(
-                `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
+                `/api/userdetails/${user.id}`
               );
               currentServerData = currentRes.data?.data?.[0] || {};
             } catch (error) {
@@ -1226,7 +1227,7 @@ export default function Profile({ navigation, route }) {
             // Ahora enviamos DOB junto con otros datos en un solo request
             
             const res = await axios.post(
-              'https://awsoccr.pixelcrafters.digital/api/updateuserprofile',
+              `${API_BASE_URL}/api/updateuserprofile`,
               payload
             );
             if (res.status === 200) {
@@ -1569,8 +1570,8 @@ export default function Profile({ navigation, route }) {
                                     key={year}
                                     style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
                                     onPress={() => {
-                                      // Si values.birthDate existe, usar su mes. Si no, usar mes actual como referencia
-                                      const currentMonth = values.birthDate ? values.birthDate.getMonth() : new Date().getMonth();
+                                      // Si values.birthDate existe, usar su mes. Si no, usar índice 3 (Abril) - coherente con visual
+                                      const currentMonth = values.birthDate ? values.birthDate.getMonth() : 3;
                                       const newDate = new Date(year, currentMonth, 1);
                                       // console.log('🐛 PICKER DEBUG - Estableciendo año:', {year, currentMonth, newDate});
                                       setFieldValue('birthDate', newDate);
@@ -1710,7 +1711,7 @@ export default function Profile({ navigation, route }) {
           setLoading(true);
           try {
             const res = await axios.post(
-              'https://awsoccr.pixelcrafters.digital/api/updateusepassword',
+              `${API_BASE_URL}/api/updateusepassword`,
               {
                 userid:                user.id,
                 current_password:      values.current_password,

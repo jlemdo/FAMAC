@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect} from 'react';
+﻿import React, {useContext, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -247,7 +247,7 @@ export default function Cart() {
           // hoursAgoLocal: lastModified ? Math.round((Date.now() - lastModified) / (1000 * 60 * 60) * 100) / 100 : 'N/A'
         // });
         
-        const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/cart-cleanup', payload);
+        const response = await axios.post(`${API_BASE_URL}/api/cart-cleanup`, payload);
         
         if (response.data.expired) {
           // console.log('🗑️ Carrito expirado, limpiando...', {
@@ -476,7 +476,7 @@ export default function Cart() {
   // 📦 NUEVO: Obtener configuración de envío
   const fetchShippingConfig = async () => {
     try {
-      const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/shipping-config`, {
+      const response = await axios.get(`${API_BASE_URL}/api/shipping-config`, {
         headers: {
           'Accept': 'application/json'
         }
@@ -507,7 +507,7 @@ export default function Cart() {
     setLoadingShipping(true);
     
     try {
-      const apiUrl = `https://awsoccr.pixelcrafters.digital/api/shipping-motivation/${subtotal}`;
+      const apiUrl = `/api/shipping-motivation/${subtotal}`;
       
       const response = await axios.get(apiUrl, {
         headers: {
@@ -735,7 +735,7 @@ export default function Cart() {
     setLoadingProfile(true);
     try {
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`
+        `/api/userdetails/${user.id}`
       );
       const profileData = res.data?.data?.[0] || {};
       setUserProfile(profileData);
@@ -1478,7 +1478,7 @@ export default function Cart() {
       // });
       
       const {data} = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/create-payment-intent',
+        `${API_BASE_URL}/api/create-payment-intent`,
         {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail, order_id: realOrderId},
       );
       const clientSecret = data.clientSecret;
@@ -1890,7 +1890,7 @@ export default function Cart() {
         // Si no hay email en el contexto, intentar obtenerlo del perfil
         if (!userEmailForOrder && user?.id) {
           try {
-            const profileResponse = await axios.get(`https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`);
+            const profileResponse = await axios.get(`${API_BASE_URL}/api/userdetails/${user.id}`);
             const profileData = profileResponse.data?.data?.[0];
             userEmailForOrder = profileData?.email?.trim() || '';
           } catch (profileError) {
@@ -1955,14 +1955,14 @@ export default function Cart() {
 
       // 🔧 DEBUG OXXO: Log completo del payload enviado al backend
       // console.log('🏪 OXXO DEBUG - Sending Payload to Backend:', {
-      // endpoint: 'https://awsoccr.pixelcrafters.digital/api/ordersubmit',
+      // endpoint: `${API_BASE_URL}/api/ordersubmit`,
       // payload: payload,
       // userType: user?.usertype,
       // paymentExpected: 'OXXO_OR_OTHER',
       // timestamp: new Date().toISOString()
       // });
 
-      const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/ordersubmit', payload);
+      const response = await axios.post(`${API_BASE_URL}/api/ordersubmit`, payload);
 
       // 🔧 DEBUG OXXO: Log de la respuesta del backend
       // console.log('🏪 OXXO DEBUG - Backend Response:', {
@@ -2100,7 +2100,7 @@ export default function Cart() {
     const fetchUpsellItems = async () => {
       try {
         const response = await fetch(
-          'https://awsoccr.pixelcrafters.digital/api/products/sugerencias',
+          `${API_BASE_URL}/api/products/sugerencias`,
         );
         const json = await response.json();
 
@@ -2775,7 +2775,7 @@ const CartFooter = ({
         // Si no hay email en el contexto, intentar obtenerlo del perfil
         if (!userEmailForOrder && user?.id) {
           try {
-            const profileResponse = await axios.get(`https://awsoccr.pixelcrafters.digital/api/userdetails/${user.id}`);
+            const profileResponse = await axios.get(`${API_BASE_URL}/api/userdetails/${user.id}`);
             const profileData = profileResponse.data?.data?.[0];
             userEmailForOrder = profileData?.email?.trim() || '';
           } catch (profileError) {

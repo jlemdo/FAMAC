@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect, useCallback} from 'react';
+﻿import React, {useContext, useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import axios from 'axios';
 import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil } from '../../utils/locationUtils';
+import { API_BASE_URL } from '../config/environment';
 
 // ✅ FUNCIÓN: Traducir estados de órdenes a español para drivers
 const translateStatus = (status) => {
@@ -152,7 +153,7 @@ const OrderDetails = () => {
 
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/driverlocsubmit',
+        `${API_BASE_URL}/api/driverlocsubmit`,
         payload,
       );
     } catch (error) {
@@ -163,7 +164,7 @@ const OrderDetails = () => {
   const completeOrderFromDriver = async () => {
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/orderdel',
+        `${API_BASE_URL}/api/orderdel`,
         {
           orderid: order.id,
         },
@@ -185,7 +186,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/order/${order.id}`,
+        `/api/order/${order.id}`,
       );
       setOrder(res.data.data); // adjust according to your response shape
     } catch (err) {
@@ -242,7 +243,7 @@ const OrderDetails = () => {
   const fetchMessages = useCallback(async () => {
     try {
       const response = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/msgfetch/${order.id}`,
+        `/api/msgfetch/${order.id}`,
       );
       if (response.data) {
         const formattedMessages = response.data.data.reverse().map(msg => ({
@@ -261,7 +262,7 @@ const OrderDetails = () => {
     setLoadingLocation(true);
     try {
       const response = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/driverlocationsagainstorder/${order.id}`,
+        `/api/driverlocationsagainstorder/${order.id}`,
       );
       // if (response?.data?.data?.length) {
       const locations = response.data.data;
@@ -293,7 +294,7 @@ const OrderDetails = () => {
         message: newMessage,
       };
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/msgsubmit',
+        `${API_BASE_URL}/api/msgsubmit`,
         payload,
       );
 
@@ -328,7 +329,7 @@ const OrderDetails = () => {
     setCancelLoading(true);
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        `${API_BASE_URL}/api/orders/cancel`,
         {
           order_id: order?.id,
           cancellation_reason: cancelReason.trim(),

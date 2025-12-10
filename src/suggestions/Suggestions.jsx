@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+﻿import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from '../theme/fonts';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatProductMeasure} from '../utils/unitFormatter';
+import { API_BASE_URL } from '../config/environment';
 
 export default function Suggestions() {
   const navigation = useNavigation();
@@ -26,7 +27,7 @@ export default function Suggestions() {
     const fetchSuggestions = async () => {
       try {
         const response = await fetch(
-          'https://awsoccr.pixelcrafters.digital/api/products/sugerencias',
+          `${API_BASE_URL}/api/products/sugerencias`,
         );
         const json = await response.json();
 

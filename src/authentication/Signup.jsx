@@ -1,4 +1,4 @@
-// src/authentication/SignUp.jsx
+﻿// src/authentication/SignUp.jsx
 import React, {useState, useEffect, useContext} from 'react';
 import {
   View,
@@ -34,6 +34,7 @@ import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import NotificationService from '../services/NotificationService';
 import SMSVerification from '../components/SMSVerification';
 import { useOtpStatus } from '../hooks/useOtpStatus';
+import { API_BASE_URL } from '../config/environment';
 
 // Apple Authentication solo disponible en iOS
 let appleAuth = null;
@@ -184,7 +185,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       
 
       // Enviar el ID token CON los datos del usuario para el backend
-      const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/google', {
+      const {data} = await axios.post(`${API_BASE_URL}/api/auth/google`, {
         id_token: idToken,
         first_name: user.givenName,
         last_name: user.familyName,
@@ -209,7 +210,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
             address: data.user.address || '',
           };
           
-          await axios.post('https://awsoccr.pixelcrafters.digital/api/updateuserprofile', updatePayload);
+          await axios.post(`${API_BASE_URL}/api/updateuserprofile`, updatePayload);
         } catch (updateError) {
           // Error actualizando datos de Google
         }
@@ -315,7 +316,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         };
         
         
-        const {data} = await axios.post('https://awsoccr.pixelcrafters.digital/api/auth/apple', payload);
+        const {data} = await axios.post(`${API_BASE_URL}/api/auth/apple`, payload);
         
 
         // Login directo sin alerts molestos
@@ -439,7 +440,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
 
     try {
       const {status, data} = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/register',
+        `${API_BASE_URL}/api/register`,
         payload,
       );
       if (status === 201) {
@@ -764,8 +765,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
                                       key={year}
                                       style={[styles.pickerOption, isSelected && styles.pickerOptionSelected]}
                                       onPress={() => {
-                                        // Si values.birthDate existe, usar su mes. Si no, usar mes actual como referencia
-                                        const currentMonth = values.birthDate ? values.birthDate.getMonth() : new Date().getMonth();
+                                        // Si values.birthDate existe, usar su mes. Si no, usar índice 3 (Abril) - coherente con visual
+                                        const currentMonth = values.birthDate ? values.birthDate.getMonth() : 3;
                                         const newDate = new Date(year, currentMonth, 1);
                                         setFieldValue('birthDate', newDate);
                                       }}>

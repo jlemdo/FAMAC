@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect, useCallback, useRef} from 'react';
+﻿import React, {useContext, useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,7 @@ import * as Yup from 'yup';
 import {useAlert} from '../context/AlertContext';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
+import { API_BASE_URL } from '../config/environment';
 
 // ✅ FUNCIÓN: Traducir estados de órdenes a español
 const translateStatus = (status) => {
@@ -107,7 +108,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `https://awsoccr.pixelcrafters.digital/api/orderdetails/${orderId}`,
+        `/api/orderdetails/${orderId}`,
       );
       setOrder(res.data.order); // adjust according to your response shape
     } catch (err) {
@@ -164,7 +165,7 @@ const OrderDetails = () => {
       };
 
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/compsubmit',
+        `${API_BASE_URL}/api/compsubmit`,
         payload,
         {
           headers: {
@@ -258,7 +259,7 @@ const OrderDetails = () => {
         priority: 'alta',       // Los problemas tienen prioridad alta
       };
 
-      const response = await axios.post('https://food.siliconsoft.pk/api/compsubmit', payload);
+      const response = await axios.post(`${API_BASE_URL}/api/compsubmit`, payload);
 
       if (response.status === 200) {
         showAlert({
@@ -360,7 +361,7 @@ const OrderDetails = () => {
     setDeliveryLoading(true);
     try {
       // TODO: Implementar endpoint del backend para marcar como entregado
-      const response = await axios.post(`https://awsoccr.pixelcrafters.digital/api/orders/${order.id}/deliver`, {
+      const response = await axios.post(`${API_BASE_URL}/api/orders/${order.id}/deliver`, {
         driver_lat: driverLocation?.lat,
         driver_lng: driverLocation?.lng,
         delivery_time: new Date().toISOString()
@@ -440,7 +441,7 @@ const OrderDetails = () => {
     setCancelLoading(true);
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        `${API_BASE_URL}/api/orders/cancel`,
         {
           order_id: order?.id,
           cancellation_reason: cancelReason.trim(),
@@ -501,7 +502,7 @@ const OrderDetails = () => {
     setCancelLoading(true);
     try {
       const response = await axios.post(
-        'https://awsoccr.pixelcrafters.digital/api/orders/cancel',
+        `${API_BASE_URL}/api/orders/cancel`,
         {
           order_id: order?.id,
           cancellation_reason: cancelReason.trim(),

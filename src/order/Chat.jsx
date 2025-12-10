@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import NotificationService from '../services/NotificationService';
 import axios from 'axios';
 import fonts from '../theme/fonts';
+import { API_BASE_URL } from '../config/environment';
 
 export default function Chat({ orderId, order }) {
     const [newMessage, setNewMessage] = useState('');
@@ -34,7 +35,7 @@ export default function Chat({ orderId, order }) {
 
     const fetchMessages = useCallback(async (forceScroll = false) => {
         try {
-            const response = await axios.get(`https://awsoccr.pixelcrafters.digital/api/msgfetch/${orderId}`);
+            const response = await axios.get(`${API_BASE_URL}/api/msgfetch/${orderId}`);
             if (response.data) {
                 // ✅ FIX: SIN reverse() para que mensajes viejos estén arriba (como WhatsApp)
                 const formattedMessages = response.data.data.map(msg => ({
@@ -134,7 +135,7 @@ export default function Chat({ orderId, order }) {
                 sender: user.usertype,
                 message: newMessage,
             };
-            const response = await axios.post('https://awsoccr.pixelcrafters.digital/api/msgsubmit', payload);
+            const response = await axios.post(`${API_BASE_URL}/api/msgsubmit`, payload);
 
             if (response) {
                 setNewMessage('');

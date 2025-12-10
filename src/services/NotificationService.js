@@ -1,6 +1,7 @@
 import messaging from '@react-native-firebase/messaging';
 import {Alert, Platform, Linking} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../config/environment';
 
 class NotificationService {
   constructor() {
@@ -178,7 +179,7 @@ class NotificationService {
     if (!this.token) return;
 
     try {
-      await fetch('https://awsoccr.pixelcrafters.digital/api/remove-fcm-token', {
+      await fetch(`${API_BASE_URL}/api/remove-fcm-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -214,7 +215,7 @@ class NotificationService {
       // });
 
       // ✅ USAR ENDPOINT ESPECÍFICO (no corrompe datos del perfil)
-      const response = await fetch('https://awsoccr.pixelcrafters.digital/api/update-fcm-token', {
+      const response = await fetch(`${API_BASE_URL}/api/update-fcm-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
