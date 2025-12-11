@@ -33,9 +33,9 @@ import {
   cleanupNavigationCallback 
 } from '../utils/navigationCallbacks';
 import { AuthContext } from '../context/AuthContext';
-import { 
 import { API_BASE_URL } from '../config/environment';
-  ALCALDIAS_CDMX, 
+import {
+  ALCALDIAS_CDMX,
   MUNICIPIOS_EDOMEX
 } from '../utils/addressValidators';
 // Debugging removido para producciónn
