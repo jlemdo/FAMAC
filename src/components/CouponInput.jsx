@@ -78,7 +78,8 @@ const CouponInput = ({
           appliesTo: data.coupon.applies_to || 'total', // 'total' o 'shipping'
           description: data.coupon.description,
           minAmount: data.coupon.minimum_amount,
-          discountAmount: data.coupon.discount_amount
+          discountAmount: data.coupon.discount_amount,
+          benefits: data.coupon.benefits || null // Múltiples beneficios si existen
         };
 
         onCouponApply(couponData);
@@ -208,15 +209,26 @@ const CouponInput = ({
                 {isValid && `($${Math.min((appliedCoupon.type === 'percentage' ? (subtotal * appliedCoupon.discount) / 100 : appliedCoupon.discount), subtotal).toFixed(0)})`}
               </Text>
             </View>
-            <Text style={[
-              styles.appliedDescription,
-              !isValid && styles.appliedDescriptionInvalid
-            ]}>
-              {isValid 
-                ? appliedCoupon.description 
-                : `Mínimo requerido: $${appliedCoupon.minAmount} (falta $${(appliedCoupon.minAmount - subtotal).toFixed(0)})`
-              }
-            </Text>
+            {/* Mostrar beneficios múltiples o descripción simple */}
+            {isValid && appliedCoupon.benefits && appliedCoupon.benefits.length > 0 ? (
+              <View style={styles.benefitsList}>
+                {appliedCoupon.benefits.map((benefit, index) => (
+                  <Text key={index} style={styles.benefitItem}>
+                    • {benefit.description} {benefit.amount > 0 ? `($${benefit.amount.toFixed(0)})` : ''}
+                  </Text>
+                ))}
+              </View>
+            ) : (
+              <Text style={[
+                styles.appliedDescription,
+                !isValid && styles.appliedDescriptionInvalid
+              ]}>
+                {isValid
+                  ? appliedCoupon.description
+                  : `Mínimo requerido: $${appliedCoupon.minAmount} (falta $${(appliedCoupon.minAmount - subtotal).toFixed(0)})`
+                }
+              </Text>
+            )}
           </View>
           <TouchableOpacity
             style={styles.removeButton}
@@ -363,6 +375,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: scaleFontSize(fonts.size.small),
     color: '#666',
+  },
+  benefitsList: {
+    marginTop: scaleSpacing(4),
+  },
+  benefitItem: {
+    fontFamily: fonts.regular,
+    fontSize: scaleFontSize(fonts.size.small),
+    color: '#33A744',
+    marginBottom: scaleSpacing(2),
   },
   removeButton: {
     padding: scaleSpacing(8),
