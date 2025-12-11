@@ -248,7 +248,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         // Fallback slots si el API falla
         slotsToProcess = [
           { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
-          { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
+          { label: '4:00 PM - 12:00 AM', value: '4pm-12pm' }
         ];
       }
       
@@ -259,7 +259,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
       // Error fetching delivery slots - usar fallback sin filtros
       let fallbackSlots = [
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
-        { label: '4:00 PM - 12:00 PM', value: '4pm-12pm' }
+        { label: '4:00 PM - 12:00 AM', value: '4pm-12pm' }
       ];
 
       // ✅ FALLBACK: Mostrar TODOS los horarios sin filtrar
