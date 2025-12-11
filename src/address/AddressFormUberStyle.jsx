@@ -811,10 +811,10 @@ const AddressFormUberStyle = () => {
     // Si viene de Profile (NUEVO CASO)
     else if (route.params?.fromProfile && userId) {
       try {
-        
+
         // Primero obtener datos actuales del usuario para no sobrescribir nada
         const userDetailsResponse = await axios.get(
-          `/api/userdetails/${userId}`,
+          `${API_BASE_URL}/api/userdetails/${userId}`,
           { timeout: 10000 } // Timeout de 10 segundos
         );
         

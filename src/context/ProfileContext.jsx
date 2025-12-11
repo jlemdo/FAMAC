@@ -173,7 +173,7 @@ export const ProfileProvider = ({ children }) => {
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `/api/userdetails/${user.id}`
+        `${API_BASE_URL}/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       

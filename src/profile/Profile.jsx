@@ -313,12 +313,12 @@ export default function Profile({ navigation, route }) {
 
   const fetchUserDetails = useCallback(async () => {
     if (!user?.id) return;
-    
+
     setLoading(true);
     try {
       // Cargar datos del perfil
       const res = await axios.get(
-        `/api/userdetails/${user.id}`
+        `${API_BASE_URL}/api/userdetails/${user.id}`
       );
       const data = res.data?.data?.[0] || {};
       
@@ -1188,7 +1188,7 @@ export default function Profile({ navigation, route }) {
             let currentServerData = {};
             try {
               const currentRes = await axios.get(
-                `/api/userdetails/${user.id}`
+                `${API_BASE_URL}/api/userdetails/${user.id}`
               );
               currentServerData = currentRes.data?.data?.[0] || {};
             } catch (error) {

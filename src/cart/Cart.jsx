@@ -731,11 +731,11 @@ export default function Cart() {
   // Función para obtener el perfil completo del usuario (con dirección actualizada)
   const fetchUserProfile = async () => {
     if (!user?.id || user?.usertype === 'Guest') return;
-    
+
     setLoadingProfile(true);
     try {
       const res = await axios.get(
-        `/api/userdetails/${user.id}`
+        `${API_BASE_URL}/api/userdetails/${user.id}`
       );
       const profileData = res.data?.data?.[0] || {};
       setUserProfile(profileData);

@@ -30,7 +30,7 @@ export default function SpecificCategoryProduct() {
     const fetchProducts = async () => {
       try {
         const response = await axios.get(
-          `/api/products/${categoryName}`,
+          `${API_BASE_URL}/api/products/${categoryName}`,
         );
         setProducts(response.data.data || []);
       } catch (err) {
