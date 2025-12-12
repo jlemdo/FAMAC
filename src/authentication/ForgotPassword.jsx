@@ -40,8 +40,12 @@ export default function ForgotPassword({ onBackToLogin }) {
   const ForgotSchema = Yup.object().shape({
     email: Yup.string()
       .trim()
+      .lowercase()
       .email('Correo inválido')
-      .required('Correo es obligatorio'),
+      .required('Correo es obligatorio')
+      .test('no-spaces', 'El email no puede contener espacios', value => {
+        return !value || !/\s/.test(value);
+      }),
   });
 
   // 2️⃣ Handler de envío
@@ -50,7 +54,7 @@ export default function ForgotPassword({ onBackToLogin }) {
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/forgetpasswordlink`,
-        { email: values.email.trim() }
+        { email: values.email.trim().toLowerCase() }
       );
       
       if (response.status === 200) {
