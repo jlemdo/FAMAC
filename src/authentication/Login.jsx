@@ -86,16 +86,23 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   // 2️⃣ Definimos el esquema de validación
   const LoginSchema = Yup.object().shape({
     email: Yup.string()
+      .trim()
+      .lowercase()
       .email('Email inválido')
-      .required('El correo es obligatorio'),
-    password: Yup.string().required('La contraseña es obligatoria'),
+      .required('El correo es obligatorio')
+      .test('no-spaces', 'El email no puede contener espacios', value => {
+        return !value || !/\s/.test(value);
+      }),
+    password: Yup.string()
+      .min(6, 'La contraseña debe tener al menos 6 caracteres')
+      .required('La contraseña es obligatoria'),
   });
 
   // 3️⃣ Función que llama al endpoint
   const handleLogin = async (values, {setSubmitting}) => {
     try {
       const {data} = await axios.post(`${API_BASE_URL}/api/login`, {
-        email: values.email,
+        email: values.email.trim().toLowerCase(),
         password: values.password,
       });
       await login(data.user);
@@ -104,7 +111,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         type: 'error',
         title: 'Error',
         message: 'Credenciales inválidas',
-        // message: err.response?.data?.message || 'Credenciales inválidas',
         confirmText: 'Cerrar',
       });
     } finally {
@@ -128,64 +134,25 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
 
       if (credentialState === appleAuth.State.AUTHORIZED) {
         const {user: appleUserId, identityToken, fullName, email} = appleAuthRequestResponse;
-        
-        // ✅ LÓGICA CORREGIDA: Funciona igual que Google Sign-In
-        // - PRIMERA VEZ: Apple envía email (real o proxy según elección del usuario)
-        // - LOGINS POSTERIORES: Apple NO envía email, pero backend devuelve usuario existente con sus datos originales
-        // - SOLUCIÓN: Confiar en el backend, no generar emails falsos
-        
-        // console.log('🍎 Apple Login Debug:', {
-          // isFirstTime: !!email, // Si hay email directo, es primera vez
-          // emailFromApple: email, // null en logins posteriores
-          // appleUserId: appleUserId,
-          // hasIdentityToken: !!identityToken
-        // });
-        
-        // ✅ PRIORIDAD 1: Usar datos reales de Apple cuando estén disponibles
-        // Solo generar fallbacks cuando Apple NO proporcione datos
-        
-        // 📧 Email: Usar real si existe, sino marcar como ausente para backend
-        const finalEmail = email || null; // null = Apple no proporcionó email
-        
-        // 👤 Nombre: Separar first_name y last_name correctamente
+
+        const finalEmail = email || null;
         const firstName = fullName?.givenName || null;
         const lastName = fullName?.familyName || null;
 
         const payload = {
           identity_token: identityToken,
           user_id: appleUserId,
-          email: finalEmail, // Email real de Apple o null
-          first_name: firstName, // Nombre separado
-          last_name: lastName, // Apellido separado
-          has_real_email: !!email, // Flag para backend: true = email real/proxy, false = sin email
-          has_real_name: !!(firstName || lastName), // Flag para backend: true = nombre real, false = sin nombre
+          email: finalEmail,
+          first_name: firstName,
+          last_name: lastName,
+          has_real_email: !!email,
+          has_real_name: !!(firstName || lastName),
         };
 
-        // Debug: Verificar qué datos se están enviando al backend
-        // console.log('🍎 Apple Sign-in Payload:', {
-        // first_name: firstName,
-        // last_name: lastName,
-        // email: finalEmail,
-        // has_real_name: !!(firstName || lastName),
-        // user_id: appleUserId
-        // });
-        
         const {data} = await axios.post(`${API_BASE_URL}/api/auth/apple`, payload);
-
-        // Debug: Verificar qué datos devuelve el backend
-        // console.log('🍎 Apple Backend Response:', {
-        // user_first_name: data.user?.first_name,
-        // user_last_name: data.user?.last_name,
-        // user_email: data.user?.email,
-        // user_name: data.user?.name,
-        // full_user_object: data.user
-        // });
-
         await login(data.user);
 
-        // Verificar si el backend guardó los nombres correctamente
         if ((firstName || lastName) && (!data.user.first_name || !data.user.last_name)) {
-          // console.log('⚠️ Backend no guardó los nombres de Apple, intentando actualizar...');
           try {
             const updatePayload = {
               userid: data.user.id,
@@ -196,11 +163,9 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
               address: data.user.address || '',
             };
 
-            // console.log('🔧 Actualizando perfil con:', updatePayload);
             await axios.post(`${API_BASE_URL}/api/updateuserprofile`, updatePayload);
-            // console.log('✅ Perfil actualizado exitosamente');
           } catch (updateError) {
-            // console.log('❌ Error actualizando perfil:', updateError);
+            // Error silencioso - no bloquear flujo
           }
         }
 
@@ -256,36 +221,22 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
   // 5️⃣ Función para login con Google
   const handleGoogleLogin = async () => {
     if (googleLoading) return;
-    
+
     setGoogleLoading(true);
-    
+
     try {
-      // Cerrar sesión silenciosamente para mostrar selector de cuenta
       try {
         await GoogleSignin.signOut();
       } catch (error) {
-        // console.log('⚠️ signOut falló (normal si no hay sesión):', error.message);
+        // Error silencioso
       }
-      
+
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
-      
       const userInfo = await GoogleSignin.signIn();
-      // console.log('✅ GoogleSignin.signIn() exitoso');
-      // console.log('📊 userInfo recibido:', JSON.stringify(userInfo, null, 2));
-      
-      // Obtener el ID token
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
-      const { user } = userInfo.data; // Acceso correcto - es userInfo.data.user
-      // console.log('👤 Datos de usuario extraídos:', {
-        // email: user?.email,
-        // name: user?.name,
-        // givenName: user?.givenName,
-        // familyName: user?.familyName
-      // });
-      
+      const { user } = userInfo.data;
 
-      // Enviar el ID token CON los datos del usuario para el backend
       const {data} = await axios.post(`${API_BASE_URL}/api/auth/google`, {
         id_token: idToken,
         first_name: user.givenName,
@@ -295,13 +246,10 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         photo: user.photo
       });
 
-      // Login exitoso con datos del backend
       await login(data.user);
-      
-      // Si el usuario no tiene nombre/apellido, actualizarlos con datos de Google
+
       if (data.user && (!data.user.first_name || !data.user.last_name)) {
         try {
-          // ENVIAR TODOS LOS CAMPOS para evitar borrado por el backend
           const updatePayload = {
             userid: data.user.id,
             first_name: user.givenName || data.user.first_name || '',
@@ -310,16 +258,14 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
             phone: data.user.phone || '',
             address: data.user.address || '',
           };
-          
+
           await axios.post(`${API_BASE_URL}/api/updateuserprofile`, updatePayload);
         } catch (updateError) {
-          // Error actualizando datos de Google
+          // Error silencioso - no bloquear flujo
         }
       }
-      
-      // Mostrar alert después de un breve delay para evitar conflictos
+
       setTimeout(() => {
-        // Usar nombre de Google si el usuario no tiene nombre en la BD
         const userName = data.user.first_name || user.givenName || 'Usuario';
         showAlert({
           type: 'success',
@@ -330,13 +276,6 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       }, 500);
 
     } catch (error) {
-      // console.log('📊 Error completo:', JSON.stringify(error, null, 2));
-      // console.log('🔍 statusCodes disponibles:', {
-        // SIGN_IN_CANCELLED: statusCodes.SIGN_IN_CANCELLED,
-        // IN_PROGRESS: statusCodes.IN_PROGRESS,
-        // PLAY_SERVICES_NOT_AVAILABLE: statusCodes.PLAY_SERVICES_NOT_AVAILABLE
-      // });
-      
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         showAlert({
           type: 'warning',
@@ -517,13 +456,12 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
                   )}
                 </TouchableOpacity>
 
-                {/* Continuar como invitado - Requerido por Apple App Review */}
+                {/* Continuar como invitado */}
                 {showGuest && (
                   <TouchableOpacity
                     style={styles.secondaryBtn}
                     onPress={async () => {
                       await loginAsGuest();
-                      // 🆕 Alerta de bienvenida Guest removida por solicitud del usuario
                     }}
                     disabled={isSubmitting}
                     activeOpacity={0.7}
@@ -729,7 +667,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginRight: 12,
-    // tintColor: '#FFF',
   },
   appleButtonText: {
     color: '#FFF',
