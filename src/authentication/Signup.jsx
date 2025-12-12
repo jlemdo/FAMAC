@@ -151,8 +151,13 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         }
       ),
     email: Yup.string()
+      .trim()
+      .lowercase()
       .email('Email inválido')
-      .required('Email es obligatorio'),
+      .required('Email es obligatorio')
+      .test('no-spaces', 'El email no puede contener espacios', value => {
+        return !value || !/\s/.test(value);
+      }),
     password: Yup.string()
       .required('Contraseña es obligatoria')
       .min(6, 'La contraseña debe tener al menos 6 caracteres')
@@ -276,17 +281,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
     setAppleLoading(true);
     
     try {
-      
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
-      
-      // console.log('🍎 Respuesta Apple recibida:', {
-        // user: appleAuthRequestResponse.user,
-        // hasToken: !!appleAuthRequestResponse.identityToken,
-        // hasEmail: !!appleAuthRequestResponse.email
-      // });
 
       const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
       
@@ -339,11 +337,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
               return;
             }
             
-            // console.log('✅ FASE 1 Signup: Permisos + Token FCM exitosos (sin backend, sin listeners)');
-            
-            // 🚫 INTENCIONALMENTE NO llamamos:
-            // - sendTokenToBackend() (lo probaremos en FASE 2)
-            // - setupNotificationListeners() (lo probaremos en FASE 3)
             
           } catch (error) {
           }
@@ -419,18 +412,22 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
 
     let dob = null;
     if (values.birthDate) {
-      const opts = {month: 'long', year: 'numeric'};
-      dob = values.birthDate.toLocaleDateString('es-ES', opts);
+      // Usar UTC para evitar problemas de zona horaria
+      const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const month = months[values.birthDate.getMonth()];
+      const year = values.birthDate.getFullYear();
+      dob = `${month} ${year}`;
     }
 
     const payload = {
-      first_name: values.first_name,
-      last_name: values.last_name,
-      contact_number: getPlainPhone(values.phone), // Enviar solo números al backend
-      email: values.email,
+      first_name: values.first_name.trim(),
+      last_name: values.last_name.trim(),
+      contact_number: getPlainPhone(values.phone),
+      email: values.email.trim().toLowerCase(),
       password: values.password,
       password_confirmation: values.confirmPassword,
-      skip_otp: true, // 🆕 Saltar verificación OTP por ahora (ya verificado con SMS)
+      skip_otp: true,
     };
 
     // Solo agregar dob si existe
@@ -465,13 +462,6 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         }
       }
     } catch (error) {
-      // console.log('🚨 ERROR DE REGISTRO:', {
-        // status: error.response?.status,
-        // message: error.response?.data?.message,
-        // errors: error.response?.data?.errors,
-        // fullError: error.response?.data
-      // });
-
       // Manejar errores de validación específicos
       let errorMessage = 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.';
       
@@ -1196,7 +1186,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginRight: 12,
-    // tintColor: '#FFF',
   },
   appleButtonText: {
     color: '#FFF',
