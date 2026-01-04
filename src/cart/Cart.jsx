@@ -97,12 +97,6 @@ export default function Cart() {
   
   // 🔍 DEBUG: Monitorear cambios en deliveryInfo
   useEffect(() => {
-    // console.log('🚨 DELIVERY INFO CAMBIÓ:', {
-      // valor: deliveryInfo,
-      // esNull: deliveryInfo === null,
-      // stackTrace: new Error().stack
-    // });
-    
     // Guardar deliveryInfo en AsyncStorage cuando cambie (solo para usuarios registrados)
     if (deliveryInfo && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
       saveDeliveryInfo(deliveryInfo, user.id);
@@ -115,21 +109,15 @@ export default function Cart() {
       // Solo para Guests con email y sin coordenadas ya cargadas
       if (user?.usertype === 'Guest' && user?.email && (!latlong?.driver_lat || !latlong?.driver_long)) {
         try {
-          // console.log('🔄 Cargando datos Guest desde BD para:', user.email);
           const guestData = await loadGuestDataFromDB(user.email);
-          
+
           if (guestData) {
             setEmail(guestData.email);
             setAddress(guestData.address);
             if (guestData.coordinates) {
               setLatlong(guestData.coordinates);
             }
-            // console.log('✅ Datos Guest cargados desde BD:', {
-              // email: guestData.email,
-              // hasAddress: !!guestData.address,
-              // hasCoordinates: !!guestData.coordinates
-            // });
-            
+
             // Calcular envío si tenemos datos completos
             const currentSubtotal = getSubtotal() - getDiscountAmount();
             if (currentSubtotal > 0 && guestData.address?.trim()) {
@@ -139,35 +127,23 @@ export default function Cart() {
             }
           }
         } catch (error) {
-          // console.error('❌ Error cargando datos Guest desde BD:', error);
         }
       }
     };
 
     loadGuestDataFromDatabase();
   }, [user?.usertype, user?.email, latlong?.driver_lat, latlong?.driver_long]);
-  
+
   // 🔍 DEBUG: Monitorear cambios en coordenadas
   useEffect(() => {
-    // console.log('📍 COORDENADAS CAMBIARON:', {
-      // latlong: latlong,
-      // hasCoords: !!(latlong?.driver_lat && latlong?.driver_long)
-    // });
-    
     // Guardar coordenadas en AsyncStorage cuando cambien (solo para usuarios registrados)
     if (latlong?.driver_lat && latlong?.driver_long && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
       saveCoordinates(latlong, user.id);
     }
   }, [latlong, user?.id, cart.length]);
-  
+
   // 🛒 MONITOR: Resetear datos cuando carrito esté vacío
   useEffect(() => {
-    // console.log('🛒 CARRITO CAMBIÓ:', {
-      // cartLength: cart.length,
-      // totalPrice: totalPrice,
-      // isEmpty: cart.length === 0
-    // });
-    
     // Si el carrito está vacío, resetear todos los datos
     if (cart.length === 0) {
       
@@ -210,12 +186,6 @@ export default function Cart() {
   // 🛒 NUEVO: Verificar expiración del carrito (24h)
   useEffect(() => {
     const checkCartExpiration = async () => {
-      // console.log('🔍 VERIFICANDO EXPIRACIÓN CARRITO:', {
-      // userId: user?.id,
-      // email: user?.email,
-      // type: user?.usertype,
-      // cartLength: cart.length
-      // });
       try {
         // Solo verificar cuando el usuario esté definido
         if (user === undefined) return;
@@ -237,32 +207,13 @@ export default function Cart() {
           last_modified: lastModified,
           user_type: user?.id ? 'user' : user?.email ? 'guest' : 'anonymous'
         };
-        
-        // console.log('🛒 Verificando expiración carrito:', {
-          // ...payload,
-          // cartKey,
-          // hasItems: cart.length > 0,
-          // savedCartExists: !!savedCart,
-          // timestampFound: !!lastModified,
-          // hoursAgoLocal: lastModified ? Math.round((Date.now() - lastModified) / (1000 * 60 * 60) * 100) / 100 : 'N/A'
-        // });
-        
+
         const response = await axios.post(`${API_BASE_URL}/api/cart-cleanup`, payload);
-        
+
         if (response.data.expired) {
-          // console.log('🗑️ Carrito expirado, limpiando...', {
-          // hours_since_activity: response.data.hours_since_activity,
-          // last_modified: response.data.last_modified,
-          // userInfo: { id: user?.id, email: user?.email, type: user?.usertype }
-          // });
-          
           // 🚨 TEMPORAL: Deshabilitar limpieza automática para debug
           // clearCart();
-          // console.log('🚨 CARRITO EXPIRATION DISABLED - NO SE LIMPIA AUTOMÁTICAMENTE');
         } else {
-          // console.log('✅ Carrito válido, no expirado', {
-            // hours_since_activity: response.data.hours_since_activity
-          // });
         }
         
       } catch (error) {
@@ -279,15 +230,7 @@ export default function Cart() {
   // 📦 NUEVO: Recalcular envío cuando cambie el subtotal
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();
-    
-    // console.log('🔄 useEffect shipping trigger:', {
-      // currentSubtotal,
-      // totalPrice,
-      // appliedCoupon: appliedCoupon?.code,
-      // userType: user?.usertype,
-      // currentShippingCost: shippingCost
-    // });
-    
+
     if (currentSubtotal > 0) {
       // 🚨 PREVENIR MÚLTIPLES LLAMADAS: Solo llamar si el subtotal cambió significativamente
       const timeoutId = setTimeout(() => {
@@ -304,28 +247,9 @@ export default function Cart() {
 
   // 📦 NUEVO: Recalcular envío específicamente para Guest cuando complete datos
   useEffect(() => {
-    // console.log('🔍 GUEST SHIPPING EFFECT disparado:', {
-      // userType: user?.usertype,
-      // hasEmail: !!email?.trim(),
-      // hasAddress: !!address?.trim(),
-      // cartItems: cart.length,
-      // currentShippingCost: shippingCost,
-      // shippingCalculated: shippingCalculated,
-      // loadingShipping: loadingShipping,
-      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long)
-    // });
-    
     if (user?.usertype === 'Guest' && email?.trim() && address?.trim()) {
       const currentSubtotal = getSubtotal() - getDiscountAmount();
       if (currentSubtotal > 0) {
-        // console.log('🚚 GUEST: Recalculando envío por cambios:', {
-          // email: email?.trim(),
-          // address: address?.trim(),
-          // cartItems: cart.length,
-          // subtotal: currentSubtotal,
-          // appliedCoupon: appliedCoupon?.code,
-          // currentShippingCost: shippingCost
-        // });
         calculateShippingAndMotivation(currentSubtotal);
       }
     }
@@ -492,12 +416,6 @@ export default function Cart() {
 
   // 📦 NUEVO: Calcular envío y mensaje motivacional
   const calculateShippingAndMotivation = async (subtotal) => {
-    // console.log('🚚 calculateShippingAndMotivation INICIADO:', {
-      // subtotal,
-      // userType: user?.usertype,
-      // currentShippingCost: shippingCost
-    // });
-    
     if (!subtotal || subtotal <= 0) {
       setShippingCost(0);
       setShippingMotivation(null);
@@ -515,17 +433,12 @@ export default function Cart() {
         }
       });
       
-      
+
+
       if (response.data.status === 'success') {
         const data = response.data.data;
         const newShippingCost = Number(data.shipping_cost) || 0;
-        
-        // console.log('✅ Actualizando shipping cost:', {
-          // oldCost: shippingCost,
-          // newCost: newShippingCost,
-          // data
-        // });
-        
+
         setShippingMotivation(data);
         setShippingCost(newShippingCost);
         setShippingCalculated(true); // ⚡ Marcar como calculado
@@ -633,7 +546,6 @@ export default function Cart() {
       await newAddressService.saveGuestAddress(addressPayload);
       return true;
     } catch (error) {
-      // console.error('❌ Error guardando datos Guest en BD:', error);
       return false;
     }
   };
@@ -657,15 +569,12 @@ export default function Cart() {
       }
       return null;
     } catch (error) {
-      // console.error('❌ Error cargando datos Guest desde BD:', error);
       return null;
     }
   };
 
   // 🆕 FUNCIÓN: Geocoding inteligente para usuarios registrados
   const handleUserAddressGeocoding = async (addressString) => {
-    // console.log('🧠 Usuario registrado: Aplicando geocoding inteligente a dirección:', addressString?.substring(0, 50) + '...');
-    
     const coordinates = await geocodeAddress(addressString, {
       strictValidation: false, // Menos restrictivo para direcciones guardadas
       requireHighPrecision: false, // Permitir precisión media
@@ -762,13 +671,6 @@ export default function Cart() {
       
       if (defaultAddress) {
         // 🔧 SIEMPRE actualizar con la dirección principal del backend
-        // console.log('✅ ESTABLECIENDO DIRECCIÓN PRINCIPAL:', {
-          // address: defaultAddress.address?.substring(0, 50),
-          // latitude: defaultAddress.latitude,
-          // longitude: defaultAddress.longitude,
-          // is_primary: defaultAddress.is_primary,
-          // selectedAddressBefore: selectedAddress?.id
-        // });
         setSelectedAddress(defaultAddress);
         setAddress(defaultAddress.address);
         // Las coordenadas ya vienen del backend
