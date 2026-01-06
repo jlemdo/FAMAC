@@ -1,5 +1,5 @@
 ﻿// src/authentication/SignUp.jsx
-import React, {useState, useEffect, useContext} from 'react';
+import React, {useState, useEffect, useContext, useRef} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Modal,
+  AppState,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -26,6 +27,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useNavigation} from '@react-navigation/native';
 import {AuthContext} from '../context/AuthContext';
 import {useAlert} from '../context/AlertContext';
@@ -70,6 +72,10 @@ const getPlainPhone = (phone) => {
   return phone ? phone.replace(/\D/g, '') : '';
 };
 
+// Clave para AsyncStorage
+const SIGNUP_FORM_STORAGE_KEY = '@signup_form_data';
+const SIGNUP_PENDING_STORAGE_KEY = '@signup_pending_data';
+
 export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }) {
   const navigation = useNavigation();
   const {user, login} = useContext(AuthContext);
@@ -81,6 +87,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [pendingFormData, setPendingFormData] = useState(null);
+  const [initialFormValues, setInitialFormValues] = useState(null);
+  const formikRef = useRef(null);
+  const appState = useRef(AppState.currentState);
 
   // 🔐 Hook para verificar si OTP/WhatsApp está habilitado
   const { otpEnabled } = useOtpStatus();
@@ -100,6 +109,91 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
   
   // Estado para mostrar advertencia cuando se modifica el email
   const [emailModified, setEmailModified] = useState(false);
+
+  // 🔄 NUEVO: Restaurar datos del formulario al montar componente
+  useEffect(() => {
+    const loadSavedFormData = async () => {
+      try {
+        const savedFormData = await AsyncStorage.getItem(SIGNUP_FORM_STORAGE_KEY);
+        const savedPendingData = await AsyncStorage.getItem(SIGNUP_PENDING_STORAGE_KEY);
+        
+        if (savedFormData) {
+          const parsedData = JSON.parse(savedFormData);
+          
+          // Restaurar birthDate como objeto Date
+          if (parsedData.birthDate) {
+            parsedData.birthDate = new Date(parsedData.birthDate);
+          }
+          
+          setInitialFormValues(parsedData);
+          
+          // Si hay datos pendientes de verificación, restaurar el modal
+          if (savedPendingData) {
+            const pendingData = JSON.parse(savedPendingData);
+            setPendingFormData({
+              values: parsedData,
+              setSubmitting: () => {}, // No-op para evitar errores
+              registeredUser: pendingData.registeredUser
+            });
+            setShowWhatsAppModal(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando datos del formulario:', error);
+      }
+    };
+    
+    loadSavedFormData();
+  }, []);
+
+  // 🔄 NUEVO: Monitorear estado de la app para persistir datos
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (
+        appState.current.match(/active/) &&
+        nextAppState.match(/inactive|background/)
+      ) {
+        // App va a background - guardar datos del formulario
+        if (formikRef.current && showWhatsAppModal) {
+          const values = formikRef.current.values;
+          
+          // Solo guardar si hay datos significativos
+          if (values.first_name || values.last_name || values.phone || values.email) {
+            const dataToSave = {
+              ...values,
+              birthDate: values.birthDate ? values.birthDate.toISOString() : null,
+            };
+            
+            AsyncStorage.setItem(SIGNUP_FORM_STORAGE_KEY, JSON.stringify(dataToSave))
+              .catch(err => console.error('Error guardando formulario:', err));
+            
+            // Si hay datos pendientes, también guardarlos
+            if (pendingFormData) {
+              AsyncStorage.setItem(SIGNUP_PENDING_STORAGE_KEY, JSON.stringify({
+                registeredUser: pendingFormData.registeredUser
+              }))
+                .catch(err => console.error('Error guardando datos pendientes:', err));
+            }
+          }
+        }
+      }
+      
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [showWhatsAppModal, pendingFormData]);
+
+  // 🔄 NUEVO: Limpiar AsyncStorage cuando el registro se complete exitosamente
+  const clearSavedFormData = async () => {
+    try {
+      await AsyncStorage.multiRemove([SIGNUP_FORM_STORAGE_KEY, SIGNUP_PENDING_STORAGE_KEY]);
+    } catch (error) {
+      console.error('Error limpiando datos guardados:', error);
+    }
+  };
 
   // 1️⃣ Configurar Google Sign-In
   useEffect(() => {
@@ -448,6 +542,9 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         // 🔒 PASO 3: Si OTP NO está habilitado O ya verificado, hacer login directo
         await login(data.user);
         
+        // 🔄 LIMPIAR datos guardados en AsyncStorage
+        await clearSavedFormData();
+        
         setTimeout(() => {
           const userName = values.first_name || data.user?.first_name || 'Usuario';
           showAlert({
@@ -530,12 +627,15 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
     if (!pendingFormData) return;
 
     const { values, setSubmitting, registeredUser } = pendingFormData;
-    setSubmitting(true);
+    if (setSubmitting) setSubmitting(true);
 
     // El usuario YA FUE REGISTRADO en onSubmit
     // Solo necesitamos hacer login y mostrar bienvenida
     try {
       await login(registeredUser);
+      
+      // 🔄 LIMPIAR datos guardados en AsyncStorage
+      await clearSavedFormData();
       
       // Cerrar modal y limpiar datos pendientes
       setShowWhatsAppModal(false);
@@ -568,7 +668,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         onError(error);
       }
     } finally {
-      setSubmitting(false);
+      if (setSubmitting) setSubmitting(false);
     }
   };
 
@@ -583,7 +683,8 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       <Image source={require('../assets/logo.png')} style={styles.logo} />
 
       <Formik
-        initialValues={{
+        innerRef={formikRef}
+        initialValues={initialFormValues || {
           first_name: '',
           last_name: '',
           phone: '',
@@ -594,7 +695,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         }}
         validationSchema={SignupSchema}
         onSubmit={onSubmit}
-        enableReinitialize={false}
+        enableReinitialize={true}
         validateOnChange={true}
         validateOnBlur={true}>
         {({
@@ -1086,11 +1187,18 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
           setPhoneVerified(true);
           completeRegistration();
         }}
-        onCancel={() => {
+        onCancel={async () => {
           setShowWhatsAppModal(false);
+          
+          // 🔄 Limpiar datos guardados si el usuario cancela
+          await clearSavedFormData();
+          
           if (pendingFormData?.setSubmitting) {
             pendingFormData.setSubmitting(false);
           }
+          
+          // Limpiar pending data
+          setPendingFormData(null);
         }}
         onError={(error) => {
           showAlert({
