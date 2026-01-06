@@ -32,7 +32,7 @@ import {useAlert} from '../context/AlertContext';
 import fonts from '../theme/fonts';
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import NotificationService from '../services/NotificationService';
-import SMSVerification from '../components/SMSVerification';
+import WhatsAppVerificationModal from '../components/WhatsAppVerificationModal';
 import { useOtpStatus } from '../hooks/useOtpStatus';
 import { API_BASE_URL } from '../config/environment';
 
@@ -79,8 +79,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
 
-  // 🔐 Hook para verificar si OTP/SMS está habilitado
+  // 🔐 Hook para verificar si OTP/WhatsApp está habilitado
   const { otpEnabled } = useOtpStatus();
 
   // 🔧 Hook para manejo profesional del teclado
@@ -396,23 +398,13 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
     }
   };
 
-  // 5️⃣ Envío de formulario
+  // 5️⃣ Envío de formulario - VALIDAR PRIMERO, LUEGO WHATSAPP
   const onSubmit = async (values, {setSubmitting}) => {
-    // 🔒 VALIDACIÓN SMS: Solo requerir verificación si OTP está habilitado
-    if (otpEnabled && values.phone && values.phone.length >= 10 && !phoneVerified) {
-      setSubmitting(false);
-      showAlert({
-        type: 'error',
-        title: 'Verificación requerida',
-        message: '❌ Debes verificar tu número de teléfono con el código SMS antes de continuar con el registro.',
-        confirmText: 'Entendido',
-      });
-      return;
-    }
-
+    setSubmitting(true);
+    
+    // Preparar payload de registro
     let dob = null;
     if (values.birthDate) {
-      // Usar UTC para evitar problemas de zona horaria
       const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
       const month = months[values.birthDate.getMonth()];
@@ -427,25 +419,36 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       email: values.email.trim().toLowerCase(),
       password: values.password,
       password_confirmation: values.confirmPassword,
-      skip_otp: true,
+      skip_otp: true, // Siempre skip_otp, el modal de WhatsApp es aparte
     };
 
-    // Solo agregar dob si existe
     if (dob) {
       payload.dob = dob;
     }
 
+    // 🔐 PASO 1: SIEMPRE validar primero si el usuario existe
+    // Intentar registrar - el backend nos dirá si el usuario ya existe
     try {
       const {status, data} = await axios.post(
         `${API_BASE_URL}/api/register`,
         payload,
       );
+      
+      // ✅ ÉXITO: Usuario registrado correctamente
       if (status === 201) {
+        // 🔐 PASO 2: Si OTP está habilitado Y teléfono no verificado, abrir modal WhatsApp
+        if (otpEnabled && values.phone && values.phone.length >= 10 && !phoneVerified) {
+          // Guardar datos para completar después de verificación
+          setPendingFormData({ values, setSubmitting, registeredUser: data.user });
+          setShowWhatsAppModal(true);
+          setSubmitting(false);
+          return;
+        }
+        
+        // 🔒 PASO 3: Si OTP NO está habilitado O ya verificado, hacer login directo
         await login(data.user);
         
-        // Mostrar alert después de un breve delay para evitar conflictos
         setTimeout(() => {
-          // Usar el nombre del usuario recién registrado
           const userName = values.first_name || data.user?.first_name || 'Usuario';
           showAlert({
             type: 'success',
@@ -455,22 +458,53 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
           });
         }, 500);
         
-        // Después del registro exitoso, no es necesario navegar
-        // El AuthContext automáticamente cambiará el flujo a la app principal
         if (onSuccess) {
           onSuccess();
         }
       }
     } catch (error) {
-      // Manejar errores de validación específicos
+      // ❌ ERROR: Analizar si es usuario duplicado u otro error
       let errorMessage = 'Hubo un problema al crear tu cuenta. Revisa tus datos e inténtalo de nuevo.';
+      let isUserExists = false;
       
       if (error.response?.status === 422) {
-        // Errores de validación
         const validationErrors = error.response?.data?.errors;
+        
         if (validationErrors) {
-          const firstError = Object.values(validationErrors)[0];
-          errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+          // Detectar error de email duplicado
+          if (validationErrors.email) {
+            const emailError = Array.isArray(validationErrors.email) 
+              ? validationErrors.email[0] 
+              : validationErrors.email;
+            
+            if (emailError.toLowerCase().includes('already') || 
+                emailError.toLowerCase().includes('taken') ||
+                emailError.toLowerCase().includes('exists') ||
+                emailError.toLowerCase().includes('registrado')) {
+              errorMessage = '📧 Este correo electrónico ya está registrado. ¿Quieres iniciar sesión?';
+              isUserExists = true;
+            }
+          }
+          
+          // Detectar error de teléfono duplicado
+          if (validationErrors.contact_number || validationErrors.phone) {
+            const phoneError = validationErrors.contact_number || validationErrors.phone;
+            const phoneErrorText = Array.isArray(phoneError) ? phoneError[0] : phoneError;
+            
+            if (phoneErrorText.toLowerCase().includes('already') || 
+                phoneErrorText.toLowerCase().includes('taken') ||
+                phoneErrorText.toLowerCase().includes('exists') ||
+                phoneErrorText.toLowerCase().includes('registrado')) {
+              errorMessage = '📱 Este número de teléfono ya está registrado. ¿Quieres iniciar sesión?';
+              isUserExists = true;
+            }
+          }
+          
+          // Si no es usuario duplicado, mostrar primer error de validación
+          if (!isUserExists) {
+            const firstError = Object.values(validationErrors)[0];
+            errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+          }
         }
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -478,17 +512,61 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       
       showAlert({
         type: 'error',
-        title: 'Error en el registro',
+        title: isUserExists ? 'Usuario existente' : 'Error en el registro',
         message: errorMessage,
-        confirmText: 'Cerrar',
+        confirmText: isUserExists ? 'OK' : 'Cerrar',
       });
       
-      // 🆕 NUEVO: Notificar al componente padre sobre el error
       if (onError) {
         onError(error);
       }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // 6️⃣ Completar registro después de verificación de WhatsApp
+  const completeRegistration = async () => {
+    if (!pendingFormData) return;
+
+    const { values, setSubmitting, registeredUser } = pendingFormData;
+    setSubmitting(true);
+
+    // El usuario YA FUE REGISTRADO en onSubmit
+    // Solo necesitamos hacer login y mostrar bienvenida
+    try {
+      await login(registeredUser);
       
-      // IMPORTANTE: No resetear el formulario, mantener los datos del usuario
+      // Cerrar modal y limpiar datos pendientes
+      setShowWhatsAppModal(false);
+      setPendingFormData(null);
+      setPhoneVerified(true); // Marcar teléfono como verificado
+      
+      // Mostrar alert después de un breve delay para evitar conflictos
+      setTimeout(() => {
+        const userName = values.first_name || registeredUser?.first_name || 'Usuario';
+        showAlert({
+          type: 'success',
+          title: '¡Bienvenido!',
+          message: `¡Hola ${userName}! Tu teléfono ha sido verificado.`,
+          confirmText: 'OK',
+        });
+      }, 500);
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Hubo un problema al iniciar sesión. Intenta nuevamente.',
+        confirmText: 'Cerrar',
+      });
+      
+      if (onError) {
+        onError(error);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -609,30 +687,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
               )}
             </View>
 
-            {/* Verificación SMS */}
-            {values.phone && values.phone.length >= 10 && !errors.phone && !phoneVerified && (
-              <SMSVerification
-                phone={values.phone}
-                type="signup"
-                onVerified={() => {
-                  setPhoneVerified(true);
-                  showAlert({
-                    type: 'success',
-                    title: 'Verificado',
-                    message: '¡Teléfono verificado correctamente!',
-                    confirmText: 'Continuar',
-                  });
-                }}
-                onError={(error) => {
-                  showAlert({
-                    type: 'error',
-                    title: 'Error',
-                    message: error,
-                    confirmText: 'OK',
-                  });
-                }}
-              />
-            )}
+            {/* Verificación por WhatsApp - Ahora se hace después del botón Registrarse */}
 
             {/* Fecha de nacimiento */}
             <View style={styles.inputGroup}>
@@ -1021,6 +1076,31 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
           </>
         )}
       </Formik>
+
+      {/* Modal de Verificación por WhatsApp */}
+      <WhatsAppVerificationModal
+        visible={showWhatsAppModal}
+        phone={pendingFormData?.values?.phone || ''}
+        type="signup"
+        onVerified={() => {
+          setPhoneVerified(true);
+          completeRegistration();
+        }}
+        onCancel={() => {
+          setShowWhatsAppModal(false);
+          if (pendingFormData?.setSubmitting) {
+            pendingFormData.setSubmitting(false);
+          }
+        }}
+        onError={(error) => {
+          showAlert({
+            type: 'error',
+            title: 'Error de verificación',
+            message: error,
+            confirmText: 'OK',
+          });
+        }}
+      />
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -1437,7 +1517,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
-  // ✅ Estilos para verificación SMS
+  // ✅ Estilos para verificación por WhatsApp
   inputVerified: {
     borderColor: '#33A744',
     borderWidth: 2,
