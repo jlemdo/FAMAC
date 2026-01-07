@@ -42,10 +42,12 @@ export default function WhatsAppVerificationModal({
   const [codeSent, setCodeSent] = useState(false);
 
   const otpInputRef = useRef(null);
+  const hasAttemptedSend = useRef(false); // 🔒 Prevenir envío duplicado
 
-  // Auto-enviar código cuando se abre el modal
+  // Auto-enviar código cuando se abre el modal (solo una vez por sesión)
   useEffect(() => {
-    if (visible && !codeSent) {
+    if (visible && !codeSent && !hasAttemptedSend.current) {
+      hasAttemptedSend.current = true;
       sendCode();
     }
   }, [visible]);
@@ -61,9 +63,15 @@ export default function WhatsAppVerificationModal({
   // Reset estado cuando se cierra el modal
   useEffect(() => {
     if (!visible) {
-      setOtp('');
-      setCodeSent(false);
-      setCountdown(0);
+      // Solo resetear después de un delay para evitar re-envíos
+      const timer = setTimeout(() => {
+        setOtp('');
+        setCodeSent(false);
+        setCountdown(0);
+        hasAttemptedSend.current = false; // Reset del flag
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [visible]);
 
@@ -92,6 +100,7 @@ export default function WhatsAppVerificationModal({
   const sendCode = async () => {
     if (!phone || phone.trim().length === 0) {
       if (onError) onError('Por favor ingresa tu número de teléfono');
+      hasAttemptedSend.current = false; // Reset si falla validación
       return;
     }
 
@@ -118,10 +127,12 @@ export default function WhatsAppVerificationModal({
           console.log('🔐 DEBUG OTP:', data.debug_otp);
         }
       } else {
+        hasAttemptedSend.current = false; // Reset si falla el envío
         if (onError) onError(data.message || 'Error al enviar código');
       }
     } catch (error) {
       console.error('Error enviando WhatsApp:', error);
+      hasAttemptedSend.current = false; // Reset si hay error
       const errorMsg = error.response?.data?.message || 'Error al enviar código de verificación por WhatsApp';
       if (onError) onError(errorMsg);
     } finally {
@@ -214,6 +225,8 @@ export default function WhatsAppVerificationModal({
                       onChangeText={setOtp}
                       autoFocus
                       selectTextOnFocus
+                      textContentType="oneTimeCode"
+                      autoComplete="sms-otp"
                     />
                   </View>
 
@@ -240,7 +253,10 @@ export default function WhatsAppVerificationModal({
                       </Text>
                     ) : (
                       <TouchableOpacity
-                        onPress={sendCode}
+                        onPress={() => {
+                          hasAttemptedSend.current = false; // Reset para permitir reenvío
+                          sendCode();
+                        }}
                         disabled={loading}
                         style={styles.resendButton}>
                         <Ionicons name="refresh" size={16} color="#25D366" />
