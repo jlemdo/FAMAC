@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import Login from '../authentication/Login';
 import SignUp from '../authentication/Signup';
@@ -16,16 +17,59 @@ import ForgotPassword from '../authentication/ForgotPassword';
 import {AuthContext} from '../context/AuthContext';
 import fonts from '../theme/fonts';
 
+// Clave para AsyncStorage - mismo que usa Signup.jsx
+const SIGNUP_FORM_STORAGE_KEY = '@signup_form_data';
+const REGISTER_PROMPT_MODE_KEY = '@register_prompt_mode';
+
 function RegisterPrompt() {
   const {user} = useContext(AuthContext);
   const navigation = useNavigation();
   const [mode, setMode] = useState('prompt');
   const [previousUserType, setPreviousUserType] = useState(user?.usertype);
-  const [hasError, setHasError] = useState(false); // 🆕 Para manejar errores
+  const [hasError, setHasError] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true); // Para mostrar loading mientras restaura
+
+  // 🔄 NUEVO: Restaurar modo si el usuario estaba en medio de registro
+  useEffect(() => {
+    const restoreMode = async () => {
+      try {
+        // Verificar si hay datos de formulario guardados
+        const savedFormData = await AsyncStorage.getItem(SIGNUP_FORM_STORAGE_KEY);
+        const savedMode = await AsyncStorage.getItem(REGISTER_PROMPT_MODE_KEY);
+        
+        if (savedFormData || savedMode === 'signup') {
+          // Usuario estaba en medio del registro, restaurar
+          setMode('signup');
+        }
+      } catch (error) {
+        console.error('Error restaurando modo:', error);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+    
+    restoreMode();
+  }, []);
+
+  // 🔄 NUEVO: Guardar modo cuando cambia a signup
+  useEffect(() => {
+    if (mode === 'signup') {
+      AsyncStorage.setItem(REGISTER_PROMPT_MODE_KEY, 'signup')
+        .catch(err => console.error('Error guardando modo:', err));
+    } else if (mode === 'prompt') {
+      // Limpiar cuando vuelve al prompt
+      AsyncStorage.multiRemove([REGISTER_PROMPT_MODE_KEY, SIGNUP_FORM_STORAGE_KEY])
+        .catch(err => console.error('Error limpiando modo:', err));
+    }
+  }, [mode]);
 
   // Detectar cambio de Guest a usuario registrado
   useEffect(() => {
     if (previousUserType === 'Guest' && user?.usertype !== 'Guest' && user?.usertype) {
+      // 🔄 Limpiar datos guardados al completar registro
+      AsyncStorage.multiRemove([REGISTER_PROMPT_MODE_KEY, SIGNUP_FORM_STORAGE_KEY])
+        .catch(err => console.error('Error limpiando datos:', err));
+      
       // Usuario acaba de autenticarse - navegar a Home
       setTimeout(() => {
         navigation.reset({
@@ -57,6 +101,14 @@ function RegisterPrompt() {
     return null;
   }
 
+  // Mostrar loading mientras restaura el estado
+  if (isRestoring) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#D27F27" />
+      </View>
+    );
+  }
 
   // 1️⃣ Pantalla de Invitado
   if (mode === 'prompt') {
