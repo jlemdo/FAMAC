@@ -988,10 +988,10 @@ export default function Profile({ navigation, route }) {
     return null;
   }
 
-  // Check if user is Guest - return RegisterPrompt with unique key
+  // Check if user is Guest - return RegisterPrompt with stable key
   if (user?.usertype === 'Guest') {
     return (
-      <Fragment key={`guest-wrapper-${Date.now()}`}>
+      <Fragment key="guest-wrapper">
         <RegisterPrompt />
       </Fragment>
     );
