@@ -648,10 +648,32 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         showAlert({
           type: 'success',
           title: '¡Bienvenido!',
-          message: `¡Hola ${userName}! Tu teléfono ha sido verificado.`,
+          message: `¡Hola ${userName}! Registro exitoso`,
           confirmText: 'OK',
         });
       }, 500);
+      
+      // Navegar a CategoriesList después del registro exitoso
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MainTabs',
+              state: {
+                routes: [
+                  {
+                    name: 'Inicio',
+                    state: {
+                      routes: [{ name: 'CategoriesList' }]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        });
+      }, 1000);
       
       if (onSuccess) {
         onSuccess();
