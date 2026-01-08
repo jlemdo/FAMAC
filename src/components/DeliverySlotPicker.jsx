@@ -231,6 +231,56 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
     }
   }, [selectedDateIndex, days]);
 
+  // 🆕 Función para parsear hora de inicio de un slot (ej: "9:00 AM - 1:00 PM" → 9)
+  const parseSlotStartHour = (slotLabel) => {
+    try {
+      // Extraer la primera hora del slot (ej: "9:00 AM" de "9:00 AM - 1:00 PM")
+      const startTimeMatch = slotLabel.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!startTimeMatch) return null;
+      
+      let hour = parseInt(startTimeMatch[1], 10);
+      const period = startTimeMatch[3].toUpperCase();
+      
+      // Convertir a formato 24 horas
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
+      }
+      
+      return hour;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // 🆕 Función para filtrar horarios según fecha seleccionada
+  const filterSlotsForSelectedDate = (slots, selectedDate) => {
+    const today = new Date();
+    const isToday = selectedDate.toDateString() === today.toDateString();
+    
+    // Si NO es hoy, mostrar todos los horarios
+    if (!isToday) {
+      return slots;
+    }
+    
+    // Si es HOY, filtrar horarios que ya pasaron + 2 horas de anticipación
+    const currentHour = today.getHours();
+    const minRequiredHour = currentHour + 2; // 2 horas de anticipación
+    
+    const filteredSlots = slots.filter(slot => {
+      const slotStartHour = parseSlotStartHour(slot.label);
+      
+      // Si no se puede parsear, mantener el slot (por seguridad)
+      if (slotStartHour === null) return true;
+      
+      // Solo mostrar si el horario empieza al menos 2 horas después
+      return slotStartHour >= minRequiredHour;
+    });
+    
+    return filteredSlots;
+  };
+
   const fetchDeliverySlots = async (dateString) => {
     setLoading(true);
     try {
@@ -252,18 +302,28 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
         ];
       }
       
-      // ✅ MOSTRAR TODOS LOS HORARIOS del backend sin filtrar - Sin lógica de filtros
-      setAvailableSlots(slotsToProcess);
+      // 🆕 FILTRAR horarios si la fecha seleccionada es HOY
+      const selectedDate = days[selectedDateIndex]?.date;
+      const filteredSlots = selectedDate 
+        ? filterSlotsForSelectedDate(slotsToProcess, selectedDate)
+        : slotsToProcess;
+      
+      setAvailableSlots(filteredSlots);
       
     } catch (error) {
-      // Error fetching delivery slots - usar fallback sin filtros
+      // Error fetching delivery slots - usar fallback
       let fallbackSlots = [
         { label: '9:00 AM - 1:00 PM', value: '9am-1pm' },
         { label: '4:00 PM - 12:00 AM', value: '4pm-12pm' }
       ];
 
-      // ✅ FALLBACK: Mostrar TODOS los horarios sin filtrar
-      setAvailableSlots(fallbackSlots);
+      // 🆕 FILTRAR horarios fallback si es HOY
+      const selectedDate = days[selectedDateIndex]?.date;
+      const filteredSlots = selectedDate 
+        ? filterSlotsForSelectedDate(fallbackSlots, selectedDate)
+        : fallbackSlots;
+      
+      setAvailableSlots(filteredSlots);
     } finally {
       setLoading(false);
     }
