@@ -11,6 +11,9 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
@@ -185,104 +188,114 @@ export default function WhatsAppVerificationModal({
       transparent
       animationType="fade"
       onRequestClose={onCancel}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={styles.modalContent}>
-              {/* Header con logo de WhatsApp */}
-              <View style={styles.header}>
-                <View style={styles.whatsappIconContainer}>
-                  <Ionicons name="logo-whatsapp" size={48} color="#25D366" />
-                </View>
-                <Text style={styles.title}>Verificación por WhatsApp</Text>
-                <Text style={styles.subtitle}>
-                  Enviamos un código de 6 dígitos por WhatsApp al número:
-                </Text>
-                <Text style={styles.phoneNumber}>{formatPhoneDisplay(phone)}</Text>
-              </View>
-
-              {/* Loading de envío */}
-              {loading && (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#25D366" />
-                  <Text style={styles.loadingText}>Enviando código...</Text>
-                </View>
-              )}
-
-              {/* Input de código */}
-              {!loading && codeSent && (
-                <>
-                  <View style={styles.otpContainer}>
-                    <Text style={styles.label}>Ingresa el código:</Text>
-                    <TextInput
-                      ref={otpInputRef}
-                      style={styles.otpInput}
-                      placeholder="000000"
-                      placeholderTextColor="#999"
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      value={otp}
-                      onChangeText={setOtp}
-                      autoFocus
-                      selectTextOnFocus
-                      textContentType="oneTimeCode"
-                      autoComplete="sms-otp"
-                    />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <ScrollView
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled">
+                  {/* Header con logo de WhatsApp */}
+                  <View style={styles.header}>
+                    <View style={styles.whatsappIconContainer}>
+                      <Ionicons name="logo-whatsapp" size={48} color="#25D366" />
+                    </View>
+                    <Text style={styles.title}>Verificación por WhatsApp</Text>
+                    <Text style={styles.subtitle}>
+                      Enviamos un código de 6 dígitos por WhatsApp al número:
+                    </Text>
+                    <Text style={styles.phoneNumber}>{formatPhoneDisplay(phone)}</Text>
                   </View>
 
-                  {/* Botón verificar */}
+                  {/* Loading de envío */}
+                  {loading && (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="large" color="#25D366" />
+                      <Text style={styles.loadingText}>Enviando código...</Text>
+                    </View>
+                  )}
+
+                  {/* Input de código */}
+                  {!loading && codeSent && (
+                    <>
+                      <View style={styles.otpContainer}>
+                        <Text style={styles.label}>Ingresa el código:</Text>
+                        <TextInput
+                          ref={otpInputRef}
+                          style={styles.otpInput}
+                          placeholder="000000"
+                          placeholderTextColor="#999"
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          value={otp}
+                          onChangeText={setOtp}
+                          autoFocus
+                          selectTextOnFocus
+                          textContentType="oneTimeCode"
+                          autoComplete="sms-otp"
+                        />
+                      </View>
+
+                      {/* Botón verificar */}
+                      <TouchableOpacity
+                        style={[
+                          styles.verifyButton,
+                          (otp.length !== 6 || verifying) && styles.buttonDisabled
+                        ]}
+                        onPress={verifyCode}
+                        disabled={otp.length !== 6 || verifying}>
+                        {verifying ? (
+                          <ActivityIndicator color="#FFF" />
+                        ) : (
+                          <Text style={styles.verifyButtonText}>Verificar</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Reenviar código */}
+                      <View style={styles.resendContainer}>
+                        {countdown > 0 ? (
+                          <Text style={styles.countdownText}>
+                            Reenviar código en {countdown}s
+                          </Text>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => {
+                              hasAttemptedSend.current = false; // Reset para permitir reenvío
+                              sendCode();
+                            }}
+                            disabled={loading}
+                            style={styles.resendButton}>
+                            <Ionicons name="refresh" size={16} color="#25D366" />
+                            <Text style={styles.resendButtonText}>Reenviar código</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Botón cancelar */}
                   <TouchableOpacity
-                    style={[
-                      styles.verifyButton,
-                      (otp.length !== 6 || verifying) && styles.buttonDisabled
-                    ]}
-                    onPress={verifyCode}
-                    disabled={otp.length !== 6 || verifying}>
-                    {verifying ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <Text style={styles.verifyButtonText}>Verificar</Text>
-                    )}
+                    style={styles.cancelButton}
+                    onPress={onCancel}
+                    disabled={loading || verifying}>
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
                   </TouchableOpacity>
 
-                  {/* Reenviar código */}
-                  <View style={styles.resendContainer}>
-                    {countdown > 0 ? (
-                      <Text style={styles.countdownText}>
-                        Reenviar código en {countdown}s
-                      </Text>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => {
-                          hasAttemptedSend.current = false; // Reset para permitir reenvío
-                          sendCode();
-                        }}
-                        disabled={loading}
-                        style={styles.resendButton}>
-                        <Ionicons name="refresh" size={16} color="#25D366" />
-                        <Text style={styles.resendButtonText}>Reenviar código</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </>
-              )}
-
-              {/* Botón cancelar */}
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={onCancel}
-                disabled={loading || verifying}>
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              {/* Info adicional */}
-              <Text style={styles.infoText}>
-                💡 Revisa tu WhatsApp. El código expira en 10 minutos.
-              </Text>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+                  {/* Info adicional */}
+                  <Text style={styles.infoText}>
+                    💡 Revisa tu WhatsApp. El código expira en 10 minutos.
+                  </Text>
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -298,14 +311,18 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 16,
-    padding: 24,
     width: '100%',
     maxWidth: 400,
+    maxHeight: '80%', // 🆕 Altura máxima para permitir scroll
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
+  },
+  scrollContent: {
+    padding: 24,
+    flexGrow: 1,
   },
   header: {
     alignItems: 'center',
