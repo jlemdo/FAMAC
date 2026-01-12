@@ -16,4 +16,4 @@ gem 'benchmark'
 gem 'mutex_m'
 
 # Añadir fastlane (requerido para subir builds a TestFlight)
-gem "fastlane", ">= 2.228.0"
+gem "fastlane", ">= 2.230.0"
