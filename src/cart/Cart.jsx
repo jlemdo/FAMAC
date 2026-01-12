@@ -428,9 +428,9 @@ export default function Cart() {
     setLoadingShipping(true);
     
     try {
-      const apiUrl = `/api/shipping-motivation/${subtotal}`;
-      console.log('🚚 [SHIPPING DEBUG] Llamando endpoint:', `${API_BASE_URL}${apiUrl}`);
-      
+      const apiUrl = `${API_BASE_URL}/api/shipping-motivation/${subtotal}`;
+      console.log('🚚 [SHIPPING DEBUG] Llamando endpoint:', apiUrl);
+
       const response = await axios.get(apiUrl, {
         headers: {
           'Accept': 'application/json'
