@@ -414,9 +414,12 @@ export default function Cart() {
     return null;
   };
 
-  // 📦 NUEVO: Calcular envío y mensaje motivacional
+  // 🆕 NUEVO: Calcular envío y mensaje motivacional
   const calculateShippingAndMotivation = async (subtotal) => {
+    console.log('🚚 [SHIPPING DEBUG] Iniciando cálculo de envío para subtotal:', subtotal);
+    
     if (!subtotal || subtotal <= 0) {
+      console.log('🚚 [SHIPPING DEBUG] Subtotal inválido, estableciendo envío en 0');
       setShippingCost(0);
       setShippingMotivation(null);
       return;
@@ -426,6 +429,7 @@ export default function Cart() {
     
     try {
       const apiUrl = `/api/shipping-motivation/${subtotal}`;
+      console.log('🚚 [SHIPPING DEBUG] Llamando endpoint:', `${API_BASE_URL}${apiUrl}`);
       
       const response = await axios.get(apiUrl, {
         headers: {
@@ -433,22 +437,37 @@ export default function Cart() {
         }
       });
       
-
+      console.log('🚚 [SHIPPING DEBUG] Respuesta completa:', JSON.stringify(response.data, null, 2));
 
       if (response.data.status === 'success') {
         const data = response.data.data;
         const newShippingCost = Number(data.shipping_cost) || 0;
 
+        console.log('🚚 [SHIPPING DEBUG] Datos recibidos:', {
+          shipping_cost: data.shipping_cost,
+          shipping_cost_parseado: newShippingCost,
+          tipo: typeof data.shipping_cost,
+          motivation: data
+        });
+
         setShippingMotivation(data);
         setShippingCost(newShippingCost);
-        setShippingCalculated(true); // ⚡ Marcar como calculado
+        setShippingCalculated(true);
+        
+        console.log('🚚 [SHIPPING DEBUG] ✅ Envío establecido en:', newShippingCost);
       } else {
+        console.log('🚚 [SHIPPING DEBUG] ❌ Respuesta no exitosa:', response.data);
       }
     } catch (error) {
+      console.log('🚚 [SHIPPING DEBUG] ❌ ERROR:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
-      setShippingCalculated(true); // ⚡ Marcar como calculado incluso si hay error
+      setShippingCalculated(true);
     } finally {
       setLoadingShipping(false);
     }
