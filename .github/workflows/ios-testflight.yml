@@ -50,10 +50,19 @@ jobs:
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.3.0'
-      
+          xcode-version: 'latest-stable'
+
       - name: Verifica versión de Xcode
         run: xcodebuild -version
+
+      - name: Fix Simulator Runtime Issue
+        run: |
+          echo "🔧 Installing compatible iOS Simulator runtime..."
+          # List available runtimes
+          xcrun simctl runtime list || true
+          # Download and install iOS 18 runtime if needed
+          xcodebuild -downloadPlatform iOS || true
+          echo "✅ Simulator runtime check complete"
 
       - name: Configure Apple Pay + Push Notifications Entitlements (Automated)
         run: |
