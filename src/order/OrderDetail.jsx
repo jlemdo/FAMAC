@@ -108,7 +108,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `/api/orderdetails/${orderId}`,
+        `${API_BASE_URL}/api/orderdetails/${orderId}`,
       );
       setOrder(res.data.order); // adjust according to your response shape
     } catch (err) {

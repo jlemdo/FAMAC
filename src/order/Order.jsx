@@ -64,7 +64,7 @@ const Order = () => {
   };
 
   const handleInvoices = order => {
-    const invoiceURL = `/invoices/${order.invoice}`;
+    const invoiceURL = `${API_BASE_URL}/invoices/${order.invoice}`;
     Linking.openURL(invoiceURL).catch(err => {
       alert('Unable to open invoice. Please try again.');
     });

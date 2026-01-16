@@ -78,7 +78,7 @@ export function OrderProvider({ children }) {
             });
             
             // SEGUNDA: Probar orderhistory
-            const fetchResponse = await fetch(url, {
+            const fetchResponse = await fetch(`${API_BASE_URL}${url}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
