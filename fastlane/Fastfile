@@ -108,7 +108,6 @@ platform :ios do
         export_method:    "app-store",
         output_directory: "build",
         output_name:      "MyNewApp",
-        sdk:              "iphoneos18.2",  # 🎯 Compatible con Xcode 16.2
         export_options: {
           provisioningProfiles: {
             "com.occr.productos" => "match AppStore com.occr.productos"
