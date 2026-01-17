@@ -1,4 +1,4 @@
-﻿import React, {useContext, useState, useEffect} from 'react';
+﻿import React, {useContext, useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -94,7 +94,11 @@ export default function Cart() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
   const [isRestoringDeliveryInfo, setIsRestoringDeliveryInfo] = useState(false);
-  
+
+  // 🔧 REF para debounce de cálculo de envío - evita saturar el servidor con múltiples llamadas rápidas
+  const shippingDebounceRef = useRef(null);
+  const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
+
   // 🔍 DEBUG: Monitorear cambios en deliveryInfo
   useEffect(() => {
     // Guardar deliveryInfo en AsyncStorage cuando cambie (solo para usuarios registrados)
@@ -227,33 +231,68 @@ export default function Cart() {
     }
   }, [user?.id, user?.email, user?.usertype]);
 
-  // 📦 NUEVO: Recalcular envío cuando cambie el subtotal
+  // 📦 MEJORADO: Recalcular envío con DEBOUNCE inteligente para evitar saturar el servidor
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();
 
+    // 🔧 Cancelar timeout anterior si existe
+    if (shippingDebounceRef.current) {
+      clearTimeout(shippingDebounceRef.current);
+    }
+
     if (currentSubtotal > 0) {
-      // 🚨 PREVENIR MÚLTIPLES LLAMADAS: Solo llamar si el subtotal cambió significativamente
-      const timeoutId = setTimeout(() => {
-        calculateShippingAndMotivation(currentSubtotal);
-      }, 100); // Debounce de 100ms
-      
-      return () => clearTimeout(timeoutId);
+      // 🔧 OPTIMIZACIÓN: Solo llamar si el subtotal cambió significativamente (más de $1)
+      const lastSubtotal = lastShippingSubtotalRef.current || 0;
+      const subtotalChanged = Math.abs(currentSubtotal - lastSubtotal) > 1;
+
+      if (subtotalChanged || !shippingCalculated) {
+        // 🔧 DEBOUNCE de 500ms - espera a que el usuario termine de ajustar cantidades
+        shippingDebounceRef.current = setTimeout(() => {
+          lastShippingSubtotalRef.current = currentSubtotal;
+          calculateShippingAndMotivation(currentSubtotal);
+        }, 500);
+      }
     } else {
       setShippingCost(0);
       setShippingMotivation(null);
-      setShippingCalculated(false); // ⚡ Resetear flag cuando no hay datos
+      setShippingCalculated(false);
+      lastShippingSubtotalRef.current = null;
     }
+
+    // Cleanup: cancelar timeout si el componente se desmonta o cambia
+    return () => {
+      if (shippingDebounceRef.current) {
+        clearTimeout(shippingDebounceRef.current);
+      }
+    };
   }, [totalPrice, appliedCoupon, user?.usertype]);
 
-  // 📦 NUEVO: Recalcular envío específicamente para Guest cuando complete datos
+  // 📦 MEJORADO: Recalcular envío para Guest cuando complete datos (solo si no se ha calculado ya)
+  // Este efecto es específico para cuando Guest completa su dirección por primera vez
   useEffect(() => {
-    if (user?.usertype === 'Guest' && email?.trim() && address?.trim()) {
+    // Solo ejecutar si:
+    // 1. Es Guest con datos completos
+    // 2. NO se ha calculado envío aún (evita duplicar llamadas del useEffect anterior)
+    // 3. Las coordenadas están disponibles (indica que dirección fue validada)
+    if (user?.usertype === 'Guest' &&
+        email?.trim() &&
+        address?.trim() &&
+        !shippingCalculated &&
+        latlong?.driver_lat &&
+        latlong?.driver_long) {
       const currentSubtotal = getSubtotal() - getDiscountAmount();
       if (currentSubtotal > 0) {
-        calculateShippingAndMotivation(currentSubtotal);
+        // Usar el mismo debounce ref para evitar llamadas duplicadas
+        if (shippingDebounceRef.current) {
+          clearTimeout(shippingDebounceRef.current);
+        }
+        shippingDebounceRef.current = setTimeout(() => {
+          lastShippingSubtotalRef.current = currentSubtotal;
+          calculateShippingAndMotivation(currentSubtotal);
+        }, 500);
       }
     }
-  }, [user?.usertype, email, address, cart.length, appliedCoupon, latlong?.driver_lat, latlong?.driver_long]);
+  }, [user?.usertype, email, address, latlong?.driver_lat, latlong?.driver_long, shippingCalculated]);
   
   // Función para guardar deliveryInfo en AsyncStorage
   const saveDeliveryInfo = async (info, userId) => {

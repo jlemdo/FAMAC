@@ -1,4 +1,4 @@
-﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { AuthContext } from './AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -12,6 +12,10 @@ export function CartProvider({ children }) {
     const [onCartClearCallback, setOnCartClearCallback] = useState(null);
     const [automaticPromotions, setAutomaticPromotions] = useState([]);
     const { user } = useContext(AuthContext);
+
+    // 🔧 REFS para debounce - evitar múltiples llamadas rápidas
+    const saveCartTimeoutRef = useRef(null);
+    const promotionsTimeoutRef = useRef(null);
 
     // Obtener descuento promocional del usuario (del login API)
     const userPromotionalDiscount = user?.promotional_discount ? Number(user.promotional_discount) : 0;
@@ -120,18 +124,33 @@ export function CartProvider({ children }) {
         }
     }, [user?.id, user?.email]); // Depende del user específico
 
-    // 📦 CORREGIDO: Guardar carrito en AsyncStorage cuando cambie Y user esté definido
+    // 📦 CORREGIDO: Guardar carrito con DEBOUNCE para evitar saturar el servidor
     useEffect(() => {
         if (user === undefined) return; // No hacer nada si user aún no cargó
-        
+
+        // 🔧 Cancelar timeout anterior si existe
+        if (saveCartTimeoutRef.current) {
+            clearTimeout(saveCartTimeoutRef.current);
+        }
+
         if (cart.length > 0) {
-            saveCartToBackend();
+            // 🔧 DEBOUNCE: Esperar 800ms antes de guardar (para múltiples cambios rápidos)
+            saveCartTimeoutRef.current = setTimeout(() => {
+                saveCartToBackend();
+            }, 800);
         } else if (cart.length === 0 && user) {
             // Si el carrito está vacío, limpiar AsyncStorage del usuario actual
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
             AsyncStorage.removeItem(cartKey).catch(console.log);
         }
+
+        // Cleanup: cancelar timeout si el componente se desmonta
+        return () => {
+            if (saveCartTimeoutRef.current) {
+                clearTimeout(saveCartTimeoutRef.current);
+            }
+        };
     }, [cart, user?.id, user?.email]); // Ahora depende TAMBIÉN del user
 
     // 🆕 NUEVO: Guardar carrito en backend persistente
@@ -365,9 +384,24 @@ export function CartProvider({ children }) {
         }
     }, [subtotalAfterProductDiscounts, user?.email]);
 
-    // Get automatic promotions when cart or user changes
+    // Get automatic promotions when cart or user changes - CON DEBOUNCE
     useEffect(() => {
-        getAutomaticPromotions();
+        // 🔧 Cancelar timeout anterior si existe
+        if (promotionsTimeoutRef.current) {
+            clearTimeout(promotionsTimeoutRef.current);
+        }
+
+        // 🔧 DEBOUNCE: Esperar 600ms antes de llamar promociones
+        promotionsTimeoutRef.current = setTimeout(() => {
+            getAutomaticPromotions();
+        }, 600);
+
+        // Cleanup
+        return () => {
+            if (promotionsTimeoutRef.current) {
+                clearTimeout(promotionsTimeoutRef.current);
+            }
+        };
     }, [getAutomaticPromotions]);
 
     // Función para registrar callback de limpieza - memorizada para evitar bucles infinitos
