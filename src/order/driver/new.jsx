@@ -23,7 +23,7 @@ import axios from 'axios';
 import {OrderContext} from '../../context/OrderContext';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil } from '../../utils/locationUtils';
-import { API_BASE_URL } from '../config/environment';
+import { API_BASE_URL } from '../../config/environment';
 
 // ✅ FUNCIÓN: Traducir estados de órdenes a español para drivers
 const translateStatus = (status) => {
@@ -371,7 +371,7 @@ const OrderDetails = () => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.orderInfo}>
-          <Text style={styles.orderText}>Order ID: #{order?.id}</Text>
+          <Text style={styles.orderText}>Pedido: #{order?.order_number || order?.id}</Text>
           <Text style={styles.orderText}>Estado: {translateStatus(orderStatus)}</Text>
           <Text style={styles.orderText}>
             Total Price: ${order?.total_price}
@@ -560,7 +560,7 @@ const OrderDetails = () => {
                     <Text style={styles.modalLabel}>Orden a cancelar</Text>
                     <View style={styles.orderInfoBox}>
                       <Text style={styles.orderInfoText}>
-                        Orden #{order?.id}
+                        Pedido #{order?.order_number || order?.id}
                       </Text>
                       <Text style={styles.orderInfoPrice}>
                         Total: ${order?.total_price}

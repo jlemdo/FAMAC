@@ -13,7 +13,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import Config from 'react-native-config';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
-import { API_BASE_URL } from '../config/environment';
+import { API_BASE_URL } from '../../config/environment';
 
 const CustomerTracking = ({order}) => {
   const [driverLocation, setDriverLocation] = useState(null);

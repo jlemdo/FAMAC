@@ -1235,7 +1235,7 @@ const OrderDetails = () => {
 
                   <View style={styles.problemInfoContainer}>
                     <Text style={styles.problemInfoText}>
-                      📦 Orden: #{order?.id}
+                      📦 Pedido: #{order?.order_number || formatOrderId(order?.created_at)}
                     </Text>
                     <Text style={styles.problemMessageText}>
                       Se enviará automáticamente el siguiente mensaje:

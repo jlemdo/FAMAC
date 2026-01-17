@@ -33,7 +33,7 @@ import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
-import { API_BASE_URL } from '../config/environment';
+import { API_BASE_URL } from '../../config/environment';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
