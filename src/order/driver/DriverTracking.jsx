@@ -187,30 +187,15 @@ const DriverTracking = ({order}) => {
     // console.log('📍 Enviando ubicación del driver:', payload);
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${API_BASE_URL}/api/driverlocsubmit`,
         payload,
       );
-
-      // console.log('📡 Respuesta del servidor:', response.status, response.data);
-
-      if (response.status === 201 || response.status === 200) {
-        // console.log('✅ Ubicación enviada exitosamente');
-        await fetchOrder();
-      } else {
-        // console.log('⚠️ Respuesta inesperada del servidor:', response.status);
-      }
+      // Ubicación enviada - no necesitamos hacer nada más
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message;
-
-      if (errorMsg.includes('Too Many Attempts') || errorMsg.includes('throttle')) {
-        // console.warn('⚠️ Rate limiting activo - esperando antes del próximo envío');
-        // No hacer nada más, el próximo interval lo intentará
-      } else {
-        // console.error('❌ Error enviando ubicación:', errorMsg);
-      }
+      // Silenciar errores de rate limiting, reintentar en el próximo intervalo
     }
-  }, [order.id, latlong, fetchOrder]);
+  }, [order.id, latlong]);
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -348,25 +333,19 @@ const DriverTracking = ({order}) => {
     getCurrentLocation();
 
     if (currentStatus === 'On the Way') {
-      // Para órdenes en proceso, también obtener ubicación guardada
-      getDriverLocaton();
-
-      // ARREGLADO: Intervalo más espaciado para evitar rate limiting
+      // Intervalo para tracking en tiempo real
       const interval = setInterval(() => {
-        getDriverLocaton();
+        // Solo obtener ubicación GPS y enviarla al servidor
         getCurrentLocation();
+        submitDriverLocation();
+      }, 8000); // Cada 8 segundos
 
-        // Enviar ubicación solo cada 2 iteraciones (cada 20 segundos)
-        if (Math.random() > 0.5) {
-          submitDriverLocation();
-        }
-      }, 10000); // Cambiar de 5s a 10s
       return () => clearInterval(interval);
     } else if (currentStatus === 'Delivered') {
       // Para órdenes entregadas, obtener ubicación final guardada
       getDriverLocaton();
     }
-  }, [order.id]); // Dependencia simple para ejecutar solo al cargar
+  }, [order.id, currentStatus]); // Incluir currentStatus para reaccionar a cambios
 
   // 🆕 ACTUALIZACIÓN DEL MAPA: Animar cuando cambie la ubicación del driver
   useEffect(() => {
