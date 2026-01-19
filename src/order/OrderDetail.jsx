@@ -558,7 +558,11 @@ const OrderDetails = () => {
 
   // Return JSX
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <View style={styles.headerContainer}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -572,6 +576,7 @@ const OrderDetails = () => {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={true}
+        keyboardDismissMode="interactive"
       >
         {/* 🚚 VISTA PARA DRIVERS - Card unificada sin precios */}
         {user?.usertype === 'driver' ? (
@@ -1399,7 +1404,7 @@ const OrderDetails = () => {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
