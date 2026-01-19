@@ -1,9 +1,7 @@
 ﻿import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard, ScrollView } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AuthContext } from '../context/AuthContext';
-import NotificationService from '../services/NotificationService';
 import axios from 'axios';
 import fonts from '../theme/fonts';
 import { API_BASE_URL } from '../config/environment';
@@ -148,20 +146,21 @@ export default function Chat({ orderId, order }) {
     };
 
     return (
-        <KeyboardAwareScrollView
-            ref={scrollViewRef}
-            style={styles.chatCard}
-            contentContainerStyle={styles.chatContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            enableOnAndroid={true}
-            enableAutomaticScroll={true}
-            extraScrollHeight={20}
-            keyboardOpeningTime={0}
-        >
+        <View style={styles.chatCard}>
             <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
-            <View style={styles.messagesContainer}>
+            {/* Área de mensajes con scroll */}
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.messagesScrollView}
+                contentContainerStyle={styles.messagesContent}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+                onContentSizeChange={() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                }}
+            >
                 {chatMessages.map((msg, index) => (
                     <View
                         key={index}
@@ -173,35 +172,33 @@ export default function Chat({ orderId, order }) {
                         <Text style={styles.chatText}>{msg.text}</Text>
                     </View>
                 ))}
-            </View>
+            </ScrollView>
 
+            {/* Input fijo en la parte inferior */}
             <View style={styles.chatInputContainer}>
                 <TextInput
                     ref={textInputRef}
                     style={styles.chatInput}
                     placeholder="Escribe tu mensaje..."
+                    placeholderTextColor="#999"
                     value={newMessage}
                     onChangeText={setNewMessage}
                     multiline={false}
                     returnKeyType="send"
                     onSubmitEditing={handleSendMessageWithRefresh}
                     onFocus={handleInputFocus}
-                    blurOnSubmit={true}
+                    blurOnSubmit={false}
                     enablesReturnKeyAutomatically={true}
                 />
                 <TouchableOpacity onPress={handleSendMessageWithRefresh} style={styles.sendButton}>
                     <Ionicons name="send" size={20} color="#fff" />
                 </TouchableOpacity>
             </View>
-        </KeyboardAwareScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F2EFE4',
-    },
     chatCard: {
         backgroundColor: '#FFF',
         borderRadius: 12,
@@ -211,72 +208,82 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
-        flex: 1,
-    },
-    chatContent: {
-        padding: 16,
-        flexGrow: 1,
+        maxHeight: 400, // Altura máxima fija para que no ocupe toda la pantalla
+        minHeight: 250, // Altura mínima para que sea usable
     },
     sectionTitle: {
         fontSize: fonts.size.large,
         fontFamily: fonts.bold,
-        marginBottom: 10,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 8,
         color: '#333',
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
     },
-    messagesContainer: {
+    messagesScrollView: {
+        flex: 1,
+        backgroundColor: '#FAFAFA',
+    },
+    messagesContent: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
         flexGrow: 1,
-        marginBottom: 10,
     },
     chatInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#ddd',
-        paddingTop: 10,
+        borderTopColor: '#E5E5E5',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         backgroundColor: '#FFF',
+        borderBottomLeftRadius: 12,
+        borderBottomRightRadius: 12,
     },
     chatInput: {
         flex: 1,
-        backgroundColor: '#f1f1f1',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
+        backgroundColor: '#F5F5F5',
+        paddingHorizontal: 16,
+        paddingVertical: Platform.OS === 'ios' ? 10 : 8,
         borderRadius: 20,
-        fontSize: fonts.size.small,
+        fontSize: fonts.size.medium,
         fontFamily: fonts.regular,
+        color: '#333',
+        maxHeight: 80,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
     },
     sendButton: {
-        backgroundColor: '#28a745',
+        backgroundColor: '#33A744',
         padding: 10,
         marginLeft: 8,
         borderRadius: 20,
-    },
-    senderName: {
-        fontSize: fonts.size.small,
-        color: '#555',
-        marginBottom: 2,
-        fontFamily: fonts.bold,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     chatText: {
         fontSize: fonts.size.small,
         color: '#333',
         fontFamily: fonts.regular,
+        lineHeight: 18,
     },
     chatBubble: {
         maxWidth: '80%',
-        padding: 10,
-        borderRadius: 10,
-        marginVertical: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        marginVertical: 4,
     },
-
     chatBubbleLeft: {
-        backgroundColor: '#f1f0f0',
+        backgroundColor: '#EBEBEB',
         alignSelf: 'flex-start',
-        borderTopLeftRadius: 0,
+        borderBottomLeftRadius: 4,
     },
-
     chatBubbleRight: {
-        backgroundColor: '#daf8cb',
+        backgroundColor: '#DCF8C6',
         alignSelf: 'flex-end',
-        borderTopRightRadius: 0,
+        borderBottomRightRadius: 4,
     },
 });

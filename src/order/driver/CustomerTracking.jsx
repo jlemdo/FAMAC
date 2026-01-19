@@ -28,7 +28,7 @@ const CustomerTracking = ({order}) => {
   const fetchDriverLocation = useCallback(async (attempt = 0) => {
     try {
       const res = await axios.get(
-        `/api/driverlocationsagainstorder/${order.id}`,
+        `${API_BASE_URL}/api/driverlocationsagainstorder/${order.id}`,
         { timeout: 8000 } // 8s timeout
       );
       const lastLoc = res.data.data;

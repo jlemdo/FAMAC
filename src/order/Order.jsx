@@ -96,7 +96,7 @@ const Order = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
+        `${API_BASE_URL}/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
         { timeout: 10000 }
       );
       

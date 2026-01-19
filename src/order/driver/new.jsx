@@ -186,7 +186,7 @@ const OrderDetails = () => {
   const fetchOrder = useCallback(async () => {
     try {
       const res = await axios.get(
-        `/api/order/${order.id}`,
+        `${API_BASE_URL}/api/order/${order.id}`,
       );
       setOrder(res.data.data); // adjust according to your response shape
     } catch (err) {
@@ -243,7 +243,7 @@ const OrderDetails = () => {
   const fetchMessages = useCallback(async () => {
     try {
       const response = await axios.get(
-        `/api/msgfetch/${order.id}`,
+        `${API_BASE_URL}/api/msgfetch/${order.id}`,
       );
       if (response.data) {
         const formattedMessages = response.data.data.reverse().map(msg => ({
@@ -262,7 +262,7 @@ const OrderDetails = () => {
     setLoadingLocation(true);
     try {
       const response = await axios.get(
-        `/api/driverlocationsagainstorder/${order.id}`,
+        `${API_BASE_URL}/api/driverlocationsagainstorder/${order.id}`,
       );
       // if (response?.data?.data?.length) {
       const locations = response.data.data;

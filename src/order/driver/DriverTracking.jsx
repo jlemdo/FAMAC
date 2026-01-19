@@ -217,7 +217,7 @@ const DriverTracking = ({order}) => {
       // console.log(`🔄 Actualizando estado de orden ${order.id}...`);
 
       const res = await axios.get(
-        `/api/orderdetails/${order.id}`,
+        `${API_BASE_URL}/api/orderdetails/${order.id}`,
       );
 
       const newStatus = res?.data?.order?.status;
@@ -321,7 +321,7 @@ const DriverTracking = ({order}) => {
   const getDriverLocaton = useCallback(async () => {
     try {
       const response = await axios.get(
-        `/api/driverlocationsagainstorder/${order.id}`,
+        `${API_BASE_URL}/api/driverlocationsagainstorder/${order.id}`,
       );
 
       const locations = response.data.data;

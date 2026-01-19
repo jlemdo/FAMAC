@@ -568,7 +568,11 @@ const OrderDetails = () => {
         <Text style={styles.headerTitle}>Detalles del pedido</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+      >
         {/* 🚚 VISTA PARA DRIVERS - Card unificada sin precios */}
         {user?.usertype === 'driver' ? (
           <View style={styles.driverOrderCard}>
