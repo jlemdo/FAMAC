@@ -52,13 +52,15 @@ const Order = () => {
     }
     
     // ✅ Estados normales cuando pago está confirmado
-    if (['delivered', 'entregado', 'completed', 'finalizado'].includes(statusLower)) {
+    // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled
+    if (statusLower === 'delivered') {
       return { badge: styles.statusDelivered, text: styles.statusDeliveredText };
-    } else if (['cancelled', 'cancelado'].includes(statusLower)) {
+    } else if (statusLower === 'cancelled') {
       return { badge: styles.statusCancelled, text: styles.statusCancelledText };
-    } else if (['on the way', 'en camino'].includes(statusLower)) {
+    } else if (statusLower === 'on the way' || statusLower === 'arriving') {
       return { badge: styles.statusInTransit, text: styles.statusInTransitText };
     } else {
+      // Open, Processing Payment, etc
       return { badge: styles.statusPending, text: styles.statusPendingText };
     }
   };
@@ -176,14 +178,17 @@ const Order = () => {
     if (user?.usertype !== 'driver') return orders;
 
     if (driverActiveTab === 'disponibles') {
-      // Tab "Disponibles": Órdenes asignadas y en progreso (incluyendo estados posibles de asignación)
-      return orders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
+      // Tab "Disponibles": Órdenes asignadas y en progreso
+      const disponiblesStatuses = ['open', 'abierto', 'on the way', 'assigned', 'pending', 'arriving'];
+      return orders.filter(order => disponiblesStatuses.includes(order.status?.toLowerCase()));
     } else if (driverActiveTab === 'entregas') {
       // Tab "Mis Entregas": SOLO órdenes ya entregadas
-      return orders.filter(order => ['Delivered', 'delivered', 'entregado'].includes(order.status));
+      const entregasStatuses = ['delivered', 'entregado'];
+      return orders.filter(order => entregasStatuses.includes(order.status?.toLowerCase()));
     } else if (driverActiveTab === 'canceladas') {
       // Tab "Canceladas": SOLO órdenes canceladas
-      return orders.filter(order => ['Cancelled', 'cancelled', 'cancelado'].includes(order.status));
+      const canceladasStatuses = ['cancelled', 'cancelado'];
+      return orders.filter(order => canceladasStatuses.includes(order.status?.toLowerCase()));
     }
     return orders;
   };
@@ -194,28 +199,25 @@ const Order = () => {
 
     if (userActiveTab === 'activas') {
       // Tab "Activas": Órdenes que NO están entregadas ni canceladas
+      // Backend estados activos: Open, Processing Payment, On the Way, Arriving
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
         const paymentStatus = order.payment_status?.toLowerCase();
-
-        // Incluir órdenes con pago completado (paid) O pendientes de pago OXXO (pending)
         const hasValidPayment = paymentStatus === 'paid' || paymentStatus === 'pending';
-
-        return status &&
-               !['delivered', 'entregado', 'completed', 'completado', 'cancelled', 'cancelado'].includes(status) &&
-               hasValidPayment; // Incluye paid y pending (OXXO)
+        const finishedStatuses = ['delivered', 'cancelled'];
+        return status && !finishedStatuses.includes(status) && hasValidPayment;
       });
     } else if (userActiveTab === 'entregadas') {
-      // Tab "Entregadas": SOLO órdenes completadas/entregadas
+      // Tab "Entregadas": Backend estado: Delivered
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
-        return ['delivered', 'entregado', 'completed', 'completado'].includes(status);
+        return status === 'delivered';
       });
     } else if (userActiveTab === 'canceladas') {
-      // Tab "Canceladas": SOLO órdenes canceladas
+      // Tab "Canceladas": Backend estado: Cancelled
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
-        return ['cancelled', 'cancelado'].includes(status);
+        return status === 'cancelled';
       });
     }
     return ordersToFilter;

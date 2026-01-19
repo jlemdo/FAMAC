@@ -156,18 +156,29 @@ const CustomerTracking = ({order}) => {
         <View style={styles.connectionStatus}>
           <Ionicons name="wifi-outline" size={16} color="#E63946" />
           <Text style={styles.connectionText}>
-            {retryCount < 3 
-              ? `Reintentando conexión... (${retryCount}/3)` 
+            {retryCount < 3
+              ? `Reintentando conexión... (${retryCount}/3)`
               : 'Sin conexión - Toca para reintentar'
             }
           </Text>
           {retryCount >= 3 && (
-            <TouchableOpacity 
-              onPress={() => fetchDriverLocation(0)} 
+            <TouchableOpacity
+              onPress={() => fetchDriverLocation(0)}
               style={styles.retryButton}>
               <Ionicons name="refresh" size={16} color="#2196F3" />
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {/* Banner de "Llegando" cuando el estado es arriving */}
+      {(order?.status?.toLowerCase() === 'arriving') && (
+        <View style={styles.arrivingBanner}>
+          <Text style={styles.arrivingIcon}>🚗</Text>
+          <View style={styles.arrivingTextContainer}>
+            <Text style={styles.arrivingTitle}>¡Tu repartidor está llegando!</Text>
+            <Text style={styles.arrivingSubtitle}>Prepárate para recibir tu pedido</Text>
+          </View>
         </View>
       )}
 
@@ -483,6 +494,38 @@ const styles = StyleSheet.create({
   },
   waitingSpinner: {
     marginTop: 8,
+  },
+
+  // Estilos para banner "Llegando"
+  arrivingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  arrivingIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  arrivingTextContainer: {
+    flex: 1,
+  },
+  arrivingTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2E7D32',
+    marginBottom: 2,
+  },
+  arrivingSubtitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#4CAF50',
   },
 });
 

@@ -84,9 +84,10 @@ const DriverTracking = ({order}) => {
       setLoading(true);
 
       // Verificar si el driver ya tiene órdenes activas
+      // Backend estados activos: On the Way, Arriving
       const activeOrders = orders?.filter(o =>
         o.driver_id === order.driver_id &&
-        ['On the Way', 'on the way', 'en camino', 'In Progress', 'in progress'].includes(o.status)
+        ['on the way', 'arriving'].includes(o.status?.toLowerCase())
       );
 
       if (activeOrders && activeOrders.length > 0) {
@@ -332,7 +333,8 @@ const DriverTracking = ({order}) => {
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
 
-    if (currentStatus === 'On the Way') {
+    const activeStatuses = ['On the Way', 'on the way', 'en camino', 'arriving', 'Arriving'];
+    if (activeStatuses.includes(currentStatus)) {
       // Intervalo para tracking en tiempo real
       const interval = setInterval(() => {
         // Solo obtener ubicación GPS y enviarla al servidor
@@ -341,7 +343,7 @@ const DriverTracking = ({order}) => {
       }, 8000); // Cada 8 segundos
 
       return () => clearInterval(interval);
-    } else if (currentStatus === 'Delivered') {
+    } else if (currentStatus === 'Delivered' || currentStatus === 'delivered') {
       // Para órdenes entregadas, obtener ubicación final guardada
       getDriverLocaton();
     }
@@ -526,26 +528,10 @@ const DriverTracking = ({order}) => {
         {order?.payment_status === 'paid' ? (
           <>
             {/* 🎯 BOTÓN ACEPTAR - Estados que permiten aceptar pedido */}
+            {/* Backend estado para aceptar: Open */}
             {(() => {
               const status = currentStatus?.toLowerCase()?.trim() || '';
-              const acceptableStates = [
-                'open', 'abierto',
-                'pending', 'pendiente',
-                'confirmed', 'confirmado',
-                'preparing', 'preparando'
-              ];
-
-              const shouldShowAccept = acceptableStates.includes(status);
-
-              // Log temporal para debugging
-              // console.log('🎯 BOTÓN ACEPTAR Debug:', {
-              // currentStatus,
-              // statusLower: status,
-              // shouldShowAccept,
-              // acceptableStates
-              // });
-
-              return shouldShowAccept;
+              return status === 'open';
             })() && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.acceptButton, loading && styles.buttonDisabled]}
@@ -560,14 +546,10 @@ const DriverTracking = ({order}) => {
             )}
 
             {/* 🚚 BOTÓN ENTREGAR - Solo cuando está en camino Y cerca del cliente (≤250m) */}
+            {/* Backend estados para entregar: On the Way, Arriving */}
             {(() => {
               const status = currentStatus?.toLowerCase()?.trim() || '';
-              const deliverableStates = [
-                'on the way', 'en camino',
-                'in progress', 'en progreso',
-                'out for delivery', 'en reparto',
-                'ready', 'listo'
-              ];
+              const deliverableStates = ['on the way', 'arriving'];
 
               const isDeliverableStatus = deliverableStates.includes(status);
               const isNearCustomer = distanceToCustomer !== null && distanceToCustomer <= 250; // 250 metros
@@ -598,25 +580,10 @@ const DriverTracking = ({order}) => {
             )}
 
             {/* 🏁 ESTADO ENTREGADO - Solo mostrar información */}
+            {/* Backend estado completado: Delivered */}
             {(() => {
               const status = currentStatus?.toLowerCase()?.trim() || '';
-              const completedStates = [
-                'delivered', 'entregado',
-                'completed', 'completado',
-                'finished', 'terminado'
-              ];
-
-              const isCompleted = completedStates.includes(status);
-
-              // Log temporal para debugging
-              // console.log('🏁 ESTADO COMPLETADO Debug:', {
-              // currentStatus,
-              // statusLower: status,
-              // isCompleted,
-              // completedStates
-              // });
-
-              return isCompleted;
+              return status === 'delivered';
             })() && (
               <View style={styles.completedContainer}>
                 <Text style={styles.completedText}>✅ Pedido Entregado</Text>

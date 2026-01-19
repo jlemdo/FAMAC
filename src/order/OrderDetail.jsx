@@ -35,31 +35,19 @@ import {formatOrderId} from '../utils/orderIdFormatter';
 import { API_BASE_URL } from '../config/environment';
 
 // ✅ FUNCIÓN: Traducir estados de órdenes a español
+// Backend estados: Processing Payment, Open, On the Way, Arriving, Delivered, Cancelled
 const translateStatus = (status) => {
   if (!status) return 'Desconocido';
-  
+
   const translations = {
-    // Estados principales
+    'processing payment': 'Procesando pago',
     'open': 'Abierto',
-    'pending': 'Pendiente', 
-    'confirmed': 'Confirmado',
-    'preparing': 'Preparando',
     'on the way': 'En camino',
+    'arriving': 'Llegando',
     'delivered': 'Entregado',
-    'completed': 'Completado',
     'cancelled': 'Cancelado',
-    'rejected': 'Rechazado',
-    'failed': 'Fallido',
-    
-    // Estados adicionales
-    'processing': 'Procesando',
-    'ready': 'Listo',
-    'picked up': 'Recogido',
-    'out for delivery': 'En reparto',
-    'delayed': 'Retrasado',
-    'returned': 'Devuelto'
   };
-  
+
   return translations[status.toLowerCase()] || status;
 };
 
@@ -202,7 +190,8 @@ const OrderDetails = () => {
     if (!order) return false;
 
     // 1. Solo para pedidos en tránsito/camino
-    const inTransitStatuses = ['en camino', 'on the way', 'on_the_way', 'assigned', 'asignado'];
+    // Backend estados activos: On the Way, Arriving
+    const inTransitStatuses = ['on the way', 'arriving'];
     const orderStatus = order.status?.toLowerCase();
 
     if (!inTransitStatuses.includes(orderStatus)) return false;
@@ -346,8 +335,9 @@ const OrderDetails = () => {
     if (user?.usertype !== 'driver') return false;
     if (!order) return false;
 
-    // Solo para pedidos en tránsito/asignados
-    const inTransitStatuses = ['en camino', 'on the way', 'on_the_way', 'assigned', 'asignado'];
+    // Solo para pedidos en tránsito
+    // Backend estados activos: On the Way, Arriving
+    const inTransitStatuses = ['on the way', 'arriving'];
     const orderStatus = order.status?.toLowerCase();
 
     if (!inTransitStatuses.includes(orderStatus)) return false;
@@ -399,8 +389,9 @@ const OrderDetails = () => {
 
     const status = order.status?.toLowerCase();
 
-    // No mostrar si ya está cancelado, entregado o completado
-    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
+    // No mostrar si ya está cancelado o entregado
+    // Backend estados finalizados: Delivered, Cancelled
+    const finishedStatuses = ['cancelled', 'delivered'];
     if (finishedStatuses.includes(status)) return false;
 
     return true;
@@ -416,12 +407,9 @@ const OrderDetails = () => {
     const status = order.status?.toLowerCase();
 
     // Solo mostrar en estados activos (cuando el driver ya aceptó la orden)
-    const activeStatuses = ['assigned', 'asignado', 'on the way', 'en camino', 'on_the_way', 'preparing', 'preparando'];
+    // Backend estados activos: On the Way, Arriving
+    const activeStatuses = ['on the way', 'arriving'];
     if (!activeStatuses.includes(status)) return false;
-
-    // No mostrar si ya está cancelado, entregado o completado
-    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
-    if (finishedStatuses.includes(status)) return false;
 
     return true;
   };
@@ -854,52 +842,29 @@ const OrderDetails = () => {
           const hasDriver = order?.driver;
           const isDriver = user?.usertype === 'driver';
 
+          // Backend estados: Processing Payment, Open, On the Way, Arriving, Delivered, Cancelled
+
           // ESTADOS DE CANCELACIÓN
-          const isCancelled = status === 'cancelled' || status === 'cancelado';
+          const isCancelled = status === 'cancelled';
 
           // ESTADOS DE ENTREGA COMPLETADA
-          const isDelivered = status === 'delivered' || status === 'entregado' ||
-                             status === 'completed' || status === 'completado';
+          const isDelivered = status === 'delivered';
 
           // ESTADOS DE PAGO PENDIENTE (excluyendo OXXO)
-          const isPendingPayment = (status === 'processing payment' || status === 'pending payment' ||
-                                  status === 'processing' || status === 'pending') &&
+          const isPendingPayment = status === 'processing payment' &&
                                   !(order?.payment_status === 'requires_action' ||
                                     order?.payment_status === 'pending' ||
                                     order?.payment_status === 'requires_payment_method');
 
           // ESTADOS ESPECÍFICOS PARA OXXO PENDIENTE
-          const isOxxoPending = (status === 'open' || status === 'processing payment' || status === 'processing') &&
+          const isOxxoPending = (status === 'open' || status === 'processing payment') &&
                                (order?.payment_status === 'requires_action' ||
                                 order?.payment_status === 'pending' ||
                                 order?.payment_status === 'requires_payment_method');
 
-          // 🔍 LOG: Estados del sistema para análisis
-          // console.log('📊 ANÁLISIS DE ESTADOS:', {
-          // order_id: order?.id,
-          // status_original: order?.status,
-          // status_lower: status,
-          // payment_status: order?.payment_status,
-          // has_driver: !!hasDriver,
-          // driver_id: order?.driver_id,
-          // is_driver: isDriver,
-          // states_detected: {
-          // isOxxoPending,
-          // isPendingPayment,
-          // isDelivered,
-          // isActive
-          // },
-          // conditions_check: {
-          // 'driver_asignado_no_activo': isDriver && hasDriver && !isActive,
-          // 'usuario_driver_asignado': !isDriver && hasDriver && !isActive,
-          // 'driver_activo': isDriver && isActive,
-          // 'usuario_driver_activo': !isDriver && isActive && hasDriver
-          // }
-          // });
-
           // ESTADOS ACTIVOS (driver aceptó y está en camino)
-          const isActive = status === 'in progress' || status === 'on the way' ||
-                          status === 'en camino' || status === 'preparing' || status === 'preparando';
+          // Backend estados activos: On the Way, Arriving
+          const isActive = status === 'on the way' || status === 'arriving';
 
           // 1. PEDIDO CANCELADO - Prioridad máxima
           if (isCancelled) {
