@@ -146,7 +146,10 @@ export default function Chat({ orderId, order }) {
     };
 
     return (
-        <View style={styles.chatCard}>
+        <View style={[
+            styles.chatCard,
+            Platform.OS === 'ios' && keyboardHeight > 0 && { marginBottom: keyboardHeight }
+        ]}>
             <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
 
             {/* Área de mensajes con scroll */}
