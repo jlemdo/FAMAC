@@ -111,10 +111,11 @@ const Order = () => {
           setShowingGuestOrders(true);
           
           // Actualizar el contador de órdenes para el badge de navegación
-          const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-          const activeOrders = orders.filter(order => 
-            order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
-            order.payment_status === 'paid' // Solo contar órdenes con pago completado
+          // Backend estados finalizados: Delivered, Cancelled
+          const finishedStatuses = ['delivered', 'cancelled'];
+          const activeOrders = orders.filter(order =>
+            order.status && !finishedStatuses.includes(order.status.toLowerCase()) &&
+            order.payment_status === 'paid'
           );
           updateOrders(orders); // Esto actualiza el badge de navegación
           
@@ -179,16 +180,15 @@ const Order = () => {
 
     if (driverActiveTab === 'disponibles') {
       // Tab "Disponibles": Órdenes asignadas y en progreso
-      const disponiblesStatuses = ['open', 'abierto', 'on the way', 'assigned', 'pending', 'arriving'];
+      // Backend estados disponibles: Open, On the Way, Arriving
+      const disponiblesStatuses = ['open', 'on the way', 'arriving'];
       return orders.filter(order => disponiblesStatuses.includes(order.status?.toLowerCase()));
     } else if (driverActiveTab === 'entregas') {
-      // Tab "Mis Entregas": SOLO órdenes ya entregadas
-      const entregasStatuses = ['delivered', 'entregado'];
-      return orders.filter(order => entregasStatuses.includes(order.status?.toLowerCase()));
+      // Tab "Mis Entregas": Backend estado: Delivered
+      return orders.filter(order => order.status?.toLowerCase() === 'delivered');
     } else if (driverActiveTab === 'canceladas') {
-      // Tab "Canceladas": SOLO órdenes canceladas
-      const canceladasStatuses = ['cancelled', 'cancelado'];
-      return orders.filter(order => canceladasStatuses.includes(order.status?.toLowerCase()));
+      // Tab "Canceladas": Backend estado: Cancelled
+      return orders.filter(order => order.status?.toLowerCase() === 'cancelled');
     }
     return orders;
   };

@@ -139,7 +139,9 @@ export function OrderProvider({ children }) {
                 filteredOrders = ordersData.filter(order => {
                     // 🔍 TEMPORAL: Filtro más permisivo para debug
                     const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
-                    const statusValid = ['Open', 'Abierto', 'On the Way', 'Delivered', 'Assigned', 'Pending', 'assigned', 'pending', 'Cancelled', 'cancelled', 'cancelado'].includes(order.status);
+                    // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled
+                    const validStatuses = ['open', 'on the way', 'arriving', 'delivered', 'cancelled'];
+                    const statusValid = validStatuses.includes(order.status?.toLowerCase());
 
                     // console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
                     // payment_status: order.payment_status,
@@ -166,18 +168,20 @@ export function OrderProvider({ children }) {
             // 🎯 Contar SOLO órdenes activas según tipo de usuario
             let activeOrders;
             if (user.usertype === 'driver') {
-                // Para drivers: contar SOLO órdenes asignadas y en progreso (EXCLUIR entregadas y canceladas)
-                const activeDriverStatuses = ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'];
+                // Para drivers: contar SOLO órdenes activas (EXCLUIR entregadas y canceladas)
+                // Backend estados activos: Open, On the Way, Arriving
+                const activeDriverStatuses = ['open', 'on the way', 'arriving'];
                 activeOrders = sortedOrders.filter(order =>
-                    activeDriverStatuses.includes(order.status) &&
+                    activeDriverStatuses.includes(order.status?.toLowerCase()) &&
                     ['paid', 'pending', 'completed'].includes(order.payment_status)
                 );
             } else {
-                // Para usuarios normales: contar SOLO órdenes activas (EXCLUIR entregadas, completadas y canceladas)
-                const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
+                // Para usuarios normales: contar SOLO órdenes activas (EXCLUIR entregadas y canceladas)
+                // Backend estados finalizados: Delivered, Cancelled
+                const finishedStatuses = ['delivered', 'cancelled'];
                 activeOrders = sortedOrders.filter(order =>
-                    order.status && !completedStatuses.includes(order.status.toLowerCase()) &&
-                    order.payment_status === 'paid' // Solo contar órdenes con pago confirmado
+                    order.status && !finishedStatuses.includes(order.status.toLowerCase()) &&
+                    order.payment_status === 'paid'
                 );
 
                 // 🏪 DEBUG OXXO: Ver filtrado de órdenes activas
@@ -227,9 +231,10 @@ export function OrderProvider({ children }) {
     // Función manual para actualizar (para compatibilidad)
     const updateOrders = (ordersData) => {
         setOrders(ordersData);
-        const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-        const activeOrders = ordersData.filter(order => 
-            order.status && !completedStatuses.includes(order.status.toLowerCase())
+        // Backend estados finalizados: Delivered, Cancelled
+        const finishedStatuses = ['delivered', 'cancelled'];
+        const activeOrders = ordersData.filter(order =>
+            order.status && !finishedStatuses.includes(order.status.toLowerCase())
         );
         setOrderCount(activeOrders.length);
     };

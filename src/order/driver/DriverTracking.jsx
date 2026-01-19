@@ -333,8 +333,9 @@ const DriverTracking = ({order}) => {
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
 
-    const activeStatuses = ['On the Way', 'on the way', 'en camino', 'arriving', 'Arriving'];
-    if (activeStatuses.includes(currentStatus)) {
+    // Backend estados activos: On the Way, Arriving
+    const activeStatuses = ['on the way', 'arriving'];
+    if (activeStatuses.includes(currentStatus?.toLowerCase())) {
       // Intervalo para tracking en tiempo real
       const interval = setInterval(() => {
         // Solo obtener ubicación GPS y enviarla al servidor
@@ -343,7 +344,7 @@ const DriverTracking = ({order}) => {
       }, 8000); // Cada 8 segundos
 
       return () => clearInterval(interval);
-    } else if (currentStatus === 'Delivered' || currentStatus === 'delivered') {
+    } else if (currentStatus?.toLowerCase() === 'delivered') {
       // Para órdenes entregadas, obtener ubicación final guardada
       getDriverLocaton();
     }

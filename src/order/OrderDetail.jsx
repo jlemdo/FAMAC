@@ -1024,11 +1024,9 @@ const OrderDetails = () => {
         })()}
 
         {/* Botón de Atención al Cliente - Solo para usuarios después de entrega */}
+        {/* Backend estado: Delivered */}
         {user?.usertype !== 'driver' &&
-         (order?.status?.toLowerCase() === 'delivered' ||
-          order?.status?.toLowerCase() === 'entregado' ||
-          order?.status?.toLowerCase() === 'completed' ||
-          order?.status?.toLowerCase() === 'completado') && (
+         order?.status?.toLowerCase() === 'delivered' && (
           <TouchableOpacity
             style={styles.supportButton}
             onPress={() => setShowSupportModal(true)}
