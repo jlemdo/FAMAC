@@ -25,15 +25,15 @@ const CustomerTracking = ({order}) => {
   const [isFollowingDriver, setIsFollowingDriver] = useState(true); // Auto-seguimiento del driver
   const lastDriverLocationRef = useRef(null); // Para detectar cambios de ubicación
 
-  const fetchDriverLocation = useCallback(async (attempt = 0) => {
+  const fetchDriverLocation = useCallback(async () => {
     try {
       const res = await axios.get(
         `${API_BASE_URL}/api/driverlocationsagainstorder/${order.id}`,
-        { timeout: 8000 } // 8s timeout
+        { timeout: 8000 }
       );
       const lastLoc = res.data.data;
       const lastLocation = lastLoc[lastLoc.length - 1];
-      
+
       if (lastLocation?.driver_lat && lastLocation?.driver_long) {
         const newLocation = {
           driver_lat: parseFloat(lastLocation.driver_lat),
@@ -41,96 +41,41 @@ const CustomerTracking = ({order}) => {
         };
 
         setDriverLocation(newLocation);
-
-        // Auto-zoom al driver si está en modo seguimiento
-        if (isFollowingDriver && mapRef.current) {
-          // Solo animar si la ubicación cambió significativamente
-          const prevLoc = lastDriverLocationRef.current;
-          if (!prevLoc ||
-              Math.abs(prevLoc.driver_lat - newLocation.driver_lat) > 0.0001 ||
-              Math.abs(prevLoc.driver_long - newLocation.driver_long) > 0.0001) {
-
-            mapRef.current.animateToRegion({
-              latitude: newLocation.driver_lat,
-              longitude: newLocation.driver_long,
-              latitudeDelta: 0.01, // Zoom cercano al driver
-              longitudeDelta: 0.01,
-            }, 1000); // Animación suave de 1 segundo
-          }
-        }
-
         lastDriverLocationRef.current = newLocation;
-
-        // Éxito: resetear contadores de error
         setIsConnected(true);
         setRetryCount(0);
       }
     } catch (err) {
-      // ARREGLADO: Manejo mejorado de errores y throttling
-      const maxRetries = 3;
-      const isNetworkError = !err.response;
+      // Solo marcar como desconectado si es error de red real
       const isThrottleError = err.response?.data?.message?.includes('Too Many Attempts');
-
-      if (isThrottleError) {
-        // Throttling - no es un error real, solo esperamos más tiempo
-        // console.warn('⚠️ Rate limiting en customer tracking - esperando');
-        setIsConnected(true); // Mantener como conectado
-        setRetryCount(0); // No contar como retry
-      } else if (isNetworkError && attempt < maxRetries) {
-        // Retry con exponential backoff: 3s, 6s, 12s (más conservador)
-        const backoffDelay = Math.pow(2, attempt + 1) * 1500;
+      if (!isThrottleError) {
         setIsConnected(false);
-        setRetryCount(attempt + 1);
-
-        setTimeout(() => {
-          fetchDriverLocation(attempt + 1);
-        }, backoffDelay);
-      } else {
-        // Max retries alcanzado o error del servidor
-        setIsConnected(false);
-        setRetryCount(maxRetries);
       }
     }
   }, [order.id]);
 
+  // Efecto para animar el mapa cuando cambia la ubicación del driver
   useEffect(() => {
+    if (!driverLocation || !mapRef.current || !isFollowingDriver) return;
+
+    mapRef.current.animateToRegion({
+      latitude: driverLocation.driver_lat,
+      longitude: driverLocation.driver_long,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    }, 1000);
+  }, [driverLocation, isFollowingDriver]);
+
+  // Polling simple y confiable - cada 10 segundos
+  useEffect(() => {
+    // Fetch inicial
     fetchDriverLocation();
-    
-    // Polling mejorado para evitar rate limiting
-    const setupSmartPolling = () => {
-      let interval;
-      const updateInterval = () => {
-        // ARREGLADO: Frecuencias más conservadoras para evitar throttling
-        let pollRate = 15000; // Default: 15 segundos (era 8s)
 
-        if (eta.duration <= 5) {
-          pollRate = 8000; // Muy cerca: cada 8s (era 3s)
-        } else if (eta.duration <= 15) {
-          pollRate = 12000; // Cerca: cada 12s (era 5s)
-        } else if (eta.duration <= 30) {
-          pollRate = 15000; // Medio: cada 15s (era 8s)
-        } else {
-          pollRate = 20000; // Lejos: cada 20s (era 12s)
-        }
+    // Polling fijo cada 10 segundos
+    const interval = setInterval(fetchDriverLocation, 10000);
 
-        clearInterval(interval);
-        interval = setInterval(fetchDriverLocation, pollRate);
-      };
-      
-      updateInterval();
-      
-      // Reajustar cada vez que cambie el ETA
-      const metaInterval = setInterval(updateInterval, 30000); // cada 30s
-      
-      return () => {
-        clearInterval(interval);
-        clearInterval(metaInterval);
-      };
-    };
-    
-    const cleanup = setupSmartPolling();
-    return cleanup;
-  }, [fetchDriverLocation, eta.duration]);
+    return () => clearInterval(interval);
+  }, [fetchDriverLocation]);
 
   // Define customer coords antes del return
   // El backend puede enviar customer_lat/customer_long o delivery_lat/delivery_long

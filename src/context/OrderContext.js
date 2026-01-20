@@ -54,30 +54,6 @@ export function OrderProvider({ children }) {
                 url = `/api/orderhistory/${user.id}`;
             }
 
-            
-            // Debug: interceptar request para ver exactamente qué se envía
-            const config = {
-                method: 'GET',
-                url: url,
-                headers: {},
-                timeout: 10000
-            };
-            
-            // console.log('📤 CONFIG DE REQUEST:', JSON.stringify(config, null, 2));
-            
-            // PRUEBA DEFINITIVA: usar fetch() en lugar de axios
-            
-            // PRIMERA: Probar endpoint que SÍ funciona (login)
-            const testResponse = await fetch(`${API_BASE_URL}/api/auth/google`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ test: true })
-            });
-            
-            // SEGUNDA: Probar orderhistory
             const fetchResponse = await fetch(`${API_BASE_URL}${url}`, {
                 method: 'GET',
                 headers: {
@@ -207,10 +183,9 @@ export function OrderProvider({ children }) {
             // });
             
         } catch (err) {
-            
-            // Mantener órdenes vacías cuando hay error
-            setOrders([]);
-            setOrderCount(0);
+            // NO borrar las órdenes existentes cuando hay error de red
+            // Solo registrar el error silenciosamente y mantener los datos actuales
+            // Esto evita que los pedidos "desaparezcan" por errores temporales
         }
     }, [user, allowGuestOrders]);
 
