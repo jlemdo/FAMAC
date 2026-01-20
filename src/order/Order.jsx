@@ -176,7 +176,10 @@ const Order = () => {
 
   // 🚚 FUNCIÓN: Filtrar órdenes para drivers según tab activa
   const getFilteredDriverOrders = () => {
-    if (user?.usertype !== 'driver') return orders;
+    // Protección: si orders no es un array válido, devolver array vacío
+    if (!Array.isArray(orders)) return [];
+
+    if (user?.usertype !== 'driver') return orders || [];
 
     if (driverActiveTab === 'disponibles') {
       // Tab "Disponibles": Órdenes asignadas y en progreso
@@ -196,6 +199,9 @@ const Order = () => {
   // 👤 FUNCIÓN: Filtrar órdenes para usuarios según tab activa
   const getFilteredUserOrders = () => {
     const ordersToFilter = showingGuestOrders ? guestOrders : orders;
+
+    // Protección: si ordersToFilter no es un array válido, devolver array vacío
+    if (!Array.isArray(ordersToFilter)) return [];
 
     if (userActiveTab === 'activas') {
       // Tab "Activas": Órdenes que NO están entregadas ni canceladas

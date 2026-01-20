@@ -175,7 +175,6 @@ const DriverTracking = ({order}) => {
 
   const submitDriverLocation = useCallback(async () => {
     if (!latlong?.driver_lat || !latlong?.driver_long) {
-      // console.log('⚠️ No hay coordenadas válidas para enviar');
       return;
     }
 
@@ -185,14 +184,8 @@ const DriverTracking = ({order}) => {
       driver_long: latlong.driver_long,
     };
 
-    // console.log('📍 Enviando ubicación del driver:', payload);
-
     try {
-      await axios.post(
-        `${API_BASE_URL}/api/driverlocsubmit`,
-        payload,
-      );
-      // Ubicación enviada - no necesitamos hacer nada más
+      await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, payload);
     } catch (error) {
       // Silenciar errores de rate limiting, reintentar en el próximo intervalo
     }
@@ -282,25 +275,26 @@ const DriverTracking = ({order}) => {
 
   const getCurrentLocation = async () => {
     try {
-      // Usar ubicación real con solicitud de permisos
-      await getCurrentLocationUtil(
-        'driver',
-        (coordinates) => {
-          setLatlong({
-            driver_lat: coordinates.latitude,
-            driver_long: coordinates.longitude,
-          });
-        },
-        (error) => {
-          // console.log('Error obteniendo ubicación:', error);
-          // Fallback a ubicación de origen del reparto (Av México Coyoacán 371, Col Xoco)
-          setLatlong({
-            driver_lat: 19.3611652,
-            driver_long: -99.1652658,
-          });
-        }
-      );
+      const location = await getCurrentLocationUtil('driver');
+
+      if (location && location.latitude && location.longitude) {
+        setLatlong({
+          driver_lat: location.latitude,
+          driver_long: location.longitude,
+        });
+      } else {
+        Alert.alert(
+          'Ubicación requerida',
+          'No pudimos obtener tu ubicación. Por favor activa el GPS y los permisos de ubicación.',
+          [{ text: 'Entendido' }]
+        );
+      }
     } catch (error) {
+      Alert.alert(
+        'Error de ubicación',
+        `No se pudo obtener tu ubicación: ${error.message}. Verifica que el GPS esté activado.`,
+        [{ text: 'Entendido' }]
+      );
     }
   };
 

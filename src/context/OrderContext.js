@@ -61,14 +61,12 @@ export function OrderProvider({ children }) {
                     'Content-Type': 'application/json'
                 }
             });
-            
-            
+
             if (!fetchResponse.ok) {
                 throw new Error(`FETCH failed with status ${fetchResponse.status}`);
             }
-            
+
             const fetchData = await fetchResponse.json();
-            
             const ordersData = fetchData.orders || [];
             
             // 🔍 DEBUG TEMPORAL: Ver órdenes recibidas para drivers
@@ -113,25 +111,12 @@ export function OrderProvider({ children }) {
                 // 1. Pago completado
                 // 2. Estados específicos de workflow del driver (incluyendo canceladas)
                 filteredOrders = ordersData.filter(order => {
-                    // 🔍 TEMPORAL: Filtro más permisivo para debug
                     const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
                     // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled
                     const validStatuses = ['open', 'on the way', 'arriving', 'delivered', 'cancelled'];
                     const statusValid = validStatuses.includes(order.status?.toLowerCase());
-
-                    // console.log(`🔍 FILTRO DRIVER - Orden ${order.id}:`, {
-                    // payment_status: order.payment_status,
-                    // status: order.status,
-                    // driver_id: order.driver_id,
-                    // paymentValid,
-                    // statusValid,
-                    // incluir: paymentValid && statusValid
-                    // });
-
                     return paymentValid && statusValid;
                 });
-
-                // console.log(`✅ DRIVER FILTRADO: ${ordersData.length} → ${filteredOrders.length} órdenes válidas`);
             }
             
             // Ordenar por fecha descendente
@@ -184,8 +169,7 @@ export function OrderProvider({ children }) {
             
         } catch (err) {
             // NO borrar las órdenes existentes cuando hay error de red
-            // Solo registrar el error silenciosamente y mantener los datos actuales
-            // Esto evita que los pedidos "desaparezcan" por errores temporales
+            // Mantener los datos actuales para evitar que desaparezcan
         }
     }, [user, allowGuestOrders]);
 
