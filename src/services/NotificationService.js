@@ -284,10 +284,10 @@ class NotificationService {
   setupNotificationListeners() {
     // Notificación cuando la app está en foreground
     messaging().onMessage(async remoteMessage => {
-      
+
       // ✅ MEJORADO: Usar contenido enhanced
       const enhancedContent = this.enhanceNotificationContent(remoteMessage);
-      
+
       // Agregar a la campana del header con contenido mejorado
       if (this.addNotificationCallback) {
         this.addNotificationCallback(
@@ -295,14 +295,24 @@ class NotificationService {
           enhancedContent.body
         );
       }
-      
+
+      // 🚚 DRIVER FIX: Force refresh órdenes cuando llega notificación de nueva orden asignada
+      const notificationType = remoteMessage.data?.type;
+      if (notificationType === 'new_order_assigned' && this.forceRefreshOrdersCallback) {
+        this.forceRefreshOrdersCallback();
+      }
+
       // 🔪 CIRUGÍA: Solo campanita, sin alerts nativos
       // Alert removido según solicitud del usuario
     });
 
     // Notificación cuando la app está en background y se abre
     messaging().onNotificationOpenedApp(remoteMessage => {
-      // console.log('🔔 BACKGROUND TAP DETECTED:', remoteMessage);
+      // 🚚 DRIVER FIX: Force refresh cuando se toca notificación de nueva orden
+      const notificationType = remoteMessage.data?.type;
+      if (notificationType === 'new_order_assigned' && this.forceRefreshOrdersCallback) {
+        this.forceRefreshOrdersCallback();
+      }
       this.handleNotificationPress(remoteMessage);
     });
 
@@ -311,7 +321,11 @@ class NotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
-          // console.log('🔔 APP CLOSED TAP DETECTED:', remoteMessage);
+          // 🚚 DRIVER FIX: Force refresh cuando se abre app desde notificación de nueva orden
+          const notificationType = remoteMessage.data?.type;
+          if (notificationType === 'new_order_assigned' && this.forceRefreshOrdersCallback) {
+            this.forceRefreshOrdersCallback();
+          }
           this.handleNotificationPress(remoteMessage);
         }
       });

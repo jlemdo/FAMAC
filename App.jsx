@@ -114,13 +114,16 @@ function MainTabs() {
     
     let activeOrders;
     if (user?.usertype === 'driver') {
-      // Para drivers: contar órdenes asignadas y en progreso (incluyendo estados de asignación)
-      activeOrders = orders.filter(order => ['Open', 'Abierto', 'On the Way', 'Assigned', 'Pending', 'assigned', 'pending'].includes(order.status));
+      // Para drivers: contar órdenes activas (estados del backend: open, on the way, arriving)
+      const activeDriverStatuses = ['open', 'on the way', 'arriving'];
+      activeOrders = orders.filter(order =>
+        activeDriverStatuses.includes(order.status?.toLowerCase())
+      );
     } else {
       // Para usuarios normales: contar órdenes no completadas
-      const completedStatuses = ['delivered', 'entregado', 'completed', 'finalizado', 'cancelled', 'cancelado'];
-      activeOrders = orders.filter(order => 
-        order.status && !completedStatuses.includes(order.status.toLowerCase())
+      const finishedStatuses = ['delivered', 'cancelled'];
+      activeOrders = orders.filter(order =>
+        order.status && !finishedStatuses.includes(order.status.toLowerCase())
       );
     }
     
@@ -353,6 +356,7 @@ function RootStack() {
 function AuthFlow() {
   const {user} = useContext(AuthContext);
   const {addNotification} = useNotification();
+  const {forceRefreshOrders} = useContext(OrderContext);
   const navigationRef = useRef();
 
   // ✅ NUEVO: Usar hook para manejar notificaciones y prevenir contaminación cruzada
@@ -363,11 +367,17 @@ function AuthFlow() {
     NotificationService.setNotificationCallback(addNotification);
   }, [addNotification]);
 
+  // 🚚 DRIVER FIX: Conectar forceRefreshOrders para que las notificaciones actualicen la lista
+  useEffect(() => {
+    if (forceRefreshOrders) {
+      NotificationService.setForceRefreshOrdersCallback(forceRefreshOrders);
+    }
+  }, [forceRefreshOrders]);
+
   // 🔧 CRÍTICO: Configurar navigationRef para que las notificaciones puedan navegar
   useEffect(() => {
     if (navigationRef.current) {
       NotificationService.setNavigationRef(navigationRef.current);
-      console.log('✅ NAVIGATION REF CONFIGURED FOR NOTIFICATIONS');
     }
   }, [navigationRef.current]);
 

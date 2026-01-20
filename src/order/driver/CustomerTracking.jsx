@@ -133,10 +133,20 @@ const CustomerTracking = ({order}) => {
   }, [fetchDriverLocation, eta.duration]);
 
   // Define customer coords antes del return
+  // El backend puede enviar customer_lat/customer_long o delivery_lat/delivery_long
+  const customerLat = parseFloat(order.customer_lat || order.delivery_lat);
+  const customerLong = parseFloat(order.customer_long || order.delivery_long);
   const customer = {
-    latitude: parseFloat(order.customer_lat),
-    longitude: parseFloat(order.customer_long),
+    latitude: customerLat,
+    longitude: customerLong,
   };
+
+  // Validar que las coordenadas del cliente sean válidas
+  const hasValidCustomerCoords = !isNaN(customerLat) && !isNaN(customerLong) &&
+                                  customerLat !== 0 && customerLong !== 0;
+
+  // Condición para mostrar el mapa: driver tiene ubicación Y cliente tiene coordenadas válidas
+  const canShowMap = driverLocation && hasValidCustomerCoords;
 
   // Return JSX
   return (
@@ -182,20 +192,22 @@ const CustomerTracking = ({order}) => {
         </View>
       )}
 
-      {driverLocation ? (
-        <View style={styles.mapWrapper}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            showsTraffic={true}
-            initialRegion={{
-              latitude: (driverLocation.driver_lat + customer.latitude) / 2,
-              longitude: (driverLocation.driver_long + customer.longitude) / 2,
-              latitudeDelta:
-                Math.abs(driverLocation.driver_lat - customer.latitude) * 1.5,
-              longitudeDelta:
-                Math.abs(driverLocation.driver_long - customer.longitude) * 1.5,
-            }}>
+      {canShowMap ? (
+        <View style={styles.mapCard}>
+          <Text style={styles.sectionTitle}>📍 Seguimiento en vivo</Text>
+          <View style={styles.mapWrapper}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              showsTraffic={true}
+              initialRegion={{
+                latitude: (driverLocation.driver_lat + customer.latitude) / 2,
+                longitude: (driverLocation.driver_long + customer.longitude) / 2,
+                latitudeDelta:
+                  Math.abs(driverLocation.driver_lat - customer.latitude) * 1.5 || 0.01,
+                longitudeDelta:
+                  Math.abs(driverLocation.driver_long - customer.longitude) * 1.5 || 0.01,
+              }}>
             {/* Trazar ruta */}
             <MapViewDirections
               origin={{
@@ -243,54 +255,54 @@ const CustomerTracking = ({order}) => {
                 <Text style={styles.houseIcon}>🏠</Text>
               </View>
             </Marker>
-          </MapView>
-          {eta && (
-            <View style={styles.hud}>
-              <Text style={styles.hudText}>
-                🚗 {eta.distance.toFixed(1)} km · ⏱ {Math.ceil(eta.duration)}{' '}
-                min
-              </Text>
-            </View>
-          )}
-          {/* Botón para centrar en driver */}
-          <TouchableOpacity
-            style={[styles.recenterBtn, isFollowingDriver && styles.recenterBtnActive]}
-            onPress={() => {
-              if (isFollowingDriver) {
-                // Si está siguiendo, mostrar ruta completa
-                setIsFollowingDriver(false);
-                if (routeCoords.length) {
-                  mapRef.current.fitToCoordinates(routeCoords, {
-                    edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
-                    animated: true,
-                  });
+            </MapView>
+            {eta && (
+              <View style={styles.hud}>
+                <Text style={styles.hudText}>
+                  🚗 {eta.distance.toFixed(1)} km · ⏱ {Math.ceil(eta.duration)} min
+                </Text>
+              </View>
+            )}
+            {/* Botón para centrar en driver */}
+            <TouchableOpacity
+              style={[styles.recenterBtn, isFollowingDriver && styles.recenterBtnActive]}
+              onPress={() => {
+                if (isFollowingDriver) {
+                  // Si está siguiendo, mostrar ruta completa
+                  setIsFollowingDriver(false);
+                  if (routeCoords.length) {
+                    mapRef.current.fitToCoordinates(routeCoords, {
+                      edgePadding: {top: 80, right: 40, bottom: 80, left: 40},
+                      animated: true,
+                    });
+                  }
+                } else {
+                  // Si no está siguiendo, activar seguimiento del driver
+                  setIsFollowingDriver(true);
+                  if (driverLocation) {
+                    mapRef.current.animateToRegion({
+                      latitude: driverLocation.driver_lat,
+                      longitude: driverLocation.driver_long,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }, 1000);
+                  }
                 }
-              } else {
-                // Si no está siguiendo, activar seguimiento del driver
-                setIsFollowingDriver(true);
-                if (driverLocation) {
-                  mapRef.current.animateToRegion({
-                    latitude: driverLocation.driver_lat,
-                    longitude: driverLocation.driver_long,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  }, 1000);
-                }
-              }
-            }}>
-            <Ionicons
-              name={isFollowingDriver ? "navigate" : "locate-outline"}
-              size={24}
-              color="#FFF"
-            />
-          </TouchableOpacity>
+              }}>
+              <Ionicons
+                name={isFollowingDriver ? "navigate" : "locate-outline"}
+                size={24}
+                color="#FFF"
+              />
+            </TouchableOpacity>
 
-          {/* Indicador de modo seguimiento */}
-          {isFollowingDriver && (
-            <View style={styles.followingIndicator}>
-              <Text style={styles.followingText}>Siguiendo al repartidor</Text>
-            </View>
-          )}
+            {/* Indicador de modo seguimiento */}
+            {isFollowingDriver && (
+              <View style={styles.followingIndicator}>
+                <Text style={styles.followingText}>Siguiendo al repartidor</Text>
+              </View>
+            )}
+          </View>
         </View>
       ) : (
         <View style={styles.waitingCard}>
@@ -298,9 +310,14 @@ const CustomerTracking = ({order}) => {
             <Ionicons name="time-outline" size={48} color="#D27F27" />
             <Text style={styles.waitingTitle}>Esperando a tu repartidor</Text>
             <Text style={styles.waitingText}>
-              Tu pedido ha sido asignado a un repartidor. En unos momentos aparecerá su ubicación en tiempo real.
+              {!hasValidCustomerCoords
+                ? 'No se pudo obtener la ubicación de entrega. Por favor contacta a soporte.'
+                : 'Tu pedido ha sido asignado a un repartidor. En unos momentos aparecerá su ubicación en tiempo real.'
+              }
             </Text>
-            <ActivityIndicator style={styles.waitingSpinner} size="large" color="#D27F27" />
+            {hasValidCustomerCoords && (
+              <ActivityIndicator style={styles.waitingSpinner} size="large" color="#D27F27" />
+            )}
           </View>
         </View>
       )}
@@ -311,9 +328,7 @@ const CustomerTracking = ({order}) => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#F2EFE4', // Crema Suave
-    // padding: 16,                    // escala: 16px
   },
   deliveryInfo: {
     backgroundColor: '#FFF',
@@ -329,8 +344,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.large,
-    color: '#2F2F2F', // Gris Carbón
-    marginBottom: 8,
+    color: '#333',
+    marginBottom: 10,
   },
   infoText: {
     fontFamily: fonts.regular,
@@ -338,23 +353,27 @@ const styles = StyleSheet.create({
     color: '#444',
     marginBottom: 4,
   },
-  mapWrapper: {
-    flex: 1,
+  // Card contenedora del mapa (igual que en DriverTracking)
+  mapCard: {
+    backgroundColor: '#FFF',
     borderRadius: 12,
-    overflow: 'hidden',
-    marginHorizontal: 16,
+    padding: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#8B5E3C', // Marrón Tierra
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 6,
     shadowOffset: {width: 0, height: 2},
-    elevation: 2,
+    elevation: 3,
+  },
+  mapWrapper: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    height: 300,
+    position: 'relative',
   },
   map: {
     width: '100%',
-    height: 300,
+    height: '100%',
   },
   loader: {
     marginTop: 16,

@@ -322,10 +322,17 @@ const DriverTracking = ({order}) => {
   }, [order.id]);
 
   // Define customer coords antes del return
+  // El backend puede enviar customer_lat/customer_long o delivery_lat/delivery_long
+  const customerLat = parseFloat(order.customer_lat || order.delivery_lat);
+  const customerLong = parseFloat(order.customer_long || order.delivery_long);
   const customer = {
-    latitude: parseFloat(order.customer_lat),
-    longitude: parseFloat(order.customer_long),
+    latitude: customerLat,
+    longitude: customerLong,
   };
+
+  // Validar que las coordenadas del cliente sean válidas
+  const hasValidCustomerCoords = !isNaN(customerLat) && !isNaN(customerLong) &&
+                                  customerLat !== 0 && customerLong !== 0;
 
   // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
   useEffect(() => {
@@ -398,7 +405,7 @@ const DriverTracking = ({order}) => {
 
 
       {/* 🗺️ Mapa de Entrega */}
-      {latlong && latlong.driver_lat && latlong.driver_long && (
+      {latlong && latlong.driver_lat && latlong.driver_long && hasValidCustomerCoords && (
         <View style={styles.mapCard}>
           <Text style={styles.sectionTitle}>📍 Ruta de Entrega</Text>
           <View style={styles.mapWrapper}>
