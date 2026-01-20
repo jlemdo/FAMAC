@@ -35,18 +35,14 @@ const CustomerTracking = ({order}) => {
       const lastLocation = lastLoc[lastLoc.length - 1];
 
       if (lastLocation?.driver_lat && lastLocation?.driver_long) {
-        const newLocation = {
+        setDriverLocation({
           driver_lat: parseFloat(lastLocation.driver_lat),
           driver_long: parseFloat(lastLocation.driver_long),
-        };
-
-        setDriverLocation(newLocation);
-        lastDriverLocationRef.current = newLocation;
+        });
         setIsConnected(true);
         setRetryCount(0);
       }
     } catch (err) {
-      // Solo marcar como desconectado si es error de red real
       const isThrottleError = err.response?.data?.message?.includes('Too Many Attempts');
       if (!isThrottleError) {
         setIsConnected(false);
@@ -66,13 +62,13 @@ const CustomerTracking = ({order}) => {
     }, 1000);
   }, [driverLocation, isFollowingDriver]);
 
-  // Polling simple y confiable - cada 10 segundos
+  // Polling simple y confiable - cada 15 segundos
   useEffect(() => {
     // Fetch inicial
     fetchDriverLocation();
 
-    // Polling fijo cada 10 segundos
-    const interval = setInterval(fetchDriverLocation, 10000);
+    // Polling fijo cada 15 segundos (sincronizado con el driver)
+    const interval = setInterval(fetchDriverLocation, 15000);
 
     return () => clearInterval(interval);
   }, [fetchDriverLocation]);
@@ -176,8 +172,9 @@ const CustomerTracking = ({order}) => {
               }}
             />
 
-            {/* Marcadores con iconos personalizados */}
+            {/* Marcador del driver - key dinámica para forzar re-render */}
             <Marker
+              key={`driver-${driverLocation.driver_lat}-${driverLocation.driver_long}`}
               coordinate={{
                 latitude: driverLocation.driver_lat,
                 longitude: driverLocation.driver_long,

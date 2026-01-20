@@ -174,20 +174,16 @@ const DriverTracking = ({order}) => {
   };
 
   const submitDriverLocation = useCallback(async () => {
-    if (!latlong?.driver_lat || !latlong?.driver_long) {
-      return;
-    }
-
-    const payload = {
-      orderid: order.id,
-      driver_lat: latlong.driver_lat,
-      driver_long: latlong.driver_long,
-    };
+    if (!latlong?.driver_lat || !latlong?.driver_long) return;
 
     try {
-      await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, payload);
+      await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
+        orderid: order.id,
+        driver_lat: latlong.driver_lat,
+        driver_long: latlong.driver_long,
+      });
     } catch (error) {
-      // Silenciar errores de rate limiting, reintentar en el próximo intervalo
+      // Silenciar errores de rate limiting
     }
   }, [order.id, latlong]);
 
@@ -330,26 +326,33 @@ const DriverTracking = ({order}) => {
 
   // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
   useEffect(() => {
-
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
 
     // Backend estados activos: On the Way, Arriving
     const activeStatuses = ['on the way', 'arriving'];
     if (activeStatuses.includes(currentStatus?.toLowerCase())) {
-      // Intervalo para tracking en tiempo real
-      const interval = setInterval(() => {
-        // Solo obtener ubicación GPS y enviarla al servidor
-        getCurrentLocation();
-        submitDriverLocation();
-      }, 8000); // Cada 8 segundos
+      // Intervalo para tracking en tiempo real - 15 segundos para evitar rate limiting
+      const interval = setInterval(async () => {
+        await getCurrentLocation();
+      }, 15000);
 
       return () => clearInterval(interval);
     } else if (currentStatus?.toLowerCase() === 'delivered') {
       // Para órdenes entregadas, obtener ubicación final guardada
       getDriverLocaton();
     }
-  }, [order.id, currentStatus]); // Incluir currentStatus para reaccionar a cambios
+  }, [order.id, currentStatus]);
+
+  // Efecto separado: enviar ubicación cuando cambie latlong
+  useEffect(() => {
+    if (latlong?.driver_lat && latlong?.driver_long) {
+      const activeStatuses = ['on the way', 'arriving'];
+      if (activeStatuses.includes(currentStatus?.toLowerCase())) {
+        submitDriverLocation();
+      }
+    }
+  }, [latlong, currentStatus, submitDriverLocation]);
 
   // 🆕 ACTUALIZACIÓN DEL MAPA: Animar cuando cambie la ubicación del driver
   useEffect(() => {
