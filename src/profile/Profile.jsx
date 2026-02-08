@@ -6,7 +6,6 @@ import {
   TextInput,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Platform,
   ActivityIndicator,
@@ -14,11 +13,7 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  FlatList,
-  Animated
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
@@ -167,8 +162,6 @@ export default function Profile({ navigation, route }) {
   const [supportLoading, setSupportLoading] = useState(false);
   const [showOrderPicker, setShowOrderPicker] = useState(false);
   const [formattedOrders, setFormattedOrders] = useState([]);
-  const [selectedOrderLabel, setSelectedOrderLabel] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
@@ -176,8 +169,6 @@ export default function Profile({ navigation, route }) {
   const [longPressProgress, setLongPressProgress] = useState(0);
   const [isLongPressing, setIsLongPressing] = useState(false);
   const [showFounderTooltip, setShowFounderTooltip] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
   const formikRef = useRef(null);
 
   // Hook para actualizaciones automáticas
@@ -185,10 +176,6 @@ export default function Profile({ navigation, route }) {
     checkOnMount: false,
     showModalAutomatically: true
   });
-
-  // Referencias para animaciones de toast
-  const toastOpacity = useRef(new Animated.Value(0)).current;
-  const toastTranslateY = useRef(new Animated.Value(-50)).current;
 
   // Referencias para long press timer (más estable que animaciones)
   const longPressTimer = useRef(null);
@@ -741,43 +728,6 @@ export default function Profile({ navigation, route }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const showSuccessMessage = (message) => {
-    setToastMessage(message);
-    setShowSuccessToast(true);
-    
-    // Animación de entrada
-    Animated.parallel([
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(toastTranslateY, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    // Auto-ocultar después de 2.5 segundos
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(toastTranslateY, {
-          toValue: -50,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setShowSuccessToast(false);
-      });
-    }, 2500);
   };
 
   const ProfileSchema = Yup.object().shape({
@@ -2235,27 +2185,6 @@ export default function Profile({ navigation, route }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Toast de éxito para direcciones (tipo carrito) */}
-      {showSuccessToast && (
-        <Animated.View
-          style={[
-            styles.successToast,
-            {
-              opacity: toastOpacity,
-              transform: [{translateY: toastTranslateY}],
-            },
-          ]}>
-          <View style={styles.successToastContent}>
-            <Ionicons name="checkmark-circle" size={20} color="#33A744" />
-            <View style={styles.successToastTextContainer}>
-              <Text style={styles.successToastText}>
-                {toastMessage}
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
-      )}
-
       {/* Versión de la app */}
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>
@@ -2660,12 +2589,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     marginLeft: 8,
   },
-  iosDatePicker: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  
+
   // Estilos del selector personalizado de mes/año
   pickerModalOverlay: {
     flex: 1,
@@ -2967,43 +2891,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#FFF',
   },
-  
-  // === ESTILOS DEL TOAST DE ÉXITO (tipo carrito) ===
-  successToast: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 100 : 80, // Misma altura que ProductDetails
-    left: 16,
-    right: 16,
-    zIndex: 1000,
-  },
-  successToastContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: '#33A744',
-  },
-  successToastTextContainer: {
-    flex: 1,
-    marginLeft: 8,
-  },
-  successToastText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: '#33A744',
-    textAlign: 'left',
-    lineHeight: 18,
-  },
-  
+
   // 🎂 Estilos para botón deshabilitado del selector de fecha
   pickerConfirmButtonDisabled: {
     backgroundColor: '#E0E0E0',
