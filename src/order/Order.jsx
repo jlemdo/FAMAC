@@ -249,71 +249,82 @@ const Order = () => {
         <>
           {/* 🚚 TABS ESPECÍFICOS PARA DRIVERS */}
           {user?.usertype === 'driver' && (
-            <View style={styles.driverTabsContainer}>
+            <View style={styles.userTabsContainer}>
               <TouchableOpacity
                 style={[
-                  styles.driverTab,
+                  styles.userTab,
                   driverActiveTab === 'disponibles' && styles.driverTabActive
                 ]}
                 onPress={() => setDriverActiveTab('disponibles')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={driverActiveTab === 'disponibles' ? "radio-button-on" : "radio-button-off"}
+                  size={18}
+                  color={driverActiveTab === 'disponibles' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
-                  styles.driverTabText,
-                  driverActiveTab === 'disponibles' && styles.driverTabTextActive
+                  styles.userTabText,
+                  driverActiveTab === 'disponibles' && styles.userTabTextActive
                 ]}>
-                  🟢 Disponibles
+                  Disponibles
                 </Text>
-                {driverActiveTab === 'disponibles' && (
-                  <View style={styles.driverTabBadge}>
-                    <Text style={styles.driverTabBadgeText}>
-                      {getFilteredDriverOrders().length}
-                    </Text>
-                  </View>
-                )}
+                <View style={[
+                  styles.userTabBadge,
+                  driverActiveTab !== 'disponibles' && styles.userTabBadgeInactive
+                ]}>
+                  <Text style={[
+                    styles.userTabBadgeText,
+                    driverActiveTab !== 'disponibles' && styles.userTabBadgeTextInactive
+                  ]}>
+                    {getFilteredDriverOrders().length}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.driverTab,
+                  styles.userTab,
                   driverActiveTab === 'entregas' && styles.driverTabActive
                 ]}
                 onPress={() => setDriverActiveTab('entregas')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={driverActiveTab === 'entregas' ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={18}
+                  color={driverActiveTab === 'entregas' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
-                  styles.driverTabText,
-                  driverActiveTab === 'entregas' && styles.driverTabTextActive
+                  styles.userTabText,
+                  driverActiveTab === 'entregas' && styles.userTabTextActive
                 ]}>
-                  ✅ Entregas
+                  Entregas
                 </Text>
-                {driverActiveTab === 'entregas' && (
-                  <View style={styles.driverTabBadge}>
-                    <Text style={styles.driverTabBadgeText}>
-                      {getFilteredDriverOrders().length}
-                    </Text>
-                  </View>
-                )}
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.driverTab,
+                  styles.userTab,
                   driverActiveTab === 'canceladas' && styles.driverTabActive
                 ]}
                 onPress={() => setDriverActiveTab('canceladas')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={driverActiveTab === 'canceladas' ? "close-circle" : "close-circle-outline"}
+                  size={18}
+                  color={driverActiveTab === 'canceladas' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
-                  styles.driverTabText,
-                  driverActiveTab === 'canceladas' && styles.driverTabTextActive
+                  styles.userTabText,
+                  driverActiveTab === 'canceladas' && styles.userTabTextActive
                 ]}>
-                  ❌ Canceladas
+                  Canceladas
                 </Text>
-                {driverActiveTab === 'canceladas' && (
-                  <View style={styles.driverTabBadge}>
-                    <Text style={styles.driverTabBadgeText}>
-                      {getFilteredDriverOrders().length}
-                    </Text>
-                  </View>
-                )}
               </TouchableOpacity>
             </View>
           )}
@@ -327,20 +338,31 @@ const Order = () => {
                   userActiveTab === 'activas' && styles.userTabActive
                 ]}
                 onPress={() => setUserActiveTab('activas')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={userActiveTab === 'activas' ? "time" : "time-outline"}
+                  size={18}
+                  color={userActiveTab === 'activas' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
                   styles.userTabText,
                   userActiveTab === 'activas' && styles.userTabTextActive
                 ]}>
-                  🔄 Activas
+                  Activas
                 </Text>
-                {userActiveTab === 'activas' && (
-                  <View style={styles.userTabBadge}>
-                    <Text style={styles.userTabBadgeText}>
-                      {getFilteredUserOrders().length}
-                    </Text>
-                  </View>
-                )}
+                <View style={[
+                  styles.userTabBadge,
+                  userActiveTab !== 'activas' && styles.userTabBadgeInactive
+                ]}>
+                  <Text style={[
+                    styles.userTabBadgeText,
+                    userActiveTab !== 'activas' && styles.userTabBadgeTextInactive
+                  ]}>
+                    {getFilteredUserOrders().length}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -349,20 +371,20 @@ const Order = () => {
                   userActiveTab === 'entregadas' && styles.userTabActive
                 ]}
                 onPress={() => setUserActiveTab('entregadas')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={userActiveTab === 'entregadas' ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={18}
+                  color={userActiveTab === 'entregadas' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
                   styles.userTabText,
                   userActiveTab === 'entregadas' && styles.userTabTextActive
                 ]}>
-                  ✅ Entregadas
+                  Entregadas
                 </Text>
-                {userActiveTab === 'entregadas' && (
-                  <View style={styles.userTabBadge}>
-                    <Text style={styles.userTabBadgeText}>
-                      {getFilteredUserOrders().length}
-                    </Text>
-                  </View>
-                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -371,20 +393,20 @@ const Order = () => {
                   userActiveTab === 'canceladas' && styles.userTabActive
                 ]}
                 onPress={() => setUserActiveTab('canceladas')}
+                activeOpacity={0.7}
               >
+                <Ionicons
+                  name={userActiveTab === 'canceladas' ? "close-circle" : "close-circle-outline"}
+                  size={18}
+                  color={userActiveTab === 'canceladas' ? "#FFF" : "#666"}
+                  style={{marginRight: 6}}
+                />
                 <Text style={[
                   styles.userTabText,
                   userActiveTab === 'canceladas' && styles.userTabTextActive
                 ]}>
-                  ❌ Canceladas
+                  Canceladas
                 </Text>
-                {userActiveTab === 'canceladas' && (
-                  <View style={styles.userTabBadge}>
-                    <Text style={styles.userTabBadgeText}>
-                      {getFilteredUserOrders().length}
-                    </Text>
-                  </View>
-                )}
               </TouchableOpacity>
             </View>
           )}
@@ -401,129 +423,155 @@ const Order = () => {
           onRefresh={handleRefresh}
           // Encabezado dinámico según tipo de usuario
           ListHeaderComponent={
-            <Text style={styles.header}>
-              {user?.usertype === 'driver' ? 'Órdenes Asignadas' : 'Historial de Pedidos'}
-            </Text>
+            <View style={styles.headerContainer}>
+              <Ionicons
+                name={user?.usertype === 'driver' ? "bicycle" : "receipt"}
+                size={24}
+                color="#D27F27"
+              />
+              <Text style={styles.header}>
+                {user?.usertype === 'driver' ? 'Órdenes Asignadas' : 'Mis Pedidos'}
+              </Text>
+            </View>
           }
           // Mensaje cuando no hay pedidos
           ListEmptyComponent={
-            <View style={styles.userMessage}>
-              {user && user.usertype === 'Guest' ? (
-                // Mensajes para Guest
-                (user.email && typeof user.email === 'string' && user.email.trim()) ? (
-                  // Guest que ya hizo pedidos (tiene email) - Solo mostrar si NO hay pedidos después de la búsqueda
-                  showingGuestOrders && guestOrders.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyCard}>
+                {user && user.usertype === 'Guest' ? (
+                  // Mensajes para Guest
+                  (user.email && typeof user.email === 'string' && user.email.trim()) ? (
+                    // Guest que ya hizo pedidos (tiene email)
+                    showingGuestOrders && guestOrders.length === 0 ? (
+                      <>
+                        <View style={styles.emptyIconContainer}>
+                          <Ionicons name="mail-unread-outline" size={60} color="#CCC" />
+                        </View>
+                        <Text style={styles.emptyTitle}>No se encontraron pedidos</Text>
+                        <Text style={styles.emptyText}>
+                          No encontramos pedidos para{'\n'}
+                          <Text style={styles.emptyHighlight}>{String(user.email)}</Text>
+                        </Text>
+                        <Text style={styles.emptySubtext}>
+                          Si acabas de hacer un pedido, puede tomar unos minutos en aparecer
+                        </Text>
+                      </>
+                    ) : !showingGuestOrders ? (
+                      <>
+                        <View style={styles.emptyIconContainer}>
+                          <ActivityIndicator size="large" color="#D27F27" />
+                        </View>
+                        <Text style={styles.emptyTitle}>Buscando tus pedidos...</Text>
+                        <Text style={styles.emptyText}>
+                          Cargando pedidos para{'\n'}
+                          <Text style={styles.emptyHighlight}>{String(user.email)}</Text>
+                        </Text>
+                      </>
+                    ) : null
+                  ) : (
+                    // Guest que no ha hecho pedidos aún
                     <>
-                      <Text style={styles.userTitle}>📭 No se encontraron pedidos</Text>
-                      <Text style={styles.userText}>
-                        No encontramos pedidos para el email:{' '}
-                        <Text style={styles.userEmail}>{String(user.email)}</Text>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="person-outline" size={60} color="#CCC" />
+                      </View>
+                      <Text style={styles.emptyTitle}>¡Hola Invitado!</Text>
+                      <Text style={styles.emptyText}>
+                        Para ver tu historial de pedidos, primero haz una compra o regístrate.
                       </Text>
-                      <Text style={styles.userSubtext}>
-                        Si acabas de hacer un pedido, puede tomar unos minutos en aparecer aquí
+                      <Text style={styles.emptySubtext}>
+                        Tus pedidos se guardarán automáticamente cuando te registres
                       </Text>
                     </>
-                  ) : !showingGuestOrders ? (
+                  )
+                ) : user && user.usertype === 'driver' ? (
+                  // Mensajes para Driver - diferenciados por tab
+                  driverActiveTab === 'disponibles' ? (
                     <>
-                      <Text style={styles.userTitle}>🔍 Buscando tus pedidos...</Text>
-                      <Text style={styles.userText}>
-                        Estamos cargando tus pedidos para{' '}
-                        <Text style={styles.userEmail}>{String(user.email)}</Text>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="bicycle-outline" size={60} color="#CCC" />
+                      </View>
+                      <Text style={styles.emptyTitle}>Sin pedidos disponibles</Text>
+                      <Text style={styles.emptyText}>
+                        Aquí aparecerán los pedidos que tengamos para ti.
+                      </Text>
+                      <View style={styles.emptyInfoBox}>
+                        <Ionicons name="notifications-outline" size={20} color="#D27F27" />
+                        <Text style={styles.emptyInfoText}>Te avisaremos cuando llegue uno nuevo</Text>
+                      </View>
+                    </>
+                  ) : driverActiveTab === 'entregas' ? (
+                    <>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="checkmark-done-outline" size={60} color="#CCC" />
+                      </View>
+                      <Text style={styles.emptyTitle}>Sin entregas aún</Text>
+                      <Text style={styles.emptyText}>
+                        Aquí aparecerán todas las órdenes que has entregado.
+                      </Text>
+                      <Text style={styles.emptySubtext}>
+                        ¡Cada entrega exitosa suma a tu experiencia!
                       </Text>
                     </>
-                  ) : null
+                  ) : (
+                    <>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="checkmark-circle-outline" size={60} color="#33A744" />
+                      </View>
+                      <Text style={styles.emptyTitle}>¡Excelente!</Text>
+                      <Text style={styles.emptyText}>
+                        No tienes pedidos cancelados.
+                      </Text>
+                    </>
+                  )
                 ) : (
-                  // Guest que no ha hecho pedidos aún
-                  <>
-                    <Text style={styles.userTitle}>👋 ¡Hola Invitado!</Text>
-                    <Text style={styles.userText}>
-                      Para ver tu historial de pedidos, primero haz una compra o regístrate.
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      📦 Tus pedidos se guardarán automáticamente cuando te registres
-                    </Text>
-                    
-                  </>
-                )
-              ) : user && user.usertype === 'driver' ? (
-                // Mensajes para Driver - diferenciados por tab
-                driverActiveTab === 'disponibles' ? (
-                  <>
-                    <Text style={styles.userTitle}>📍 ¡Hola Repartidor!</Text>
-                    <Text style={styles.userText}>
-                      Aquí aparecerán los pedidos que tengamos para ti.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      🔔 Te avisaremos en cuanto llegue uno nuevo
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      Mantén la app abierta para recibir notificaciones
-                    </Text>
-                  </>
-                ) : driverActiveTab === 'entregas' ? (
-                  <>
-                    <Text style={styles.userTitle}>🚚 Mis Entregas</Text>
-                    <Text style={styles.userText}>
-                      Aquí aparecerán todas las órdenes que has entregado.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      📊 Tu historial de entregas te ayudará a llevar un control de tu trabajo
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      🎯 ¡Cada entrega exitosa suma a tu experiencia como repartidor!
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.userTitle}>❌ Pedidos Cancelados</Text>
-                    <Text style={styles.userText}>
-                      No tienes pedidos cancelados.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      Los pedidos que no pudiste entregar aparecerán aquí
-                    </Text>
-                  </>
-                )
-              ) : (
-                // Mensajes para Usuario normal registrado - diferenciados por tab
-                userActiveTab === 'activas' ? (
-                  <>
-                    <Text style={styles.userTitle}>🔄 Sin Pedidos Activos</Text>
-                    <Text style={styles.userText}>
-                      No tienes pedidos en proceso en este momento.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      🌟 ¡Explora nuestros productos y haz un nuevo pedido!
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      Tus pedidos activos aparecerán aquí
-                    </Text>
-                  </>
-                ) : userActiveTab === 'entregadas' ? (
-                  <>
-                    <Text style={styles.userTitle}>✅ Sin Pedidos Entregados</Text>
-                    <Text style={styles.userText}>
-                      Aún no tienes pedidos completados.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      📦 Tus pedidos entregados aparecerán aquí
-                    </Text>
-                    <Text style={styles.userSubtext}>
-                      Podrás ver todo tu historial de compras
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.userTitle}>❌ Sin Pedidos Cancelados</Text>
-                    <Text style={styles.userText}>
-                      No tienes pedidos cancelados.
-                    </Text>
-                    <Text style={styles.userHighlight}>
-                      Los pedidos que canceles aparecerán aquí
-                    </Text>
-                  </>
-                )
-              )}
+                  // Mensajes para Usuario normal registrado - diferenciados por tab
+                  userActiveTab === 'activas' ? (
+                    <>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="cube-outline" size={60} color="#CCC" />
+                      </View>
+                      <Text style={styles.emptyTitle}>Sin pedidos activos</Text>
+                      <Text style={styles.emptyText}>
+                        No tienes pedidos en proceso en este momento.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.emptyButton}
+                        onPress={() => navigation.navigate('MainTabs', {
+                          screen: 'Inicio',
+                          params: { screen: 'CategoriesList' }
+                        })}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="storefront-outline" size={20} color="#FFF" style={{marginRight: 8}} />
+                        <Text style={styles.emptyButtonText}>Explorar Productos</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : userActiveTab === 'entregadas' ? (
+                    <>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="gift-outline" size={60} color="#CCC" />
+                      </View>
+                      <Text style={styles.emptyTitle}>Sin pedidos entregados</Text>
+                      <Text style={styles.emptyText}>
+                        Aún no tienes pedidos completados.
+                      </Text>
+                      <Text style={styles.emptySubtext}>
+                        Tus pedidos entregados aparecerán aquí
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="happy-outline" size={60} color="#33A744" />
+                      </View>
+                      <Text style={styles.emptyTitle}>¡Todo bien!</Text>
+                      <Text style={styles.emptyText}>
+                        No tienes pedidos cancelados.
+                      </Text>
+                    </>
+                  )
+                )}
+              </View>
             </View>
           }
           renderItem={({item}) => {
@@ -557,51 +605,58 @@ const Order = () => {
 
             return (
               <View style={styles.orderCard}>
+                {/* Header con ID y Status */}
                 <View style={styles.orderHeader}>
                   <View style={styles.orderIdSection}>
-                    <Text style={styles.orderIdLabel}>Pedido:</Text>
+                    <Ionicons name="receipt-outline" size={16} color="#D27F27" style={{marginRight: 6}} />
                     <Text style={styles.orderIdText}>{formattedOrderId}</Text>
                   </View>
-                  <View style={styles.orderPriceSection}>
-                    <Text style={styles.total}>
-                      {formatPriceWithSymbol(totalPrice)}
-                    </Text>
-                    {/* 🆕 Estado del pedido debajo del precio */}
-                    <Text style={[
-                      styles.orderStatusText,
-                      itemStatus.toLowerCase().includes('entrega') && styles.orderStatusDelivered,
-                      itemStatus.toLowerCase().includes('cancel') && styles.orderStatusCancelled,
-                      itemStatus.toLowerCase().includes('camino') && styles.orderStatusInTransit,
-                    ]}>
-                      {item.status_spanish || itemStatus}
+                  <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
+                    <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
+                      {paymentStatus === 'paid' ? 'Pagado' :
+                       paymentStatus === 'pending' ? 'Procesando' :
+                       paymentStatus === 'failed' ? 'Pago fallido' :
+                       item.status_spanish || itemStatus || 'Pendiente'}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={styles.orderDate}>
-                  {new Date(createdAt).toLocaleString('es-MX', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
-                </Text>
+                {/* Fecha y Total */}
+                <View style={styles.orderInfoRow}>
+                  <View style={styles.orderDateSection}>
+                    <Ionicons name="calendar-outline" size={14} color="#888" style={{marginRight: 4}} />
+                    <Text style={styles.orderDate}>
+                      {new Date(createdAt).toLocaleString('es-MX', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={styles.total}>
+                    {formatPriceWithSymbol(totalPrice)}
+                  </Text>
+                </View>
+
+                {/* Separador */}
+                <View style={styles.orderDivider} />
 
                 {/* 🚚 INFORMACIÓN ESPECÍFICA PARA DRIVERS */}
                 {isDriver && (
                   <View style={styles.driverInfo}>
                     <View style={styles.driverRow}>
-                      <Text style={styles.driverLabel}>📍 Cliente:</Text>
+                      <Ionicons name="person-outline" size={16} color="#D27F27" style={{marginRight: 8}} />
                       <Text style={styles.driverValue} numberOfLines={1}>
                         {item.user_email || 'No disponible'}
                       </Text>
                     </View>
                     <View style={styles.driverRow}>
-                      <Text style={styles.driverLabel}>🗺️ Dirección:</Text>
+                      <Ionicons name="location-outline" size={16} color="#D27F27" style={{marginRight: 8}} />
                       <Text style={styles.driverValue} numberOfLines={2}>
                         {customerAddress}
                       </Text>
                     </View>
                     <View style={styles.driverRow}>
-                      <Text style={styles.driverLabel}>📅 Entrega:</Text>
+                      <Ionicons name="time-outline" size={16} color="#D27F27" style={{marginRight: 8}} />
                       <Text style={styles.driverValue}>
                         {item.delivery_date} • {item.delivery_slot || 'Horario flexible'}
                       </Text>
@@ -609,76 +664,75 @@ const Order = () => {
                   </View>
                 )}
 
-                {/* Status Badge - Ahora incluye payment_status */}
-                <View style={[styles.statusBadge, getStatusStyle(itemStatus, paymentStatus).badge]}>
-                  <Text style={[styles.statusText, getStatusStyle(itemStatus, paymentStatus).text]}>
-                    {/* Mostrar estado de pago cuando sea relevante, sino estado del pedido */}
-                    {paymentStatus === 'paid' ? 'Pagado' : 
-                     paymentStatus === 'pending' ? 'Procesando pago' :
-                     paymentStatus === 'failed' ? 'Pago fallido' :
-                     item.status_spanish || itemStatus || 'Pendiente'}
+                {/* Productos */}
+                <View style={styles.itemsSection}>
+                  <Text style={styles.itemHeader}>
+                    <Ionicons name="cube-outline" size={14} color="#2F2F2F" /> Artículos
                   </Text>
+                  {orderDetails.length > 0 ? (
+                    orderDetails.slice(0, 3).map((product, i) => {
+                      if (!product || typeof product !== 'object') {
+                        return null;
+                      }
+
+                      return (
+                        <View key={i} style={styles.itemRow}>
+                          <Image
+                            source={{uri: product.item_image || ''}}
+                            style={styles.itemImage}
+                          />
+                          <View style={styles.itemInfo}>
+                            <Text style={styles.itemText} numberOfLines={1}>
+                              {product.item_name || 'Producto'}
+                            </Text>
+                            <View style={styles.itemDetails}>
+                              <Text style={styles.itemQty}>×{product.item_qty || 0}</Text>
+                              <Text style={styles.itemPrice}>
+                                {formatPriceWithSymbol(parseFloat(product.item_price) || 0)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={styles.noItems}>
+                      {isDriver ? 'Ver detalles para más información' : 'No hay artículos'}
+                    </Text>
+                  )}
+                  {orderDetails.length > 3 && (
+                    <Text style={styles.moreItems}>+{orderDetails.length - 3} artículos más</Text>
+                  )}
                 </View>
 
-                <Text style={styles.itemHeader}>Artículos:</Text>
-                {orderDetails.length > 0 ? (
-                  orderDetails.map((product, i) => {
-                    // Validar cada producto
-                    if (!product || typeof product !== 'object') {
-                      return null;
-                    }
-
-                    return (
-                      <View key={i} style={styles.itemRow}>
-                        <Image
-                          source={{uri: product.item_image || ''}}
-                          style={styles.itemImage}
-                        />
-                        <View>
-                          <Text style={styles.itemText}>
-                            {product.item_qty || 0}× {product.item_name || 'Producto'}
-                          </Text>
-                          <Text style={styles.itemPrice}>
-                            {new Intl.NumberFormat('es-MX', {
-                              style: 'currency',
-                              currency: 'MXN',
-                            }).format(parseFloat(product.item_price) || 0)}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={styles.noItems}>
-                    {isDriver ? 'Ver detalles para más información' : 'No hay artículos en este pedido'}
-                  </Text>
-                )}
-
-                {/* 🚚 BOTÓN ÚNICO PARA DRIVERS */}
+                {/* Botones */}
                 {isDriver ? (
-                  <View style={styles.driverButtonsContainer}>
-                    <TouchableOpacity
-                      style={[styles.driverButton, styles.detailsButton]}
-                      onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
-                    >
-                      <Text style={styles.driverButtonText}>📋 Ver detalles</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={18} color="#FFF" style={{marginRight: 8}} />
+                    <Text style={styles.primaryButtonText}>Ver detalles</Text>
+                  </TouchableOpacity>
                 ) : (
-                  // Botones originales para usuarios normales
                   <View style={styles.buttonRow}>
                     <TouchableOpacity
-                      style={styles.detailsButton}
-                      onPress={() =>
-                        navigation.navigate('OrderDetails', {orderId: itemId})
-                      }>
-                      <Text style={styles.detailsText}>Ver detalles</Text>
+                      style={styles.primaryButton}
+                      onPress={() => navigation.navigate('OrderDetails', {orderId: itemId})}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="eye-outline" size={18} color="#FFF" style={{marginRight: 6}} />
+                      <Text style={styles.primaryButtonText}>Detalles</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.invoiceButton}
-                      onPress={() => handleInvoices(item)}>
-                      <Text style={styles.invoiceText}>Ver ticket</Text>
+                      style={styles.secondaryButton}
+                      onPress={() => handleInvoices(item)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="document-text-outline" size={18} color="#FFF" style={{marginRight: 6}} />
+                      <Text style={styles.secondaryButtonText}>Ticket</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -695,107 +749,202 @@ const Order = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2EFE4', // Crema Suave
+    backgroundColor: '#F2EFE4',
     padding: 16,
   },
   listContent: {
     paddingBottom: 24,
   },
-  header: {
-    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
-    fontFamily: fonts.bold,
-    color: '#2F2F2F', // Gris Carbón
-    textAlign: 'center',
+
+  // Header
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 16,
+    paddingTop: 8,
   },
+  header: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginLeft: 10,
+  },
+
+  // Order Card - Nuevo diseño
   orderCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 4,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   orderIdSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  orderIdLabel: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#666',
-    marginRight: 6,
-  },
   orderIdText: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para IDs de órdenes
+    fontFamily: fonts.numericBold,
     color: '#D27F27',
     letterSpacing: 0.5,
   },
+  orderInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  orderDateSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   orderDate: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.numeric, // ✅ Fuente optimizada para fechas
-    color: '#666',
-    marginBottom: 8,
+    fontFamily: fonts.numeric,
+    color: '#888',
   },
   total: {
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios totales
-    color: '#8B5E3C', // Marrón Tierra
+    fontSize: fonts.size.large,
+    fontFamily: fonts.priceBold,
+    color: '#2F2F2F',
+  },
+  orderDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    marginBottom: 12,
+  },
+
+  // Items Section
+  itemsSection: {
+    marginBottom: 16,
   },
   itemHeader: {
-    fontSize: fonts.size.medium,
+    fontSize: fonts.size.small,
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
-    marginBottom: 8,
+    color: '#888',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    backgroundColor: '#FAFAFA',
+    padding: 10,
+    borderRadius: 10,
   },
   itemImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: 46,
+    height: 46,
+    borderRadius: 10,
     marginRight: 12,
+    backgroundColor: '#F0F0F0',
+  },
+  itemInfo: {
+    flex: 1,
   },
   itemText: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.bold,
     color: '#2F2F2F',
+    marginBottom: 4,
+  },
+  itemDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  itemQty: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#888',
+    marginRight: 8,
   },
   itemPrice: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.price, // ✅ Fuente optimizada para precios de items
-    color: '#D27F27', // Dorado Campo
+    fontFamily: fonts.priceBold,
+    color: '#D27F27',
   },
   noItems: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     fontStyle: 'italic',
-    color: 'rgba(47,47,47,0.6)',
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 12,
   },
+  moreItems: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+
+  // Buttons - Nuevo diseño
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
+    gap: 10,
   },
+  primaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D27F27',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#D27F27',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 4,
+  },
+  primaryButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#33A744',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#33A744',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 4,
+  },
+  secondaryButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+
+  // Legacy buttons (compatibility)
   detailsButton: {
     flex: 1,
-    backgroundColor: '#D27F27', // Dorado Campo
+    backgroundColor: '#D27F27',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -808,10 +957,10 @@ const styles = StyleSheet.create({
   },
   invoiceButton: {
     flex: 1,
-    backgroundColor: '#33A744', // Verde Bosque
+    backgroundColor: '#33A744',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -821,10 +970,101 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: '#FFF',
   },
+  // Estados vacíos - Nuevo diseño profesional
+  emptyContainer: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  emptyCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(210, 127, 39, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  emptyHighlight: {
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
+  emptySubtext: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  emptyInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  emptyInfoText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginLeft: 10,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D27F27',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: '#D27F27',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  emptyButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+
+  // Estilos legacy (compatibilidad)
   emptyOrders: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
-    color: 'rgba(47,47,47,0.6)', // Gris Carbón @60%
+    color: 'rgba(47,47,47,0.6)',
     textAlign: 'center',
     marginTop: 50,
   },
@@ -878,61 +1118,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   
-  // Status Badge Styles
+  // Status Badge Styles - Nuevo diseño compacto
   statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
   statusText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.numericBold, // ✅ Fuente optimizada para estados
-    textTransform: 'capitalize',
+    fontSize: fonts.size.XS,
+    fontFamily: fonts.bold,
   },
   statusDelivered: {
-    backgroundColor: '#E8F5E8',
-    borderColor: '#33A744',
-    borderWidth: 1,
+    backgroundColor: 'rgba(51, 167, 68, 0.15)',
   },
   statusDeliveredText: {
     color: '#33A744',
   },
   statusCancelled: {
-    backgroundColor: '#FDE8E8',
-    borderColor: '#E63946',
-    borderWidth: 1,
+    backgroundColor: 'rgba(230, 57, 70, 0.15)',
   },
   statusCancelledText: {
     color: '#E63946',
   },
   statusInTransit: {
-    backgroundColor: '#E8F4FD',
-    borderColor: '#2196F3',
-    borderWidth: 1,
+    backgroundColor: 'rgba(33, 150, 243, 0.15)',
   },
   statusInTransitText: {
     color: '#2196F3',
   },
   statusPending: {
-    backgroundColor: '#FFF4E6',
-    borderColor: '#D27F27',
-    borderWidth: 1,
+    backgroundColor: 'rgba(210, 127, 39, 0.15)',
   },
   statusPendingText: {
     color: '#D27F27',
   },
-  
-  // 🆕 Nuevo: Payment Status Styles
   statusPaymentPending: {
-    backgroundColor: '#FFF3E0', // Naranja muy claro
-    borderColor: '#FF9800',     // Naranja
-    borderWidth: 1,
+    backgroundColor: 'rgba(255, 152, 0, 0.15)',
   },
   statusPaymentPendingText: {
-    color: '#FF9800',           // Naranja
-    fontWeight: 'bold',
+    color: '#FF9800',
   },
   
   // Estilos para botón Guest
@@ -960,162 +1184,102 @@ const styles = StyleSheet.create({
   
   // 🚚 ESTILOS ESPECÍFICOS PARA DRIVERS
   driverInfo: {
-    backgroundColor: '#F8F9FA', // Gris muy claro
-    borderRadius: 8,
-    padding: 12,
-    marginVertical: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#D27F27', // Color tema
+    backgroundColor: 'rgba(210, 127, 39, 0.06)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
   },
   driverRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 10,
   },
   driverLabel: {
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
     color: '#666',
-    width: 90, // Ancho fijo para alineación
+    width: 90,
     flexShrink: 0,
   },
   driverValue: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
-    color: '#333',
+    color: '#2F2F2F',
     flex: 1,
     flexWrap: 'wrap',
+    lineHeight: 20,
   },
   
-  // 🚚 ESTILOS PARA TABS DE DRIVER
-  driverTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 2,
-  },
-  driverTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    position: 'relative',
-  },
+  // Driver tab active (usa userTab base)
   driverTabActive: {
-    backgroundColor: '#D27F27',
-  },
-  driverTabText: {
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
-    color: '#666',
-    textAlign: 'center',
-  },
-  driverTabTextActive: {
-    color: '#FFF',
-  },
-  driverTabBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 8,
     backgroundColor: '#33A744',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  driverTabBadgeText: {
-    fontSize: fonts.size.XS,
-    fontFamily: fonts.bold,
-    color: '#FFF',
-  },
-  
-  // 🚚 ESTILOS PARA BOTONES ESPECÍFICOS DE DRIVER
-  driverButtonsContainer: {
-    marginTop: 12,
-  },
-  driverButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  driverButtonText: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
-    color: '#FFF',
-    textAlign: 'center',
+    shadowColor: '#33A744',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 4,
   },
 
-  // 👤 ESTILOS PARA TABS DE USUARIO (estilo más user-friendly)
+  // 👤 ESTILOS PARA TABS DE USUARIO (estilo profesional)
   userTabsContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 4,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 6,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 3},
-    elevation: 3,
+    shadowRadius: 12,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 4,
   },
   userTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    position: 'relative',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
   },
   userTabActive: {
-    backgroundColor: '#33A744', // Verde más amigable para usuarios
+    backgroundColor: '#D27F27',
+    shadowColor: '#D27F27',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 4,
   },
   userTabText: {
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
-    color: '#666',
-    textAlign: 'center',
+    color: '#888',
   },
   userTabTextActive: {
     color: '#FFF',
   },
   userTabBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 6,
-    backgroundColor: '#D27F27',
+    marginLeft: 6,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    minWidth: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+  },
+  userTabBadgeInactive: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
   userTabBadgeText: {
     fontSize: fonts.size.XS,
     fontFamily: fonts.bold,
     color: '#FFF',
+  },
+  userTabBadgeTextInactive: {
+    color: '#888',
   },
 
   // 🆕 Estilos para estado del pedido debajo del precio

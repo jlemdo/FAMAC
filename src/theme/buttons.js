@@ -9,145 +9,170 @@ import shadows from './shadows';
 import fonts from './fonts';
 
 const buttons = {
-  // === BOTONES PRINCIPALES (extraídos del análisis) ===
-  
-  // Botón primario - EL MÁS USADO (aparece 15+ veces)
+  // === BOTONES PRINCIPALES - Diseño profesional ===
+
+  // Botón primario - EL MÁS USADO
   primary: {
     backgroundColor: colors.primary,
-    paddingVertical: spacing.button.paddingVertical,
+    paddingVertical: 16,
     paddingHorizontal: spacing.button.paddingHorizontal,
-    borderRadius: spacing.borderRadius.small,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    ...shadows.small,
+    minHeight: 54,
+    // Sombra naranja profesional
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  
-  // Botón secundario/éxito - segundo más usado (aparece 10+ veces)
+
+  // Botón secundario/éxito
   secondary: {
     backgroundColor: colors.success,
-    paddingVertical: spacing.button.paddingVertical,
+    paddingVertical: 16,
     paddingHorizontal: spacing.button.paddingHorizontal,
-    borderRadius: spacing.borderRadius.small,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
-    ...shadows.small,
+    minHeight: 54,
+    shadowColor: colors.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  
-  // Botón outline/cancelar - tercero más usado (aparece 8+ veces)
+
+  // Botón outline/cancelar - estilo tenue
   outline: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderWidth: 2,
     borderColor: colors.secondary,
-    paddingVertical: spacing.button.paddingVertical,
+    paddingVertical: 16,
     paddingHorizontal: spacing.button.paddingHorizontal,
-    borderRadius: spacing.borderRadius.small,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 54,
   },
   
-  // === BOTONES ESPECÍFICOS ===
-  
+  // === BOTONES ESPECÍFICOS - Diseño profesional ===
+
   // Botón de soporte/atención al cliente
   support: {
     backgroundColor: colors.success,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 14,
     alignItems: 'center',
     marginBottom: 24,
-    ...shadows.medium,
+    shadowColor: colors.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  
+
   // Botón de logout/cerrar sesión
   logout: {
     backgroundColor: '#6B4226',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 14,
     alignItems: 'center',
     marginBottom: 24,
-    ...shadows.medium,
+    shadowColor: '#6B4226',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  
-  // Botón de editar perfil
+
+  // Botón de editar perfil - estilo pill profesional
   edit: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    ...shadows.small,
+    backgroundColor: 'rgba(210, 127, 39, 0.08)',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
-  
+
   // Botón de cancelar edición
   cancelEdit: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    backgroundColor: 'rgba(230, 57, 70, 0.08)',
+    borderWidth: 1.5,
     borderColor: colors.error,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   
-  // === BOTONES DE MODAL ===
-  
+  // === BOTONES DE MODAL - Diseño profesional ===
+
   // Botón de enviar en modales
   modalSend: {
     flex: 1,
     backgroundColor: colors.success,
-    paddingVertical: spacing.button.paddingVertical,
-    borderRadius: spacing.borderRadius.small,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: colors.success,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  
+
   // Botón de cancelar en modales
   modalCancel: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderWidth: 1.5,
     borderColor: colors.secondary,
-    paddingVertical: spacing.button.paddingVertical,
-    borderRadius: spacing.borderRadius.small,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  
+
   // === ESTADOS DE BOTONES ===
-  
+
   // Botón deshabilitado
   disabled: {
     backgroundColor: colors.disabled,
-    paddingVertical: spacing.button.paddingVertical,
+    paddingVertical: 16,
     paddingHorizontal: spacing.button.paddingHorizontal,
-    borderRadius: spacing.borderRadius.small,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 54,
   },
-  
+
   // === TAMAÑOS ESPECÍFICOS ===
-  
+
   // Botón pequeño
   small: {
     backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: spacing.borderRadius.small,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  
+
   // Botón grande
   large: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 14,
     alignItems: 'center',
-    minHeight: 48,
-    ...shadows.medium,
+    minHeight: 56,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
 };
 
@@ -191,14 +216,14 @@ export const buttonText = {
   // Texto de botón de edición
   edit: {
     fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
-    color: colors.secondary,
+    fontSize: fonts.size.medium,
+    color: colors.primary,
   },
-  
+
   // Texto de botón de cancelar edición
   cancelEdit: {
     fontFamily: fonts.bold,
-    fontSize: fonts.size.small,
+    fontSize: fonts.size.medium,
     color: colors.error,
   },
 };

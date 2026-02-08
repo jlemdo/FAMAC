@@ -703,12 +703,13 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa con geocoding inteligente
   const goToMap = async () => {
-    // console.log('🗺️ NAVEGANDO AL MAPA CON COORDENADAS:', {
-      // mapCoordinatesState: mapCoordinates,
-      // willUseDefault: !mapCoordinates
-    // });
-    
+    console.log('🚀 goToMap INICIANDO...');
+    console.log('🚀 mapCoordinates actual:', mapCoordinates);
+    console.log('🚀 userWrittenAddress:', userWrittenAddress);
+    console.log('🚀 route.params:', JSON.stringify(route.params, null, 2));
+
     let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
+    console.log('🚀 mapCenter inicial:', mapCenter);
     
     // NUEVO: Si hay dirección escrita pero no coordenadas previas, geocodificar para centrar mapa
     if (!mapCoordinates && userWrittenAddress?.trim()) {
@@ -741,24 +742,42 @@ const AddressFormUberStyle = () => {
     
     // Callback para recibir coordenadas del mapa
     const handleLocationReturn = (coordinates) => {
+      console.log('🔙 handleLocationReturn ejecutado con:', coordinates);
       setMapCoordinates(coordinates);
-      setCoordinatesSource('user'); // Marcar como seleccionado por usuario
-      setUserHasConfirmedLocation(true); // Usuario confirmó en mapa
+      setCoordinatesSource('user');
+      setUserHasConfirmedLocation(true);
     };
-    
+
+    console.log('🚀 Registrando callback con ID:', mapCallbackId);
     registerNavigationCallback(mapCallbackId, handleLocationReturn);
-    
-    navigation.navigate('AddressMap', {
+
+    const builtAddress = buildFinalAddress();
+    console.log('🚀 builtAddress:', builtAddress);
+
+    const navParams = {
       addressForm: {},
-      selectedLocation: mapCenter, // ✅ USAR mapCenter (ya incluye lógica completa de geocoding)
+      selectedLocation: mapCenter,
       pickerId,
-      callbackId: mapCallbackId, // ✅ PASAR ID DE CALLBACK
+      callbackId: mapCallbackId,
       fromGuestCheckout: route.params?.fromGuestCheckout || false,
-      userWrittenAddress: buildFinalAddress(), // 🔧 FIX: Construir dirección fresh para evitar timing issues
-      references: references, // NUEVO: Pasar referencias para preservarlas
-      // CRITICAL: Preservar TODOS los parámetros para que no se pierdan en el mapa
-      ...route.params, // Pasar todos los parámetros originales
-    });
+      userWrittenAddress: builtAddress,
+      references: references,
+      fromMapSelector: false,
+      preservedUserAddress: builtAddress,
+      preservedReferences: references,
+      fromAddressManager: route.params?.fromAddressManager || false,
+      fromCart: route.params?.fromCart || false,
+      fromProfile: route.params?.fromProfile || false,
+    };
+
+    console.log('🚀 NAVEGANDO A AddressMap con params:', JSON.stringify(navParams, null, 2));
+
+    try {
+      navigation.navigate('AddressMap', navParams);
+      console.log('🚀 Navegación exitosa');
+    } catch (error) {
+      console.error('🚀 ERROR en navegación:', error);
+    }
   };
 
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
@@ -1237,12 +1256,13 @@ const AddressFormUberStyle = () => {
         setState(addressComponents.state || 'CDMX');
         setReferences(addressComponents.references || '');
 
-        // Si hay coordenadas, establecerlas
+        // Si hay coordenadas, establecerlas (convertir a números por si vienen como strings)
         if (addressData.latitude && addressData.longitude) {
           setMapCoordinates({
-            latitude: addressData.latitude,
-            longitude: addressData.longitude
+            latitude: parseFloat(addressData.latitude),
+            longitude: parseFloat(addressData.longitude)
           });
+          setCoordinatesSource('auto'); // Marcar como existente para mostrar "Ajustar"
           setUserHasConfirmedLocation(true);
         }
 
@@ -1625,7 +1645,7 @@ const AddressFormUberStyle = () => {
                 <TouchableOpacity
                   style={styles.adjustLocationButton}
                   onPress={goToMap}>
-                  <Ionicons name="map-outline" size={16} color="#8B5E3C" />
+                  <Ionicons name="map-outline" size={16} color="#FFF" />
                   <Text style={styles.adjustLocationButtonText}>Ajustar</Text>
                 </TouchableOpacity>
               </View>
@@ -1636,7 +1656,7 @@ const AddressFormUberStyle = () => {
               <Ionicons 
                 name={coordinatesSource === 'user' ? "checkmark-circle" : coordinatesSource === 'auto' ? "location" : "location-outline"} 
                 size={20} 
-                color={coordinatesSource === 'user' ? "#33A744" : coordinatesSource === 'auto' ? "#D27F27" : "#D27F27"} 
+                color="#D27F27" 
               />
               <Text style={styles.coordinatesStatusText}>
                 Puedes seleccionar ubicación para mayor precisión
@@ -1889,17 +1909,20 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.2)',
+    borderBottomWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   backIcon: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: fonts.size.large,
@@ -1916,6 +1939,11 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFF',
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   stepIndicatorContainer: {
     flexDirection: 'row',
@@ -1976,15 +2004,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#D27F27',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   currentLocationText: {
     flex: 1,
@@ -1998,15 +2026,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#8B5E3C',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   manualAddressText: {
     flex: 1,
@@ -2035,16 +2063,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
+    borderColor: '#E0E0E0',
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 12,
@@ -2076,15 +2104,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.2)',
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   resultContent: {
     flex: 1,
@@ -2122,15 +2150,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: '#FFF',
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#33A744',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   selectedAddressContent: {
     flex: 1,
@@ -2147,40 +2173,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#8B5E3C',
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowColor: '#8B5E3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   mapButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#33A744',
-    padding: 18,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    minHeight: 54,
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   confirmButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   backStepButton: {
     alignItems: 'center',
@@ -2193,21 +2222,21 @@ const styles = StyleSheet.create({
   },
   referencesInput: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
+    borderColor: '#E0E0E0',
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
     textAlignVertical: 'top',
     marginBottom: 8,
-    minHeight: Platform.OS === 'ios' ? 100 : 80, // Más altura en iOS para mejor visibilidad
+    minHeight: Platform.OS === 'ios' ? 100 : 80,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   characterCount: {
     fontSize: fonts.size.small,
@@ -2221,20 +2250,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#D27F27',
-    padding: 18,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    minHeight: 54,
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   finalButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   skipButton: {
     alignItems: 'center',
@@ -2260,7 +2291,7 @@ const styles = StyleSheet.create({
   },
   finalButtonDisabled: {
     backgroundColor: '#CCC',
-    opacity: 0.6,
+    shadowOpacity: 0,
   },
   referencesText: {
     fontSize: fonts.size.small,
@@ -2270,7 +2301,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonDisabled: {
     backgroundColor: '#CCC',
-    opacity: 0.6,
+    shadowOpacity: 0,
   },
   
   // Nuevos estilos para campos estructurados
@@ -2290,26 +2321,36 @@ const styles = StyleSheet.create({
   },
   addressInput: {
     backgroundColor: '#FFF',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
     color: '#2F2F2F',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   stateSelector: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 2,
+    borderRadius: 14,
+    borderWidth: 1,
     borderColor: '#E0E0E0',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   stateOption: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     alignItems: 'center',
     backgroundColor: '#FFF',
@@ -2327,12 +2368,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
   },
   addressPreview: {
-    backgroundColor: 'rgba(210, 127, 39, 0.1)',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
     marginVertical: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   previewLabel: {
     fontSize: fonts.size.small,
@@ -2349,35 +2393,36 @@ const styles = StyleSheet.create({
   smartGeocodingInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(51, 167, 68, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   smartGeocodingText: {
     flex: 1,
     marginLeft: 8,
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
-    color: '#33A744',
+    color: '#2F2F2F',
     lineHeight: 18,
   },
   
   // NUEVOS ESTILOS PARA MAPA OPCIONAL INTEGRADO
   mapSection: {
     backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.2)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   mapSectionTitle: {
     fontSize: fonts.size.medium,
@@ -2396,11 +2441,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    backgroundColor: 'rgba(139, 94, 60, 0.05)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.1)',
+    padding: 14,
+    backgroundColor: 'rgba(139, 94, 60, 0.04)',
+    borderRadius: 14,
   },
   coordinatesStatusText: {
     flex: 1,
@@ -2412,29 +2455,27 @@ const styles = StyleSheet.create({
   adjustLocationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(139, 94, 60, 0.1)',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#8B5E3C',
+    borderRadius: 10,
   },
   adjustLocationButtonText: {
-    marginLeft: 4,
+    marginLeft: 6,
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
-    color: '#8B5E3C',
+    color: '#FFF',
   },
   selectLocationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#8B5E3C',
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#D27F27',
+    borderRadius: 10,
   },
   selectLocationButtonText: {
-    marginLeft: 4,
+    marginLeft: 6,
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
     color: '#FFF',
@@ -2513,9 +2554,8 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   modalSelectorSelected: {
-    borderColor: '#33A744',
-    borderWidth: 2,
-    backgroundColor: 'rgba(51, 167, 68, 0.05)',
+    borderColor: '#D27F27',
+    borderWidth: 1,
   },
   modalSelectorText: {
     fontSize: fonts.size.medium,
@@ -2537,15 +2577,15 @@ const styles = StyleSheet.create({
   },
   municipalityModalContent: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 350,
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
   },
   municipalityModalTitle: {
     fontFamily: fonts.bold,
@@ -2557,9 +2597,10 @@ const styles = StyleSheet.create({
   municipalityList: {
     maxHeight: 300,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
     marginBottom: 20,
+    backgroundColor: '#FAFAFA',
   },
   municipalityOption: {
     paddingVertical: 12,

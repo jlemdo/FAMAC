@@ -12,9 +12,9 @@ import fonts from '../theme/fonts';
 
 const ALERT_COLORS = {
   success: '#33A744',
-  warning: '#D98F30',
+  warning: '#D27F27',
   error:   '#E74C3C',
-  info:    '#007AFF'
+  info:    '#D27F27'
 };
 
 export default function CustomAlert({
@@ -83,56 +83,60 @@ export default function CustomAlert({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   container: {
     width: '85%',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 2,
-    padding: 20,
-    elevation: 6,
+    borderRadius: 20,
+    borderWidth: 0,
+    padding: 24,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
   },
   title: {
-    fontFamily: fonts.script,
+    fontFamily: fonts.bold,
     fontSize: fonts.size.large,
-    fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
-    color: '#333',
-    marginBottom: 20,
+    color: '#2F2F2F',
+    marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    flexWrap: 'wrap', // Permitir que los botones se envuelvan si es necesario
+    justifyContent: 'center',
+    gap: 12,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    minWidth: 80, // Ancho mínimo para consistencia
-    flex: 0, // No expandir automáticamente
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    minWidth: 100,
+    flex: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderWidth: 1.5,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonText: {
-    fontFamily: fonts.medium,
+    fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     textAlign: 'center',
   },

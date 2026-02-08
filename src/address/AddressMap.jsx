@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MapView, { Marker } from 'react-native-maps';
@@ -25,25 +26,46 @@ import {
 } from '../utils/addressValidators';
 
 const AddressMap = () => {
+  console.log('🗺️ AddressMap MONTANDO...');
+  console.log('🗺️ route.params:', JSON.stringify(route?.params, null, 2));
+
   const navigation = useNavigation();
   const route = useRoute();
   const { showAlert } = useAlert();
   const responsive = useResponsive();
-  
+
+  console.log('🗺️ Hooks inicializados');
+
   // Parámetros de navegación
-  const { 
+  const {
     addressForm = {},
-    selectedLocation = { latitude: 19.4326, longitude: -99.1332 },
+    selectedLocation: rawSelectedLocation = { latitude: 19.4326, longitude: -99.1332 },
     pickerId,
-    callbackId, // ✅ NUEVO: ID del callback en lugar de función
-    onLocationReturn, // ⚠️ DEPRECATED: Mantener por compatibilidad
+    callbackId,
+    onLocationReturn,
     fromGuestCheckout = false,
-    userWrittenAddress = '', // NUEVO: Dirección escrita por usuario para mostrar contexto
-    fromMapSelector = false // NUEVO: Flag para identificar que viene de MapSelector
+    userWrittenAddress = '',
+    fromMapSelector = false
   } = route.params || {};
+
+  // CRÍTICO: Convertir coordenadas a números (pueden venir como strings de la BD)
+  const selectedLocation = {
+    latitude: parseFloat(rawSelectedLocation?.latitude) || 19.4326,
+    longitude: parseFloat(rawSelectedLocation?.longitude) || -99.1332,
+  };
+
+  console.log('🗺️ Parámetros extraídos:', {
+    selectedLocation,
+    callbackId,
+    fromGuestCheckout,
+    fromMapSelector,
+    hasUserWrittenAddress: !!userWrittenAddress
+  });
 
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
   const mapRef = useRef(null);
+
+  console.log('🗺️ Estados inicializados, currentLocation:', currentLocation);
   
 
 
@@ -257,21 +279,31 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scaleSpacing(15),
-    paddingVertical: scaleSpacing(10),
-    backgroundColor: '#F2EFE4',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   backButton: {
-    marginRight: scaleSpacing(10),
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   title: {
-    fontSize: scaleFontSize(fonts.size.XL),
+    fontSize: fonts.size.large,
     fontFamily: fonts.bold,
-    textAlign: 'center',
+    color: '#2F2F2F',
     flex: 1,
-    color: '#333',
   },
   instructionsContainer: {
     paddingHorizontal: scaleSpacing(20),
@@ -279,27 +311,28 @@ const styles = StyleSheet.create({
   },
   instructionsText: {
     fontFamily: fonts.regular,
-    fontSize: scaleFontSize(fonts.size.medium),
+    fontSize: fonts.size.medium,
     color: '#2F2F2F',
     textAlign: 'center',
-    backgroundColor: 'rgba(210, 127, 39, 0.1)',
-    padding: scaleSpacing(12),
-    borderRadius: scaleSpacing(8),
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.3)',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   mapContainer: {
     flex: 1,
-    margin: scaleSpacing(20),
-    borderRadius: scaleSpacing(12),
+    margin: 16,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#8B5E3C',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
   },
   map: {
     flex: 1,
@@ -329,35 +362,47 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    paddingHorizontal: scaleSpacing(20),
-    paddingVertical: scaleSpacing(15),
-    gap: scaleSpacing(12),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 94, 60, 0.1)',
-    backgroundColor: '#F2EFE4',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    backgroundColor: 'rgba(139, 94, 60, 0.05)',
+    borderWidth: 1.5,
+    borderColor: '#8B5E3C',
     ...getButtonDimensions('medium'),
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButtonText: {
     fontFamily: fonts.bold,
-    fontSize: scaleFontSize(fonts.size.medium),
-    color: '#666',
+    fontSize: fonts.size.medium,
+    color: '#8B5E3C',
   },
   confirmButton: {
     flex: 2,
     backgroundColor: '#33A744',
     ...getButtonDimensions('medium'),
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   confirmButtonText: {
     fontFamily: fonts.bold,
-    fontSize: scaleFontSize(fonts.size.medium),
+    fontSize: fonts.size.medium,
     color: '#FFF',
   },
   
@@ -371,30 +416,33 @@ const styles = StyleSheet.create({
   
   // NUEVOS ESTILOS PARA CONTEXTO DE DIRECCIÓN
   addressContextContainer: {
-    backgroundColor: 'rgba(51, 167, 68, 0.1)',
-    padding: scaleSpacing(12),
-    borderRadius: scaleSpacing(8),
-    marginTop: scaleSpacing(12),
-    borderWidth: 1,
-    borderColor: 'rgba(51, 167, 68, 0.3)',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   addressContextLabel: {
     fontFamily: fonts.bold,
-    fontSize: scaleFontSize(fonts.size.small),
-    color: '#33A744',
-    marginBottom: scaleSpacing(4),
+    fontSize: fonts.size.small,
+    color: '#D27F27',
+    marginBottom: 6,
   },
   addressContextText: {
     fontFamily: fonts.regular,
-    fontSize: scaleFontSize(fonts.size.medium),
+    fontSize: fonts.size.medium,
     color: '#2F2F2F',
-    marginBottom: scaleSpacing(8),
-    lineHeight: 20,
+    marginBottom: 8,
+    lineHeight: 22,
   },
   addressContextNote: {
     fontFamily: fonts.regular,
-    fontSize: scaleFontSize(fonts.size.small),
-    color: 'rgba(47,47,47,0.7)',
+    fontSize: fonts.size.small,
+    color: 'rgba(47,47,47,0.6)',
     fontStyle: 'italic',
   },
 });

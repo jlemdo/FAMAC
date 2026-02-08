@@ -162,7 +162,7 @@ const MapSelector = () => {
       
       {/* Dirección del usuario */}
       <View style={styles.addressCard}>
-        <Ionicons name="location" size={24} color="#33A744" />
+        <Ionicons name="location" size={24} color="#D27F27" />
         <View style={styles.addressContent}>
           <Text style={styles.addressLabel}>Tu dirección:</Text>
           <Text style={styles.addressText} numberOfLines={3}>
@@ -174,7 +174,7 @@ const MapSelector = () => {
       {/* Estado del mapa */}
       {selectedCoordinates ? (
         <View style={styles.statusContainer}>
-          <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+          <Ionicons name="checkmark-circle" size={20} color="#D27F27" />
           <Text style={styles.statusText}>
             Ubicación confirmada en el mapa
           </Text>
@@ -265,17 +265,20 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.2)',
+    borderBottomWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   backIcon: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: fonts.size.large,
@@ -311,15 +314,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: '#FFF',
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#33A744',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   addressContent: {
     flex: 1,
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
   addressLabel: {
     fontSize: fonts.size.small,
     fontFamily: fonts.bold,
-    color: '#33A744',
+    color: '#D27F27',
     marginBottom: 4,
   },
   addressText: {
@@ -341,62 +342,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 16,
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statusText: {
-    marginLeft: 8,
+    marginLeft: 10,
     fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
-    color: '#D27F27',
+    color: '#2F2F2F',
   },
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#8B5E3C',
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowColor: '#8B5E3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   mapButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   mapButtonDisabled: {
-    backgroundColor: '#999',
-    opacity: 0.7,
+    backgroundColor: '#CCC',
+    shadowOpacity: 0,
   },
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#33A744',
-    padding: 18,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    minHeight: 54,
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   confirmButtonText: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#FFF',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   confirmButtonDisabled: {
     backgroundColor: '#CCC',
-    opacity: 0.6,
+    shadowOpacity: 0,
   },
   // ✅ ESTILO PARA SCROLLVIEW EN PANTALLAS PEQUEÑAS
   scrollContentContainer: {

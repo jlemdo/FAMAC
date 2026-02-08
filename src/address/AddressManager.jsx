@@ -179,7 +179,7 @@ const AddressManager = () => {
             <Ionicons 
               name={isPrimary ? "home" : "location-outline"} 
               size={20} 
-              color={isPrimary ? "#33A744" : "#8B5E3C"} 
+              color={isPrimary ? "#D27F27" : "#8B5E3C"} 
             />
             {isPrimary && (
               <Text style={styles.primaryBadge}>Principal</Text>
@@ -269,7 +269,7 @@ const AddressManager = () => {
         <TouchableOpacity
           onPress={handleAddNewAddress}
           style={styles.addButton}>
-          <Ionicons name="add" size={24} color="#33A744" />
+          <Ionicons name="add" size={24} color="#D27F27" />
         </TouchableOpacity>
       </View>
 
@@ -313,7 +313,7 @@ const AddressManager = () => {
               <TouchableOpacity
                 style={styles.addAnotherButton}
                 onPress={handleAddNewAddress}>
-                <Ionicons name="add-circle-outline" size={24} color="#8B5E3C" />
+                <Ionicons name="add-circle-outline" size={24} color="#D27F27" />
                 <Text style={styles.addAnotherButtonText}>Agregar Nueva Dirección</Text>
               </TouchableOpacity>
             )}
@@ -329,6 +329,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2EFE4',
   },
+  // === HEADER - Diseño profesional ===
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,17 +338,20 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 94, 60, 0.2)',
+    borderBottomWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: fonts.size.large,
@@ -355,8 +359,12 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
   },
   addButton: {
-    padding: 8,
-    marginRight: -8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -398,10 +406,15 @@ const styles = StyleSheet.create({
   addFirstButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#33A744',
+    backgroundColor: '#D27F27',
     paddingHorizontal: 24,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addFirstButtonText: {
     marginLeft: 8,
@@ -414,20 +427,18 @@ const styles = StyleSheet.create({
   },
   addressCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.2)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   primaryAddressCard: {
-    borderColor: '#33A744',
-    borderWidth: 2,
+    // Solo sombra ligeramente más pronunciada para destacar, sin bordes
+    shadowOpacity: 0.1,
   },
   addressHeader: {
     flexDirection: 'row',
@@ -442,13 +453,16 @@ const styles = StyleSheet.create({
   },
   primaryBadge: {
     marginLeft: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    backgroundColor: '#33A744',
-    color: '#FFF',
-    fontSize: fonts.size.small,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(210, 127, 39, 0.12)',
+    color: '#D27F27',
+    fontSize: fonts.size.tiny,
     fontFamily: fonts.bold,
-    borderRadius: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   addressActions: {
     flexDirection: 'row',
@@ -490,18 +504,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: '#8B5E3C',
+    borderWidth: 1.5,
+    borderColor: '#D27F27',
     borderStyle: 'dashed',
     paddingVertical: 20,
-    borderRadius: 12,
+    borderRadius: 14,
     marginTop: 8,
   },
   addAnotherButtonText: {
     marginLeft: 8,
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
-    color: '#8B5E3C',
+    color: '#D27F27',
   },
 });
 

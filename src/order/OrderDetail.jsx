@@ -7,7 +7,6 @@ import {
   Image,
   ScrollView,
   Linking,
-  PermissionsAndroid,
   TextInput,
   ActivityIndicator,
   Modal,
@@ -18,9 +17,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
-import MapView, {Marker} from 'react-native-maps';
 import {AuthContext} from '../context/AuthContext';
-import GetLocation from 'react-native-get-location';
 import axios from 'axios';
 import {OrderContext} from '../context/OrderContext';
 import DriverTracking from './driver/DriverTracking';
@@ -57,7 +54,6 @@ const translatePaymentStatus = (paymentStatus) => {
   
   const translations = {
     'pending': 'Pendiente',
-    'paid': 'Pagado', 
     'paid': 'Pagado',
     'failed': 'Fallido',
     'cancelled': 'Cancelado',
@@ -79,14 +75,10 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportLoading, setSupportLoading] = useState(false);
-  // ✅ PUNTO 21: Estados para problema con pedido
+  // Estados para problema con pedido
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [problemLoading, setProblemLoading] = useState(false);
-  // ✅ PUNTO 23: Estados para entrega del driver
-  const [deliveryLoading, setDeliveryLoading] = useState(false);
-  const [driverLocation, setDriverLocation] = useState(null);
-  const [distanceToCustomer, setDistanceToCustomer] = useState(null);
-  // ✅ Estados para cancelación de pedido
+  // Estados para cancelación de pedido
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -211,21 +203,7 @@ const OrderDetails = () => {
     const timeThreshold = deliveryTime * 0.15;
 
     // Mostrar botón si ha pasado más del 15% del tiempo estimado
-    const shouldShow = elapsedMinutes > timeThreshold;
-
-    // DEBUG: Log para testing (remover en producción)
-    if (shouldShow) {
-      console.log('🚨 PROBLEMA CON PEDIDO:', {
-        orderId: order.id,
-        deliveryTime: deliveryTime + ' min',
-        elapsedMinutes: Math.round(elapsedMinutes) + ' min',
-        threshold: Math.round(timeThreshold) + ' min',
-        shouldShow
-      });
-    }
-
-    return shouldShow;
-    // TODO: Agregar lógica de proximidad del driver cuando esté disponible
+    return elapsedMinutes > timeThreshold;
   };
 
   // ✅ PUNTO 21: Función para manejar problema con pedido
@@ -271,116 +249,7 @@ const OrderDetails = () => {
     }
   };
 
-  // ✅ PUNTO 23: Función para calcular distancia entre dos coordenadas (fórmula de Haversine)
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radio de la Tierra en km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c * 1000; // Convertir a metros
-    return distance;
-  };
-
-  // ✅ PUNTO 23: Función para obtener ubicación del driver y calcular distancia
-  const checkDriverProximity = useCallback(async () => {
-    if (user?.usertype !== 'driver' || !order?.delivery_lat || !order?.delivery_long) return;
-
-    try {
-      // Obtener ubicación actual del driver
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setDriverLocation({ lat: latitude, lng: longitude });
-
-          // Calcular distancia al cliente
-          const distance = calculateDistance(
-            latitude,
-            longitude,
-            parseFloat(order.delivery_lat),
-            parseFloat(order.delivery_long)
-          );
-
-          setDistanceToCustomer(distance);
-
-          // DEBUG: Log para testing
-          console.log('📍 DRIVER PROXIMITY:', {
-            driverLat: latitude,
-            driverLng: longitude,
-            customerLat: order.delivery_lat,
-            customerLng: order.delivery_long,
-            distance: Math.round(distance) + ' metros',
-            within500m: distance <= 500
-          });
-        },
-        (error) => {
-          console.log('❌ Error obteniendo ubicación del driver:', error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 30000
-        }
-      );
-    } catch (error) {
-      console.log('❌ Error en checkDriverProximity:', error);
-    }
-  }, [user?.usertype, order?.delivery_lat, order?.delivery_long]);
-
-  // ✅ PUNTO 23: Función para detectar si mostrar botón de entrega
-  const shouldShowDeliveryButton = () => {
-    if (user?.usertype !== 'driver') return false;
-    if (!order) return false;
-
-    // Solo para pedidos en tránsito
-    // Backend estados activos: On the Way, Arriving
-    const inTransitStatuses = ['on the way', 'arriving'];
-    const orderStatus = order.status?.toLowerCase();
-
-    if (!inTransitStatuses.includes(orderStatus)) return false;
-
-    // Verificar si está dentro de 500 metros
-    return distanceToCustomer !== null && distanceToCustomer <= 500;
-  };
-
-  // ✅ PUNTO 23: Función para manejar entrega del pedido
-  const handleDeliverySubmit = async () => {
-    setDeliveryLoading(true);
-    try {
-      // TODO: Implementar endpoint del backend para marcar como entregado
-      const response = await axios.post(`${API_BASE_URL}/api/orders/${order.id}/deliver`, {
-        driver_lat: driverLocation?.lat,
-        driver_lng: driverLocation?.lng,
-        delivery_time: new Date().toISOString()
-      });
-
-      if (response.status === 200) {
-        showAlert({
-          type: 'success',
-          title: '✅ Pedido Entregado',
-          message: 'El pedido ha sido marcado como entregado exitosamente.',
-          confirmText: 'OK',
-        });
-
-        // Recargar datos de la orden
-        fetchOrder();
-      }
-    } catch (error) {
-      showAlert({
-        type: 'error',
-        title: 'Error',
-        message: 'No se pudo marcar el pedido como entregado. Inténtalo de nuevo',
-        confirmText: 'Cerrar',
-      });
-    } finally {
-      setDeliveryLoading(false);
-    }
-  };
-
-  // ✅ Función para detectar si mostrar botón de cancelar (USUARIOS)
+  // Función para detectar si mostrar botón de cancelar (USUARIOS)
   const shouldShowCancelButton = () => {
     if (!order) return false;
 
@@ -538,8 +407,11 @@ const OrderDetails = () => {
 
   if (loading || !order) {
     return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#D27F27" />
+          <Text style={styles.loadingText}>Cargando detalles...</Text>
+        </View>
       </View>
     );
   }
@@ -557,7 +429,13 @@ const OrderDetails = () => {
           style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalles del pedido</Text>
+        <View style={styles.headerTitleContainer}>
+          <View style={styles.headerIconContainer}>
+            <Ionicons name="document-text" size={20} color="#D27F27" />
+          </View>
+          <Text style={styles.headerTitle}>Detalles del pedido</Text>
+        </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -569,26 +447,51 @@ const OrderDetails = () => {
         {/* 🚚 VISTA PARA DRIVERS - Card unificada sin precios */}
         {user?.usertype === 'driver' ? (
           <View style={styles.driverOrderCard}>
-            {/* Header con ID y estado */}
-            <View style={styles.driverHeader}>
+            {/* Header con ID y Status */}
+            <View style={styles.orderHeader}>
               <View style={styles.orderIdSection}>
-                <Text style={styles.orderIdLabel}>Pedido:</Text>
+                <Ionicons name="receipt-outline" size={16} color="#D27F27" />
                 <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
               </View>
-              <View style={styles.statusSection}>
-                <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
+              <View style={[
+                styles.statusBadge,
+                order?.status?.toLowerCase() === 'delivered' && styles.statusBadgeDelivered,
+                order?.status?.toLowerCase() === 'cancelled' && styles.statusBadgeCancelled,
+                (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusBadgeActive,
+              ]}>
+                <Text style={[
+                  styles.statusBadgeText,
+                  order?.status?.toLowerCase() === 'delivered' && styles.statusTextDelivered,
+                  order?.status?.toLowerCase() === 'cancelled' && styles.statusTextCancelled,
+                  (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusTextActive,
+                ]}>{translateStatus(order?.status)}</Text>
               </View>
             </View>
 
-            <Text style={styles.orderDate}>
-              {new Date(order?.created_at).toLocaleString('es-MX', {
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
-            </Text>
+            {/* Fecha del pedido */}
+            <View style={styles.orderInfoRow}>
+              <View style={styles.orderInfoItem}>
+                <Text style={styles.orderInfoLabel}>Fecha del pedido</Text>
+                <Text style={styles.orderInfoValue}>
+                  {new Date(order?.created_at).toLocaleDateString('es-MX', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })} - {new Date(order?.created_at).toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.cardDivider} />
 
             {/* Artículos sin precios */}
-            <Text style={styles.sectionTitle}>Artículos del pedido</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="cube-outline" size={18} color="#8B5E3C" />
+              <Text style={styles.sectionTitle}>Artículos del pedido</Text>
+            </View>
             {order?.order_details?.length > 0 ? (
               order.order_details.map((product, i) => (
                 <View key={i} style={styles.driverItemRow}>
@@ -609,64 +512,75 @@ const OrderDetails = () => {
 
             {/* Información del cliente */}
             <View style={styles.driverCustomerSection}>
-              <Text style={styles.sectionTitle}>📦 Información del Cliente</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="person-circle-outline" size={18} color="#8B5E3C" />
+                <Text style={styles.sectionTitle}>Información del Cliente</Text>
+              </View>
 
               {/* Nombre del cliente */}
               {(order?.customer?.first_name || order?.customer?.email) && (
-                <View style={styles.deliveryRow}>
-                  <View style={styles.deliveryLabelContainer}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconContainer}>
                     <Ionicons name="person-outline" size={16} color="#2196F3" />
-                    <Text style={styles.deliveryLabel}>Cliente</Text>
                   </View>
-                  <Text style={styles.deliveryValue}>
-                    {order.customer?.first_name
-                      ? order.customer.first_name
-                      : order.customer?.email || 'Cliente'}
-                  </Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Cliente</Text>
+                    <Text style={styles.infoValue}>
+                      {order.customer?.first_name
+                        ? order.customer.first_name
+                        : order.customer?.email || 'Cliente'}
+                    </Text>
+                  </View>
                 </View>
               )}
 
               {/* Fecha programada */}
               {order?.delivery_date && (
-                <View style={styles.deliveryRow}>
-                  <View style={styles.deliveryLabelContainer}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconContainer}>
                     <Ionicons name="calendar-outline" size={16} color="#33A744" />
-                    <Text style={styles.deliveryLabel}>Fecha programada</Text>
                   </View>
-                  <Text style={styles.deliveryValue}>
-                    {new Date(order.delivery_date).toLocaleDateString('es-MX', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Fecha programada</Text>
+                    <Text style={styles.infoValue}>
+                      {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  </View>
                 </View>
               )}
 
               {/* Horario programado */}
               {order?.delivery_slot && (
-                <View style={styles.deliveryRow}>
-                  <View style={styles.deliveryLabelContainer}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoIconContainer}>
                     <Ionicons name="time-outline" size={16} color="#D27F27" />
-                    <Text style={styles.deliveryLabel}>Horario</Text>
                   </View>
-                  <Text style={styles.deliveryValue}>
-                    {order.delivery_slot}
-                  </Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Horario</Text>
+                    <Text style={styles.infoValue}>
+                      {order.delivery_slot}
+                    </Text>
+                  </View>
                 </View>
               )}
 
               {/* Dirección de entrega */}
               {order?.delivery_address && (
-                <View style={[styles.deliveryRow, styles.addressRow]}>
-                  <View style={styles.deliveryLabelContainer}>
+                <View style={[styles.infoRow, styles.infoRowLast]}>
+                  <View style={styles.infoIconContainer}>
                     <Ionicons name="location-outline" size={16} color="#8B5E3C" />
-                    <Text style={styles.deliveryLabel}>Dirección</Text>
                   </View>
-                  <Text style={[styles.deliveryValue, styles.addressValue]}>
-                    {order.delivery_address}
-                  </Text>
+                  <View style={styles.infoContent}>
+                    <Text style={styles.infoLabel}>Dirección</Text>
+                    <Text style={styles.infoValueAddress}>
+                      {order.delivery_address}
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
@@ -675,33 +589,66 @@ const OrderDetails = () => {
           /* 👤 VISTA PARA CLIENTES - Cards separadas con precios */
           <>
             <View style={styles.orderInfo}>
-              <View style={styles.infoHeader}>
+              {/* Header con ID y Status - Diseño limpio en fila */}
+              <View style={styles.orderHeader}>
                 <View style={styles.orderIdSection}>
-                  <Text style={styles.orderIdLabel}>Pedido:</Text>
+                  <Ionicons name="receipt-outline" size={16} color="#D27F27" />
                   <Text style={styles.orderIdText}>{order?.order_number || formatOrderId(order?.created_at)}</Text>
                 </View>
-                <View style={styles.statusSection}>
-                  <Text style={styles.statusText}>Estado: {translateStatus(order?.status)}</Text>
-                  {/* 🆕 Nuevo: Payment Status */}
+                <View style={[
+                  styles.statusBadge,
+                  order?.status?.toLowerCase() === 'delivered' && styles.statusBadgeDelivered,
+                  order?.status?.toLowerCase() === 'cancelled' && styles.statusBadgeCancelled,
+                  (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusBadgeActive,
+                ]}>
                   <Text style={[
-                    styles.paymentStatusText,
-                    order?.payment_status === 'pending' && styles.paymentStatusPending,
-                    order?.payment_status === 'paid' && styles.paymentStatusCompleted,
-                    order?.payment_status === 'failed' && styles.paymentStatusFailed
-                  ]}>
-                    Pago: {translatePaymentStatus(order?.payment_status)}
-                  </Text>
+                    styles.statusBadgeText,
+                    order?.status?.toLowerCase() === 'delivered' && styles.statusTextDelivered,
+                    order?.status?.toLowerCase() === 'cancelled' && styles.statusTextCancelled,
+                    (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusTextActive,
+                  ]}>{translateStatus(order?.status)}</Text>
                 </View>
               </View>
 
-              <Text style={styles.orderDate}>
-                {new Date(order?.created_at).toLocaleString('es-MX', {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </Text>
+              {/* Fila de Fecha y Pago - Alineados */}
+              <View style={styles.orderInfoRow}>
+                <View style={styles.orderInfoItem}>
+                  <Text style={styles.orderInfoLabel}>Fecha del pedido</Text>
+                  <Text style={styles.orderInfoValue}>
+                    {new Date(order?.created_at).toLocaleDateString('es-MX', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.orderInfoItem}>
+                  <Text style={styles.orderInfoLabel}>Estado de pago</Text>
+                  <View style={styles.paymentStatusRow}>
+                    <View style={[
+                      styles.paymentDot,
+                      order?.payment_status === 'paid' && styles.paymentDotPaid,
+                      order?.payment_status === 'pending' && styles.paymentDotPending,
+                      order?.payment_status === 'failed' && styles.paymentDotFailed,
+                    ]} />
+                    <Text style={[
+                      styles.orderInfoValue,
+                      order?.payment_status === 'paid' && styles.paymentValuePaid,
+                      order?.payment_status === 'pending' && styles.paymentValuePending,
+                      order?.payment_status === 'failed' && styles.paymentValueFailed,
+                    ]}>
+                      {translatePaymentStatus(order?.payment_status)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
 
-              <Text style={styles.sectionTitle}>Artículos</Text>
+              <View style={styles.cardDivider} />
+
+              <View style={styles.sectionHeader}>
+                <Ionicons name="cube-outline" size={18} color="#8B5E3C" />
+                <Text style={styles.sectionTitle}>Artículos</Text>
+              </View>
               {order?.order_details?.length > 0 ? (
                 order.order_details.map((product, i) => (
                   <View key={i} style={styles.itemRow}>
@@ -770,65 +717,76 @@ const OrderDetails = () => {
 
             {/* 🆕 Sección de información de entrega */}
             <View style={styles.deliveryInfoSection}>
-              <Text style={styles.sectionTitle}>📦 Información de Entrega</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="bicycle-outline" size={18} color="#8B5E3C" />
+                <Text style={styles.sectionTitle}>Información de Entrega</Text>
+              </View>
 
               <View style={styles.deliveryBreakdown}>
                 {/* Información del repartidor (para usuarios) */}
                 {order?.driver && (
-                  <View style={styles.deliveryRow}>
-                    <View style={styles.deliveryLabelContainer}>
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
                       <Ionicons name="car-outline" size={16} color="#D27F27" />
-                      <Text style={styles.deliveryLabel}>Repartidor</Text>
                     </View>
-                    <Text style={styles.deliveryValue}>
-                      {order.driver?.first_name
-                        ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
-                        : order.driver?.name || 'Tu repartidor'}
-                    </Text>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Repartidor</Text>
+                      <Text style={styles.infoValue}>
+                        {order.driver?.first_name
+                          ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
+                          : order.driver?.name || 'Tu repartidor'}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
                 {/* Fecha programada */}
                 {order?.delivery_date && (
-                  <View style={styles.deliveryRow}>
-                    <View style={styles.deliveryLabelContainer}>
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
                       <Ionicons name="calendar-outline" size={16} color="#33A744" />
-                      <Text style={styles.deliveryLabel}>Fecha programada</Text>
                     </View>
-                    <Text style={styles.deliveryValue}>
-                      {new Date(order.delivery_date).toLocaleDateString('es-MX', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </Text>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Fecha programada</Text>
+                      <Text style={styles.infoValue}>
+                        {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
                 {/* Horario programado */}
                 {order?.delivery_slot && (
-                  <View style={styles.deliveryRow}>
-                    <View style={styles.deliveryLabelContainer}>
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
                       <Ionicons name="time-outline" size={16} color="#D27F27" />
-                      <Text style={styles.deliveryLabel}>Horario</Text>
                     </View>
-                    <Text style={styles.deliveryValue}>
-                      {order.delivery_slot}
-                    </Text>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Horario</Text>
+                      <Text style={styles.infoValue}>
+                        {order.delivery_slot}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
                 {/* Dirección de entrega */}
                 {order?.delivery_address && (
-                  <View style={[styles.deliveryRow, styles.addressRow]}>
-                    <View style={styles.deliveryLabelContainer}>
+                  <View style={[styles.infoRow, styles.infoRowLast]}>
+                    <View style={styles.infoIconContainer}>
                       <Ionicons name="location-outline" size={16} color="#8B5E3C" />
-                      <Text style={styles.deliveryLabel}>Dirección</Text>
                     </View>
-                    <Text style={[styles.deliveryValue, styles.addressValue]}>
-                      {order.delivery_address}
-                    </Text>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Dirección</Text>
+                      <Text style={styles.infoValueAddress}>
+                        {order.delivery_address}
+                      </Text>
+                    </View>
                   </View>
                 )}
               </View>
@@ -869,12 +827,13 @@ const OrderDetails = () => {
           // 1. PEDIDO CANCELADO - Prioridad máxima
           if (isCancelled) {
             return (
-              <View style={styles.cancelledContainer}>
-                <View style={styles.cancelledIconContainer}>
-                  <Ionicons name="close-circle" size={60} color="#E63946" />
+              <View style={styles.statusCard}>
+                <View style={styles.statusCardBorder} />
+                <View style={[styles.statusIconCircle, styles.statusIconCircleCancelled]}>
+                  <Ionicons name="close-circle" size={50} color="#E63946" />
                 </View>
-                <Text style={styles.cancelledTitle}>Pedido Cancelado</Text>
-                <Text style={styles.cancelledMessage}>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitleCancelled]}>Pedido Cancelado</Text>
+                <Text style={styles.statusCardMessage}>
                   {isDriver
                     ? 'Este pedido ha sido cancelado. No es necesario realizar ninguna acción.'
                     : 'Tu pedido ha sido cancelado. Si tienes alguna duda, contáctanos.'
@@ -888,12 +847,13 @@ const OrderDetails = () => {
           if (isOxxoPending) {
             // console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
             return (
-              <View style={styles.oxxoPendingContainer}>
-                <View style={styles.oxxoPendingIconContainer}>
+              <View style={styles.statusCard}>
+                <View style={[styles.statusCardBorder, styles.statusCardBorderOxxo]} />
+                <View style={[styles.statusIconCircle, styles.statusIconCircleOxxo]}>
                   <Ionicons name="receipt-outline" size={50} color="#FF9800" />
                 </View>
-                <Text style={styles.oxxoPendingTitle}>Pago Pendiente en OXXO</Text>
-                <Text style={styles.oxxoPendingMessage}>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitleOxxo]}>Pago Pendiente en OXXO</Text>
+                <Text style={styles.statusCardMessage}>
                   Tu pedido ha sido confirmado. Para completar el proceso,
                   realiza el pago en cualquier tienda OXXO con el voucher
                   que recibiste. Tu pedido se preparará una vez confirmado el pago.
@@ -906,12 +866,13 @@ const OrderDetails = () => {
           if (isPendingPayment) {
             // console.log('💳 ENTRANDO A: PAGO PENDIENTE');
             return (
-              <View style={styles.pendingContainer}>
-                <View style={styles.pendingIconContainer}>
+              <View style={styles.statusCard}>
+                <View style={[styles.statusCardBorder, styles.statusCardBorderPending]} />
+                <View style={[styles.statusIconCircle, styles.statusIconCirclePending]}>
                   <Ionicons name="card-outline" size={50} color="#2196F3" />
                 </View>
-                <Text style={styles.pendingTitle}>Validando Pago</Text>
-                <Text style={styles.pendingMessage}>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitlePending]}>Validando Pago</Text>
+                <Text style={styles.statusCardMessage}>
                   Tu pago aún no ha sido validado. En cuanto se confirme,
                   procederemos con la preparación de tu pedido.
                 </Text>
@@ -923,14 +884,15 @@ const OrderDetails = () => {
           if (isDelivered) {
             // console.log('📦 ENTRANDO A: PEDIDO ENTREGADO');
             return (
-              <View style={styles.deliveredContainer}>
-                <View style={styles.deliveredIconContainer}>
-                  <Ionicons name="checkmark-circle" size={60} color="#4CAF50" />
+              <View style={styles.statusCard}>
+                <View style={[styles.statusCardBorder, styles.statusCardBorderDelivered]} />
+                <View style={[styles.statusIconCircle, styles.statusIconCircleDelivered]}>
+                  <Ionicons name="checkmark-circle" size={50} color="#4CAF50" />
                 </View>
-                <Text style={styles.deliveredTitle}>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitleDelivered]}>
                   {isDriver ? '¡Entrega Completada!' : '¡Pedido Entregado!'}
                 </Text>
-                <Text style={styles.deliveredMessage}>
+                <Text style={styles.statusCardMessage}>
                   {isDriver
                     ? 'Has completado exitosamente la entrega de este pedido. ¡Excelente trabajo!'
                     : 'Tu pedido ha sido entregado correctamente. ¡Esperamos que lo disfrutes!'
@@ -964,26 +926,19 @@ const OrderDetails = () => {
 
           // 6A. DRIVER ASIGNADO - Vista para DRIVER (mapa + botón + card)
           if (isDriver && hasDriver && !isActive) {
-            // console.log('🎯 ENTRANDO A VISTA DRIVER ASIGNADO:', {
-            // isDriver,
-            // hasDriver,
-            // isActive,
-            // condition: 'isDriver && hasDriver && !isActive',
-            // result: true
-            // });
-
             return (
               <>
                 {/* Mapa y botón para driver asignado */}
                 <DriverTracking order={order} />
 
                 {/* Card informativo */}
-                <View style={styles.assignedContainer}>
-                  <View style={styles.assignedIconContainer}>
+                <View style={styles.statusCard}>
+                  <View style={[styles.statusCardBorder, styles.statusCardBorderAssigned]} />
+                  <View style={[styles.statusIconCircle, styles.statusIconCircleAssigned]}>
                     <Ionicons name="person-outline" size={50} color="#FF9800" />
                   </View>
-                  <Text style={styles.assignedTitle}>Pedido Asignado</Text>
-                  <Text style={styles.assignedMessage}>
+                  <Text style={[styles.statusCardTitle, styles.statusCardTitleAssigned]}>Pedido Asignado</Text>
+                  <Text style={styles.statusCardMessage}>
                     Se te ha asignado este pedido. Revisa la ubicación del cliente en el mapa y confirma si puedes tomarlo.
                   </Text>
                 </View>
@@ -994,12 +949,13 @@ const OrderDetails = () => {
           // 6B. DRIVER ASIGNADO - Vista para USUARIO (solo card como está)
           if (!isDriver && hasDriver && !isActive) {
             return (
-              <View style={styles.assignedContainer}>
-                <View style={styles.assignedIconContainer}>
+              <View style={styles.statusCard}>
+                <View style={[styles.statusCardBorder, styles.statusCardBorderAssigned]} />
+                <View style={[styles.statusIconCircle, styles.statusIconCircleAssigned]}>
                   <Ionicons name="person-outline" size={50} color="#FF9800" />
                 </View>
-                <Text style={styles.assignedTitle}>Repartidor Asignado</Text>
-                <Text style={styles.assignedMessage}>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitleAssigned]}>Repartidor Asignado</Text>
+                <Text style={styles.statusCardMessage}>
                   Hemos asignado a {order?.driver?.first_name
                     ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
                     : order?.driver?.name || 'un repartidor'} a tu pedido. Prepárate para el día de tu entrega{order?.delivery_date ? ` el ${new Date(order.delivery_date).toLocaleDateString('es-MX')}` : ''}{order?.delivery_slot ? ` a las ${order.delivery_slot}` : ''}. Da seguimiento a tu fecha de entrega.
@@ -1010,12 +966,13 @@ const OrderDetails = () => {
 
           // 7. PEDIDO CONFIRMADO SIN REPARTIDOR ASIGNADO
           return (
-            <View style={styles.confirmedContainer}>
-              <View style={styles.confirmedIconContainer}>
+            <View style={styles.statusCard}>
+              <View style={[styles.statusCardBorder, styles.statusCardBorderConfirmed]} />
+              <View style={[styles.statusIconCircle, styles.statusIconCircleConfirmed]}>
                 <Ionicons name="checkmark-outline" size={50} color="#4CAF50" />
               </View>
-              <Text style={styles.confirmedTitle}>Pedido Confirmado</Text>
-              <Text style={styles.confirmedMessage}>
+              <Text style={[styles.statusCardTitle, styles.statusCardTitleConfirmed]}>Pedido Confirmado</Text>
+              <Text style={styles.statusCardMessage}>
                 Tu pedido ha sido confirmado y pagado. Nuestro equipo está
                 coordinando la asignación de un repartidor.
               </Text>
@@ -1028,42 +985,44 @@ const OrderDetails = () => {
         {user?.usertype !== 'driver' &&
          order?.status?.toLowerCase() === 'delivered' && (
           <TouchableOpacity
-            style={styles.supportButton}
+            style={styles.actionButton}
             onPress={() => setShowSupportModal(true)}
             activeOpacity={0.8}>
-            <Text style={styles.supportButtonText}>📞 Atención al Cliente</Text>
+            <Ionicons name="headset-outline" size={20} color="#FFF" />
+            <Text style={styles.actionButtonText}>Atención al Cliente</Text>
           </TouchableOpacity>
         )}
 
         {/* ✅ PUNTO 21: Botón de Problema con Pedido - Solo para pedidos en tránsito */}
         {user?.usertype !== 'driver' && shouldShowProblemButton() && (
           <TouchableOpacity
-            style={styles.problemButton}
+            style={[styles.actionButton, styles.actionButtonWarning]}
             onPress={() => setShowProblemModal(true)}
             activeOpacity={0.8}>
-            <Text style={styles.problemButtonText}>⚠️ Tengo un problema con mi pedido</Text>
+            <Ionicons name="alert-circle-outline" size={20} color="#FFF" />
+            <Text style={styles.actionButtonText}>Tengo un problema con mi pedido</Text>
           </TouchableOpacity>
         )}
 
         {/* ✅ Botón de Cancelar Pedido - Para usuarios */}
         {shouldShowCancelButton() && (
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={[styles.actionButton, styles.actionButtonDanger]}
             onPress={() => setShowCancelModal(true)}
             activeOpacity={0.8}>
             <Ionicons name="close-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
+            <Text style={styles.actionButtonText}>Cancelar Pedido</Text>
           </TouchableOpacity>
         )}
 
         {/* ✅ Botón de Cancelar Pedido - Para drivers */}
         {shouldShowDriverCancelButton() && (
           <TouchableOpacity
-            style={styles.driverCancelButton}
+            style={[styles.actionButton, styles.actionButtonWarning]}
             onPress={() => setShowCancelModal(true)}
             activeOpacity={0.8}>
             <Ionicons name="close-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.driverCancelButtonText}>No puedo entregar</Text>
+            <Text style={styles.actionButtonText}>No puedo entregar</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -1380,28 +1339,46 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFF',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    elevation: 3,
   },
   backButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderRadius: 12,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(210, 127, 39, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   headerTitle: {
-    flex: 1,
     fontFamily: fonts.bold,
-    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
+    fontSize: fonts.size.large,
     color: '#2F2F2F',
-    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 44,
   },
   content: {
     padding: 16,
@@ -1410,64 +1387,124 @@ const styles = StyleSheet.create({
   orderInfo: {
     backgroundColor: '#FFF',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  infoHeader: {
+  // Order Header - Mismo patrón que Order.jsx
+  orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   orderIdSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  orderIdLabel: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#666',
-    marginRight: 6,
-  },
   orderIdText: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.numeric, // ✅ Fuente optimizada para IDs de orden
+    fontFamily: fonts.numericBold,
     color: '#D27F27',
     letterSpacing: 0.5,
+    marginLeft: 6,
   },
-  statusSection: {
-    alignItems: 'flex-end',
+  // Status Badge
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
   },
-  statusText: {
+  statusBadgeDelivered: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+  },
+  statusBadgeCancelled: {
+    backgroundColor: 'rgba(230, 57, 70, 0.1)',
+  },
+  statusBadgeActive: {
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+  },
+  statusBadgeText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#FF9800',
+  },
+  statusTextDelivered: {
+    color: '#4CAF50',
+  },
+  statusTextCancelled: {
+    color: '#E63946',
+  },
+  statusTextActive: {
+    color: '#2196F3',
+  },
+  // Order Info Row - Para fecha y pago alineados
+  orderInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  orderInfoItem: {
+    flex: 1,
+  },
+  orderInfoLabel: {
     fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
+    fontSize: 11,
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  orderInfoValue: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
     color: '#2F2F2F',
   },
-  
-  // 🆕 Nuevo: Payment Status Styles
-  paymentStatusText: {
-    fontFamily: fonts.numericBold,
-    fontSize: fonts.size.small,
-    marginTop: 4,
+  // Payment Status Row
+  paymentStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  paymentStatusPending: {
-    color: '#FF9800', // Naranja
+  paymentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF9800',
+    marginRight: 6,
   },
-  paymentStatusCompleted: {
-    color: '#33A744', // Verde
+  paymentDotPaid: {
+    backgroundColor: '#33A744',
   },
-  paymentStatusFailed: {
-    color: '#E63946', // Rojo
+  paymentDotPending: {
+    backgroundColor: '#FF9800',
   },
-  orderDate: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#666',
+  paymentDotFailed: {
+    backgroundColor: '#E63946',
+  },
+  paymentValuePaid: {
+    color: '#33A744',
+  },
+  paymentValuePending: {
+    color: '#FF9800',
+  },
+  paymentValueFailed: {
+    color: '#E63946',
+  },
+  // Card Divider
+  cardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    marginBottom: 16,
+  },
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
   },
   infoText: {
@@ -1477,20 +1514,26 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#8B5E3C',
-    marginBottom: 8,
+    fontSize: fonts.size.small,
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginLeft: 8,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: '#FAFAFA',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   itemImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
+    width: 46,
+    height: 46,
+    borderRadius: 10,
     marginRight: 12,
+    backgroundColor: '#F0F0F0',
   },
   itemInfo: {
     flex: 1,
@@ -1502,7 +1545,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   itemPrice: {
-    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios
+    fontFamily: fonts.priceBold,
     fontSize: fonts.size.small,
     color: '#D27F27',
   },
@@ -1583,56 +1626,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Estilos del botón de Atención al Cliente
-  supportButton: {
+  // Estilos de botones de acción - Mismo patrón que Order.jsx
+  actionButton: {
     backgroundColor: '#33A744',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    shadowColor: '#33A744',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  supportButtonText: {
+  actionButtonWarning: {
+    backgroundColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+  },
+  actionButtonDanger: {
+    backgroundColor: '#E63946',
+    shadowColor: '#E63946',
+  },
+  actionButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#FFF',
+    marginLeft: 8,
   },
 
-  // ✅ PUNTO 21: Estilos del botón de Problema con Pedido
-  problemButton: {
-    backgroundColor: '#FF6B35', // Color naranja/rojo para alerta
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  problemButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
-
-  // ✅ PUNTO 21: Estilos del modal de problema
+  // ✅ Estilos del modal de problema
   problemInfoContainer: {
-    backgroundColor: '#FFF8E1', // Fondo amarillo claro
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 152, 0, 0.08)',
+    borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF9800', // Borde naranja
+    borderLeftColor: '#FF9800',
   },
   problemInfoText: {
     fontFamily: fonts.bold,
@@ -1647,10 +1679,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   problemMessageContainer: {
-    backgroundColor: '#F5F5F5',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#FFF',
+    padding: 14,
+    borderRadius: 10,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   problemMessagePreview: {
     fontFamily: fonts.regular,
@@ -1659,17 +1693,16 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   problemWarningText: {
-    fontFamily: fonts.regular,
+    fontFamily: fonts.bold,
     fontSize: fonts.size.small,
     color: '#E65100',
     textAlign: 'center',
-    fontWeight: 'bold',
   },
   problemSendButton: {
-    backgroundColor: '#FF5722', // Rojo más intenso para el botón de envío
+    backgroundColor: '#FF5722',
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     marginLeft: 8,
     alignItems: 'center',
@@ -1680,34 +1713,36 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 
-  // Estilos del modal
+  // ========== ESTILOS DE MODALES ==========
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
   },
   keyboardAvoidingView: {
-    width: '90%',
+    width: '100%',
     maxHeight: '80%',
   },
   modalContent: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
+    width: '100%',
+    maxWidth: 400,
     shadowColor: '#000',
     shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-    flexGrow: 1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   modalTitle: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.large,
     color: '#2F2F2F',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   modalInputGroup: {
     marginBottom: 16,
@@ -1715,46 +1750,49 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.small,
-    color: '#2F2F2F',
+    color: '#666',
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   orderInfoBox: {
-    backgroundColor: '#F2EFE4',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: 'rgba(210, 127, 39, 0.08)',
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
+    borderColor: 'rgba(210, 127, 39, 0.2)',
   },
   orderInfoText: {
-    fontFamily: fonts.numeric, // ✅ Fuente optimizada para números (fechas, IDs)
-    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
+    fontFamily: fonts.numeric,
+    fontSize: fonts.size.medium,
     color: '#2F2F2F',
     marginBottom: 4,
   },
   orderInfoPrice: {
-    fontFamily: fonts.priceBold, // ✅ Fuente optimizada para precios
-    fontSize: fonts.size.medium, // ✅ Mantiene autoscaling
+    fontFamily: fonts.priceBold,
+    fontSize: fonts.size.medium,
     color: '#33A744',
   },
   modalTextArea: {
     minHeight: 100,
     borderWidth: 1,
-    borderColor: '#8B5E3C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FAFAFA',
   },
   modalInputError: {
     borderColor: '#E63946',
+    backgroundColor: 'rgba(230, 57, 70, 0.05)',
   },
   modalErrorText: {
     color: '#E63946',
     fontSize: fonts.size.small,
-    marginTop: 4,
+    marginTop: 6,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1764,23 +1802,21 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#8B5E3C',
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   modalCancelButtonText: {
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
-    color: '#8B5E3C',
+    color: '#666',
   },
   modalSendButton: {
     flex: 1,
     backgroundColor: '#33A744',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   modalSendButtonText: {
@@ -1789,59 +1825,96 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 
-  // 🚚 Estilos para vista de drivers
+  // 🚚 Estilos para vista de drivers - Mismo patrón que Order.jsx
   driverOrderCard: {
     backgroundColor: '#FFF',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  driverHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   driverItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
+    backgroundColor: '#FAFAFA',
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
   },
   driverCustomerSection: {
     marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: '#8B5E3C',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: 'rgba(210, 127, 39, 0.05)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.15)',
   },
 
-  // 🆕 Estilos para sección de información de entrega
+  // 🆕 Estilos para sección de información de entrega - Mismo patrón
   deliveryInfoSection: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   deliveryBreakdown: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
     padding: 12,
   },
+  // Info Row Styles (nuevo sistema de filas de información)
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  infoRowLast: {
+    borderBottomWidth: 0,
+  },
+  infoIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(139, 94, 60, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    color: '#888',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  infoValue: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    textTransform: 'capitalize',
+  },
+  infoValueAddress: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#2F2F2F',
+    lineHeight: 20,
+  },
+  // Legacy delivery styles (para compatibilidad)
   deliveryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1940,7 +2013,105 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Estilos para pedido cancelado
+  // ========== STATUS CARDS - Mismo patrón que emptyCard de Order.jsx ==========
+  statusCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    marginVertical: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  statusCardBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: '#E63946',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  statusCardBorderDelivered: {
+    backgroundColor: '#4CAF50',
+  },
+  statusCardBorderPending: {
+    backgroundColor: '#2196F3',
+  },
+  statusCardBorderConfirmed: {
+    backgroundColor: '#4CAF50',
+  },
+  statusCardBorderAssigned: {
+    backgroundColor: '#FF9800',
+  },
+  statusCardBorderOxxo: {
+    backgroundColor: '#FF9800',
+  },
+  statusIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(230, 57, 70, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  statusIconCircleCancelled: {
+    backgroundColor: 'rgba(230, 57, 70, 0.08)',
+  },
+  statusIconCircleDelivered: {
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+  },
+  statusIconCirclePending: {
+    backgroundColor: 'rgba(33, 150, 243, 0.08)',
+  },
+  statusIconCircleConfirmed: {
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+  },
+  statusIconCircleAssigned: {
+    backgroundColor: 'rgba(255, 152, 0, 0.08)',
+  },
+  statusIconCircleOxxo: {
+    backgroundColor: 'rgba(255, 152, 0, 0.08)',
+  },
+  statusCardTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.XL,
+    textAlign: 'center',
+    marginBottom: 12,
+    color: '#E63946',
+  },
+  statusCardTitleCancelled: {
+    color: '#E63946',
+  },
+  statusCardTitleDelivered: {
+    color: '#4CAF50',
+  },
+  statusCardTitlePending: {
+    color: '#2196F3',
+  },
+  statusCardTitleConfirmed: {
+    color: '#4CAF50',
+  },
+  statusCardTitleAssigned: {
+    color: '#FF9800',
+  },
+  statusCardTitleOxxo: {
+    color: '#FF9800',
+  },
+  statusCardMessage: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
+  // Legacy status containers (mantener para compatibilidad)
   cancelledContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -1973,7 +2144,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Estilos para pedido entregado
   deliveredContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -2004,7 +2174,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Estilos para pago pendiente
   pendingContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -2035,7 +2204,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Estilos para pedido confirmado sin repartidor
   confirmedContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -2066,7 +2234,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Estilos para repartidor asignado esperando confirmación
   assignedContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -2097,7 +2264,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Estilos para OXXO pendiente
   oxxoPendingContainer: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -2128,54 +2294,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // ✅ Estilos para botón de cancelar pedido (USUARIOS)
-  cancelButton: {
-    backgroundColor: '#E63946',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    gap: 8,
-  },
-  cancelButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
-
-  // ✅ Estilos para botón de cancelar pedido (DRIVERS)
-  driverCancelButton: {
-    backgroundColor: '#FF6B35', // Naranja más suave para drivers
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    gap: 8,
-  },
-  driverCancelButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: fonts.size.medium,
-    color: '#FFF',
-  },
-
   // ✅ Estilos para modal de cancelación
   cancelModalHeader: {
     alignItems: 'center',
@@ -2189,8 +2307,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   cancelWarningBox: {
-    backgroundColor: '#FFE5E7',
-    borderRadius: 8,
+    backgroundColor: 'rgba(230, 57, 70, 0.08)',
+    borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     borderLeftWidth: 4,
@@ -2200,14 +2318,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: fonts.size.small,
     color: '#C1121F',
-    textAlign: 'center',
+    lineHeight: 20,
   },
   confirmCancelButton: {
     flex: 1,
     backgroundColor: '#E63946',
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
   },
   confirmCancelButtonText: {
@@ -2216,16 +2334,51 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
 
-  // ✅ Falta modalOverlay para el modal de problema (usado en problema modal)
+  // ✅ Contenedores adicionales para modales
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
   },
   modalKeyboardContainer: {
-    width: '90%',
-    maxWidth: 500,
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+
+  // ========== ESTILOS DE LOADING - Mismo patrón que Order.jsx ==========
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2EFE4',
+    padding: 20,
+  },
+  loadingCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  loadingText: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#888',
+    marginTop: 16,
   },
 });
 

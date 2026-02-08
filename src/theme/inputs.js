@@ -8,137 +8,165 @@ import spacing from './spacing';
 import fonts from './fonts';
 
 const inputs = {
-  // === INPUT ESTÁNDAR (el MÁS USADO - aparece en 6 archivos) ===
+  // === INPUT ESTÁNDAR - Diseño profesional ===
   standard: {
-    height: 44,
+    height: 54,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    marginBottom: spacing.md, // ESPACIADO AGREGADO
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: spacing.md,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
+    // Sombra sutil profesional
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  
+
   // Input sin margin (para cuando tiene error)
   standardNoMargin: {
-    height: 44,
+    height: 54,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
-    // Sin marginBottom - el error text se encarga del espaciado
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  
+
   // Input con error sin margin (para cuando tiene error)
   errorNoMargin: {
-    height: 44,
-    borderWidth: 1,
+    height: 54,
+    borderWidth: 1.5,
     borderColor: colors.error,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
-    // Sin marginBottom - el error text se encarga del espaciado
   },
-  
+
   // === VARIANTES DE INPUTS ===
-  
+
   // Input con error de validación
   error: {
-    height: 44,
-    borderWidth: 1,
+    height: 54,
+    borderWidth: 1.5,
     borderColor: colors.error,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    marginBottom: spacing.md, // ESPACIADO AGREGADO
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: spacing.md,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
   },
-  
+
   // Input deshabilitado
   disabled: {
-    height: 44,
+    height: 54,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    marginBottom: spacing.md, // ESPACIADO AGREGADO
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: spacing.md,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.placeholder,
     backgroundColor: colors.disabled,
   },
   
-  // TextArea (input multilinea)
+  // TextArea (input multilinea) - Diseño profesional
   textArea: {
     minHeight: 100,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    paddingVertical: spacing.input.paddingVertical,
-    marginBottom: spacing.md, // ESPACIADO AGREGADO
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: spacing.md,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
     textAlignVertical: 'top',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  
+
   // TextArea sin margin (para cuando tiene error)
   textAreaNoMargin: {
     minHeight: 100,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    paddingVertical: spacing.input.paddingVertical,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
     textAlignVertical: 'top',
-    // Sin marginBottom - el error text se encarga del espaciado
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  
+
   // === INPUTS ESPECÍFICOS ===
-  
+
   // Input de búsqueda
   search: {
-    height: 44,
+    height: 54,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.medium,
-    paddingHorizontal: spacing.input.paddingHorizontal,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: '#FAFAFA',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  
-  // Input de modal
+
+  // Input de modal - Diseño profesional
   modal: {
-    height: 44,
+    height: 54,
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    marginBottom: spacing.md, // ESPACIADO AGREGADO
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    marginBottom: spacing.md,
     fontFamily: fonts.regular,
     fontSize: fonts.size.medium,
     color: colors.text,
     backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
 };
 
@@ -206,20 +234,25 @@ export const inputLabels = {
   },
 };
 
-// === PICKERS PERSONALIZADOS ===
+// === PICKERS PERSONALIZADOS - Diseño profesional ===
 export const customPickers = {
   // Selector personalizado (como el de órdenes)
   standard: {
     borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: spacing.borderRadius.small,
+    borderColor: '#E0E0E0',
+    borderRadius: 14,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.input.paddingHorizontal,
-    minHeight: 44,
+    paddingHorizontal: 16,
+    minHeight: 54,
     paddingVertical: spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   
   // Texto del picker

@@ -22,87 +22,115 @@ const containers = {
     paddingBottom: 40,
   },
   
-  // === CARDS (el patrón MÁS repetido - 15+ veces) ===
-  
+  // === CARDS - Diseño profesional ===
+
   // Card estándar - aparece en múltiples componentes
   card: {
     backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 16,
     padding: spacing.card.padding,
     marginBottom: spacing.card.margin,
-    ...shadows.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  
+
   // Card de orden - específico para órdenes
   orderCard: {
     backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.lg,
-    ...shadows.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  
+
   // Card de producto - específico para productos
   productCard: {
     backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 16,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadows.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  
+
   // Card de perfil/información
   infoCard: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 16,
     marginBottom: spacing.lg,
-    ...shadows.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   
-  // === MODALES (patrón muy repetido - 12+ veces) ===
-  
+  // === MODALES - Diseño profesional ===
+
   // Contenedor principal del modal
   modalContainer: {
     flex: 1,
   },
-  
+
   // Overlay del modal - fondo semi-transparente
   modalOverlay: {
     flex: 1,
-    backgroundColor: colors.overlay,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.modal.margin,
   },
-  
+
   // Contenido del modal
   modalContent: {
     backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.large,
+    borderRadius: 20,
     padding: spacing.modal.padding,
     width: '100%',
     maxWidth: 400,
-    ...shadows.modal,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
   
-  // === HEADERS ===
-  
+  // === HEADERS - Diseño profesional ===
+
   // Header de pantalla
   header: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    ...shadows.header,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  
+
   // Header de sección
   sectionHeader: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: 16,
     marginBottom: spacing.md,
-    ...shadows.small,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
   },
