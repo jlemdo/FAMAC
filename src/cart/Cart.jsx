@@ -1645,7 +1645,16 @@ export default function Cart() {
         </View>
       )}
       
-      <Text style={styles.title}>Carrito de Compras</Text>
+      {/* Header del carrito */}
+      <View style={styles.header}>
+        <Ionicons name="cart" size={24} color="#D27F27" />
+        <Text style={styles.headerTitle}>Mi Carrito</Text>
+        {cart.length > 0 && (
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>{cart.reduce((t, i) => t + i.quantity, 0)}</Text>
+          </View>
+        )}
+      </View>
 
       {cart.length === 0 ? (
         <FlatList
@@ -1654,32 +1663,29 @@ export default function Cart() {
           refreshing={refreshing}
           onRefresh={() => {
             setRefreshing(true);
-            // Pull-to-refresh falso - solo efecto visual
             setTimeout(() => setRefreshing(false), 800);
           }}
           contentContainerStyle={styles.emptyCartScrollContainer}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyCartContainer}>
-          <Text style={styles.emptyCartTitle}>🛒 Tu carrito está vacío</Text>
-          <Text style={styles.emptyCartText}>
-            ¡Es el momento perfecto para descubrir nuestros sabores auténticos!
-          </Text>
-          <Text style={styles.emptyCartHighlight}>
-            🥛 Productos artesanales • 🧀 Quesos premium • 🫐 Y más...
-          </Text>
-          <Text style={styles.emptyCartSubtext}>
-            Agrega productos desde cualquier categoría y aparecerán aquí listos para pagar
-          </Text>
-          <TouchableOpacity
-            style={styles.shopNowButton}
-            onPress={() => navigation.navigate('MainTabs', { 
-              screen: 'Inicio',
-              params: { screen: 'CategoriesList' }
-            })}
-            activeOpacity={0.8}>
-            <Text style={styles.shopNowButtonText}>🛍️ Explorar Productos</Text>
-          </TouchableOpacity>
+              <View style={styles.emptyCartIconContainer}>
+                <Ionicons name="cart-outline" size={80} color="#DDD" />
+              </View>
+              <Text style={styles.emptyCartTitle}>Tu carrito está vacío</Text>
+              <Text style={styles.emptyCartText}>
+                Descubre nuestros productos artesanales y agrégalos aquí
+              </Text>
+              <TouchableOpacity
+                style={styles.shopNowButton}
+                onPress={() => navigation.navigate('MainTabs', {
+                  screen: 'Inicio',
+                  params: { screen: 'CategoriesList' }
+                })}
+                activeOpacity={0.8}>
+                <Ionicons name="storefront-outline" size={20} color="#FFF" style={{marginRight: 8}} />
+                <Text style={styles.shopNowButtonText}>Explorar Productos</Text>
+              </TouchableOpacity>
             </View>
           }
         />
@@ -2200,42 +2206,118 @@ const CartFooter = ({
   return (
   <View>
     {/* Selector de horario */}
-    <View style={styles.totalContainer}>
-      <TouchableOpacity
-        onPress={() => setPickerVisible(true)}
-        style={styles.checkoutButton}>
-        <Text style={styles.checkoutText}>Seleccionar Horario de Entrega</Text>
-      </TouchableOpacity>
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>📅 Horario de Entrega</Text>
 
       {deliveryInfo ? (
-        <View style={{marginTop: 10}}>
+        <View style={styles.deliveryScheduledContainer}>
+          <View style={styles.deliveryScheduledHeader}>
+            <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+            <Text style={styles.deliverySummaryTitle}>Entrega programada</Text>
+          </View>
           <Text style={styles.deliveryTime}>
-            Horario de Entrega seleccionada:
+            {deliveryInfo.date.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </Text>
-          <Text style={styles.deliveryTime}>
-            {deliveryInfo.date.toLocaleDateString()} en horario{' '}
-            {deliveryInfo.slot}
-          </Text>
+          <Text style={styles.deliveryTimeSlot}>Horario: {deliveryInfo.slot}</Text>
+          <TouchableOpacity
+            onPress={() => setPickerVisible(true)}
+            style={styles.changeAddressButton}>
+            <Ionicons name="calendar-outline" size={14} color="#8B5E3C" />
+            <Text style={styles.changeAddressButtonText}>Cambiar horario</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-        <Text
-          style={{
-            marginTop: 10,
-            color: '#888',
-            textAlign: 'center',
-          }}>
-          No has seleccionado un horario de entrega aún.
-        </Text>
+        <TouchableOpacity
+          onPress={() => setPickerVisible(true)}
+          style={styles.deliveryButton}>
+          <Ionicons name="calendar-outline" size={20} color="#D27F27" />
+          <Text style={styles.deliveryButtonText}>Seleccionar Horario</Text>
+        </TouchableOpacity>
       )}
     </View>
 
+    {/* Ubicación para guests */}
+    {user && user.usertype === 'Guest' && (email || address) && (
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionTitle}>📍 Información de entrega</Text>
+
+        {email && (
+          <View style={styles.guestIndicatorItem}>
+            <Ionicons name="mail-outline" size={18} color="#D27F27" style={{marginRight: 10}} />
+            <Text style={styles.guestIndicatorText}>
+              <Text style={styles.guestIndicatorValue}>{email}</Text>
+            </Text>
+          </View>
+        )}
+
+        {address && (
+          <View style={[styles.guestIndicatorItem, {marginTop: 8}]}>
+            <Ionicons name="location-outline" size={18} color="#D27F27" style={{marginRight: 10, marginTop: 2}} />
+            <View style={styles.guestAddressContainer}>
+              <Text style={styles.guestIndicatorValue} numberOfLines={0}>
+                {address}
+              </Text>
+              <TouchableOpacity
+                style={styles.changeAddressButton}
+                onPress={() => {
+                  const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
+                  navigation.navigate('GuestCheckout', {
+                    totalPrice: totalPrice,
+                    itemCount: itemCount,
+                    returnToCart: true,
+                    editingAddress: true,
+                    preservedDeliveryInfo: deliveryInfo ? {
+                      ...deliveryInfo,
+                      date: deliveryInfo.date.toISOString(),
+                    } : null,
+                    preservedNeedInvoice: needInvoice,
+                    preservedTaxDetails: taxDetails,
+                    preservedCoordinates: latlong,
+                    currentEmail: email,
+                    currentAddress: address,
+                  });
+                }}>
+                <Ionicons name="pencil" size={14} color="#8B5E3C" />
+                <Text style={styles.changeAddressButtonText}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
+    )}
+
+    {/* Ubicación para usuarios registrados */}
+    {user && user.usertype !== 'Guest' && deliveryInfo && address && (
+      <View style={styles.sectionContainer}>
+        <View style={styles.locationHeaderRow}>
+          <Text style={styles.sectionTitle}>📍 Ubicación de entrega</Text>
+          {userAddresses.length > 1 && (
+            <TouchableOpacity
+              style={styles.changeAddressButton}
+              onPress={() => {
+                setIsChangingAddress(true);
+                setShowAddressModal(true);
+              }}>
+              <Ionicons name="swap-horizontal" size={16} color="#8B5E3C" />
+              <Text style={styles.changeAddressButtonText}>Cambiar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.locationAddressRow}>
+          <Ionicons name="checkmark-circle" size={18} color="#33A744" style={{marginRight: 8, marginTop: 2}} />
+          <Text style={[styles.userAddressText, {marginBottom: 0, flex: 1}]}>
+            {temporaryAddress?.address || address}
+          </Text>
+        </View>
+      </View>
+    )}
+
     {/* Cupón de descuento */}
-    {/* 🔧 FIX BUG #3: Usar subtotalForCoupons para validar cupones correctamente */}
     <CouponInput
       onCouponApply={onCouponApply}
       onCouponRemove={onCouponRemove}
       appliedCoupon={appliedCoupon}
-      subtotal={subtotalForCoupons} // Subtotal SIN descuentos promocionales
+      subtotal={subtotalForCoupons}
       shippingCost={shippingCost}
       isValid={!appliedCoupon || subtotalForCoupons >= appliedCoupon.minAmount}
     />
@@ -2299,11 +2381,15 @@ const CartFooter = ({
       </View>
     )}
 
-    {/* Facturación (solo si hay deliveryInfo) */}
+    {/* Facturación y Pago - Solo si hay deliveryInfo */}
     {deliveryInfo && (
-      <View style={styles.totalContainer}>
-        <View style={styles.invoiceRow}>
-          <Text style={styles.invoiceLabel}>¿Necesitas factura?</Text>
+      <View style={styles.checkoutContainer}>
+        {/* Facturación */}
+        <View style={styles.invoiceRowContainer}>
+          <View style={styles.invoiceLabelContainer}>
+            <Ionicons name="document-text-outline" size={18} color="#666" style={{marginRight: 8}} />
+            <Text style={styles.invoiceLabel}>¿Necesitas factura?</Text>
+          </View>
           <Switch
             value={needInvoice}
             onValueChange={setNeedInvoice}
@@ -2314,16 +2400,13 @@ const CartFooter = ({
 
         {needInvoice && (
           <TextInput
-            style={styles.input}
+            style={[styles.input, {marginTop: 12, marginBottom: 0}]}
             placeholder="RFC (ej: ABCD123456EF7)"
             placeholderTextColor="rgba(47,47,47,0.6)"
             value={taxDetails || ''}
             onChangeText={(text) => {
-              // Convertir a mayúsculas y remover espacios
               const cleanText = text.replace(/\s/g, '').toUpperCase();
-              // Limitar a 13 caracteres (longitud máxima del RFC)
               const limitedText = cleanText.slice(0, 13);
-              // Validar solo letras y números
               const validText = limitedText.replace(/[^A-Z0-9]/g, '');
               setTaxDetails(validText);
             }}
@@ -2332,108 +2415,27 @@ const CartFooter = ({
           />
         )}
 
-        {/* Indicadores para guests */}
-        {user && user.usertype === 'Guest' && (email || address) && (
-          <View style={styles.guestIndicators}>
-            <Text style={styles.guestIndicatorsTitle}>📋 Información de entrega guardada:</Text>
-            
-            {email && (
-              <View style={styles.guestIndicatorItem}>
-                <Text style={styles.guestIndicatorIcon}>📧</Text>
-                <Text style={styles.guestIndicatorText}>
-                  Email: <Text style={styles.guestIndicatorValue}>{email}</Text>
-                </Text>
-              </View>
-            )}
-            
-            {address && (
-              <View style={styles.guestIndicatorItem}>
-                <Text style={styles.guestIndicatorIcon}>📍</Text>
-                <View style={styles.guestAddressContainer}>
-                  <Text style={styles.guestIndicatorText}>Dirección:</Text>
-                  <Text style={styles.guestIndicatorValue} numberOfLines={0}>
-                    {address}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.changeAddressButton}
-                    onPress={() => {
-                      // Reutilizar GuestCheckout para cambiar dirección
-                      const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
-                      navigation.navigate('GuestCheckout', {
-                        totalPrice: totalPrice,
-                        itemCount: itemCount,
-                        returnToCart: true,
-                        editingAddress: true, // 🆕 Flag para indicar que está editando
-                        // Preservar datos actuales
-                        preservedDeliveryInfo: deliveryInfo ? {
-                          ...deliveryInfo,
-                          date: deliveryInfo.date.toISOString(),
-                        } : null,
-                        preservedNeedInvoice: needInvoice,
-                        preservedTaxDetails: taxDetails,
-                        preservedCoordinates: latlong,
-                        currentEmail: email,
-                        currentAddress: address,
-                      });
-                    }}>
-                    <Ionicons name="pencil" size={14} color="#8B5E3C" />
-                    <Text style={styles.changeAddressButtonText}>Cambiar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
+        {/* Separador */}
+        <View style={{height: 1, backgroundColor: 'rgba(0,0,0,0.08)', marginVertical: 16}} />
 
-        {/* ✅ MEJORADO: Ubicación con geocoding inteligente para usuarios registrados */}
-        {user && user.usertype !== 'Guest' && deliveryInfo && address && (
-          <View style={styles.registeredUserLocationSection}>
-            <View style={styles.locationHeaderRow}>
-              <Text style={styles.locationSectionTitle}>📍 Ubicación de entrega</Text>
-              {/* Solo mostrar botón "Cambiar" si el usuario tiene 2 o más direcciones */}
-              {userAddresses.length > 1 && (
-                <TouchableOpacity
-                  style={styles.changeAddressButton}
-                  onPress={() => {
-                    setIsChangingAddress(true);
-                    setShowAddressModal(true);
-                  }}>
-                  <Ionicons name="refresh" size={16} color="#8B5E3C" />
-                  <Text style={styles.changeAddressButtonText}>Cambiar</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={styles.userAddressText}>
-              {temporaryAddress?.address || address}
-            </Text>
-            
-            {/* 🔧 COMENTADO: Ya no necesario - Las direcciones tienen coordenadas precisas automáticamente
-            <View style={styles.locationStatusContainer}>
-              <View style={styles.locationStatusRow}>
-                <Ionicons name="location-outline" size={20} color="#D27F27" />
-                <Text style={styles.locationStatusText}>
-                  Para mayor precisión en la entrega, puedes ajustar tu ubicación exacta
-                </Text>
-                <TouchableOpacity
-                  style={styles.selectLocationButton}
-                  onPress={goToMapFromCart}>
-                  <Ionicons name="map" size={16} color="#FFF" />
-                  <Text style={styles.selectLocationButtonText}>Ajustar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            */}
-          </View>
-        )}
-
+        {/* Total y Botón de Pagar */}
+        <Text style={styles.totalText}>
+          Total a pagar: {formatPriceWithSymbol(finalTotal)}
+        </Text>
         <TouchableOpacity
-          style={[styles.checkoutButton, (!deliveryInfo || isRestoringDeliveryInfo || loading) && {opacity: 0.5}]}
+          style={[styles.checkoutButton, (!deliveryInfo || isRestoringDeliveryInfo || loading) && styles.checkoutButtonDisabled]}
           onPress={handleCheckout}
-          disabled={!deliveryInfo || isRestoringDeliveryInfo || loading}>
+          disabled={!deliveryInfo || isRestoringDeliveryInfo || loading}
+          activeOpacity={0.8}>
+          <Ionicons
+            name={loading ? "sync" : isRestoringDeliveryInfo ? "hourglass" : "card"}
+            size={20}
+            color="#FFF"
+          />
           <Text style={styles.checkoutText}>
-            {loading ? '🔄 Procesando pago...' : 
-             isRestoringDeliveryInfo ? '⏳ Cargando...' : 
-             `💳 Pagar ${formatPriceWithSymbol(finalTotal)}`}
+            {loading ? 'Procesando pago...' :
+             isRestoringDeliveryInfo ? 'Cargando...' :
+             'Proceder al Pago'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -317,13 +317,12 @@ function MainTabs() {
           }}
         />
         {/* Hidden tabs - screens that need bottom navigation but no tab icon */}
-        <Tab.Screen 
-          name="ProductDetails" 
+        <Tab.Screen
+          name="ProductDetails"
           component={ProductDetails}
           options={{
-            tabBarButton: () => null, // Hide from tab bar completely
-            tabBarStyle: { display: 'flex' }, // Keep tab bar visible
-            tabBarItemStyle: { display: 'none' }, // Don't reserve space
+            tabBarButton: () => null,
+            tabBarItemStyle: { display: 'none' },
           }}
         />
       </Tab.Navigator>

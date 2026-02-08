@@ -245,16 +245,16 @@ const CouponInput = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFF',
-    borderRadius: scaleSpacing(12),
-    padding: scaleSpacing(16),
-    marginVertical: scaleSpacing(16), // 🔧 Aumentado de 8 a 16 para mejor espaciado
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.2)',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: scaleFontSize(fonts.size.medium),
     color: '#2F2F2F',
-    marginLeft: scaleSpacing(8),
+    marginLeft: scaleSpacing(10),
   },
   // 🆕 Estilos para header colapsable
   collapsibleHeader: {

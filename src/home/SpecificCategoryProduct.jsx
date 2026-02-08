@@ -1,4 +1,4 @@
-﻿import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,35 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
+  Animated,
 } from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
+import { CartContext } from '../context/CartContext';
 import fonts from '../theme/fonts';
-import {formatPriceWithSymbol} from '../utils/priceFormatter';
-import {formatProductMeasure} from '../utils/unitFormatter';
+import { formatPriceWithSymbol } from '../utils/priceFormatter';
+import { formatQuantityWithUnit } from '../utils/unitFormatter';
 import { API_BASE_URL } from '../config/environment';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
 
 export default function SpecificCategoryProduct() {
   const route = useRoute();
   const navigation = useNavigation();
-  const {categoryName} = route.params;
+  const { categoryName } = route.params;
+  const { addToCart } = useContext(CartContext);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [addedProduct, setAddedProduct] = useState(null);
+
+  // Animación para la alerta
+  const alertOpacity = useRef(new Animated.Value(0)).current;
+  const alertTranslateY = useRef(new Animated.Value(-50)).current;
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -34,7 +46,7 @@ export default function SpecificCategoryProduct() {
         );
         setProducts(response.data.data || []);
       } catch (err) {
-        setError('Failed to fetch products. Please try again.');
+        setError('No se pudieron cargar los productos. Intenta de nuevo.');
       } finally {
         setLoading(false);
       }
@@ -43,264 +55,470 @@ export default function SpecificCategoryProduct() {
     fetchProducts();
   }, [categoryName]);
 
+  const handleProductPress = (item) => {
+    const tabNavigator = navigation.getParent();
+    tabNavigator?.navigate('ProductDetails', { productData: item });
+  };
+
+  // Función para mostrar la alerta de éxito
+  const showSuccessMessage = (product) => {
+    setAddedProduct(product);
+    setShowSuccessAlert(true);
+
+    Animated.parallel([
+      Animated.timing(alertOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(alertTranslateY, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(alertOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(alertTranslateY, {
+          toValue: -50,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowSuccessAlert(false);
+        setAddedProduct(null);
+      });
+    }, 2500);
+  };
+
+  const handleAddToCart = (item) => {
+    addToCart(item);
+    showSuccessMessage(item);
+  };
+
+  const renderProduct = ({ item }) => {
+    const formattedQuantity = formatQuantityWithUnit(item.quantity, item.unit, 1);
+    const discountNum = Number(item.discount) || 0;
+    const discountedPrice = item.price - discountNum;
+    const hasDiscount = discountNum > 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => handleProductPress(item)}
+        activeOpacity={0.8}>
+
+        {hasDiscount && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>-${discountNum}</Text>
+          </View>
+        )}
+
+        <Image
+          source={{ uri: item.photo }}
+          style={styles.productImage}
+          resizeMode="cover"
+        />
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name}
+          </Text>
+
+          <View style={styles.measureBadge}>
+            <Text style={styles.measureText}>{formattedQuantity}</Text>
+          </View>
+
+          <View style={styles.priceContainer}>
+            {hasDiscount ? (
+              <>
+                <Text style={styles.discountedPrice}>
+                  {formatPriceWithSymbol(discountedPrice)}
+                </Text>
+                <Text style={styles.originalPrice}>
+                  {formatPriceWithSymbol(item.price)}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.productPrice}>
+                {formatPriceWithSymbol(item.price)}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleAddToCart(item);
+          }}
+          activeOpacity={0.8}>
+          <Ionicons name="add" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="cube-outline" size={80} color="#DDD" />
+      <Text style={styles.emptyTitle}>Sin productos</Text>
+      <Text style={styles.emptyText}>
+        No hay productos disponibles en esta categoría
+      </Text>
+      <TouchableOpacity
+        style={styles.backButtonEmpty}
+        onPress={() => navigation.goBack()}>
+        <Text style={styles.backButtonText}>Volver</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Back Button with Category Name */}
-      <View style={styles.headerContainer}>
+      {/* Header */}
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="black" />
+          style={styles.headerBackButton}>
+          <Ionicons name="arrow-back" size={24} color="#2F2F2F" />
         </TouchableOpacity>
-        <Text style={styles.title}>{categoryName}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{categoryName}</Text>
       </View>
 
+      {/* Alerta de éxito */}
+      {showSuccessAlert && addedProduct && (
+        <Animated.View
+          style={[
+            styles.successAlert,
+            {
+              opacity: alertOpacity,
+              transform: [{ translateY: alertTranslateY }],
+            },
+          ]}>
+          <View style={styles.successAlertContent}>
+            <Ionicons name="checkmark-circle" size={20} color="#33A744" />
+            <View style={styles.successAlertTextContainer}>
+              <Text style={styles.successAlertText}>
+                ¡{addedProduct.name} agregado al carrito!
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Contenido */}
       {loading ? (
-        <ActivityIndicator size="large" color="tomato" style={styles.loader} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#D27F27" />
+          <Text style={styles.loadingText}>Cargando productos...</Text>
+        </View>
       ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : products.length > 0 ? (
-        <FlatList
-          data={products}
-          keyExtractor={item => item.id.toString()}
-          numColumns={2}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({item}) => {
-            // Forzamos a número (null → 0, "20" → 20)
-            const discountNum = Number(item.discount) || 0;
-            // Calculamos el precio final
-            const discountedPrice = item.price - discountNum;
-
-            return (
-              <TouchableOpacity
-                onPress={() => {
-                  // Navigate to ProductDetails via the Tab Navigator
-                  const tabNavigator = navigation.getParent();
-                  tabNavigator?.navigate('ProductDetails', {productData: item});
-                }}>
-                <View style={styles.productCard}>
-                  {/* Banderín de promoción */}
-                  {discountNum > 0 && (
-                    <View style={styles.promotionBanner}>
-                      <Text style={styles.promotionText}>-${discountNum}</Text>
-                    </View>
-                  )}
-                  
-                  {/* Sección superior: Imagen y contenido */}
-                  <View style={styles.topSection}>
-                    <Image source={{uri: item.photo}} style={styles.image} />
-                    
-                    {/* Contenido inferior organizado */}
-                    <View style={styles.contentSection}>
-                      {/* Nombre del producto */}
-                      <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-
-                      {/* Medida del producto */}
-                      <Text style={styles.measure}>
-                        {formatProductMeasure(item.quantity, item.unit)}
-                      </Text>
-
-                      {/* Sección de precios */}
-                      <View style={styles.priceContainer}>
-                        {discountNum > 0 ? (
-                          <View style={styles.priceWithDiscount}>
-                            <Text style={styles.discountedPrice}>
-                              {formatPriceWithSymbol(discountedPrice)}
-                            </Text>
-                            <Text style={styles.originalPrice}>
-                              {formatPriceWithSymbol(item.price)}
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.regularPrice}>
-                            {formatPriceWithSymbol(item.price)}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-        />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color="#E63946" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setLoading(true);
+              setError(null);
+            }}>
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : products.length === 0 ? (
+        renderEmptyState()
       ) : (
-        <Text style={styles.noData}>No products available</Text>
+        <>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsCount}>
+              {products.length} producto{products.length !== 1 ? 's' : ''}
+            </Text>
+          </View>
+
+          <FlatList
+            data={products}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderProduct}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
     </View>
   );
 }
 
-// Calcular ancho responsive de tarjetas
-const screenWidth = Dimensions.get('window').width;
-const cardSpacing = 6; // Reducido de 8 a 6 para más espacio
-const containerPadding = 10; // padding del container
-const availableWidth = screenWidth - (containerPadding * 2);
-const cardWidth = (availableWidth - (cardSpacing * 4)) / 2; // 4 espacios: 2 por tarjeta + 2 exteriores
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2EFE4',
-    paddingHorizontal: containerPadding,
   },
-  headerContainer: {
+  // Header
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    marginTop: 10,
-  },
-  backButton: {
-    marginRight: 10,
-  },
-  title: {
-    fontSize: fonts.size.XL, // Reducido desde XLLL (48px) a XL (30px) para mejor compatibilidad
-    fontFamily: fonts.bold,
-    textAlign: 'center',
-    flex: 1,
-    color: '#333',
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  productCard: {
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#FFF',
-    padding: 12,
-    margin: cardSpacing,
-    borderRadius: 16,
     shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-    width: cardWidth,
-    height: 320, // Altura fija para uniformidad
-    borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.1)',
-    position: 'relative',
-    overflow: 'visible',
+    elevation: 3,
   },
-  topSection: {
+  headerBackButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
-    justifyContent: 'flex-start',
+    marginRight: 8,
   },
-  promotionBanner: {
+  headerTitle: {
+    flex: 1,
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+  },
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#888',
+    marginTop: 12,
+  },
+  // Error
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#D27F27',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  // Results Header
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  resultsCount: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#666',
+  },
+  // Grid
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  row: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  // Product Card
+  productCard: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    overflow: 'visible',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    position: 'relative',
+  },
+  // Badge de descuento
+  discountBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -6,
+    right: -6,
     backgroundColor: '#E63946',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
     zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6,
-    transform: [{ rotate: '15deg' }],
+    shadowRadius: 3,
+    elevation: 5,
+    transform: [{ rotate: '12deg' }],
   },
-  promotionText: {
-    fontSize: fonts.size.small,
+  discountBadgeText: {
+    fontSize: fonts.size.XS,
     fontFamily: fonts.bold,
     color: '#FFF',
-    textAlign: 'center',
   },
-  image: {
-    width: cardWidth - 24,
-    height: 140, // Altura fija para uniformidad
-    borderRadius: 12,
-    marginBottom: 12,
-    resizeMode: 'cover',
-  },
-  contentSection: {
-    flex: 1,
+  productImage: {
     width: '100%',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    height: CARD_WIDTH * 0.85,
+    backgroundColor: '#F5F5F5',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
-  name: {
+  productInfo: {
+    padding: 10,
+    paddingBottom: 14,
+  },
+  productName: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
     color: '#2F2F2F',
-    textAlign: 'left',
-    marginBottom: 6,
-    lineHeight: 20,
-    minHeight: 40, // Altura fija para 2 líneas
+    lineHeight: 18,
+    minHeight: 36,
   },
-  measure: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#8B5E3C',
+  // Etiqueta de medida
+  measureBadge: {
     backgroundColor: 'rgba(139, 94, 60, 0.1)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    textAlign: 'center',
+    paddingVertical: 3,
+    borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 8,
-    overflow: 'hidden',
+    marginTop: 4,
+    marginBottom: 6,
   },
+  measureText: {
+    fontSize: fonts.size.XS,
+    fontFamily: fonts.regular,
+    color: '#8B5E3C',
+  },
+  // Contenedor de precios
   priceContainer: {
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  priceWithDiscount: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-  },
-  regularPrice: {
+  productPrice: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
-    color: '#2F2F2F',
-    textAlign: 'left',
+    fontFamily: fonts.priceBold,
+    color: '#D27F27',
+  },
+  discountedPrice: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.priceBold,
+    color: '#E63946',
   },
   originalPrice: {
     fontSize: fonts.size.small,
     fontFamily: fonts.regular,
     color: '#999',
     textDecorationLine: 'line-through',
-    textAlign: 'left',
-    marginTop: 2,
   },
-  originalPriceStriked: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#999',
-    textDecorationLine: 'line-through',
-    textAlign: 'center',
-    marginBottom: 2,
+  addButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: '#D27F27',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  discountedPrice: {
-    fontSize: fonts.size.medium,
-    fontFamily: fonts.bold,
-    color: '#E63946',
-    textAlign: 'left',
-  },
-  noData: {
-    textAlign: 'center',
-    fontSize: fonts.size.medium,
-    color: 'gray',
-    marginTop: 20,
-    fontFamily: fonts.regular,
-  },
-  loader: {
+  // Empty State
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  error: {
-    textAlign: 'center',
-    fontSize: fonts.size.medium,
-    color: 'white',
-    backgroundColor: 'red',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 20,
+  emptyTitle: {
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
     marginTop: 20,
+  },
+  emptyText: {
+    fontSize: fonts.size.medium,
     fontFamily: fonts.regular,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  backButtonEmpty: {
+    marginTop: 24,
+    backgroundColor: '#D27F27',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  // Alerta de éxito
+  successAlert: {
+    position: 'absolute',
+    top: 70,
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+  },
+  successAlertContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#33A744',
+  },
+  successAlertTextContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  successAlertText: {
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.small,
+    color: '#33A744',
+    textAlign: 'left',
+    lineHeight: 18,
   },
 });

@@ -22,6 +22,7 @@ import {
   Dimensions,
   Image,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
@@ -41,8 +42,11 @@ const Header = ({onLogout}) => {
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSearchBar, setShowSearchBar] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
   const allProductsRef = useRef(null);
   const cancelTokenRef = useRef(null);
+  const searchInputRef = useRef(null);
   
   // Animaciones para la barra de búsqueda (versión estable)
   const searchBarHeight = useRef(new Animated.Value(0)).current;
@@ -55,17 +59,20 @@ const Header = ({onLogout}) => {
   // Función de búsqueda (client-side)
   const fetchSuggestions = useCallback(async text => {
     if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel(); // abortar petición anterior
+      cancelTokenRef.current.cancel();
     }
     cancelTokenRef.current = axios.CancelToken.source();
 
     if (text.length === 0) {
       setSuggestions([]);
+      setIsSearching(false);
       return;
     }
 
+    setIsSearching(true);
+
     try {
-      // Si no hemos cargado aún el catálogo, lo pedimos una sola vez
+      // Cargar productos si no están en cache
       if (!allProductsRef.current) {
         const resp = await axios.get(
           `${API_BASE_URL}/api/products`,
@@ -73,15 +80,22 @@ const Header = ({onLogout}) => {
         );
         allProductsRef.current = resp.data?.data || [];
       }
-      // Filtrado en cliente
+
+      const searchLower = text.toLowerCase();
+
+      // Filtrado de productos - busca en nombre
       const filtered = allProductsRef.current.filter(p =>
-        p.name.toLowerCase().includes(text.toLowerCase()),
+        p.name?.toLowerCase().includes(searchLower)
       );
-      setSuggestions(filtered);
+      setSuggestions(filtered.slice(0, 6));
+
     } catch (err) {
       if (!axios.isCancel(err)) {
-        // Search API error
+        console.log('Search error:', err);
+        setSuggestions([]);
       }
+    } finally {
+      setIsSearching(false);
     }
   }, []);
 
@@ -106,9 +120,41 @@ const Header = ({onLogout}) => {
   };
 
   const handleSelectSuggestion = item => {
+    // Guardar en búsquedas recientes
+    const newRecent = [item.name, ...recentSearches.filter(s => s !== item.name)].slice(0, 5);
+    setRecentSearches(newRecent);
+
     setSearchText('');
     setSuggestions([]);
+    toggleSearchBar();
     navigation.navigate('SearchResults', {query: item.name});
+  };
+
+  // Función para buscar desde texto escrito
+  const handleSearchSubmit = () => {
+    if (searchText.trim()) {
+      // Guardar en búsquedas recientes
+      const newRecent = [searchText.trim(), ...recentSearches.filter(s => s !== searchText.trim())].slice(0, 5);
+      setRecentSearches(newRecent);
+
+      setSuggestions([]);
+      toggleSearchBar();
+      navigation.navigate('SearchResults', {query: searchText.trim()});
+      Keyboard.dismiss();
+    }
+  };
+
+  // Función para usar búsqueda reciente
+  const handleRecentSearch = (term) => {
+    setSearchText('');
+    setSuggestions([]);
+    toggleSearchBar();
+    navigation.navigate('SearchResults', {query: term});
+  };
+
+  // Limpiar búsqueda reciente
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
   };
 
   // Función para toggle de la barra de búsqueda (versión estable)
@@ -173,16 +219,14 @@ const Header = ({onLogout}) => {
     }
   };
 
-  // Auto-cerrar si no hay actividad
+  // Focus automático cuando se abre la búsqueda
   useEffect(() => {
-    if (showSearchBar && searchText === '' && suggestions.length === 0) {
-      const timeout = setTimeout(() => {
-        toggleSearchBar();
-      }, 3000);
-      
-      return () => clearTimeout(timeout);
+    if (showSearchBar && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 300);
     }
-  }, [showSearchBar, searchText, suggestions]);
+  }, [showSearchBar]);
 
   const [showNotif, setShowNotif] = useState(false);
 
@@ -305,63 +349,161 @@ const Header = ({onLogout}) => {
       {/* ✅ DRIVER FIX: Ocultar Search Bar para drivers */}
       {user?.usertype !== 'driver' && (
         <>
-          {/* Search Bar Animada */}
-          <Animated.View 
-            style={[
-              styles.searchContainer,
-              {
-                height: searchBarHeight,
-                opacity: searchBarOpacity,
-                overflow: 'hidden',
-              }
-            ]}>
-            <Ionicons
-              name="search-outline"
-              size={20}
-              color="#888"
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar Productos..."
-              value={searchText}
-              placeholderTextColor="#666"
-              onChangeText={handleSearch}
-              returnKeyType="search"
-              keyboardShouldPersistTaps="handled"
-              onSubmitEditing={() => {
-                if (searchText.trim()) {
-                  setSuggestions([]);
-                  navigation.navigate('SearchResults', {
-                    query: searchText.trim()
-                  });
+          {/* Modal con overlay + barra de búsqueda + panel flotante */}
+          {showSearchBar && (
+            <Modal
+              visible={showSearchBar}
+              transparent
+              animationType="fade"
+              onRequestClose={() => {
+                Keyboard.dismiss();
+                toggleSearchBar();
+              }}>
+              <TouchableWithoutFeedback
+                onPress={() => {
                   Keyboard.dismiss();
                   toggleSearchBar();
-                }
-              }}
-              autoFocus={showSearchBar}
-            />
-          </Animated.View>
+                }}>
+                <View style={styles.searchOverlay}>
+                  <TouchableWithoutFeedback onPress={() => {}}>
+                    <View style={styles.searchModalContent}>
+                      {/* Barra de búsqueda dentro del modal */}
+                      <View style={styles.searchBarInModal}>
+                        <Ionicons
+                          name="search-outline"
+                          size={20}
+                          color="#8B5E3C"
+                          style={styles.searchIcon}
+                        />
+                        <TextInput
+                          ref={searchInputRef}
+                          style={styles.searchInput}
+                          placeholder="¿Qué estás buscando?"
+                          value={searchText}
+                          placeholderTextColor="#999"
+                          onChangeText={handleSearch}
+                          returnKeyType="search"
+                          keyboardShouldPersistTaps="handled"
+                          onSubmitEditing={handleSearchSubmit}
+                          autoFocus={true}
+                        />
+                        {searchText.length > 0 && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSearchText('');
+                              setSuggestions([]);
+                            }}
+                            style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color="#999" />
+                          </TouchableOpacity>
+                        )}
+                        {isSearching && (
+                          <ActivityIndicator size="small" color="#D27F27" style={styles.searchLoader} />
+                        )}
+                        <TouchableOpacity
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            toggleSearchBar();
+                          }}
+                          style={styles.closeSearchButton}>
+                          <Ionicons name="close" size={22} color="#666" />
+                        </TouchableOpacity>
+                      </View>
 
-          {/* Search Suggestions */}
-          {showSearchBar && suggestions.length > 0 && (
-            <FlatList
-              data={suggestions}
-              keyExtractor={item => item.id.toString()}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({item}) => (
-                <TouchableOpacity
-                  style={styles.suggestionItem}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    handleSelectSuggestion(item);
-                    toggleSearchBar();
-                  }}>
-                  <Text style={styles.suggestionText}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.suggestionsList}
-            />
+                      {/* Panel de sugerencias con scroll */}
+                      <ScrollView
+                        style={styles.searchPanel}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}>
+                        {/* Búsquedas Recientes */}
+                        {searchText.length === 0 && recentSearches.length > 0 && (
+                          <View style={styles.recentSection}>
+                            <View style={styles.recentHeader}>
+                              <Text style={styles.recentTitle}>Búsquedas recientes</Text>
+                              <TouchableOpacity onPress={clearRecentSearches}>
+                                <Text style={styles.clearText}>Limpiar</Text>
+                              </TouchableOpacity>
+                            </View>
+                            {recentSearches.map((term, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={styles.recentItem}
+                                onPress={() => handleRecentSearch(term)}>
+                                <Ionicons name="time-outline" size={18} color="#888" />
+                                <Text style={styles.recentItemText}>{term}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+
+                        {/* Sugerencias de Productos */}
+                        {searchText.length > 0 && suggestions.length > 0 && (
+                          <View style={styles.suggestionsSection}>
+                            <Text style={styles.suggestionsTitle}>
+                              {suggestions.length} producto{suggestions.length !== 1 ? 's' : ''} encontrado{suggestions.length !== 1 ? 's' : ''}
+                            </Text>
+                            {suggestions.map((item) => (
+                              <TouchableOpacity
+                                key={item.id.toString()}
+                                style={styles.suggestionItem}
+                                onPress={() => {
+                                  Keyboard.dismiss();
+                                  handleSelectSuggestion(item);
+                                }}>
+                                <Image
+                                  source={{uri: item.photo}}
+                                  style={styles.suggestionImage}
+                                />
+                                <View style={styles.suggestionInfo}>
+                                  <Text style={styles.suggestionText} numberOfLines={1}>
+                                    {item.name}
+                                  </Text>
+                                  <Text style={styles.suggestionPrice}>
+                                    ${parseFloat(item.price || 0).toFixed(2)} MXN
+                                  </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color="#CCC" />
+                              </TouchableOpacity>
+                            ))}
+                            {/* Botón Ver Todos */}
+                            <TouchableOpacity
+                              style={styles.viewAllButton}
+                              onPress={handleSearchSubmit}>
+                              <Text style={styles.viewAllText}>Ver todos los resultados</Text>
+                              <Ionicons name="arrow-forward" size={18} color="#D27F27" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+
+                        {/* Sin Resultados */}
+                        {searchText.length > 0 && !isSearching && suggestions.length === 0 && (
+                          <View style={styles.noResultsSection}>
+                            <Ionicons name="search-outline" size={48} color="#DDD" />
+                            <Text style={styles.noResultsText}>
+                              No encontramos "{searchText}"
+                            </Text>
+                            <Text style={styles.noResultsHint}>
+                              Intenta con otro término o revisa la ortografía
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Mensaje inicial */}
+                        {searchText.length === 0 && recentSearches.length === 0 && (
+                          <View style={styles.initialSection}>
+                            <Ionicons name="search" size={40} color="#DDD" />
+                            <Text style={styles.initialText}>
+                              Busca productos...
+                            </Text>
+                          </View>
+                        )}
+                      </ScrollView>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
           )}
         </>
       )}
@@ -483,29 +625,173 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.medium,
     color: '#2F2F2F',
     fontFamily: fonts.regular,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
   },
-  suggestionsList: {
+  clearButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  searchLoader: {
+    marginLeft: 8,
+  },
+  // Overlay para cerrar al tocar fuera
+  searchOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    paddingTop: Platform.OS === 'ios' ? getStatusBarHeight() + 8 : 12,
+  },
+  // Contenedor del modal de búsqueda
+  searchModalContent: {
+    marginHorizontal: 16,
+  },
+  // Barra de búsqueda dentro del modal
+  searchBarInModal: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFF',
     borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-    maxHeight: 160,
-    marginHorizontal: 8,
-    marginTop: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  closeSearchButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  // Panel de búsqueda flotante
+  searchPanel: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    maxHeight: 400,
+    overflow: 'hidden',
+  },
+  // Búsquedas recientes
+  recentSection: {
+    padding: 12,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recentTitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  clearText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  recentItemText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#333',
+    marginLeft: 10,
+  },
+  // Sugerencias de productos
+  suggestionsSection: {
+    padding: 12,
+  },
+  suggestionsTitle: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#888',
+    marginBottom: 8,
   },
   suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(139, 94, 60, 0.1)',
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  suggestionImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+  },
+  suggestionInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
   suggestionText: {
     fontSize: fonts.size.medium,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.bold,
     color: '#2F2F2F',
+  },
+  suggestionPrice: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+    marginTop: 2,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  viewAllText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+    marginRight: 6,
+  },
+  // Sin resultados
+  noResultsSection: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  noResultsText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#666',
+    marginTop: 12,
+  },
+  noResultsHint: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  // Estado inicial
+  initialSection: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  initialText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#999',
+    marginTop: 8,
   },
   backdrop: {
     flex: 1,

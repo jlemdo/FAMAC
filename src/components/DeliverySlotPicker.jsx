@@ -430,13 +430,13 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
 
           {/* Acciones */}
           <View style={styles.actions}>
-            <TouchableOpacity 
-              style={styles.buttonClose} 
+            <TouchableOpacity
+              style={styles.buttonClose}
               onPress={() => {
                 Keyboard.dismiss();
                 onClose();
               }}>
-              <Text style={styles.buttonText}>Cancelar</Text>
+              <Text style={styles.buttonCloseText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -449,7 +449,7 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
               }}
               disabled={!selectedSlot}
             >
-              <Text style={styles.buttonText}>Confirmar</Text>
+              <Text style={styles.buttonConfirmText}>Confirmar</Text>
             </TouchableOpacity>
           </View>
             </View>
@@ -471,25 +471,31 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    maxWidth: 400,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   title: {
-    fontSize: fonts.size.large,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: fonts.size.XL,
+    fontFamily: fonts.bold,
+    marginBottom: 16,
     textAlign: 'center',
     color: '#2F2F2F',
   },
-  // 🆕 Estilos para sección de elección de día mejorada
+  // Estilos para sección de elección de día
   deliveryDaySection: {
-    backgroundColor: '#F8F6F3',
+    backgroundColor: 'rgba(210, 127, 39, 0.08)',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    padding: 14,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(139, 94, 60, 0.2)',
+    borderColor: 'rgba(210, 127, 39, 0.2)',
   },
   deliveryDayHeader: {
     alignItems: 'center',
@@ -497,55 +503,63 @@ const styles = StyleSheet.create({
   deliveryDayTitle: {
     fontSize: fonts.size.medium,
     fontFamily: fonts.bold,
-    color: '#2F2F2F',
-    marginBottom: 8,
+    color: '#D27F27',
+    marginBottom: 6,
   },
   deliveryDayInfo: {
     alignItems: 'center',
     gap: 4,
   },
   deliveryDaySubtitle: {
-    fontSize: fonts.size.medium,
-    color: '#8B5E3C',
+    fontSize: fonts.size.small,
+    color: '#666',
     fontFamily: fonts.regular,
   },
   recommendedHint: {
-    fontSize: fonts.size.small,
-    color: '#666',
-    fontStyle: 'italic',
+    fontSize: fonts.size.XS,
+    color: '#33A744',
+    fontFamily: fonts.bold,
   },
   daysList: {
     paddingVertical: 8,
   },
   dayItem: {
-    padding: 10,
-    marginRight: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    minWidth: 80, // 🆕 Ancho mínimo para acomodar más fechas
+    padding: 12,
+    marginRight: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+    minWidth: 90,
+    backgroundColor: '#FAFAFA',
   },
   dayItemSelected: {
     backgroundColor: '#D27F27',
     borderColor: '#D27F27',
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   dayItemPreferred: {
-    borderColor: '#33A744', // Verde para día recomendado
+    borderColor: '#33A744',
     borderWidth: 2,
     backgroundColor: 'rgba(51, 167, 68, 0.1)',
   },
   dayLabel: {
     fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
     textAlign: 'center',
     lineHeight: 18,
+    color: '#2F2F2F',
   },
   dayLabelSelected: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontFamily: fonts.bold,
   },
   dayLabelPreferred: {
     color: '#33A744',
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   starIcon: {
     fontSize: 10,
@@ -556,7 +570,9 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 16,
     fontSize: fonts.size.medium,
-    marginBottom: 8,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 12,
   },
   slotsContainer: {
     flexDirection: 'row',
@@ -564,49 +580,74 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   slotItem: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(139, 94, 60, 0.2)',
+    marginBottom: 10,
     width: '48%',
+    backgroundColor: '#FAFAFA',
   },
   slotItemSelected: {
-    backgroundColor: '#D27F27',
-    borderColor: '#D27F27',
+    backgroundColor: '#33A744',
+    borderColor: '#33A744',
+    shadowColor: '#33A744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   slotLabel: {
     textAlign: 'center',
     fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#2F2F2F',
   },
   slotLabelSelected: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontFamily: fonts.bold,
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 16,
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
   },
   buttonClose: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 8,
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
   },
   buttonConfirm: {
+    flex: 1,
     backgroundColor: '#D27F27',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   buttonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#CCC',
+    shadowOpacity: 0,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: fonts.size.small,
-    fontWeight: 'bold',
+  buttonCloseText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#666',
+  },
+  buttonConfirmText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.bold,
+    color: '#FFF',
   },
   loadingContainer: {
     alignItems: 'center',
