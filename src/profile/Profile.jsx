@@ -353,21 +353,22 @@ export default function Profile({ navigation, route }) {
     if (user?.id) fetchUserDetails();
   }, [user?.id, fetchUserDetails]);
   
-  // NUEVO: Refrescar datos cuando la pantalla se enfoca (para capturar cambios de dirección)
+  // Refrescar datos cuando la pantalla se enfoca
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
-        // Refrescar datos del perfil y direcciones para actualizar badge del navbar
         fetchUserDetails();
-        refreshAddresses(); // Actualizar badge del navbar cuando regresa de AddressManager
-
-        // Inicializar teléfono verificado con el teléfono actual del perfil
-        if (profile.phone) {
-          setLastVerifiedPhone(getPlainPhone(profile.phone));
-        }
+        refreshAddresses();
       }
-    }, [user?.id, fetchUserDetails, refreshAddresses, profile.phone])
+    }, [user?.id, fetchUserDetails, refreshAddresses])
   );
+
+  // Inicializar teléfono verificado cuando profile.phone cambia
+  useEffect(() => {
+    if (profile.phone) {
+      setLastVerifiedPhone(getPlainPhone(profile.phone));
+    }
+  }, [profile.phone]);
   
   // 🔧 ELIMINADO: Legacy address handling - ahora usamos newAddressService + AddressManager
   // Este useEffect causaba interferencias con datos del perfil (DOB corruption)
@@ -584,119 +585,59 @@ export default function Profile({ navigation, route }) {
   // ✅ FUNCIÓN: Re-autenticación Google SEGURA
   const handleGoogleReAuth = async () => {
     try {
-      // 1. Verificar disponibilidad paso a paso
       const hasPlayServices = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
-      if (!hasPlayServices) {
-        console.log('Google Play Services no disponible');
-        return false;
-      }
+      if (!hasPlayServices) return false;
 
-      // 2. Verificar configuración existente
-      const isConfigured = await GoogleSignin.isSignedIn();
-      console.log('Google Sign-In configured:', isConfigured);
-
-      // 3. Obtener usuario actual de forma segura
       let currentUser = null;
       try {
         currentUser = await GoogleSignin.getCurrentUser();
       } catch (getUserError) {
-        console.log('No hay usuario actual:', getUserError.message);
+        // No hay usuario actual
       }
 
-      // 4. Si hay usuario y email coincide, success directo
       if (currentUser && currentUser.user?.email === profile.email) {
-        console.log('Usuario ya autenticado con email correcto');
         return true;
       }
 
-      // 5. Logout seguro (solo si hay usuario)
       try {
         if (currentUser) {
           await GoogleSignin.signOut();
-          console.log('Logout exitoso');
         }
       } catch (signOutError) {
-        console.log('Error en logout (ignorando):', signOutError.message);
+        // Ignorar error de logout
       }
 
-      // 6. Nueva autenticación
-      console.log('Solicitando nueva autenticación...');
       const result = await GoogleSignin.signIn();
-
-      // 7. Verificar email del resultado
-      if (result?.user?.email === profile.email) {
-        console.log('Re-autenticación exitosa');
-        return true;
-      } else {
-        console.log('Email no coincide después de re-auth');
-        return false;
-      }
+      return result?.user?.email === profile.email;
 
     } catch (error) {
-      console.log('Error en Google re-auth:', error.message || error);
       return false;
     }
   };
 
-  // ✅ FUNCIÓN: Re-autenticación Apple SEGURA
+  // Re-autenticación Apple
   const handleAppleReAuth = async () => {
     try {
-      // 1. Verificar plataforma y soporte
-      if (Platform.OS !== 'ios') {
-        console.log('Apple Sign-In solo disponible en iOS');
+      if (Platform.OS !== 'ios' || !appleAuth.isSupported) {
         return false;
       }
 
-      if (!appleAuth.isSupported) {
-        console.log('Apple Sign-In no soportado en este dispositivo');
-        return false;
-      }
-
-      // 2. Verificar disponibilidad de API
-      const isAvailable = appleAuth.isSupported;
-      console.log('Apple Sign-In disponible:', isAvailable);
-
-      // 3. Solicitar autenticación con manejo de errores específicos
-      console.log('Solicitando Apple Sign-In...');
       const appleAuthRequestResponse = await appleAuth.performRequest({
         requestedOperation: appleAuth.Operation.LOGIN,
         requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
 
-      console.log('Apple response:', appleAuthRequestResponse);
-
-      // 4. Verificar que obtuvimos una respuesta válida
       if (!appleAuthRequestResponse || !appleAuthRequestResponse.user) {
-        console.log('Apple response inválida');
         return false;
       }
 
-      // 5. Verificar estado de credenciales
       const credentialState = await appleAuth.getCredentialStateForUser(
         appleAuthRequestResponse.user
       );
 
-      console.log('Apple credential state:', credentialState);
-
-      // 6. Validar estado autorizado
-      if (credentialState === appleAuth.State.AUTHORIZED) {
-        console.log('Apple re-autenticación exitosa');
-        return true;
-      } else {
-        console.log('Apple credential state no autorizado:', credentialState);
-        return false;
-      }
+      return credentialState === appleAuth.State.AUTHORIZED;
 
     } catch (error) {
-      console.log('Error en Apple re-auth:', error.message || error);
-
-      // Manejar errores específicos de Apple
-      if (error.code === '1001') {
-        console.log('Usuario canceló Apple Sign-In');
-      } else if (error.code === '1000') {
-        console.log('Apple Sign-In falló');
-      }
-
       return false;
     }
   };
