@@ -1080,31 +1080,118 @@ export default function Cart() {
     });
   };
 
+  // Helper: Mostrar error de validación
+  const showValidationError = (title, message, confirmText = 'Cerrar') => {
+    showAlert({ type: 'error', title, message, confirmText });
+  };
+
+  // Validar datos de Guest para checkout
+  const validateGuestData = () => {
+    if (!email?.trim()) {
+      showValidationError('Información incompleta', 'Por favor proporciona tu email.');
+      return false;
+    }
+    if (!address?.trim()) {
+      showValidationError('Información incompleta', 'Por favor proporciona tu dirección.');
+      return false;
+    }
+    const zoneValidation = validateDeliveryZone(address);
+    if (!zoneValidation.isValid) {
+      showValidationError(
+        'Zona de entrega no disponible',
+        `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Verifica tu dirección o contacta soporte.'}`,
+        'Entendido'
+      );
+      return false;
+    }
+    if (!latlong?.driver_lat || !latlong?.driver_long) {
+      setTimeout(() => {
+        if (latlong?.driver_lat && latlong?.driver_long) {
+          completeOrder();
+        } else {
+          showValidationError('Ubicación requerida', 'Por favor confirma tu ubicación exacta en el mapa.');
+        }
+      }, 200);
+      return false;
+    }
+    return true;
+  };
+
+  // Validar datos de usuario registrado para checkout
+  const validateRegisteredUserData = async () => {
+    if (!address?.trim()) {
+      setShowAddressModal(true);
+      return false;
+    }
+
+    const zoneValidation = validateDeliveryZone(address);
+    if (!zoneValidation.isValid) {
+      showValidationError(
+        'Zona de entrega no disponible',
+        `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Actualiza tu dirección o contacta soporte.'}`,
+        'Entendido'
+      );
+      return false;
+    }
+
+    if (!latlong?.driver_lat || !latlong?.driver_long) {
+      // Intentar restaurar coordenadas guardadas
+      let restoredCoords = user?.id ? await restoreCoordinates(user.id) : null;
+
+      if (!restoredCoords?.driver_lat || !restoredCoords?.driver_long) {
+        const currentAddress = address?.trim();
+        if (currentAddress && currentAddress.length > 10) {
+          try {
+            const geocodedCoords = await handleUserAddressGeocoding(currentAddress);
+            if (!geocodedCoords?.driver_lat || !geocodedCoords?.driver_long) {
+              showAlert({
+                type: 'info',
+                title: 'Confirmar ubicación',
+                message: 'Para mayor precisión en la entrega, ¿deseas confirmar tu ubicación en el mapa?',
+                confirmText: 'Confirmar en mapa',
+                cancelText: 'Continuar con dirección',
+                showCancel: true,
+                onConfirm: () => {
+                  navigation.navigate('MapSelector', {
+                    userAddress: currentAddress,
+                    title: 'Confirmar ubicación para entrega',
+                  });
+                },
+                onCancel: () => {
+                  setLatlong({ driver_lat: '19.4326', driver_long: '-99.1332' });
+                  setTimeout(() => completeOrder(), 100);
+                }
+              });
+              return false;
+            }
+          } catch (error) {
+            setLatlong({ driver_lat: '19.4326', driver_long: '-99.1332' });
+          }
+        } else {
+          showValidationError('Ubicación requerida', 'Por favor confirma tu ubicación exacta en el mapa.');
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   // Flujo único y robusto de pago
   const completeOrder = async () => {
     if (loading) return;
 
-    // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
-
-    // 1. Validar que el carrito tenga productos (NO validar monto aquí)
+    // 1. Validar carrito
     if (cart.length === 0) {
-      showAlert({
-        type: 'error',
-        title: 'Carrito vacío',
-        message: 'No hay productos en el carrito.',
-        confirmText: 'Cerrar',
-      });
+      showValidationError('Carrito vacío', 'No hay productos en el carrito.');
       return;
     }
 
-    // 1.1 Validar monto mínimo para Stripe (10 MXN)
-    // Si el total es menor, se procesará como orden gratuita más adelante
+    // 2. Determinar si es orden gratuita
     const STRIPE_MINIMUM_MXN = 10;
     const finalTotal = getFinalTotal();
     const isGratisOrder = finalTotal < STRIPE_MINIMUM_MXN;
-    
-    // 2. Validar información de entrega (CRÍTICO)
-    // Si está restaurando, mostrar mensaje diferente
+
+    // 3. Validar información de entrega
     if (isRestoringDeliveryInfo) {
       showAlert({
         type: 'info',
@@ -1114,181 +1201,35 @@ export default function Cart() {
       });
       return;
     }
-    
+
     if (!deliveryInfo) {
-      // Intentar restaurar una vez más antes de fallar
       if (user?.id && user?.usertype !== 'Guest') {
-        // Usuario registrado: intentar restaurar de AsyncStorage
         const restored = await restoreDeliveryInfo(user.id);
         if (!restored) {
-          showAlert({
-            type: 'error',
-            title: 'Información incompleta',
-            message: 'Por favor selecciona la fecha y hora de entrega.',
-            confirmText: 'Cerrar',
-          });
+          showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
           return;
         }
-        // Continuar con la orden usando el deliveryInfo restaurado
       } else if (user?.usertype === 'Guest') {
-        // Guest: esperar un momento más para que se actualice el estado
         setTimeout(() => {
           if (deliveryInfo) {
             completeOrder();
           } else {
-            showAlert({
-              type: 'error',
-              title: 'Información incompleta',
-              message: 'Por favor selecciona la fecha y hora de entrega.',
-              confirmText: 'Cerrar',
-            });
+            showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
           }
         }, 200);
         return;
       } else {
-        showAlert({
-          type: 'error',
-          title: 'Información incompleta',
-          message: 'Por favor selecciona la fecha y hora de entrega.',
-          confirmText: 'Cerrar',
-        });
+        showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
         return;
       }
     }
-    
-    // 3. Validar datos según tipo de usuario
+
+    // 4. Validar según tipo de usuario
     if (user?.usertype === 'Guest') {
-      // Guest: requiere email, dirección Y coordenadas del mapa
-      if (!email?.trim()) {
-        showAlert({
-          type: 'error',
-          title: 'Información incompleta',
-          message: 'Por favor proporciona tu email.',
-          confirmText: 'Cerrar',
-        });
-        return;
-      }
-      
-      if (!address?.trim()) {
-        showAlert({
-          type: 'error',
-          title: 'Información incompleta', 
-          message: 'Por favor proporciona tu dirección.',
-          confirmText: 'Cerrar',
-        });
-        return;
-      }
-
-      // ✅ VALIDAR ZONA DE ENTREGA para Guest
-      const zoneValidation = validateDeliveryZone(address);
-      if (!zoneValidation.isValid) {
-        showAlert({
-          type: 'error',
-          title: 'Zona de entrega no disponible',
-          message: `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Verifica tu dirección o contacta soporte.'}`,
-          confirmText: 'Entendido',
-        });
-        return;
-      }
-      
-      // Guest también necesita coordenadas del mapa
-      if (!latlong?.driver_lat || !latlong?.driver_long) {
-        setTimeout(() => {
-          if (latlong?.driver_lat && latlong?.driver_long) {
-            completeOrder();
-          } else {
-            showAlert({
-              type: 'error',
-              title: 'Ubicación requerida',
-              message: 'Por favor confirma tu ubicación exacta en el mapa.',
-              confirmText: 'Cerrar',
-            });
-          }
-        }, 200);
-        return;
-      }
+      if (!validateGuestData()) return;
     } else {
-      // Usuario registrado: requiere dirección del sistema nuevo
-      if (!address?.trim()) {
-        // No tiene dirección del sistema nuevo - mostrar modal para seleccionar
-        setShowAddressModal(true);
-        return;
-      }
-      
-
-      // ✅ VALIDAR ZONA DE ENTREGA para Usuario registrado
-      const userAddress = address?.trim();
-      if (userAddress) {
-        const zoneValidation = validateDeliveryZone(userAddress);
-        if (!zoneValidation.isValid) {
-          showAlert({
-            type: 'error',
-            title: 'Zona de entrega no disponible',
-            message: `${zoneValidation.error}\n\n${zoneValidation.suggestion || 'Actualiza tu dirección o contacta soporte.'}`,
-            confirmText: 'Entendido',
-          });
-          return;
-        }
-      }
-
-      if (!latlong?.driver_lat || !latlong?.driver_long) {
-        // PASO 1: Intentar restaurar coordenadas guardadas
-        let restoredCoords = null;
-        if (user?.id) {
-          restoredCoords = await restoreCoordinates(user.id);
-          if (restoredCoords && restoredCoords.driver_lat && restoredCoords.driver_long) {
-            // Las coordenadas ya se establecieron en el estado por restoreCoordinates()
-            // Continuar con el flujo de pago
-          }
-        }
-        
-        // PASO 2: Si no hay coordenadas restauradas, aplicar geocoding inteligente
-        if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
-          const currentAddress = address?.trim();
-          if (currentAddress && currentAddress.length > 10) {
-            try {
-              const geocodedCoords = await handleUserAddressGeocoding(currentAddress);
-              if (!geocodedCoords?.driver_lat || !geocodedCoords?.driver_long) {
-                showAlert({
-                  type: 'info',
-                  title: 'Confirmar ubicación',
-                  message: 'Para mayor precisión en la entrega, ¿deseas confirmar tu ubicación en el mapa?',
-                  confirmText: 'Confirmar en mapa',
-                  cancelText: 'Continuar con dirección',
-                  showCancel: true,
-                  onConfirm: () => {
-                    navigation.navigate('MapSelector', {
-                      userAddress: currentAddress,
-                      title: 'Confirmar ubicación para entrega',
-                    });
-                  },
-                  onCancel: () => {
-                    setLatlong({
-                      driver_lat: '19.4326',
-                      driver_long: '-99.1332',
-                    });
-                    setTimeout(() => completeOrder(), 100);
-                  }
-                });
-                return;
-              }
-            } catch (error) {
-              setLatlong({
-                driver_lat: '19.4326',
-                driver_long: '-99.1332',
-              });
-            }
-          } else {
-            showAlert({
-              type: 'error',
-              title: 'Ubicación requerida',
-              message: 'Por favor confirma tu ubicación exacta en el mapa.',
-              confirmText: 'Cerrar',
-            });
-            return;
-          }
-        }
-      }
+      const isValid = await validateRegisteredUserData();
+      if (!isValid) return;
     }
 
     setLoading(true);
@@ -1492,55 +1433,46 @@ export default function Cart() {
     }
   };
 
-  // Envía la orden al backend y maneja fallos
+  // Obtener email del usuario para la orden
+  const getOrderEmail = async () => {
+    if (user?.usertype === 'Guest') {
+      return email?.trim() || user?.email?.trim() || '';
+    }
+    let userEmail = user?.email?.trim() || '';
+    if (!userEmail && user?.id) {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/userdetails/${user.id}`);
+        userEmail = response.data?.data?.[0]?.email?.trim() || '';
+      } catch (error) {}
+    }
+    return userEmail;
+  };
+
+  // Envía la orden al backend
   const completeOrderFunc = async () => {
     try {
-      // Obtener FCM token para notificaciones
+      // Obtener FCM token
       let fcmToken = null;
       try {
         fcmToken = NotificationService.token || await NotificationService.getToken();
-      } catch (error) {
-        // Error obteniendo FCM token - continuar sin él
-      }
+      } catch (error) {}
 
-      const cartUpdateArr = cart.map(it => {
-        // Calcular precio final con descuento aplicado
+      // Preparar items del carrito
+      const cartItems = cart.map(it => {
         const itemDiscount = Number(it.discount) || 0;
-        const finalPrice = it.price - itemDiscount;
-        
         return {
           item_name: it.name,
-          item_price: finalPrice.toString(), // Precio con descuento aplicado
-          item_original_price: it.price.toString(), // Precio original para referencia
-          item_discount: itemDiscount.toString(), // Descuento aplicado
+          item_price: (it.price - itemDiscount).toString(),
+          item_original_price: it.price.toString(),
+          item_discount: itemDiscount.toString(),
           item_qty: it.quantity.toString(),
           item_image: it.photo,
         };
       });
-      
-      // Determinar el email correcto para enviar - MEJORADO PARA EVITAR ÓRDENES SIN EMAIL
-      let userEmailForOrder = '';
-      
-      if (user?.usertype === 'Guest') {
-        // Para Guests: priorizar email local, luego email del usuario
-        userEmailForOrder = email?.trim() || user?.email?.trim() || '';
-      } else {
-        // Para usuarios registrados: usar email del usuario o obtener del perfil
-        userEmailForOrder = user?.email?.trim() || '';
-        
-        // Si no hay email en el contexto, intentar obtenerlo del perfil
-        if (!userEmailForOrder && user?.id) {
-          try {
-            const profileResponse = await axios.get(`${API_BASE_URL}/api/userdetails/${user.id}`);
-            const profileData = profileResponse.data?.data?.[0];
-            userEmailForOrder = profileData?.email?.trim() || '';
-          } catch (profileError) {
-          }
-        }
-      }
-      
-      // Validación final: asegurar que siempre tengamos un email válido
-      if (!userEmailForOrder) {
+
+      // Obtener email
+      const orderEmail = await getOrderEmail();
+      if (!orderEmail) {
         showAlert({
           type: 'error',
           title: 'Email requerido',
@@ -1550,16 +1482,16 @@ export default function Cart() {
         });
         return;
       }
-      
 
-      // Obtener coordenadas según la lógica de usuario
+      // Datos de cupón (validar una sola vez)
+      const couponValid = appliedCoupon && isCouponStillValid();
       const coordinates = getOrderCoordinates();
 
       const payload = {
         userid: user?.id,
         orderno: '1',
-        user_email: userEmailForOrder,
-        orderdetails: cartUpdateArr,
+        user_email: orderEmail,
+        orderdetails: cartItems,
         customer_lat: coordinates.customer_lat,
         customer_long: coordinates.customer_long,
         address_source: coordinates.address_source,
@@ -1571,11 +1503,11 @@ export default function Cart() {
         shipping_cost: shippingCost || 0,
         subtotal: getSubtotal(),
         total_amount: getFinalTotal(),
-        coupon_code: appliedCoupon && isCouponStillValid() ? appliedCoupon.code : null,
-        coupon_discount: appliedCoupon && isCouponStillValid() ? appliedCoupon.discount : null,
-        coupon_type: appliedCoupon && isCouponStillValid() ? appliedCoupon.type : null,
-        discount_amount: appliedCoupon && isCouponStillValid() ? getDiscountAmount() : 0,
-        fcm_token: fcmToken || null,
+        coupon_code: couponValid ? appliedCoupon.code : null,
+        coupon_discount: couponValid ? appliedCoupon.discount : null,
+        coupon_type: couponValid ? appliedCoupon.type : null,
+        discount_amount: couponValid ? getDiscountAmount() : 0,
+        fcm_token: fcmToken,
       };
 
       const response = await axios.post(`${API_BASE_URL}/api/ordersubmit`, payload);
@@ -1594,57 +1526,36 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
-    
+    const hasEmail = email?.trim();
+    const hasAddress = address?.trim();
+    const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
+
     if (user?.usertype === 'Guest') {
-      
-      // Verificar si el guest ya tiene email y dirección
-      const hasEmail = email?.trim() && email.trim() !== '';
-      const hasAddress = address?.trim() && address.trim() !== '';
-      
       if (hasEmail && hasAddress) {
-        // Guest ya completó sus datos: proceder directamente al pago
         completeOrder();
       } else {
-        // Guest necesita completar datos: ir a GuestCheckout
-        const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
-        
         navigation.navigate('GuestCheckout', {
-          totalPrice: totalPrice,
-          itemCount: itemCount,
+          totalPrice,
+          itemCount: cart.reduce((total, item) => total + item.quantity, 0),
           returnToCart: true,
-          // CRITICAL: Preservar TODOS los datos del formulario - convertir Date a string
-          preservedDeliveryInfo: deliveryInfo ? {
-            ...deliveryInfo,
-            date: deliveryInfo.date.toISOString(), // Convertir Date a string serializable
-          } : null,
+          preservedDeliveryInfo: deliveryInfo ? { ...deliveryInfo, date: deliveryInfo.date.toISOString() } : null,
           preservedNeedInvoice: needInvoice,
           preservedTaxDetails: taxDetails,
-          preservedCoordinates: latlong, // Preservar coordenadas para Guest
-          // También preservar email/address actuales si existen
+          preservedCoordinates: latlong,
           currentEmail: email,
           currentAddress: address,
         });
       }
     } else {
-      // Usuario registrado: verificar si tiene dirección del sistema nuevo
-      if (!address?.trim()) {
-        // No tiene dirección del sistema nuevo: mostrar modal
+      if (!hasAddress) {
         setShowAddressModal(true);
+      } else if (hasCoordinates) {
+        completeOrder();
       } else {
-        // Usuario tiene dirección: verificar si ya tiene coordenadas
-        const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
-        
-        if (hasCoordinates) {
-          // ✅ Ya tiene coordenadas: proceder directamente al pago
-          completeOrder();
-        } else {
-          // No tiene coordenadas: ir a MapSelector (flujo legacy)
-          navigation.navigate('MapSelector', {
-            userAddress: userProfile.address,
-            title: 'Confirmar ubicación para entrega',
-            // No pasamos onConfirm como callback, MapSelector regresará aquí con coordenadas
-          });
-        }
+        navigation.navigate('MapSelector', {
+          userAddress: userProfile.address,
+          title: 'Confirmar ubicación para entrega',
+        });
       }
     }
   };
