@@ -22,8 +22,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from './src/theme/fonts';
 
 import Cart from './src/cart/Cart';
-import GuestCheckout from './src/cart/GuestCheckout';
-// Removed unused Route import - component was dead code
 import Profile from './src/profile/Profile';
 import Suggestions from './src/suggestions/Suggestions';
 import Header from './src/header/Header';
@@ -182,35 +180,29 @@ function MainTabs() {
     return 8;
   };
 
-  // Optimized tab bar configuration
+  // Optimized tab bar configuration - Estilo profesional
   const tabBarOptions = useMemo(() => ({
-    tabBarActiveTintColor: '#D27F27', // Usar color del theme
-    tabBarInactiveTintColor: '#8B5E3C',
+    tabBarActiveTintColor: '#D27F27',
+    tabBarInactiveTintColor: '#999',
     tabBarStyle: {
-      backgroundColor: 'white',
+      backgroundColor: '#FFF',
       paddingBottom: getTabBarPaddingBottom(),
-      paddingTop: Platform.OS === 'ios' ? 8 : 5,
+      paddingTop: 8,
       height: getTabBarHeight(),
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(139, 94, 60, 0.1)',
-      // Sombra más suave
+      borderTopWidth: 0,
+      // Sombra profesional
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
+      shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowRadius: 12,
+      elevation: 10,
     },
     tabBarLabelStyle: {
-      fontSize: Platform.OS === 'ios' ? 11 : 10,
+      fontSize: 10,
       fontFamily: fonts.bold,
-      marginTop: Platform.OS === 'ios' ? 2 : 0,
-      marginBottom: Platform.OS === 'ios' ? 2 : 0,
-    },
-    tabBarIconStyle: {
-      marginBottom: Platform.OS === 'ios' ? 2 : 0,
+      marginTop: 2,
     },
     headerShown: false,
-    // Mantener tab bar siempre visible
     tabBarHideOnKeyboard: false,
   }), []);
 
@@ -226,9 +218,8 @@ function MainTabs() {
         screenOptions={({route}) => ({
           tabBarIcon: ({focused, color, size}) => {
             let iconName;
-            // Tamaño optimizado para iOS
-            const iconSize = Platform.OS === 'ios' ? 26 : size;
-            
+            const iconSize = 22;
+
             if (route.name === 'Inicio') {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Carrito') {
@@ -240,12 +231,12 @@ function MainTabs() {
               iconName = focused ? 'clipboard' : 'clipboard-outline';
             } else if (route.name === 'Ruta') {
               iconName = focused ? 'navigate' : 'navigate-outline';
-            // } else if (route.name === 'Sugerencias') {
-            //   iconName = focused ? 'bulb' : 'bulb-outline';
             } else if (route.name === 'Perfil') {
               iconName = focused ? 'person' : 'person-outline';
             }
-            return <Ionicons name={iconName} size={iconSize} color={color} />;
+
+            // Retornar ícono directamente (sin View contenedor para evitar problemas)
+            return <Ionicons name={iconName} size={iconSize} color={focused ? '#D27F27' : '#999'} />;
           },
           ...tabBarOptions,
         })}>
@@ -344,7 +335,6 @@ function RootStack() {
         <Stack.Screen name="AddressManager" component={AddressManager} />
         <Stack.Screen name="AddressMap" component={AddressMap} />
         <Stack.Screen name="MapSelector" component={MapSelector} />
-        <Stack.Screen name="GuestCheckout" component={GuestCheckout} />
         <Stack.Screen name="OrderDetails" component={OrderDetails} />
         {/* ProductDetails moved to MainTabs to preserve bottom navigation */}
       </Stack.Navigator>

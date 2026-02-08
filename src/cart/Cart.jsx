@@ -1534,10 +1534,13 @@ export default function Cart() {
       if (hasEmail && hasAddress) {
         completeOrder();
       } else {
-        navigation.navigate('GuestCheckout', {
+        // ✅ FLUJO CONSOLIDADO: Navegar directamente a AddressFormUberStyle con email integrado
+        navigation.navigate('AddressFormUberStyle', {
+          title: 'Datos de Entrega',
+          fromGuestCheckout: true,
+          returnToCart: true,
           totalPrice,
           itemCount: cart.reduce((total, item) => total + item.quantity, 0),
-          returnToCart: true,
           preservedDeliveryInfo: deliveryInfo ? { ...deliveryInfo, date: deliveryInfo.date.toISOString() } : null,
           preservedNeedInvoice: needInvoice,
           preservedTaxDetails: taxDetails,
@@ -2239,48 +2242,49 @@ const CartFooter = ({
     {/* Ubicación para guests */}
     {user && user.usertype === 'Guest' && (email || address) && (
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>📍 Información de entrega</Text>
+        <View style={styles.locationHeaderRow}>
+          <Text style={styles.sectionTitle}>📍 Ubicación de entrega</Text>
+          <TouchableOpacity
+            style={styles.changeAddressButton}
+            onPress={() => {
+              const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
+              navigation.navigate('AddressFormUberStyle', {
+                title: 'Cambiar Dirección',
+                fromGuestCheckout: true,
+                returnToCart: true,
+                totalPrice: totalPrice,
+                itemCount: itemCount,
+                preservedDeliveryInfo: deliveryInfo ? {
+                  ...deliveryInfo,
+                  date: deliveryInfo.date.toISOString(),
+                } : null,
+                preservedNeedInvoice: needInvoice,
+                preservedTaxDetails: taxDetails,
+                preservedCoordinates: latlong,
+                currentEmail: email,
+                currentAddress: address,
+              });
+            }}>
+            <Ionicons name="pencil" size={14} color="#8B5E3C" />
+            <Text style={styles.changeAddressButtonText}>Cambiar</Text>
+          </TouchableOpacity>
+        </View>
 
         {email && (
-          <View style={styles.guestIndicatorItem}>
-            <Ionicons name="mail-outline" size={18} color="#D27F27" style={{marginRight: 10}} />
-            <Text style={styles.guestIndicatorText}>
-              <Text style={styles.guestIndicatorValue}>{email}</Text>
+          <View style={styles.locationEmailRow}>
+            <Ionicons name="mail" size={16} color="#D27F27" style={{marginRight: 8, marginTop: 2}} />
+            <Text style={[styles.userAddressText, {marginBottom: 0, flex: 1, color: '#2F2F2F'}]}>
+              {email}
             </Text>
           </View>
         )}
 
         {address && (
-          <View style={[styles.guestIndicatorItem, {marginTop: 8}]}>
-            <Ionicons name="location-outline" size={18} color="#D27F27" style={{marginRight: 10, marginTop: 2}} />
-            <View style={styles.guestAddressContainer}>
-              <Text style={styles.guestIndicatorValue} numberOfLines={0}>
-                {address}
-              </Text>
-              <TouchableOpacity
-                style={styles.changeAddressButton}
-                onPress={() => {
-                  const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
-                  navigation.navigate('GuestCheckout', {
-                    totalPrice: totalPrice,
-                    itemCount: itemCount,
-                    returnToCart: true,
-                    editingAddress: true,
-                    preservedDeliveryInfo: deliveryInfo ? {
-                      ...deliveryInfo,
-                      date: deliveryInfo.date.toISOString(),
-                    } : null,
-                    preservedNeedInvoice: needInvoice,
-                    preservedTaxDetails: taxDetails,
-                    preservedCoordinates: latlong,
-                    currentEmail: email,
-                    currentAddress: address,
-                  });
-                }}>
-                <Ionicons name="pencil" size={14} color="#8B5E3C" />
-                <Text style={styles.changeAddressButtonText}>Cambiar</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={[styles.locationAddressRow, {marginTop: email ? 10 : 0}]}>
+            <Ionicons name="checkmark-circle" size={18} color="#33A744" style={{marginRight: 8, marginTop: 2}} />
+            <Text style={[styles.userAddressText, {marginBottom: 0, flex: 1}]}>
+              {address}
+            </Text>
           </View>
         )}
       </View>

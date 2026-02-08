@@ -26,15 +26,10 @@ import {
 } from '../utils/addressValidators';
 
 const AddressMap = () => {
-  console.log('🗺️ AddressMap MONTANDO...');
-  console.log('🗺️ route.params:', JSON.stringify(route?.params, null, 2));
-
   const navigation = useNavigation();
   const route = useRoute();
   const { showAlert } = useAlert();
   const responsive = useResponsive();
-
-  console.log('🗺️ Hooks inicializados');
 
   // Parámetros de navegación
   const {
@@ -54,18 +49,8 @@ const AddressMap = () => {
     longitude: parseFloat(rawSelectedLocation?.longitude) || -99.1332,
   };
 
-  console.log('🗺️ Parámetros extraídos:', {
-    selectedLocation,
-    callbackId,
-    fromGuestCheckout,
-    fromMapSelector,
-    hasUserWrittenAddress: !!userWrittenAddress
-  });
-
   const [currentLocation, setCurrentLocation] = useState(selectedLocation);
   const mapRef = useRef(null);
-
-  console.log('🗺️ Estados inicializados, currentLocation:', currentLocation);
   
 
 
@@ -122,7 +107,7 @@ const AddressMap = () => {
       return;
     }
 
-    // ✅ CORREGIDO: Si viene de GuestCheckout (flujo legacy)
+    // Si viene del flujo Guest Checkout
     if (fromGuestCheckout) {
       // Intentar obtener dirección legible con reverse geocoding
       let formattedAddress = 'Ubicación seleccionada en el mapa';

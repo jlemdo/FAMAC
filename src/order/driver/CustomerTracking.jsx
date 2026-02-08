@@ -24,6 +24,8 @@ const CustomerTracking = ({order}) => {
   const [retryCount, setRetryCount] = useState(0);
   const [isFollowingDriver, setIsFollowingDriver] = useState(true); // Auto-seguimiento del driver
   const lastDriverLocationRef = useRef(null); // Para detectar cambios de ubicación
+  const [showFollowingIndicator, setShowFollowingIndicator] = useState(false); // Mostrar indicador temporalmente
+  const indicatorTimeoutRef = useRef(null); // Ref para el timeout del indicador
 
   const fetchDriverLocation = useCallback(async () => {
     try {
@@ -62,15 +64,21 @@ const CustomerTracking = ({order}) => {
     }, 1000);
   }, [driverLocation, isFollowingDriver]);
 
-  // Polling simple y confiable - cada 15 segundos
+  // Polling en tiempo real - cada 5 segundos para el usuario
   useEffect(() => {
     // Fetch inicial
     fetchDriverLocation();
 
-    // Polling fijo cada 15 segundos (sincronizado con el driver)
-    const interval = setInterval(fetchDriverLocation, 15000);
+    // Polling cada 5 segundos para actualización casi en tiempo real
+    const interval = setInterval(fetchDriverLocation, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Limpiar timeout del indicador
+      if (indicatorTimeoutRef.current) {
+        clearTimeout(indicatorTimeoutRef.current);
+      }
+    };
   }, [fetchDriverLocation]);
 
   // Define customer coords antes del return
@@ -209,6 +217,11 @@ const CustomerTracking = ({order}) => {
             <TouchableOpacity
               style={[styles.recenterBtn, isFollowingDriver && styles.recenterBtnActive]}
               onPress={() => {
+                // Limpiar timeout anterior si existe
+                if (indicatorTimeoutRef.current) {
+                  clearTimeout(indicatorTimeoutRef.current);
+                }
+
                 if (isFollowingDriver) {
                   // Si está siguiendo, mostrar ruta completa
                   setIsFollowingDriver(false);
@@ -221,6 +234,12 @@ const CustomerTracking = ({order}) => {
                 } else {
                   // Si no está siguiendo, activar seguimiento del driver
                   setIsFollowingDriver(true);
+                  // Mostrar indicador temporalmente
+                  setShowFollowingIndicator(true);
+                  indicatorTimeoutRef.current = setTimeout(() => {
+                    setShowFollowingIndicator(false);
+                  }, 3000); // Desaparece después de 3 segundos
+
                   if (driverLocation) {
                     mapRef.current.animateToRegion({
                       latitude: driverLocation.driver_lat,
@@ -238,8 +257,8 @@ const CustomerTracking = ({order}) => {
               />
             </TouchableOpacity>
 
-            {/* Indicador de modo seguimiento */}
-            {isFollowingDriver && (
+            {/* Indicador de modo seguimiento - Solo aparece al interactuar */}
+            {showFollowingIndicator && (
               <View style={styles.followingIndicator}>
                 <Text style={styles.followingText}>Siguiendo al repartidor</Text>
               </View>
@@ -349,13 +368,14 @@ const styles = StyleSheet.create({
   },
   followingIndicator: {
     position: 'absolute',
-    top: 16,
-    left: 16,
+    bottom: 16, // Esquina inferior
+    left: 16,   // Lado izquierdo
     backgroundColor: 'rgba(210, 127, 39, 0.9)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     elevation: 3,
+    zIndex: 9,
   },
   followingText: {
     color: '#FFF',

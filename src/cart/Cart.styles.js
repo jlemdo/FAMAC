@@ -531,6 +531,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(51, 167, 68, 0.2)',
   },
+  locationEmailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(210, 127, 39, 0.08)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.2)',
+  },
   invoiceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -553,48 +562,6 @@ const styles = StyleSheet.create({
     color: '#2F2F2F',
   },
 
-  // ============================================
-  // INDICADORES GUEST
-  // ============================================
-  guestIndicators: {
-    backgroundColor: 'rgba(210, 127, 39, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(210, 127, 39, 0.3)',
-    borderRadius: 12,
-    padding: 14,
-    marginHorizontal: 16,
-    marginTop: 12,
-  },
-  guestIndicatorsTitle: {
-    fontSize: fonts.size.small,
-    fontFamily: fonts.bold,
-    color: '#D27F27',
-    marginBottom: 10,
-  },
-  guestIndicatorItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  guestAddressContainer: {
-    flex: 1,
-  },
-  guestIndicatorIcon: {
-    fontSize: fonts.size.medium,
-    marginRight: 10,
-    marginTop: 1,
-  },
-  guestIndicatorText: {
-    flex: 1,
-    fontSize: fonts.size.small,
-    fontFamily: fonts.regular,
-    color: '#2F2F2F',
-    lineHeight: 18,
-  },
-  guestIndicatorValue: {
-    fontFamily: fonts.bold,
-    color: '#D27F27',
-  },
   changeAddressButton: {
     flexDirection: 'row',
     alignItems: 'center',

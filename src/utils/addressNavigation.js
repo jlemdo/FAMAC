@@ -7,14 +7,16 @@
  * Configuraciones predeterminadas para diferentes flujos
  */
 const NAVIGATION_PRESETS = {
+  // ✅ FLUJO CONSOLIDADO: Guest checkout con email integrado en AddressFormUberStyle
   GUEST_CHECKOUT: {
-    title: 'Dirección de Entrega',
+    title: 'Datos de Entrega',
     fromGuestCheckout: true,
+    returnToCart: true,
     showBackButton: true,
   },
-  
+
   GUEST_EDIT: {
-    title: 'Cambiar Dirección de Entrega', 
+    title: 'Cambiar Dirección',
     fromGuestCheckout: true,
     returnToCart: true,
     showBackButton: true,

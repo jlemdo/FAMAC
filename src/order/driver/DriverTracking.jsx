@@ -332,10 +332,10 @@ const DriverTracking = ({order}) => {
     // Backend estados activos: On the Way, Arriving
     const activeStatuses = ['on the way', 'arriving'];
     if (activeStatuses.includes(currentStatus?.toLowerCase())) {
-      // Intervalo para tracking en tiempo real - 15 segundos para evitar rate limiting
+      // Intervalo para tracking en tiempo real - 8 segundos
       const interval = setInterval(async () => {
         await getCurrentLocation();
-      }, 15000);
+      }, 8000);
 
       return () => clearInterval(interval);
     } else if (currentStatus?.toLowerCase() === 'delivered') {
@@ -560,16 +560,6 @@ const DriverTracking = ({order}) => {
               const isNearCustomer = distanceToCustomer !== null && distanceToCustomer <= 250; // 250 metros
               const shouldShowDeliver = isDeliverableStatus && isNearCustomer;
 
-              // Log temporal para debugging
-              // console.log('🚚 BOTÓN ENTREGAR Debug:', {
-              // currentStatus,
-              // statusLower: status,
-              // distanceToCustomer: distanceToCustomer ? Math.round(distanceToCustomer) + 'm' : 'null',
-              // isNearCustomer,
-              // shouldShowDeliver,
-              // deliverableStates
-              // });
-
               return shouldShowDeliver;
             })() && (
               <TouchableOpacity
@@ -582,6 +572,27 @@ const DriverTracking = ({order}) => {
                   <Text style={styles.actionButtonText}>📦 Marcar como Entregado</Text>
                 )}
               </TouchableOpacity>
+            )}
+
+            {/* 🔄 INDICADOR EN CAMINO - Cuando está en tránsito pero no ha llegado aún */}
+            {(() => {
+              const status = currentStatus?.toLowerCase()?.trim() || '';
+              const inTransitStates = ['on the way', 'arriving'];
+              const isInTransit = inTransitStates.includes(status);
+              const isNotNearYet = distanceToCustomer === null || distanceToCustomer > 250;
+              return isInTransit && isNotNearYet;
+            })() && (
+              <View style={styles.inTransitContainer}>
+                <Text style={styles.inTransitText}>🚚 En camino al cliente</Text>
+                {distanceToCustomer !== null && (
+                  <Text style={styles.inTransitDistance}>
+                    Faltan {distanceToCustomer >= 1000
+                      ? `${(distanceToCustomer / 1000).toFixed(1)} km`
+                      : `${Math.round(distanceToCustomer)} m`} para poder entregar
+                  </Text>
+                )}
+                <Text style={styles.inTransitHint}>El botón de entrega aparecerá cuando estés a menos de 250m</Text>
+              </View>
             )}
 
             {/* 🏁 ESTADO ENTREGADO - Solo mostrar información */}
@@ -996,6 +1007,38 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: '#2E7D32',
     textAlign: 'center',
+  },
+
+  // 🆕 Estilos para estado "en camino" (cuando falta distancia para entregar)
+  inTransitContainer: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#2196F3',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  inTransitText: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#1565C0',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  inTransitDistance: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.numericBold,
+    color: '#1976D2',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  inTransitHint: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#42A5F5',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 
 });

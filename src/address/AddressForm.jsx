@@ -249,18 +249,8 @@ const AddressForm = () => {
             if (pickerId) {
               cleanupAddressPickerCallbacks(pickerId);
             }
-            navigation.goBack();
           }
-          // Si viene de GuestCheckout, usar navegación con parámetros
-          else if (route.params?.fromGuestCheckout) {
-            navigation.navigate('GuestCheckout', {
-              selectedAddress: mapSelectedAddress
-            });
-          }
-          // Fallback: regresar normalmente
-          else {
-            navigation.goBack();
-          }
+          navigation.goBack();
         }
       );
       return;
@@ -309,22 +299,11 @@ const AddressForm = () => {
         // Ejecutar callback si existe (sistema antiguo)
         if (callbacks?.onConfirm) {
           callbacks.onConfirm(finalAddress);
-          // Limpiar y salir
           if (pickerId) {
             cleanupAddressPickerCallbacks(pickerId);
           }
-          navigation.goBack();
         }
-        // Si viene de GuestCheckout, usar navegación con parámetros
-        else if (route.params?.fromGuestCheckout) {
-          navigation.navigate('GuestCheckout', {
-            selectedAddress: validation.formattedAddress
-          });
-        }
-        // Fallback: regresar normalmente
-        else {
-          navigation.goBack();
-        }
+        navigation.goBack();
       }
     );
   };

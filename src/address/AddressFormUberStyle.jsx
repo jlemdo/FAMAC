@@ -36,7 +36,8 @@ import { AuthContext } from '../context/AuthContext';
 import { API_BASE_URL } from '../config/environment';
 import {
   ALCALDIAS_CDMX,
-  MUNICIPIOS_EDOMEX
+  MUNICIPIOS_EDOMEX,
+  validateEmail
 } from '../utils/addressValidators';
 // Debugging removido para producciónn
 
@@ -58,7 +59,7 @@ const AddressFormUberStyle = () => {
   // Debugging removido para producción
   
   // Parámetros de navegación
-  const { 
+  const {
     pickerId,
     initialAddress = '',
     title = 'Seleccionar Dirección',
@@ -67,7 +68,11 @@ const AddressFormUberStyle = () => {
     fromProfile = false, // NUEVO: Flag para identificar Profile
     userId = null, // NUEVO: ID del usuario para actualización directa
     skipMapStep = false, // NUEVO: Flag para saltar paso 4 (mapa) en Profile
-    isLegacyEdit = false // NUEVO: Flag para edición de dirección legacy
+    isLegacyEdit = false, // NUEVO: Flag para edición de dirección legacy
+    // NUEVOS PARÁMETROS PARA FLUJO GUEST CONSOLIDADO
+    fromGuestCheckout = false,
+    currentEmail = '',
+    returnToCart = false,
   } = route.params || {};
 
   // Obtener callbacks
@@ -94,6 +99,11 @@ const AddressFormUberStyle = () => {
   const [availableOptions, setAvailableOptions] = useState(ALCALDIAS_CDMX); // Default CDMX
   
   const [references, setReferences] = useState('');
+
+  // NUEVO: Estados para flujo Guest consolidado
+  const [guestEmail, setGuestEmail] = useState(currentEmail || '');
+  const [emailLocked, setEmailLocked] = useState(false);
+
   // Estados para manejo del mapa
   const [mapCoordinates, setMapCoordinates] = useState(null); // Coordenadas actuales
   const [coordinatesSource, setCoordinatesSource] = useState(null); // 'auto' | 'user' | null
@@ -703,18 +713,11 @@ const AddressFormUberStyle = () => {
 
   // Función para ir al mapa con geocoding inteligente
   const goToMap = async () => {
-    console.log('🚀 goToMap INICIANDO...');
-    console.log('🚀 mapCoordinates actual:', mapCoordinates);
-    console.log('🚀 userWrittenAddress:', userWrittenAddress);
-    console.log('🚀 route.params:', JSON.stringify(route.params, null, 2));
-
     let mapCenter = mapCoordinates || { latitude: 19.4326, longitude: -99.1332 };
-    console.log('🚀 mapCenter inicial:', mapCenter);
-    
-    // NUEVO: Si hay dirección escrita pero no coordenadas previas, geocodificar para centrar mapa
+
+    // Si hay dirección escrita pero no coordenadas previas, geocodificar para centrar mapa
     if (!mapCoordinates && userWrittenAddress?.trim()) {
       try {
-        
         const response = await axios.get(
           `https://maps.googleapis.com/maps/api/geocode/json`,
           {
@@ -723,7 +726,7 @@ const AddressFormUberStyle = () => {
               key: Config.GOOGLE_DIRECTIONS_API_KEY,
               language: 'es',
               region: 'mx',
-              bounds: '19.048,-99.365|19.761,-98.877', // Bounds para CDMX y Edomex
+              bounds: '19.048,-99.365|19.761,-98.877',
             },
           }
         );
@@ -734,32 +737,29 @@ const AddressFormUberStyle = () => {
             latitude: location.lat,
             longitude: location.lng,
           };
-        } else {
         }
       } catch (error) {
+        // Silenciar errores de geocoding
       }
     }
-    
+
     // Callback para recibir coordenadas del mapa
     const handleLocationReturn = (coordinates) => {
-      console.log('🔙 handleLocationReturn ejecutado con:', coordinates);
       setMapCoordinates(coordinates);
       setCoordinatesSource('user');
       setUserHasConfirmedLocation(true);
     };
 
-    console.log('🚀 Registrando callback con ID:', mapCallbackId);
     registerNavigationCallback(mapCallbackId, handleLocationReturn);
 
     const builtAddress = buildFinalAddress();
-    console.log('🚀 builtAddress:', builtAddress);
 
     const navParams = {
       addressForm: {},
       selectedLocation: mapCenter,
       pickerId,
       callbackId: mapCallbackId,
-      fromGuestCheckout: route.params?.fromGuestCheckout || false,
+      fromGuestCheckout: fromGuestCheckout,
       userWrittenAddress: builtAddress,
       references: references,
       fromMapSelector: false,
@@ -770,14 +770,7 @@ const AddressFormUberStyle = () => {
       fromProfile: route.params?.fromProfile || false,
     };
 
-    console.log('🚀 NAVEGANDO A AddressMap con params:', JSON.stringify(navParams, null, 2));
-
-    try {
-      navigation.navigate('AddressMap', navParams);
-      console.log('🚀 Navegación exitosa');
-    } catch (error) {
-      console.error('🚀 ERROR en navegación:', error);
-    }
+    navigation.navigate('AddressMap', navParams);
   };
 
   // Función para finalizar con validaciones EXACTAMENTE IGUALES a Profile.jsx
@@ -1049,115 +1042,69 @@ const AddressFormUberStyle = () => {
         const addressToSend = `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`;
         
         
-        // Validar parámetros críticos antes de navegar
-        if (!route.params?.totalPrice || !route.params?.itemCount) {
-          throw new Error('Faltan parámetros del carrito');
-        }
-        
-        // Si returnToCart es true, ir directamente al Cart
-        // ✅ FIX iOS: Usar AsyncStorage para objetos complejos, navigation simple
-        if (route.params?.returnToCart) {
-          
-          // 1. PRE-PROCESAR fechas ANTES de guardar (evitar toISOString en main thread)
-          let processedDeliveryInfo = route.params?.preservedDeliveryInfo;
-          if (processedDeliveryInfo?.date && typeof processedDeliveryInfo.date !== 'string') {
-            processedDeliveryInfo = {
-              ...processedDeliveryInfo,
-              date: processedDeliveryInfo.date.toISOString()
-            };
-          }
-          
-          // 2. GUARDAR datos complejos en AsyncStorage temporal
-          const tempGuestData = {
-            email: route.params?.currentEmail || '',
-            address: addressToSend,
-            preservedDeliveryInfo: processedDeliveryInfo,
-            preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
-            preservedTaxDetails: route.params?.preservedTaxDetails || null,
-            preservedCoordinates: finalAddress.coordinates ? {
-              driver_lat: finalAddress.coordinates.latitude,
-              driver_long: finalAddress.coordinates.longitude
-            } : null,
-            mapCoordinates: finalAddress.coordinates ? {
-              driver_lat: finalAddress.coordinates.latitude,
-              driver_long: finalAddress.coordinates.longitude
-            } : null,
-            timestamp: Date.now()
-          };
-          
-          await AsyncStorage.setItem('tempGuestData', JSON.stringify(tempGuestData));
-          
-          // 🔄 NUEVO: También guardar en BD para persistencia
-          try {
-            if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
-              await newAddressService.saveGuestAddress({
-                guestEmail: tempGuestData.email.trim(),
-                address: tempGuestData.address,
-                latitude: tempGuestData.mapCoordinates.driver_lat,
-                longitude: tempGuestData.mapCoordinates.driver_long,
-                phone: null
-              });
-              // console.log('✅ AddressForm: Datos Guest guardados en BD');
-            }
-          } catch (error) {
-            // console.error('❌ AddressForm: Error guardando en BD:', error);
-            // Continuar con el flujo aunque falle el guardado en BD
-          }
-          
-          // 3. NAVEGACIÓN SIMPLE - solo flag indicando que hay datos en AsyncStorage
-          navigation.navigate('MainTabs', {
-            screen: 'Carrito',
-            params: {
-              hasGuestDataInStorage: true,
-              guestDataTimestamp: Date.now()
-            }
+        // ✅ FLUJO CONSOLIDADO: Validar email ingresado en este formulario
+        const emailToUse = guestEmail?.trim() || route.params?.currentEmail || '';
+
+        if (!emailToUse || !validateEmail(emailToUse)) {
+          showAlert({
+            type: 'warning',
+            title: 'Email requerido',
+            message: 'Por favor ingresa un correo electrónico válido para continuar.',
           });
-          
           return;
         }
-        
-        // Preservar información de entrega con validación
-        let preservedDeliveryInfo = route.params?.preservedDeliveryInfo;
-        if (preservedDeliveryInfo && preservedDeliveryInfo.date) {
-          // Asegurar que la fecha esté en formato string
-          if (typeof preservedDeliveryInfo.date !== 'string') {
-            preservedDeliveryInfo = {
-              ...preservedDeliveryInfo,
-              date: preservedDeliveryInfo.date.toISOString()
-            };
-          }
+
+        // 1. PRE-PROCESAR fechas ANTES de guardar (evitar toISOString en main thread)
+        let processedDeliveryInfo = route.params?.preservedDeliveryInfo;
+        if (processedDeliveryInfo?.date && typeof processedDeliveryInfo.date !== 'string') {
+          processedDeliveryInfo = {
+            ...processedDeliveryInfo,
+            date: processedDeliveryInfo.date.toISOString()
+          };
         }
-        
-        // Preservar TODOS los parámetros originales de GuestCheckout explícitamente
-        navigation.navigate('GuestCheckout', {
-          // Parámetros básicos validados
-          totalPrice: route.params.totalPrice,
-          itemCount: route.params.itemCount,
-          returnToCart: route.params?.returnToCart || false,
-          
-          // Datos preservados del Cart
-          preservedDeliveryInfo,
+
+        // 2. GUARDAR datos complejos en AsyncStorage temporal
+        const tempGuestData = {
+          email: emailToUse,
+          address: addressToSend,
+          preservedDeliveryInfo: processedDeliveryInfo,
           preservedNeedInvoice: route.params?.preservedNeedInvoice || false,
           preservedTaxDetails: route.params?.preservedTaxDetails || null,
-          
-          // Email actuales
-          currentEmail: route.params?.currentEmail || '',
-          currentAddress: route.params?.currentAddress || '',
-          
-          // Parámetros específicos de regreso - NUEVOS DATOS
-          selectedAddress: addressToSend,
-          selectedCoordinates: finalAddress.coordinates ? {
+          preservedCoordinates: finalAddress.coordinates ? {
             driver_lat: finalAddress.coordinates.latitude,
             driver_long: finalAddress.coordinates.longitude
-          } : null, // ✅ Convertir formato para Cart.jsx
-          selectedReferences: finalAddress.references,
-          shouldGoToStep2: true, // Indicar que debe ir al paso 2
-          
-          // Preservar el email del usuario
-          preservedEmail: route.params?.currentEmail || '',
-          
-          // Flag de éxito
-          addressCompleted: true,
+          } : null,
+          mapCoordinates: finalAddress.coordinates ? {
+            driver_lat: finalAddress.coordinates.latitude,
+            driver_long: finalAddress.coordinates.longitude
+          } : null,
+          timestamp: Date.now()
+        };
+
+        await AsyncStorage.setItem('tempGuestData', JSON.stringify(tempGuestData));
+
+        // 🔄 También guardar en BD para persistencia
+        try {
+          if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
+            await newAddressService.saveGuestAddress({
+              guestEmail: tempGuestData.email.trim(),
+              address: tempGuestData.address,
+              latitude: tempGuestData.mapCoordinates.driver_lat,
+              longitude: tempGuestData.mapCoordinates.driver_long,
+              phone: null
+            });
+          }
+        } catch (error) {
+          // Continuar con el flujo aunque falle el guardado en BD
+        }
+
+        // 3. NAVEGACIÓN SIMPLE - ir directamente al Cart con datos en AsyncStorage
+        navigation.navigate('MainTabs', {
+          screen: 'Carrito',
+          params: {
+            hasGuestDataInStorage: true,
+            guestDataTimestamp: Date.now()
+          }
         });
         
         
@@ -1276,6 +1223,22 @@ const AddressFormUberStyle = () => {
       }
     }
   }, [route.params?.editMode, route.params?.addressData]);
+
+  // ✅ NUEVO: Inicializar email de Guest si viene del flujo consolidado
+  useEffect(() => {
+    if (fromGuestCheckout) {
+      // Inicializar email si el guest ya tiene uno en context
+      if (user?.usertype === 'Guest' && user?.email?.trim()) {
+        setGuestEmail(user.email);
+        setEmailLocked(true);
+      }
+      // Si viene con currentEmail, usar ese
+      if (currentEmail?.trim()) {
+        setGuestEmail(currentEmail);
+        setEmailLocked(true);
+      }
+    }
+  }, [fromGuestCheckout, user, currentEmail]);
 
   // ✅ CLEANUP: Limpiar callback del mapa al desmontar componente
   useEffect(() => {
@@ -1435,14 +1398,60 @@ const AddressFormUberStyle = () => {
   // Renderizar paso 2: Dirección Manual con Campos Estructurados
   const renderManualAddressStep = () => {
     const hasRequiredFields = streetName.trim() && exteriorNumber.trim() && neighborhood.trim() && postalCode.trim() && municipality.trim();
-    
+    // NUEVO: Validación adicional para Guest - requiere email válido
+    const hasValidEmail = !fromGuestCheckout || (guestEmail?.trim() && validateEmail(guestEmail.trim()));
+    const canSubmit = hasRequiredFields && hasValidEmail;
+
     return (
       <View style={styles.stepContainer}>
-        <Text style={styles.stepTitle}>Escribe tu dirección exacta</Text>
-        <Text style={styles.stepSubtitle}>
-          Completa los datos para que el repartidor encuentre tu dirección fácilmente.
+        <Text style={styles.stepTitle}>
+          {fromGuestCheckout ? 'Datos de entrega' : 'Escribe tu dirección exacta'}
         </Text>
-        
+        <Text style={styles.stepSubtitle}>
+          {fromGuestCheckout
+            ? 'Ingresa tu email y dirección para completar tu pedido.'
+            : 'Completa los datos para que el repartidor encuentre tu dirección fácilmente.'
+          }
+        </Text>
+
+        {/* ✅ NUEVO: Campo de Email para Guest Checkout */}
+        {fromGuestCheckout && (
+          <View style={styles.guestEmailSection}>
+            <View style={styles.addressField}>
+              <Text style={styles.fieldLabel}>Correo electrónico *</Text>
+              <TextInput
+                ref={(ref) => registerInput('guestEmail', ref)}
+                style={[
+                  styles.addressInput,
+                  emailLocked && styles.inputDisabled,
+                  guestEmail.trim() && !validateEmail(guestEmail.trim()) && styles.inputError
+                ]}
+                placeholder="correo@ejemplo.com"
+                value={guestEmail}
+                onChangeText={setGuestEmail}
+                onFocus={!emailLocked ? createFocusHandler('guestEmail') : undefined}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!emailLocked}
+                placeholderTextColor="#999"
+                returnKeyType="next"
+              />
+              {guestEmail.trim() && !validateEmail(guestEmail.trim()) && !emailLocked && (
+                <Text style={styles.fieldError}>
+                  Por favor ingresa un email válido
+                </Text>
+              )}
+              {emailLocked && (
+                <Text style={styles.fieldNote}>
+                  Este email ya fue usado en tu dispositivo
+                </Text>
+              )}
+            </View>
+            <View style={styles.sectionDivider} />
+          </View>
+        )}
+
         {/* Fila 1: Calle y Número Exterior */}
         <View style={styles.addressRow}>
           <View style={[styles.addressField, {flex: 2}]}>
@@ -1698,11 +1707,11 @@ const AddressFormUberStyle = () => {
           </View>
         )}
 
-        {/* Botón completar dirección - CON DEBUGGING COMPLETO */}
+        {/* Botón completar dirección */}
         <TouchableOpacity
           style={[
-            styles.confirmButton, 
-            !hasRequiredFields && styles.confirmButtonDisabled
+            styles.confirmButton,
+            !canSubmit && styles.confirmButtonDisabled
           ]}
           onPress={() => {
             // Fix crítico para iOS: Ejecutar en próximo tick para evitar UI freeze
@@ -1711,26 +1720,26 @@ const AddressFormUberStyle = () => {
                 // Construir dirección final y guardarla
                 const finalAddress = buildFinalAddress();
                 setUserWrittenAddress(finalAddress);
-                
+
                 // Geocoding inteligente: Obtener coordenadas automáticamente si no las tiene
                 if (!mapCoordinates) {
                   await handleIntelligentGeocoding(finalAddress);
                 }
-                
+
                 // Fix iOS: Delay adicional antes de navegación para liberar UI thread
                 await new Promise(resolve => setTimeout(resolve, 100));
-                
+
                 // Completar dirección directamente
                 await handleConfirm(finalAddress);
-                
+
               } catch (error) {
               }
             }, 0);
           }}
-          disabled={!hasRequiredFields}>
+          disabled={!canSubmit}>
           <Ionicons name="checkmark-circle" size={24} color="#FFF" />
           <Text style={styles.confirmButtonText}>
-            {route.params?.fromGuestCheckout ? 'Continuar con pago' : 'Completar dirección'}
+            {fromGuestCheckout ? 'Continuar con pago' : 'Completar dirección'}
           </Text>
         </TouchableOpacity>
 
@@ -2639,6 +2648,38 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fonts.size.medium,
     color: '#8B5E3C',
+  },
+
+  // ✅ ESTILOS PARA FLUJO GUEST CONSOLIDADO (EMAIL INTEGRADO)
+  guestEmailSection: {
+    marginBottom: 8,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(139, 94, 60, 0.15)',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: 'rgba(47,47,47,0.6)',
+  },
+  inputError: {
+    borderColor: '#E63946',
+    borderWidth: 2,
+  },
+  fieldError: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#E63946',
+    marginTop: 4,
+  },
+  fieldNote: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#D27F27',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 });
 
