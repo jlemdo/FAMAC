@@ -105,7 +105,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
-      await login(data.user);
+      await login(data.user, data.token);
     } catch (err) {
       showAlert({
         type: 'error',
@@ -150,7 +150,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         };
 
         const {data} = await axios.post(`${API_BASE_URL}/api/auth/apple`, payload);
-        await login(data.user);
+        await login(data.user, data.token);
 
         if ((firstName || lastName) && (!data.user.first_name || !data.user.last_name)) {
           try {
@@ -246,7 +246,7 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
         photo: user.photo
       });
 
-      await login(data.user);
+      await login(data.user, data.token);
 
       if (data.user && (!data.user.first_name || !data.user.last_name)) {
         try {

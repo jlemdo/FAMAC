@@ -1,9 +1,10 @@
 // src/context/AuthContext.js
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { migrateGuestOrders } from '../utils/orderMigration';
 import { useNotification } from './NotificationContext';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/environment';
 
 // 1️⃣ Import dinámico de AsyncStorage con fallback
 let AsyncStorage;
@@ -17,20 +18,62 @@ try {
 export const AuthContext = createContext({
   isLoggedIn: false,
   user: null,
+  token: null,
   login: () => {},
   logout: () => {},
   loginAsGuest: () => {},
+  updateUser: () => {},
+  getAuthToken: () => null,
 });
+
+// 🔐 Configurar interceptor global de axios para agregar token
+let authInterceptorId = null;
+
+const setupAxiosInterceptor = (token) => {
+  // Remover interceptor anterior si existe
+  if (authInterceptorId !== null) {
+    axios.interceptors.request.eject(authInterceptorId);
+  }
+
+  // Agregar nuevo interceptor con el token actual
+  if (token) {
+    authInterceptorId = axios.interceptors.request.use(
+      (config) => {
+        config.headers.Authorization = `Bearer ${token}`;
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+  }
+};
 
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser]         = useState(undefined); // undefined = loading
+  const [user, setUser] = useState(undefined); // undefined = loading
+  const [token, setToken] = useState(null);
   const { clearNotifications } = useNotification();
+  const logoutRef = useRef(null);
+
+  // Guardar referencia a logout para usar en interceptor
+  logoutRef.current = async () => {
+    if (AsyncStorage) {
+      try {
+        await AsyncStorage.removeItem('userData');
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('persistSession');
+      } catch (err) {}
+    }
+
+    clearNotifications();
+    setToken(null);
+    setUser(null);
+    setIsLoggedIn(false);
+    setupAxiosInterceptor(null);
+  };
 
   // 3️⃣ Verifica login en AsyncStorage (si está disponible)
   useEffect(() => {
     if (!AsyncStorage) {
-      // Fallback inmediato: mostrar login
       setUser(null);
       setIsLoggedIn(false);
       return;
@@ -39,46 +82,44 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('userData');
+        const savedToken = await AsyncStorage.getItem('authToken');
         const shouldPersist = await AsyncStorage.getItem('persistSession');
-        
+
         if (raw && shouldPersist === 'true') {
           const stored = JSON.parse(raw);
           setUser(stored);
           setIsLoggedIn(true);
+
+          // Restaurar token y configurar interceptor
+          if (savedToken) {
+            setToken(savedToken);
+            setupAxiosInterceptor(savedToken);
+          }
         } else {
-          // No hay datos guardados o no se debe persistir
           setUser(null);
           setIsLoggedIn(false);
         }
       } catch (err) {
-        // En caso de error, mostrar login
         setUser(null);
         setIsLoggedIn(false);
       }
     })();
   }, []);
 
-
   // Función para limpiar datos de guest después de migración exitosa
   const clearGuestData = async (guestEmail) => {
     try {
-      
-      // Aquí podrías agregar llamadas API para limpiar datos del guest del servidor si es necesario
-      // Por ejemplo: await axios.delete(`/api/guest-cleanup/${guestEmail}`);
-      
-    } catch (error) {
-    }
+      // Aquí podrías agregar llamadas API para limpiar datos del guest del servidor
+    } catch (error) {}
   };
 
-  // 4️⃣ Funciones de login/logout con guardas
-  const login = async (userData) => {
-    // Verificar si el usuario anterior era Guest para migrar órdenes
+  // 4️⃣ Login con soporte para token
+  const login = async (userData, authToken = null) => {
     const previousUser = user;
     const wasGuest = previousUser?.usertype === 'Guest' && previousUser?.email;
-    
+
     if (AsyncStorage) {
       try {
-        // Crear objeto limpio para evitar referencias circulares
         const cleanUserData = {
           id: userData.id,
           user: userData.user,
@@ -88,52 +129,49 @@ export function AuthProvider({ children }) {
           last_name: userData.last_name,
           address: userData.address,
           phone: userData.phone,
+          dob: userData.dob,
           is_active: userData.is_active,
           email_verified_at: userData.email_verified_at,
           created_at: userData.created_at,
-          updated_at: userData.updated_at
+          updated_at: userData.updated_at,
+          provider: userData.provider,
+          promotion_id: userData.promotion_id,
+          promotional_discount: userData.promotional_discount,
         };
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUserData));
-        await AsyncStorage.setItem('persistSession', 'true'); // Activar persistencia permanente
-      } catch (err) {
-      }
+        await AsyncStorage.setItem('persistSession', 'true');
+
+        // Guardar token si viene
+        if (authToken) {
+          await AsyncStorage.setItem('authToken', authToken);
+          setToken(authToken);
+          setupAxiosInterceptor(authToken);
+        }
+      } catch (err) {}
     }
-    
-    // 🔔 LIMPIAR notificaciones del usuario anterior al hacer login
+
     clearNotifications();
-    
     setUser(userData);
     setIsLoggedIn(true);
-    
-    // Migrar órdenes de Guest si es necesario (EN BACKGROUND para no bloquear UI)
+
+    // Migrar órdenes de Guest si es necesario
     if (wasGuest && userData.usertype !== 'Guest') {
-      
-      // Solo migrar si el Guest tenía email (significa que hizo pedidos)
       if (previousUser.email && previousUser.email.trim()) {
-        
-        // Ejecutar migración en background sin bloquear UI
         setTimeout(async () => {
           try {
             const migrationSuccess = await migrateGuestOrders(previousUser.email);
             if (migrationSuccess) {
-              // Limpiar rastros del guest anterior para futuras sesiones
               await clearGuestData(previousUser.email);
-            } else {
             }
-          } catch (error) {
-          }
-        }, 1000); // 1 segundo de delay para permitir que la UI se actualice primero
-      } else {
+          } catch (error) {}
+        }, 1000);
       }
     }
   };
 
   const loginAsGuest = async (guestEmail = null) => {
-    // Asegurar que guestEmail es string o null
     const safeEmail = typeof guestEmail === 'string' ? guestEmail : null;
-    
-    
-    // Crear objeto limpio directamente con tipos primitivos
+
     const cleanGuestUser = {
       id: null,
       user: 'Guest',
@@ -142,39 +180,28 @@ export function AuthProvider({ children }) {
       first_name: 'Invitado',
       last_name: ''
     };
-    
+
     if (AsyncStorage) {
       try {
-        // Crear objeto aún más simple para JSON
-        const jsonData = {
-          id: null,
-          user: 'Guest',
-          usertype: 'Guest',
-          email: safeEmail,
-          first_name: 'Invitado',
-          last_name: ''
-        };
-        await AsyncStorage.setItem('userData', JSON.stringify(jsonData));
+        await AsyncStorage.setItem('userData', JSON.stringify(cleanGuestUser));
         await AsyncStorage.setItem('persistSession', 'true');
-      } catch (err) {
-      }
+        // Guests no tienen token
+        await AsyncStorage.removeItem('authToken');
+      } catch (err) {}
     }
-    
-    // 🔔 LIMPIAR notificaciones al cambiar a guest
+
     clearNotifications();
-    
+    setToken(null);
+    setupAxiosInterceptor(null);
     setUser(cleanGuestUser);
     setIsLoggedIn(true);
   };
 
-  // Función para actualizar datos del usuario actual (especialmente email de Guest)
   const updateUser = async (updatedData) => {
-    
     const updatedUser = { ...user, ...updatedData };
-    
+
     if (AsyncStorage) {
       try {
-        // Crear objeto limpio para evitar referencias circulares
         const cleanUpdatedUser = {
           id: updatedUser.id,
           user: updatedUser.user,
@@ -184,82 +211,85 @@ export function AuthProvider({ children }) {
           last_name: updatedUser.last_name,
           address: updatedUser.address,
           phone: updatedUser.phone,
+          dob: updatedUser.dob,
           is_active: updatedUser.is_active,
           email_verified_at: updatedUser.email_verified_at,
           created_at: updatedUser.created_at,
-          updated_at: updatedUser.updated_at
+          updated_at: updatedUser.updated_at,
+          provider: updatedUser.provider,
+          promotion_id: updatedUser.promotion_id,
+          promotional_discount: updatedUser.promotional_discount,
         };
         await AsyncStorage.setItem('userData', JSON.stringify(cleanUpdatedUser));
-      } catch (err) {
-      }
+      } catch (err) {}
     }
-    
+
     setUser(updatedUser);
   };
 
   const logout = async () => {
-    if (AsyncStorage) {
-      try {
-        await AsyncStorage.removeItem('userData');
-        await AsyncStorage.removeItem('persistSession'); // Eliminar también bandera de persistencia
-      } catch (err) {
-      }
+    if (logoutRef.current) {
+      await logoutRef.current();
     }
-    
-    // 🔔 LIMPIAR notificaciones al hacer logout
-    clearNotifications();
-    
-    setUser(null);
-    setIsLoggedIn(false);
-    
-    // El CartContext automáticamente limpiará el carrito cuando user cambie a null
-    // gracias al useEffect que detecta cambios de usuario
   };
 
-  // 🛡️ INTERCEPTOR GLOBAL: Detectar usuarios eliminados de la base de datos
+  // Función para obtener el token actual
+  const getAuthToken = () => token;
+
+  // 🛡️ INTERCEPTOR GLOBAL: Detectar errores de autenticación
   useEffect(() => {
-    // Solo configurar interceptor si hay usuario activo (no Guest)
     if (!user || user.usertype === 'Guest') return;
 
-    const interceptor = axios.interceptors.response.use(
-      (response) => response, // Respuestas exitosas pasan sin modificación
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
       (error) => {
-        // Detectar errores específicos de usuario eliminado
         const { config, response } = error;
-        const isUserDetailsRequest = config?.url?.includes('/userdetails/');
-        const isUserNotFound = response?.status === 404 || response?.status === 401;
-        
-        if (isUserDetailsRequest && isUserNotFound) {
-          
-          // Mostrar alerta informativa (usando setTimeout para evitar conflictos de estado)
+
+        // Detectar token expirado o usuario eliminado
+        if (response?.status === 401) {
+          const isAuthEndpoint = config?.url?.includes('/login') || config?.url?.includes('/register');
+
+          // Si no es endpoint de auth, el token expiró o es inválido
+          if (!isAuthEndpoint) {
+            setTimeout(() => {
+              if (logoutRef.current) {
+                logoutRef.current();
+              }
+            }, 100);
+          }
+        }
+
+        // Detectar usuario eliminado
+        if (response?.status === 404 && config?.url?.includes('/userdetails/')) {
           setTimeout(() => {
             if (typeof alert !== 'undefined') {
               alert('Tu cuenta ya no existe en nuestro sistema. Se cerrará la sesión automáticamente.');
             }
-            
-            // Cerrar sesión automáticamente
-            logout();
+            if (logoutRef.current) {
+              logoutRef.current();
+            }
           }, 100);
         }
-        
+
         return Promise.reject(error);
       }
     );
 
-    // Cleanup: remover interceptor al desmontar o cambiar usuario
     return () => {
-      axios.interceptors.response.eject(interceptor);
+      axios.interceptors.response.eject(responseInterceptor);
     };
-  }, [user?.id, user?.usertype, logout]);
+  }, [user?.id, user?.usertype]);
 
   return (
     <AuthContext.Provider value={{
       isLoggedIn,
       user,
+      token,
       login,
       loginAsGuest,
       updateUser,
-      logout
+      logout,
+      getAuthToken,
     }}>
       {children}
     </AuthContext.Provider>

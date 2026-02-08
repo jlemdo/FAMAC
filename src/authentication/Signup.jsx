@@ -296,7 +296,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
       });
 
       // Login exitoso con datos del backend
-      await login(data.user);
+      await login(data.user, data.token);
       
       // Si el usuario no tiene nombre/apellido, actualizarlos con datos de Google
       if (data.user && (!data.user.first_name || !data.user.last_name)) {
@@ -411,10 +411,10 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         
         
         const {data} = await axios.post(`${API_BASE_URL}/api/auth/apple`, payload);
-        
+
 
         // Login directo sin alerts molestos
-        await login(data.user);
+        await login(data.user, data.token);
         
         // 🎯 FASE 1: Solo hacer exactamente lo que funcionaba en testIOSNotifications
         // NO sendTokenToBackend, NO setupNotificationListeners
@@ -540,7 +540,7 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
         }
         
         // 🔒 PASO 3: Si OTP NO está habilitado O ya verificado, hacer login directo
-        await login(data.user);
+        await login(data.user, data.token);
         
         // 🔄 LIMPIAR datos guardados en AsyncStorage
         await clearSavedFormData();
