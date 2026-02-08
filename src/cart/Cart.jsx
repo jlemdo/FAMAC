@@ -57,6 +57,7 @@ export default function Cart() {
     removeFromCart,
     updateQuantity,
     totalPrice,
+    subtotalAfterProductDiscounts, // 🆕 Subtotal ANTES de descuentos promocionales (para cupones)
     clearCart,
     setCartClearCallback,
     automaticPromotions,
@@ -67,20 +68,17 @@ export default function Cart() {
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
-  // TEMPORALMENTE COMENTADO - Sistema de temporizadores de productos
-  // const [timers, setTimers] = useState({});
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
   const [address, setAddress] = useState((user?.address && typeof user?.address === 'string') ? user?.address : '');
-  const [selectedAddress, setSelectedAddress] = useState(null); // Nueva dirección seleccionada
-  const [userAddresses, setUserAddresses] = useState([]); // Lista de direcciones del usuario
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [userAddresses, setUserAddresses] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [needInvoice, setNeedInvoice] = useState(false);
   const [taxDetails, setTaxDetails] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [upsellItems, setUpsellItems] = useState([]);
   const [loadingUpsell, setLoadingUpsell] = useState(true);
-  const [showLoadingContent, setShowLoadingContent] = useState(true); // 🆕 Controlar si mostrar el cuadro o solo el overlay
-  // 📦 NUEVO: Estados para sistema de envío motivacional
+  const [showLoadingContent, setShowLoadingContent] = useState(true);
   const [shippingConfig, setShippingConfig] = useState(null);
   const [shippingMotivation, setShippingMotivation] = useState(null);
   const [shippingCost, setShippingCost] = useState(0);
@@ -99,52 +97,45 @@ export default function Cart() {
   const shippingDebounceRef = useRef(null);
   const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
 
-  // 🔍 DEBUG: Monitorear cambios en deliveryInfo
+  // Guardar deliveryInfo y coordenadas en AsyncStorage (solo usuarios registrados)
   useEffect(() => {
-    // Guardar deliveryInfo en AsyncStorage cuando cambie (solo para usuarios registrados)
-    if (deliveryInfo && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
-      saveDeliveryInfo(deliveryInfo, user.id);
+    if (user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
+      if (deliveryInfo) {
+        saveDeliveryInfo(deliveryInfo, user.id);
+      }
+      if (latlong?.driver_lat && latlong?.driver_long) {
+        saveCoordinates(latlong, user.id);
+      }
     }
-  }, [deliveryInfo, user?.id, cart.length]);
+  }, [deliveryInfo, latlong, user?.id, cart.length]);
 
-  // 🔄 NUEVO: Cargar automáticamente datos Guest desde BD al inicializar
+  // Cargar datos Guest desde BD al inicializar
   useEffect(() => {
-    const loadGuestDataFromDatabase = async () => {
-      // Solo para Guests con email y sin coordenadas ya cargadas
-      if (user?.usertype === 'Guest' && user?.email && (!latlong?.driver_lat || !latlong?.driver_long)) {
-        try {
-          const guestData = await loadGuestDataFromDB(user.email);
+    if (user?.usertype !== 'Guest' || !user?.email) return;
+    if (latlong?.driver_lat && latlong?.driver_long) return; // Ya tiene coordenadas
 
-          if (guestData) {
-            setEmail(guestData.email);
-            setAddress(guestData.address);
-            if (guestData.coordinates) {
-              setLatlong(guestData.coordinates);
-            }
+    const loadGuestData = async () => {
+      try {
+        const guestData = await loadGuestDataFromDB(user.email);
+        if (!guestData) return;
 
-            // Calcular envío si tenemos datos completos
-            const currentSubtotal = getSubtotal() - getDiscountAmount();
-            if (currentSubtotal > 0 && guestData.address?.trim()) {
-              setTimeout(() => {
-                calculateShippingAndMotivation(currentSubtotal);
-              }, 300);
-            }
-          }
-        } catch (error) {
+        setEmail(guestData.email);
+        setAddress(guestData.address);
+        if (guestData.coordinates) {
+          setLatlong(guestData.coordinates);
         }
+
+        const currentSubtotal = getSubtotal() - getDiscountAmount();
+        if (currentSubtotal > 0 && guestData.address?.trim()) {
+          setTimeout(() => calculateShippingAndMotivation(currentSubtotal), 300);
+        }
+      } catch (error) {
+        // Silently fail
       }
     };
 
-    loadGuestDataFromDatabase();
+    loadGuestData();
   }, [user?.usertype, user?.email, latlong?.driver_lat, latlong?.driver_long]);
-
-  // 🔍 DEBUG: Monitorear cambios en coordenadas
-  useEffect(() => {
-    // Guardar coordenadas en AsyncStorage cuando cambien (solo para usuarios registrados)
-    if (latlong?.driver_lat && latlong?.driver_long && user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
-      saveCoordinates(latlong, user.id);
-    }
-  }, [latlong, user?.id, cart.length]);
 
   // 🛒 MONITOR: Resetear datos cuando carrito esté vacío
   useEffect(() => {
@@ -231,68 +222,47 @@ export default function Cart() {
     }
   }, [user?.id, user?.email, user?.usertype]);
 
-  // 📦 MEJORADO: Recalcular envío con DEBOUNCE inteligente para evitar saturar el servidor
+  // Recalcular envío con debounce (para todos los usuarios)
   useEffect(() => {
     const currentSubtotal = getSubtotal() - getDiscountAmount();
 
-    // 🔧 Cancelar timeout anterior si existe
+    // Cancelar timeout anterior
     if (shippingDebounceRef.current) {
       clearTimeout(shippingDebounceRef.current);
     }
 
-    if (currentSubtotal > 0) {
-      // 🔧 OPTIMIZACIÓN: Solo llamar si el subtotal cambió significativamente (más de $1)
-      const lastSubtotal = lastShippingSubtotalRef.current || 0;
-      const subtotalChanged = Math.abs(currentSubtotal - lastSubtotal) > 1;
-
-      if (subtotalChanged || !shippingCalculated) {
-        // 🔧 DEBOUNCE de 500ms - espera a que el usuario termine de ajustar cantidades
-        shippingDebounceRef.current = setTimeout(() => {
-          lastShippingSubtotalRef.current = currentSubtotal;
-          calculateShippingAndMotivation(currentSubtotal);
-        }, 500);
-      }
-    } else {
+    // Sin subtotal: resetear shipping
+    if (currentSubtotal <= 0) {
       setShippingCost(0);
       setShippingMotivation(null);
       setShippingCalculated(false);
       lastShippingSubtotalRef.current = null;
+      return;
     }
 
-    // Cleanup: cancelar timeout si el componente se desmonta o cambia
+    // Para Guest: solo calcular si tiene datos completos
+    const isGuest = user?.usertype === 'Guest';
+    const guestReady = !isGuest || (email?.trim() && address?.trim() && latlong?.driver_lat && latlong?.driver_long);
+
+    if (!guestReady) return;
+
+    // Solo recalcular si subtotal cambió significativamente o no se ha calculado
+    const lastSubtotal = lastShippingSubtotalRef.current || 0;
+    const subtotalChanged = Math.abs(currentSubtotal - lastSubtotal) > 1;
+
+    if (subtotalChanged || !shippingCalculated) {
+      shippingDebounceRef.current = setTimeout(() => {
+        lastShippingSubtotalRef.current = currentSubtotal;
+        calculateShippingAndMotivation(currentSubtotal);
+      }, 500);
+    }
+
     return () => {
       if (shippingDebounceRef.current) {
         clearTimeout(shippingDebounceRef.current);
       }
     };
-  }, [totalPrice, appliedCoupon, user?.usertype]);
-
-  // 📦 MEJORADO: Recalcular envío para Guest cuando complete datos (solo si no se ha calculado ya)
-  // Este efecto es específico para cuando Guest completa su dirección por primera vez
-  useEffect(() => {
-    // Solo ejecutar si:
-    // 1. Es Guest con datos completos
-    // 2. NO se ha calculado envío aún (evita duplicar llamadas del useEffect anterior)
-    // 3. Las coordenadas están disponibles (indica que dirección fue validada)
-    if (user?.usertype === 'Guest' &&
-        email?.trim() &&
-        address?.trim() &&
-        !shippingCalculated &&
-        latlong?.driver_lat &&
-        latlong?.driver_long) {
-      const currentSubtotal = getSubtotal() - getDiscountAmount();
-      if (currentSubtotal > 0) {
-        // Usar el mismo debounce ref para evitar llamadas duplicadas
-        if (shippingDebounceRef.current) {
-          clearTimeout(shippingDebounceRef.current);
-        }
-        shippingDebounceRef.current = setTimeout(() => {
-          lastShippingSubtotalRef.current = currentSubtotal;
-          calculateShippingAndMotivation(currentSubtotal);
-        }, 500);
-      }
-    }
-  }, [user?.usertype, email, address, latlong?.driver_lat, latlong?.driver_long, shippingCalculated]);
+  }, [totalPrice, appliedCoupon, user?.usertype, email, address, latlong?.driver_lat, latlong?.driver_long, shippingCalculated]);
   
   // Función para guardar deliveryInfo en AsyncStorage
   const saveDeliveryInfo = async (info, userId) => {
@@ -394,21 +364,25 @@ export default function Cart() {
   };
 
   // 🧮 CÁLCULOS DINÁMICOS DE CUPONES
-  const getSubtotal = () => totalPrice;
-  
+  // 🔧 FIX BUG #3: Usar subtotalAfterProductDiscounts para cupones (ANTES de descuentos promocionales)
+  // Esto asegura que los cupones se calculen sobre el precio correcto
+  const getSubtotal = () => parseFloat(totalPrice); // Subtotal final (para mostrar al usuario)
+  const getSubtotalForCoupons = () => parseFloat(subtotalAfterProductDiscounts); // Subtotal para validar cupones
+
   const getDiscountAmount = () => {
     if (!appliedCoupon) return 0;
 
-    const subtotal = getSubtotal();
+    // 🔧 FIX: Usar subtotal ANTES de descuentos promocionales para calcular cupón
+    const subtotalForCoupon = getSubtotalForCoupons();
 
     // Verificar si aún cumple el monto mínimo
-    if (subtotal < appliedCoupon.minAmount) {
+    if (subtotalForCoupon < appliedCoupon.minAmount) {
       return 0; // No aplica descuento si no cumple mínimo
     }
 
     // Determinar sobre qué base aplicar el descuento
     const appliesTo = appliedCoupon.appliesTo || 'total';
-    const baseAmount = appliesTo === 'shipping' ? shippingCost : subtotal;
+    const baseAmount = appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
 
     // Recalcular descuento basado en el monto base correspondiente
     let newDiscountAmount = 0;
@@ -421,19 +395,19 @@ export default function Cart() {
     // Asegurar que el descuento no exceda el monto base
     return Math.min(newDiscountAmount, baseAmount);
   };
-  
+
   const getFinalTotal = () => {
-    const subtotal = getSubtotal();
-    const discount = getDiscountAmount();
+    const subtotal = getSubtotal(); // Subtotal final (con descuentos promocionales ya aplicados)
+    const couponDiscount = getDiscountAmount();
 
     // Si el cupón aplica a envío, restar descuento del shipping
     if (appliedCoupon && appliedCoupon.appliesTo === 'shipping') {
-      const discountedShipping = Math.max(0, shippingCost - discount);
+      const discountedShipping = Math.max(0, shippingCost - couponDiscount);
       return Math.max(0, subtotal + discountedShipping);
     }
 
     // Si aplica a total, restar descuento del subtotal y luego agregar shipping
-    return Math.max(0, subtotal - discount + shippingCost);
+    return Math.max(0, subtotal - couponDiscount + shippingCost);
   };
 
   // 📦 NUEVO: Obtener configuración de envío
@@ -453,57 +427,29 @@ export default function Cart() {
     return null;
   };
 
-  // 🆕 NUEVO: Calcular envío y mensaje motivacional
+  // Calcular envío y mensaje motivacional
   const calculateShippingAndMotivation = async (subtotal) => {
-    console.log('🚚 [SHIPPING DEBUG] Iniciando cálculo de envío para subtotal:', subtotal);
-    
     if (!subtotal || subtotal <= 0) {
-      console.log('🚚 [SHIPPING DEBUG] Subtotal inválido, estableciendo envío en 0');
       setShippingCost(0);
       setShippingMotivation(null);
       return;
     }
 
     setLoadingShipping(true);
-    
-    try {
-      const apiUrl = `${API_BASE_URL}/api/shipping-motivation/${subtotal}`;
-      console.log('🚚 [SHIPPING DEBUG] Llamando endpoint:', apiUrl);
 
-      const response = await axios.get(apiUrl, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      
-      console.log('🚚 [SHIPPING DEBUG] Respuesta completa:', JSON.stringify(response.data, null, 2));
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/shipping-motivation/${subtotal}`,
+        { headers: { 'Accept': 'application/json' } }
+      );
 
       if (response.data.status === 'success') {
         const data = response.data.data;
-        const newShippingCost = Number(data.shipping_cost) || 0;
-
-        console.log('🚚 [SHIPPING DEBUG] Datos recibidos:', {
-          shipping_cost: data.shipping_cost,
-          shipping_cost_parseado: newShippingCost,
-          tipo: typeof data.shipping_cost,
-          motivation: data
-        });
-
         setShippingMotivation(data);
-        setShippingCost(newShippingCost);
+        setShippingCost(Number(data.shipping_cost) || 0);
         setShippingCalculated(true);
-        
-        console.log('🚚 [SHIPPING DEBUG] ✅ Envío establecido en:', newShippingCost);
-      } else {
-        console.log('🚚 [SHIPPING DEBUG] ❌ Respuesta no exitosa:', response.data);
       }
     } catch (error) {
-      console.log('🚚 [SHIPPING DEBUG] ❌ ERROR:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      // En caso de error, no mostrar información de envío
       setShippingCost(0);
       setShippingMotivation(null);
       setShippingCalculated(true);
@@ -514,16 +460,18 @@ export default function Cart() {
   
   const isCouponStillValid = () => {
     if (!appliedCoupon) return true;
-    return getSubtotal() >= appliedCoupon.minAmount;
+    // 🔧 FIX BUG #5: Usar subtotal para cupones (antes de descuentos promocionales)
+    return getSubtotalForCoupons() >= appliedCoupon.minAmount;
   };
 
   // 🔄 MONITOREO DINÁMICO DE CUPONES
   useEffect(() => {
     if (!appliedCoupon) return;
 
-    const currentSubtotal = getSubtotal();
+    // 🔧 FIX: Usar subtotal para cupones (antes de descuentos promocionales)
+    const currentSubtotal = getSubtotalForCoupons();
     const currentDiscount = getDiscountAmount();
-    
+
     // Si el subtotal cambió
     if (lastSubtotal !== currentSubtotal && lastSubtotal > 0) {
       const wasValid = lastSubtotal >= appliedCoupon.minAmount;
@@ -737,12 +685,7 @@ export default function Cart() {
             driver_lat: defaultAddress.latitude.toString(),
             driver_long: defaultAddress.longitude.toString(),
           });
-          // console.log('📍 COORDENADAS ESTABLECIDAS:', {
-            // lat: defaultAddress.latitude,
-            // lng: defaultAddress.longitude
-          // });
         }
-      } else {
       }
     } catch (error) {
       setUserAddresses([]);
@@ -751,32 +694,25 @@ export default function Cart() {
     }
   };
 
-  // TEMPORALMENTE DESHABILITADO - El callback automático está causando problemas
-  // useEffect(() => {
-  //   const clearDeliveryInfo = () => {
-  //     console.trace('Stack trace del callback clearDeliveryInfo:');
-  //     setDeliveryInfo(null);
-  //   };
-  //   
-  //   if (setCartClearCallback) {
-  //     setCartClearCallback(clearDeliveryInfo);
-  //   }
-  // }, [setCartClearCallback]);
+  // Limpiar cupón y deliveryInfo cuando el carrito se limpia (logout/cambio de usuario)
+  useEffect(() => {
+    const clearCartRelatedData = () => {
+      setDeliveryInfo(null);
+      setAppliedCoupon(null);
+    };
+
+    if (setCartClearCallback) {
+      setCartClearCallback(clearCartRelatedData);
+    }
+  }, [setCartClearCallback]);
 
   // Inicializar estados cuando cambia el usuario
   useEffect(() => {
-    // console.log('🔄 USUARIO CAMBIÓ - Inicializando estados:', {
-      // userType: user?.usertype,
-      // userId: user?.id,
-      // deliveryInfoAntes: deliveryInfo
-    // });
-    
     if (user?.usertype === 'Guest') {
       const hasEmail = user?.email && user?.email?.trim() !== '';
       const hasAddress = user?.address && user?.address?.trim() !== '';
       setEmail(hasEmail ? user.email : '');
       setAddress(hasAddress ? user.address : '');
-      // console.log('🔄 GUEST: Inicializando email y dirección:', { email: user?.email, address: user?.address });
     } else {
       // Usuario registrado
       setEmail(user?.email || '');
@@ -787,93 +723,66 @@ export default function Cart() {
     
   }, [user]);
 
-  // Actualizar perfil cuando la pantalla gana foco (para refrescar dirección actualizada)
+  // Actualizar datos cuando la pantalla gana foco
   useFocusEffect(
     React.useCallback(() => {
       const handleFocus = async () => {
-        // console.log('📱 PANTALLA CART GANÓ FOCO:', {
-          // userType: user?.usertype,
-          // deliveryInfoActual: deliveryInfo,
-          // timestamp: new Date().toISOString()
-        // });
-        
         if (user?.usertype !== 'Guest' && user?.id) {
           fetchUserAddresses();
           // Solo restaurar datos si hay productos en el carrito
           if (cart.length > 0) {
             // Restaurar deliveryInfo para usuarios registrados
             if (!deliveryInfo) {
-              const restored = await restoreDeliveryInfo(user.id);
+              await restoreDeliveryInfo(user.id);
             }
             // Restaurar coordenadas para usuarios registrados
             if (!latlong?.driver_lat || !latlong?.driver_long) {
               const restoredCoords = await restoreCoordinates(user.id);
-              
-              // 🆕 Si no hay coordenadas guardadas, aplicar geocoding inteligente
+
+              // Si no hay coordenadas guardadas, aplicar geocoding inteligente
               if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
-                // Esperar a que el perfil se cargue para tener la dirección actualizada
                 setTimeout(async () => {
-                  const currentProfile = userProfile; // Usar perfil actual o esperar al siguiente render
+                  const currentProfile = userProfile;
                   const userAddress = currentProfile?.address || user?.address;
-                  
+
                   if (userAddress && userAddress.trim().length > 10) {
                     await handleUserAddressGeocoding(userAddress);
                   }
-                }, 1000); // Delay para asegurar que el perfil se haya cargado
+                }, 1000);
               }
             }
-          } else {
           }
         }
       };
-      
+
       handleFocus();
-      
+
       // Revisar si hay datos de guest en los parámetros de navegación
-      // Intentar múltiples formas de obtener los parámetros
       const navState = navigation.getState();
       const mainTabsRoute = navState?.routes?.find(route => route.name === 'MainTabs');
       const carritoRoute = mainTabsRoute?.state?.routes?.find(route => route.name === 'Carrito');
-      
-      const params1 = mainTabsRoute?.params;
-      const params2 = carritoRoute?.params;
-      const params3 = route?.params;
-      
-      const params = params2 || params1 || params3;
-      
-      // console.log('🔍 PARÁMETROS DE NAVEGACIÓN DETALLADOS:', {
-        // navState: JSON.stringify(navState, null, 2),
-        // mainTabsRoute: JSON.stringify(mainTabsRoute, null, 2),
-        // carritoRoute: JSON.stringify(carritoRoute, null, 2),
-        // params1: JSON.stringify(params1, null, 2),
-        // params2: JSON.stringify(params2, null, 2),
-        // params3: JSON.stringify(params3, null, 2),
-        // paramsFinales: JSON.stringify(params, null, 2),
-        // hasGuestData: !!params?.guestData
-      // });
-      
-      // ✅ NUEVO: Leer datos de AsyncStorage si vienen de AddressForm simplificado (TEMPORAL: mantenemos AsyncStorage para datos temporales)
+
+      const params = carritoRoute?.params || mainTabsRoute?.params || route?.params;
+
+      // Leer datos de AsyncStorage si vienen de AddressForm simplificado
       if (params?.hasGuestDataInStorage && user?.usertype === 'Guest') {
-        // Función async interna para manejar AsyncStorage
         const handleGuestDataFromStorage = async () => {
           try {
             const tempGuestDataStr = await AsyncStorage.getItem('tempGuestData');
-          if (tempGuestDataStr) {
-            const tempGuestData = JSON.parse(tempGuestDataStr);
-            
-            // Usar los datos recuperados (misma lógica que antes)
-            setEmail(tempGuestData.email);
-            setAddress(tempGuestData.address);
-            
-            // 🔄 NUEVO: Guardar en BD automáticamente cuando se completa la dirección
-            if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
-              await saveGuestDataToDB(
-                tempGuestData.email,
-                { address: tempGuestData.address },
-                tempGuestData.mapCoordinates
-              );
-              // console.log('✅ Datos Guest guardados automáticamente en BD');
-            }
+            if (tempGuestDataStr) {
+              const tempGuestData = JSON.parse(tempGuestDataStr);
+
+              setEmail(tempGuestData.email);
+              setAddress(tempGuestData.address);
+
+              // Guardar en BD automáticamente cuando se completa la dirección
+              if (tempGuestData.email?.trim() && tempGuestData.address?.trim() && tempGuestData.mapCoordinates) {
+                await saveGuestDataToDB(
+                  tempGuestData.email,
+                  { address: tempGuestData.address },
+                  tempGuestData.mapCoordinates
+                );
+              }
             
             if (tempGuestData.preservedDeliveryInfo) {
               const deliveryInfoToRestore = {
@@ -938,26 +847,21 @@ export default function Cart() {
         setAddress(params.guestData.address);
         
         // 🔄 NUEVO: Guardar en BD automáticamente cuando se reciben datos de Guest
+        // Guardar datos Guest en BD
         if (params.guestData.email?.trim() && params.guestData.address?.trim() && params.mapCoordinates) {
           saveGuestDataToDB(
             params.guestData.email,
             { address: params.guestData.address },
             params.mapCoordinates
-          ).then(() => {
-            // console.log('✅ Datos Guest guardados en BD desde guestData');
-          }).catch((error) => {
-            // console.error('❌ Error guardando datos Guest desde guestData:', error);
-          });
+          ).catch(() => {});
         }
-        
-        // CRITICAL: Restaurar también los datos del formulario si existen
+
+        // Restaurar datos del formulario si existen
         if (params.guestData.preservedDeliveryInfo) {
-          // Convertir el string de fecha de vuelta a Date object
-          const deliveryInfoToRestore = {
+          setDeliveryInfo({
             ...params.guestData.preservedDeliveryInfo,
-            date: new Date(params.guestData.preservedDeliveryInfo.date), // Convertir string a Date
-          };
-          setDeliveryInfo(deliveryInfoToRestore);
+            date: new Date(params.guestData.preservedDeliveryInfo.date),
+          });
         }
         if (params.guestData.preservedNeedInvoice !== undefined) {
           setNeedInvoice(params.guestData.preservedNeedInvoice);
@@ -968,55 +872,36 @@ export default function Cart() {
         if (params.guestData.preservedCoordinates) {
           setLatlong(params.guestData.preservedCoordinates);
         }
-        
-        // NUEVO: Si Guest también tiene mapCoordinates, procesar auto-pago aquí mismo
+
+        // Si Guest tiene mapCoordinates, procesar auto-pago
         if (params?.mapCoordinates && user?.usertype === 'Guest') {
-          
-          // Actualizar coordenadas también
           setLatlong({
             driver_lat: params.mapCoordinates.latitude,
             driver_long: params.mapCoordinates.longitude,
           });
-          
-          // 🆕 MARCAR QUE GUEST ACABA DE COMPLETAR SU DIRECCIÓN
           setGuestJustCompletedAddress(true);
-          
-          // 🚚 CRÍTICO: Forzar recálculo inmediato del envío (flujo params.guestData)
+
+          // Forzar recálculo del envío
           setTimeout(() => {
             const currentSubtotal = getSubtotal() - getDiscountAmount();
             if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar params.guestData + mapCoordinates:', {
-                // email: params.guestData.email?.trim(),
-                // address: params.guestData.address?.trim(),
-                // subtotal: currentSubtotal,
-                // timestamp: new Date().toISOString()
-              // });
               calculateShippingAndMotivation(currentSubtotal);
             }
-          }, 200); // Aumentado de 100ms a 200ms
-          
-          // Pequeño delay para asegurar que todos los setState terminen
+          }, 200);
+
           setTimeout(() => {
-            // Limpiar parámetros después de procesar
             navigation.setParams({ guestData: null, mapCoordinates: null });
           }, 100);
-          
+
         } else {
-          // 🚚 CRÍTICO: Forzar recálculo inmediato del envío (flujo normal sin mapCoordinates)
+          // Forzar recálculo del envío (flujo normal)
           setTimeout(() => {
             const currentSubtotal = getSubtotal() - getDiscountAmount();
             if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              // console.log('🚚 GUEST: Forzando recálculo de envío después de restaurar params.guestData normal:', {
-                // email: params.guestData.email?.trim(),
-                // address: params.guestData.address?.trim(),
-                // subtotal: currentSubtotal,
-                // timestamp: new Date().toISOString()
-              // });
               calculateShippingAndMotivation(currentSubtotal);
             }
-          }, 200); // Aumentado de 100ms a 200ms
-          
-          // Limpiar solo guestData si no hay mapCoordinates
+          }, 200);
+
           navigation.setParams({ guestData: null });
           
           // Scroll automático normal - si tiene deliveryInfo, ir al botón de pago, si no al de horario
@@ -1070,112 +955,153 @@ export default function Cart() {
   // ✅ OPTIMIZACIÓN: Ya no pedimos ubicación al cargar Cart
   // La ubicación se obtiene justo antes del checkout en completeOrder()
 
-  // TEMPORALMENTE COMENTADO - Efecto para limpiar timers cuando cambia el usuario
-  /*
+  // Auto-pago Guest: Solo cuando acaba de completar su dirección por primera vez
   useEffect(() => {
-    const userId = user?.id || null;
-    
-    // Si hay un usuario previo diferente al actual, limpiar timers
-    if (currentUserId !== null && currentUserId !== userId) {
-      setTimers({});
-    }
-    
-    // Actualizar el ID del usuario actual
-    setCurrentUserId(userId);
-  }, [user?.id, currentUserId]);
-  */
-
-  // 🚀 AUTO-PAGO GUEST: Solo cuando acaba de completar su dirección por primera vez
-  useEffect(() => {
-    // console.log('🚀 AUTO-PAGO EFFECT disparado:', {
-      // userType: user?.usertype,
-      // guestJustCompletedAddress,
-      // hasDeliveryInfo: !!deliveryInfo,
-      // hasEmail: !!email?.trim(),
-      // hasAddress: !!address?.trim(),
-      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
-      // cartItems: cart.length,
-      // currentShippingCost: shippingCost,
-      // shippingCalculated: shippingCalculated,
-      // loadingShipping: loadingShipping,
-      // finalTotal: getFinalTotal()
-    // });
-    
-    // Solo para Guest que ACABA DE COMPLETAR su dirección (viene del flujo inicial)
-    if (user?.usertype === 'Guest' && 
-        guestJustCompletedAddress && // 🆕 NUEVA CONDICIÓN: Solo si acaba de completar dirección
-        deliveryInfo && 
-        email?.trim() && 
-        address?.trim() && 
-        latlong?.driver_lat && 
+    // Solo para Guest que acaba de completar su dirección
+    if (user?.usertype === 'Guest' &&
+        guestJustCompletedAddress &&
+        deliveryInfo &&
+        email?.trim() &&
+        address?.trim() &&
+        latlong?.driver_lat &&
         latlong?.driver_long &&
         cart.length > 0 &&
-        shippingCalculated && // ⚡ CRÍTICO: Esperar a que se complete el cálculo del envío
-        !loadingShipping) { // ⚡ Y que no esté cargando
-      
-      // console.log('🚀 EJECUTANDO AUTO-PAGO con valores:', {
-        // subtotal: getSubtotal(),
-        // shippingCost: shippingCost,
-        // finalTotal: getFinalTotal(),
-        // address: address?.trim(),
-        // coordinates: `${latlong?.driver_lat}, ${latlong?.driver_long}`
-      // });
-      
-      // ⏱️ DELAY AUMENTADO para dar tiempo al recálculo del envío
+        shippingCalculated &&
+        !loadingShipping) {
+
       const autoPayTimeout = setTimeout(() => {
-        // console.log('⏰ EJECUTANDO AUTO-PAGO después del delay, valores finales:', {
-          // subtotal: getSubtotal(),
-          // shippingCost: shippingCost,
-          // finalTotal: getFinalTotal()
-        // });
         completeOrder();
-        // Limpiar la bandera después del auto-pago
         setGuestJustCompletedAddress(false);
-      }, 1000); // Aumentado de 300ms a 1000ms
-      
+      }, 1000);
+
       return () => clearTimeout(autoPayTimeout);
     }
-  }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length, shippingCalculated, loadingShipping]); // ⚡ Agregado shippingCalculated y loadingShipping
+  }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length, shippingCalculated, loadingShipping]);
 
-  // Invocado desde el botón de checkout
-  const decideCheckout = () => {
-    completeOrder();
+  // Función auxiliar: Manejar éxito de orden (para Stripe y órdenes gratuitas)
+  const handleOrderSuccess = async (orderData, oxxoInfo = null) => {
+    const realOrderId = orderData?.order?.id;
+
+    // Guardar datos de Guest para futuras compras
+    if (user?.usertype === 'Guest') {
+      const updateData = {};
+      if ((!user?.email || user?.email?.trim() === '') && email?.trim()) {
+        updateData.email = email.trim();
+      }
+      if (address?.trim()) {
+        updateData.address = address.trim();
+      }
+      if (Object.keys(updateData).length > 0) {
+        await updateUser(updateData);
+      }
+    }
+
+    // Crear resumen del pedido
+    const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
+    const deliveryText = deliveryInfo
+      ? `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}`
+      : 'Horario pendiente';
+
+    const orderNumber = realOrderId || orderData?.order?.id;
+
+    // Limpiar datos
+    clearCart();
+    setDeliveryInfo(null);
+    setAppliedCoupon(null); // 🆕 Limpiar cupón aplicado
+
+    if (user?.usertype !== 'Guest') {
+      setLatlong(null);
+    }
+
+    if (user?.id) {
+      clearSavedDeliveryInfo(user.id);
+      clearSavedCoordinates(user.id);
+    }
+
+    // Refrescar órdenes
+    refreshOrders();
+    setTimeout(() => refreshOrders(), 2000);
+    setTimeout(() => refreshOrders(), 5000);
+
+    if (user?.usertype === 'Guest') {
+      enableGuestOrders();
+      if (orderData?.order) {
+        const newGuestOrder = {
+          id: orderData.order.id,
+          status: orderData.order.status || 'pending',
+          payment_status: orderData.order.payment_status || 'paid',
+          user_email: user.email,
+          created_at: new Date().toISOString(),
+          total: totalPrice,
+          delivery_address: address,
+        };
+        updateOrders([newGuestOrder]);
+      }
+    }
+
+    // Construir datos del modal
+    const modalData = {
+      orderNumber: formatOrderId(orderData?.created_at || orderData?.order?.created_at || new Date().toISOString()),
+      totalPrice: getFinalTotal(),
+      itemCount: itemCount,
+      deliveryText: deliveryText,
+      needInvoice: needInvoice,
+      orderId: orderNumber ? orderNumber.toString() : null,
+      oxxoInfo: oxxoInfo,
+      isGratisOrder: getFinalTotal() < 10, // 🆕 Indicar si fue orden gratuita
+    };
+
+    // Navegar a pantalla de éxito
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'MainTabs',
+          state: {
+            routes: [
+              {
+                name: 'Inicio',
+                state: {
+                  routes: [
+                    {
+                      name: 'CategoriesList',
+                      params: {
+                        showSuccessModal: true,
+                        orderData: modalData,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
   };
 
-
-  // 1) Flujo único y robusto de pago
+  // Flujo único y robusto de pago
   const completeOrder = async () => {
-    
     if (loading) return;
-    
-    // console.log('💳 COMPLETE ORDER DEBUG:', {
-      // userType: user?.usertype,
-      // userId: user?.id,
-      // userEmail: user?.email,
-      // deliveryInfo: !!deliveryInfo,
-      // totalPrice: totalPrice,
-      // subtotal: getSubtotal(),
-      // shippingCost: shippingCost,
-      // finalTotal: getFinalTotal(),
-      // hasEmail: !!email?.trim(),
-      // hasAddress: !!address?.trim(),
-      // hasCoordinates: !!(latlong?.driver_lat && latlong?.driver_long),
-      // guestJustCompletedAddress,
-      // timestamp: new Date().toISOString()
-    // });
-    
+
     // VALIDACIONES CRÍTICAS ANTES DE ABRIR PASARELA
-    
-    // 1. Validar carrito no vacío
-    if (getFinalTotal() <= 0) {
+
+    // 1. Validar que el carrito tenga productos (NO validar monto aquí)
+    if (cart.length === 0) {
       showAlert({
         type: 'error',
-        title: 'Error',
+        title: 'Carrito vacío',
         message: 'No hay productos en el carrito.',
         confirmText: 'Cerrar',
       });
       return;
     }
+
+    // 1.1 Validar monto mínimo para Stripe (10 MXN)
+    // Si el total es menor, se procesará como orden gratuita más adelante
+    const STRIPE_MINIMUM_MXN = 10;
+    const finalTotal = getFinalTotal();
+    const isGratisOrder = finalTotal < STRIPE_MINIMUM_MXN;
     
     // 2. Validar información de entrega (CRÍTICO)
     // Si está restaurando, mostrar mensaje diferente
@@ -1283,15 +1209,6 @@ export default function Cart() {
       }
     } else {
       // Usuario registrado: requiere dirección del sistema nuevo
-      // console.log('🔍 CHECKOUT DEBUG - Usuario Registrado:', {
-        // address: address,
-        // addressTrim: address?.trim(),
-        // hasAddress: !!address?.trim(),
-        // userAddressesLength: userAddresses?.length,
-        // selectedAddress: selectedAddress,
-        // latlong: latlong
-      // });
-      
       if (!address?.trim()) {
         // No tiene dirección del sistema nuevo - mostrar modal para seleccionar
         setShowAddressModal(true);
@@ -1313,12 +1230,9 @@ export default function Cart() {
           return;
         }
       }
-      
-      // console.log('📍 VERIFICANDO COORDENADAS:', { latlong: latlong });
-      
+
       if (!latlong?.driver_lat || !latlong?.driver_long) {
-        
-        // 🆕 PASO 1: Intentar restaurar coordenadas guardadas
+        // PASO 1: Intentar restaurar coordenadas guardadas
         let restoredCoords = null;
         if (user?.id) {
           restoredCoords = await restoreCoordinates(user.id);
@@ -1328,17 +1242,13 @@ export default function Cart() {
           }
         }
         
-        // 🆕 PASO 2: Si no hay coordenadas restauradas, aplicar geocoding inteligente
+        // PASO 2: Si no hay coordenadas restauradas, aplicar geocoding inteligente
         if (!restoredCoords || !restoredCoords.driver_lat || !restoredCoords.driver_long) {
-          const userAddress = savedAddress?.trim();
-          if (userAddress && userAddress.length > 10) {
-            
+          const currentAddress = address?.trim();
+          if (currentAddress && currentAddress.length > 10) {
             try {
-              const geocodedCoords = await handleUserAddressGeocoding(userAddress);
-              if (geocodedCoords && geocodedCoords.driver_lat && geocodedCoords.driver_long) {
-                // Las coordenadas ya se establecieron, continuar con el flujo
-                // No hacer return aquí, dejar que continúe el flujo normal
-              } else {
+              const geocodedCoords = await handleUserAddressGeocoding(currentAddress);
+              if (!geocodedCoords?.driver_lat || !geocodedCoords?.driver_long) {
                 showAlert({
                   type: 'info',
                   title: 'Confirmar ubicación',
@@ -1347,33 +1257,28 @@ export default function Cart() {
                   cancelText: 'Continuar con dirección',
                   showCancel: true,
                   onConfirm: () => {
-                    // Ir al mapa para confirmar ubicación manualmente
                     navigation.navigate('MapSelector', {
-                      userAddress: userAddress,
+                      userAddress: currentAddress,
                       title: 'Confirmar ubicación para entrega',
                     });
                   },
                   onCancel: () => {
-                    // Continuar sin coordenadas precisas (usar coordenadas por defecto)
                     setLatlong({
-                      driver_lat: '19.4326', // Coordenadas por defecto CDMX
+                      driver_lat: '19.4326',
                       driver_long: '-99.1332',
                     });
-                    // Reintentar pago con coordenadas por defecto
                     setTimeout(() => completeOrder(), 100);
                   }
                 });
                 return;
               }
             } catch (error) {
-              // Fallback: usar coordenadas por defecto
               setLatlong({
                 driver_lat: '19.4326',
                 driver_long: '-99.1332',
               });
             }
           } else {
-            // Dirección muy corta o inválida - requiere confirmación manual
             showAlert({
               type: 'error',
               title: 'Ubicación requerida',
@@ -1398,45 +1303,40 @@ export default function Cart() {
       // Las coordenadas ya fueron confirmadas por el usuario en el mapa
       // No necesitamos pedir permisos de ubicación nuevamente
       // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
-      
+
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
-      // console.log('🚀 OXXO DEBUG - Starting order creation...');
       const orderData = await completeOrderFunc();
       const realOrderId = orderData?.order?.id;
 
-      // 🔧 DEBUG OXXO: Log de la orden creada
-      // console.log('🏪 OXXO DEBUG - Order Created:', {
-      // orderData: orderData,
-      // realOrderId: realOrderId,
-      // orderStatus: orderData?.order?.status,
-      // paymentMethod: orderData?.order?.payment_method,
-      // orderTotal: orderData?.order?.total,
-      // timestamp: new Date().toISOString()
-      // });
-      
       if (!realOrderId) {
         throw new Error('No se pudo crear la orden correctamente.');
       }
-      
+
+      // 🆕 PASO 1.5: Si es orden gratuita, procesar sin Stripe
+      if (isGratisOrder) {
+        // Marcar la orden como pagada directamente en el backend
+        try {
+          await axios.post(`${API_BASE_URL}/api/orders/mark-as-free`, {
+            order_id: realOrderId,
+            reason: 'Cupón 100% descuento'
+          });
+        } catch (freeOrderError) {
+          // Si falla el endpoint, intentar continuar de todas formas
+          console.log('⚠️ Error marcando orden gratuita:', freeOrderError.message);
+        }
+
+        // Saltar directamente al flujo de éxito (sin Stripe)
+        await handleOrderSuccess(orderData, null);
+        return;
+      }
+
       // 1.1) Crear PaymentIntent con ID real de la orden
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
-      
+
       // Usar el cálculo unificado de precio final (incluye envío)
       const finalPrice = getFinalTotal();
       
       // 🚨 DEBUG: Verificar qué se envía a Stripe
-      // console.log('🚨 ENVIANDO A STRIPE:', {
-        // userType: user?.usertype,
-        // totalPrice: totalPrice,
-        // appliedCoupon: appliedCoupon,
-        // finalPrice: finalPrice,
-        // shippingCost: shippingCost,
-        // subtotal: getSubtotal(),
-        // discountAmount: getDiscountAmount(),
-        // centavos: parseFloat(finalPrice) * 100,
-        // realOrderId: realOrderId
-      // });
-      
       const {data} = await axios.post(
         `${API_BASE_URL}/api/create-payment-intent`,
         {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail, order_id: realOrderId},
@@ -1446,26 +1346,16 @@ export default function Cart() {
         throw new Error('No se obtuvo clientSecret del servidor.');
       }
 
-      // 1.2) Inicializar Stripe PaymentSheet
-      // 🔧 DEBUG OXXO: Log de la configuración del payment sheet
+      // Inicializar Stripe PaymentSheet
       const paymentSheetConfig = {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Sabores de Origen',
-        allowsDelayedPaymentMethods: true, // CAMBIADO: true para OXXO y otros métodos delayed
+        allowsDelayedPaymentMethods: true,
         returnURL: 'occr-productos-app://stripe-redirect',
       };
 
-      // console.log('🏪 OXXO DEBUG - Payment Sheet Config:', {
-      // hasClientSecret: !!clientSecret,
-      // clientSecretPreview: clientSecret ? `${clientSecret.substring(0, 30)}...` : null,
-      // allowsDelayedPaymentMethods: paymentSheetConfig.allowsDelayedPaymentMethods,
-      // merchantDisplayName: paymentSheetConfig.merchantDisplayName,
-      // timestamp: new Date().toISOString()
-      // });
-
       const {error: initError} = await initPaymentSheet({
         ...paymentSheetConfig,
-        // Configuración de métodos de pago específicos para México
         defaultBillingDetails: {
           address: {
             country: 'MX', // México
@@ -1483,17 +1373,7 @@ export default function Cart() {
           currencyCode: 'MXN', // Pesos mexicanos
         },
         // Configuración explícita de métodos de pago
-        primaryButtonLabel: (() => {
-          const finalTotal = getFinalTotal();
-          // console.log('💰 BOTÓN PAGAR - Estado shipping:', {
-            // userType: user?.usertype,
-            // shippingCost: shippingCost,
-            // finalTotal: finalTotal,
-            // subtotal: getSubtotal(),
-            // discountAmount: getDiscountAmount()
-          // });
-          return `Pagar ${formatPriceWithSymbol(finalTotal)}`;
-        })(),
+        primaryButtonLabel: `Pagar ${formatPriceWithSymbol(getFinalTotal())}`,
         // Asegurar que se acepten tarjetas internacionales
         appearance: {
           primaryButton: {
@@ -1512,17 +1392,9 @@ export default function Cart() {
         throw initError;
       }
 
-      // 1.3) Presentar la UI de pago
-      // console.log('🏪 OXXO DEBUG - Presenting Payment Sheet...');
+      // Presentar la UI de pago
       const {error: paymentError} = await presentPaymentSheet();
 
-      // 🔧 DEBUG OXXO: Log después de presentar el payment sheet
-      // console.log('🏪 OXXO DEBUG - Payment Sheet Result:', {
-      // hasError: !!paymentError,
-      // errorCode: paymentError?.code,
-      // errorMessage: paymentError?.message,
-      // timestamp: new Date().toISOString()
-      // });
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
           showAlert({
@@ -1541,22 +1413,11 @@ export default function Cart() {
         }
         return;
       }
-      // 🏪 CAPTURAR INFORMACIÓN DE VOUCHER OXXO
+      // Capturar información de voucher OXXO si aplica
       let oxxoInfo = null;
       try {
         const paymentIntentResult = await retrievePaymentIntent(clientSecret);
         const nextAction = paymentIntentResult?.paymentIntent?.nextAction;
-
-        // 🔧 DEBUG OXXO: Logs detallados del payment intent
-        // console.log('🏪 OXXO DEBUG - Payment Intent Result:', {
-        // paymentIntentId: paymentIntentResult?.paymentIntent?.id,
-        // status: paymentIntentResult?.paymentIntent?.status,
-        // nextActionType: nextAction?.type,
-        // paymentMethodType: paymentIntentResult?.paymentIntent?.paymentMethodTypes,
-        // amount: paymentIntentResult?.paymentIntent?.amount,
-        // currency: paymentIntentResult?.paymentIntent?.currency,
-        // fullNextAction: nextAction
-        // });
 
         if (nextAction?.type === 'oxxoVoucher') {
           oxxoInfo = {
@@ -1565,178 +1426,14 @@ export default function Cart() {
             expiration: nextAction.expiration,
             amount: finalPrice
           };
-
-          // console.log('🏪 OXXO VOUCHER DETECTED:', oxxoInfo);
-        } else {
-          // console.log('🏪 OXXO DEBUG - No voucher found, next action type:', nextAction?.type);
         }
       } catch (error) {
-        // console.log('❌ OXXO DEBUG - Error retrieving payment intent:', error);
+        // Error obteniendo payment intent - continuar sin info OXXO
       }
-      
-      // 1.4) Pago exitoso: la orden ya fue creada, solo actualizar usuario
-      // 🆕 GUEST FIX: Guardar email Y dirección de Guest para futuras compras
-      if (user?.usertype === 'Guest') {
-        const updateData = {};
-        
-        // Guardar email si no lo tenía o si cambió
-        if ((!user?.email || user?.email?.trim() === '') && email?.trim()) {
-          updateData.email = email.trim();
-        }
-        
-        // 🆕 Guardar dirección para reutilizar en próximas compras
-        if (address?.trim()) {
-          updateData.address = address.trim();
-        }
-        
-        // Solo actualizar si hay algo que guardar
-        if (Object.keys(updateData).length > 0) {
-          await updateUser(updateData);
-        }
-      }
-      
-      // Crear resumen del pedido
-      const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
-      const deliveryText = deliveryInfo ? 
-        `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}` : 
-        'Horario pendiente';
-      
-      // Obtener número de orden de la respuesta del backend
-      const orderNumber = realOrderId || orderData?.order?.id;
-      const isValidOrderId = orderNumber && orderNumber !== 'N/A' && orderNumber.toString().trim() !== '';
 
-      // console.log('🔍 ORDER ID DEBUG:', {
-      // orderData: orderData,
-      // orderNumber: orderNumber,
-      // realOrderId: realOrderId,
-      // backendOrderId: orderData?.order?.id,
-      // isValidOrderId: isValidOrderId,
-      // userType: user?.usertype
-      // });
-      
-      
-      // Limpiar datos inmediatamente después del pedido exitoso
-      clearCart();
-      setDeliveryInfo(null);
-      
-      // 🆕 GUEST FIX: NUNCA limpiar coordenadas de Guest después del pago
-      // Solo limpiar coordenadas para usuarios registrados
-      if (user?.usertype !== 'Guest') {
-        setLatlong(null);
-      }
-      
-      // Limpiar deliveryInfo y coordenadas guardados en AsyncStorage
-      if (user?.id) {
-        clearSavedDeliveryInfo(user.id);
-        clearSavedCoordinates(user.id);
-      }
-      
-      // ✅ ACTUALIZACIÓN AGRESIVA: Badge siempre actualizado
-      refreshOrders(); // Refresh inmediato
+      // Pago exitoso - usar función centralizada
+      await handleOrderSuccess(orderData, oxxoInfo);
 
-      // Refresh adicionales para asegurar sincronización
-      setTimeout(() => refreshOrders(), 2000);  // 2s después
-      setTimeout(() => refreshOrders(), 5000);  // 5s después
-
-      // 🏪 FIX OXXO: Activar Guest orders si es un usuario Guest
-      if (user?.usertype === 'Guest') {
-        enableGuestOrders();
-        // console.log('🏪 OXXO DEBUG - Guest orders enabled after payment');
-      }
-      
-      // 🆕 GUEST FIX: Actualizar badge para Guest después del pago
-      if (user?.usertype === 'Guest' && orderData?.order) {
-        // Crear un array con la orden recién creada para actualizar el badge
-        const newGuestOrder = {
-          id: orderData.order.id,
-          status: orderData.order.status || 'pending',
-          payment_status: orderData.order.payment_status || 'paid',
-          user_email: user.email,
-          created_at: new Date().toISOString(),
-          // Agregar otros campos necesarios para el badge
-          total: totalPrice,
-          delivery_address: address
-        };
-
-        // Actualizar OrderContext con la nueva orden para mostrar badge inmediatamente
-        updateOrders([newGuestOrder]);
-        // console.log('🎉 GUEST BADGE: Actualizado inmediatamente con nueva orden:', newGuestOrder.id);
-      }
-      
-      // 🐛 DEBUG: Logs temporales para diagnóstico OXXO
-      // console.log('🎉 PAGO EXITOSO - Analizando orderData completo:', {
-        // userType: user?.usertype,
-        // paymentMethod: 'OXXO_DETECTED',
-        // orderDataRaw: orderData,
-        // orderDataKeys: Object.keys(orderData || {}),
-        // orderDataString: JSON.stringify(orderData, null, 2),
-        // orderNumber: orderNumber,
-        // orderDataOrderId: orderData?.order_id,
-        // orderDataId: orderData?.id,
-        // isValidOrderId: isValidOrderId,
-        // totalPrice: totalPrice,
-        // deliveryText: deliveryText
-      // });
-
-      // Construir datos del modal para debug
-      const modalData = {
-        orderNumber: formatOrderId(orderData?.created_at || orderData?.order?.created_at || new Date().toISOString()),
-        totalPrice: totalPrice,
-        itemCount: itemCount,
-        deliveryText: deliveryText,
-        needInvoice: needInvoice,
-        orderId: orderNumber ? orderNumber.toString() : null,
-        oxxoInfo: oxxoInfo // 🏪 Información del voucher OXXO si existe
-      };
-
-      // 🔧 DEBUG OXXO: Log del modal data completo
-      // console.log('🏪 OXXO DEBUG - Success Modal Data:', {
-      // modalData: modalData,
-      // hasOxxoInfo: !!oxxoInfo,
-      // oxxoVoucherNumber: oxxoInfo?.voucherNumber,
-      // oxxoAmount: oxxoInfo?.amount,
-      // orderIdForModal: modalData.orderId,
-      // willShowOxxoVoucher: !!oxxoInfo,
-      // timestamp: new Date().toISOString()
-      // });
-      
-      
-      // 🔧 NAVEGACIÓN DIRECTA SIMPLIFICADA - Evitar navegación anidada
-      
-      // Opción 1: Navegar directo sin estructura anidada (PUEDE FALLAR)
-      // navigation.navigate('CategoriesList', {
-      //   showSuccessModal: true,
-      //   orderData: modalData
-      // });
-      
-      // Opción 2: Usar reset para asegurar navegación limpia y que los parámetros lleguen
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: 'MainTabs',
-            state: {
-              routes: [
-                {
-                  name: 'Inicio',
-                  state: {
-                    routes: [
-                      {
-                        name: 'CategoriesList',
-                        params: {
-                          showSuccessModal: true,
-                          orderData: modalData
-                        }
-                      }
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      });
-      
     } catch (err) {
       showAlert({
         type: 'error',
@@ -1795,33 +1492,17 @@ export default function Cart() {
     }
   };
 
-  // 2) Envía la orden al backend y maneja fallos
+  // Envía la orden al backend y maneja fallos
   const completeOrderFunc = async () => {
     try {
-      // 🔑 CRÍTICO: Obtener FCM token para notificaciones (especialmente para Guest)
+      // Obtener FCM token para notificaciones
       let fcmToken = null;
       try {
         fcmToken = NotificationService.token || await NotificationService.getToken();
-        // console.log('🔔 FCM TOKEN DEBUG - Orden:', {
-          // userType: user?.usertype,
-          // userId: user?.id,
-          // userEmail: user?.email,
-          // hasToken: !!fcmToken,
-          // tokenLength: fcmToken ? fcmToken.length : 0,
-          // tokenPreview: fcmToken ? `${fcmToken.substring(0, 30)}...` : 'NULL',
-          // notificationService: {
-            // hasInstance: !!NotificationService,
-            // cachedToken: !!NotificationService.token
-          // }
-        // });
       } catch (error) {
-        // console.log('⚠️ ERROR FCM TOKEN:', {
-          // userType: user?.usertype,
-          // error: error.message,
-          // stack: error.stack
-        // });
+        // Error obteniendo FCM token - continuar sin él
       }
-      
+
       const cartUpdateArr = cart.map(it => {
         // Calcular precio final con descuento aplicado
         const itemDiscount = Number(it.discount) || 0;
@@ -1873,19 +1554,6 @@ export default function Cart() {
 
       // Obtener coordenadas según la lógica de usuario
       const coordinates = getOrderCoordinates();
-      
-      // console.log('📍 DATOS DE ENVÍO OPTIMIZADOS:', {
-        // coordinates: coordinates,
-        // selectedAddress: selectedAddress ? {
-          // id: selectedAddress.id,
-          // address: selectedAddress.address,
-          // lat: selectedAddress.latitude,
-          // lng: selectedAddress.longitude,
-          // isDefault: selectedAddress.is_default
-        // } : null,
-        // userType: user?.usertype,
-        // addressSource: coordinates.address_source
-      // });
 
       const payload = {
         userid: user?.id,
@@ -1894,49 +1562,25 @@ export default function Cart() {
         orderdetails: cartUpdateArr,
         customer_lat: coordinates.customer_lat,
         customer_long: coordinates.customer_long,
-        address_source: coordinates.address_source, // Nuevo campo para el backend
-        delivery_address: coordinates.delivery_address || address?.trim() || '', // Dirección cuando aplique
+        address_source: coordinates.address_source,
+        delivery_address: coordinates.delivery_address || address?.trim() || '',
         need_invoice: needInvoice ? "true" : "false",
         tax_details: needInvoice ? (taxDetails || '') : '',
         delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
         delivery_slot: deliveryInfo?.slot || '',
-        // 🚚 ARREGLAR: Incluir información de envío
         shipping_cost: shippingCost || 0,
         subtotal: getSubtotal(),
         total_amount: getFinalTotal(),
-        // Campos de cupón (si existe y es válido)
         coupon_code: appliedCoupon && isCouponStillValid() ? appliedCoupon.code : null,
         coupon_discount: appliedCoupon && isCouponStillValid() ? appliedCoupon.discount : null,
         coupon_type: appliedCoupon && isCouponStillValid() ? appliedCoupon.type : null,
         discount_amount: appliedCoupon && isCouponStillValid() ? getDiscountAmount() : 0,
-        // 🔑 CRÍTICO: Incluir FCM token para notificaciones push
         fcm_token: fcmToken || null,
       };
 
-      // 🔧 DEBUG OXXO: Log completo del payload enviado al backend
-      // console.log('🏪 OXXO DEBUG - Sending Payload to Backend:', {
-      // endpoint: `${API_BASE_URL}/api/ordersubmit`,
-      // payload: payload,
-      // userType: user?.usertype,
-      // paymentExpected: 'OXXO_OR_OTHER',
-      // timestamp: new Date().toISOString()
-      // });
-
       const response = await axios.post(`${API_BASE_URL}/api/ordersubmit`, payload);
-
-      // 🔧 DEBUG OXXO: Log de la respuesta del backend
-      // console.log('🏪 OXXO DEBUG - Backend Response:', {
-      // status: response.status,
-      // data: response.data,
-      // orderId: response.data?.order?.id,
-      // orderStatus: response.data?.order?.status,
-      // paymentMethod: response.data?.order?.payment_method,
-      // timestamp: new Date().toISOString()
-      // });
-
       return response.data;
     } catch (err) {
-      
       showAlert({
         type: 'error',
         title: 'Error',
@@ -1982,9 +1626,7 @@ export default function Cart() {
         });
       }
     } else {
-      // Usuario registrado: verificar si tiene dirección del SISTEMA NUEVO
-      // console.log('🔍 VERIFICANDO DIRECCIÓN SISTEMA NUEVO:', { address: address?.trim() });
-      
+      // Usuario registrado: verificar si tiene dirección del sistema nuevo
       if (!address?.trim()) {
         // No tiene dirección del sistema nuevo: mostrar modal
         setShowAddressModal(true);
@@ -2076,64 +1718,6 @@ export default function Cart() {
 
     fetchUpsellItems();
   }, []);
-
-  // TEMPORALMENTE COMENTADO - Sistema de temporizadores de productos
-  /*
-  useEffect(() => {
-    const initialTimers = {};
-    cart.forEach(item => {
-      if (timers[item.id] == null) {
-        initialTimers[item.id] = 3600; // 1 hora = 3600 segundos
-      }
-    });
-    if (Object.keys(initialTimers).length > 0) {
-      setTimers(prev => ({...prev, ...initialTimers}));
-    }
-  }, [cart, timers]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const expiredIds = [];
-
-      // 1️⃣ Actualizamos los timers
-      setTimers(prevTimers => {
-        const updatedTimers = {...prevTimers};
-
-        Object.keys(updatedTimers).forEach(id => {
-          if (updatedTimers[id] > 0) {
-            updatedTimers[id] -= 1;
-
-            if (updatedTimers[id] === 600) {
-              setTimeout(() => {
-                addNotification(
-                  'Vencimiento del carrito',
-                  'Tu artículo en el carrito expirará en 10 minutos.',
-                );
-              }, 0);
-            }
-
-            if (updatedTimers[id] === 0) {
-              // Sólo marcamos el id como expirado, sin tocar el contexto
-              expiredIds.push(id);
-              delete updatedTimers[id];
-            }
-          }
-        });
-
-        return updatedTimers;
-      });
-
-      // 2️⃣ Fuera del setTimers, eliminamos los expirados
-      if (expiredIds.length > 0) {
-        expiredIds.forEach(id => removeFromCart(parseInt(id, 10)));
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [addNotification, removeFromCart]);
-  */
-
-  // Ya no necesitamos limpiar timeouts
 
   return (
     <View style={styles.container}>
@@ -2340,6 +1924,7 @@ export default function Cart() {
                 onCouponApply={handleCouponApply}
                 onCouponRemove={handleCouponRemove}
                 subtotal={getSubtotal()}
+                subtotalForCoupons={getSubtotalForCoupons()} // 🔧 FIX BUG #3: Subtotal para validar cupones
                 discountAmount={getDiscountAmount()}
                 finalTotal={getFinalTotal()}
                 shippingCost={shippingCost}
@@ -2680,6 +2265,7 @@ const CartFooter = ({
   onCouponApply,
   onCouponRemove,
   subtotal,
+  subtotalForCoupons, // 🔧 FIX BUG #3: Subtotal para validar cupones (sin descuentos promocionales)
   discountAmount,
   finalTotal,
   shippingCost,
@@ -2698,157 +2284,10 @@ const CartFooter = ({
   automaticPromotions, // ✅ FIX: Agregar automaticPromotions a las props
   setIsChangingAddress, // ✅ NUEVA: Función para cambiar dirección
   setShowAddressModal, // ✅ NUEVA: Función para mostrar modal
-  userAddresses, // ✅ NUEVA: Lista de direcciones para condicionar botón
+  userAddresses,
 }) => {
-  
-  // 🐛 FUNCIÓN DEBUG: Construir payload que se enviará al backend - TEMPORALMENTE DESHABILITADA
-  /*
-  const buildDebugPayload = () => {
-    if (!cart || cart.length === 0) return null;
-    
-    try {
-      // Construir array de productos igual que en completeOrderFunc
-      const cartUpdateArr = cart.map(it => {
-        const itemDiscount = Number(it.discount) || 0;
-        const finalPrice = it.price - itemDiscount;
-        
-        return {
-          item_name: it.name,
-          item_price: finalPrice.toString(),
-          item_original_price: it.price.toString(),
-          item_discount: itemDiscount.toString(),
-          item_qty: it.quantity.toString(),
-          item_image: it.photo,
-        };
-      });
-      
-      // Email según tipo de usuario - MEJORADO PARA EVITAR ÓRDENES SIN EMAIL
-      let userEmailForOrder = '';
-      
-      if (user?.usertype === 'Guest') {
-        // Para Guests: priorizar email local, luego email del usuario
-        userEmailForOrder = email?.trim() || user?.email?.trim() || '';
-      } else {
-        // Para usuarios registrados: usar email del usuario o obtener del perfil
-        userEmailForOrder = user?.email?.trim() || '';
-        
-        // Si no hay email en el contexto, intentar obtenerlo del perfil
-        if (!userEmailForOrder && user?.id) {
-          try {
-            const profileResponse = await axios.get(`${API_BASE_URL}/api/userdetails/${user.id}`);
-            const profileData = profileResponse.data?.data?.[0];
-            userEmailForOrder = profileData?.email?.trim() || '';
-          } catch (profileError) {
-            // console.error('⚠️ Error obteniendo email del perfil (completeOrder):', profileError);
-          }
-        }
-      }
-      
-      // Validación final: asegurar que siempre tengamos un email válido
-      if (!userEmailForOrder) {
-        // console.error('❌ ERROR CRÍTICO: No se pudo obtener email para la orden (completeOrder)');
-        showAlert({
-          type: 'error',
-          title: 'Email requerido',
-          message: 'No se pudo obtener tu email. Por favor verifica tu información en el perfil.',
-          confirmText: 'Entendido'
-        });
-        return;
-      }
-      
-      
-      // Coordenadas según tipo de usuario (lógica simplificada)
-      let coordinates = {
-        customer_lat: latlong?.driver_lat || '',
-        customer_long: latlong?.driver_long || '',
-        address_source: user?.usertype === 'Guest' ? 'guest_manual_address' : 'registered_user_address',
-        delivery_address: ''
-      };
-      
-      if (user?.usertype === 'Guest') {
-        coordinates.delivery_address = address?.trim() || '';
-      } else {
-        const savedAddress = userProfile?.address || user?.address;
-        coordinates.delivery_address = savedAddress?.trim() || address?.trim() || '';
-      }
-      
-      // Payload completo
-      const payload = {
-        userid: user?.id,
-        orderno: '1',
-        user_email: userEmailForOrder,
-        orderdetails: cartUpdateArr,
-        customer_lat: coordinates.customer_lat,
-        customer_long: coordinates.customer_long,
-        address_source: coordinates.address_source,
-        delivery_address: coordinates.delivery_address,
-        need_invoice: needInvoice ? "true" : "false",
-        tax_details: needInvoice ? (taxDetails || '') : '',
-        delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
-        delivery_slot: deliveryInfo?.slot || '',
-      };
-      
-      return payload;
-    } catch (error) {
-      return { error: error.message };
-    }
-  };
-  */
-  
-  // const debugPayload = buildDebugPayload(); // TEMPORALMENTE DESHABILITADO
-  
   return (
   <View>
-    {/* TEMPORALMENTE OCULTO - Upsell/Sugerencias para implementar más tarde */}
-    {/* <Text style={styles.suggestionsTitle}>También te puede interesar</Text>
-    {loadingUpsell ? (
-      <ActivityIndicator size="large" color="#33A744" />
-    ) : (
-      <FlatList
-        data={upsellItems}
-        keyExtractor={item => item.id.toString()}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => {
-          // Aplicar misma lógica de descuentos que otras pantallas
-          const discountNum = Number(item.discount) || 0;
-          const discountedPrice = item.price - discountNum;
-          const hasDiscount = discountNum > 0;
-          
-          return (
-            <View style={styles.upsellItem}>
-              {hasDiscount && (
-                <View style={styles.upsellDiscountBadge}>
-                  <Text style={styles.upsellDiscountText}>-${discountNum}</Text>
-                </View>
-              )}
-              
-              <Image source={{uri: item.photo}} style={styles.upsellImage} />
-              <Text style={styles.upsellName}>{item.name}</Text>
-              
-              {hasDiscount ? (
-                <View style={styles.upsellPriceContainer}>
-                  <Text style={styles.upsellOriginalPrice}>
-                    {formatPriceWithSymbol(item.price)}
-                  </Text>
-                  <Text style={styles.upsellDiscountedPrice}>
-                    {formatPriceWithSymbol(discountedPrice)}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.upsellPrice}>{formatPriceWithSymbol(item.price)}</Text>
-              )}
-              
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => addToCart(item)}>
-                <Text style={styles.addButtonText}>Agregar al carrito</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
-      />
-    )} */}
     {/* Selector de horario */}
     <View style={styles.totalContainer}>
       <TouchableOpacity
@@ -2880,13 +2319,14 @@ const CartFooter = ({
     </View>
 
     {/* Cupón de descuento */}
+    {/* 🔧 FIX BUG #3: Usar subtotalForCoupons para validar cupones correctamente */}
     <CouponInput
       onCouponApply={onCouponApply}
       onCouponRemove={onCouponRemove}
       appliedCoupon={appliedCoupon}
-      subtotal={subtotal}
+      subtotal={subtotalForCoupons} // Subtotal SIN descuentos promocionales
       shippingCost={shippingCost}
-      isValid={!appliedCoupon || subtotal >= appliedCoupon.minAmount}
+      isValid={!appliedCoupon || subtotalForCoupons >= appliedCoupon.minAmount}
     />
 
     {/* Promociones Automáticas */}
@@ -3087,78 +2527,6 @@ const CartFooter = ({
         </TouchableOpacity>
       </View>
     )}
-    
-    {/* 🐛 DEBUG: Caja para mostrar payload que se enviará al backend - TEMPORALMENTE DESHABILITADO */}
-    {/*
-    {debugPayload && (
-      <View style={styles.debugContainer}>
-        <TouchableOpacity 
-          style={styles.debugHeader}
-          onPress={() => {
-            // Toggle para expandir/contraer (simplificado)
-          }}>
-          <Text style={styles.debugTitle}>🐛 Debug: Payload Backend</Text>
-          <Text style={styles.debugSubtitle}>Datos que se enviarán al API</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.debugContent}>
-          <View style={styles.debugSection}>
-            <Text style={styles.debugSectionTitle}>📋 Información básica:</Text>
-            <Text style={styles.debugText}>👤 Usuario: {debugPayload.user_email || 'Sin email'}</Text>
-            <Text style={styles.debugText}>🏷️ Tipo: {user?.usertype || 'Unknown'}</Text>
-            <Text style={styles.debugText}>📦 Items: {debugPayload.orderdetails?.length || 0}</Text>
-            <Text style={styles.debugText}>💰 Total: ${totalPrice} MXN</Text>
-          </View>
-          
-          <View style={styles.debugSection}>
-            <Text style={styles.debugSectionTitle}>🚚 Entrega:</Text>
-            <Text style={styles.debugText}>📅 Fecha: {debugPayload.delivery_date || 'No seleccionada'}</Text>
-            <Text style={styles.debugText}>⏰ Horario: {debugPayload.delivery_slot || 'No seleccionado'}</Text>
-            <Text style={styles.debugText} numberOfLines={2}>
-              📍 Dirección: {debugPayload.delivery_address || 'Sin dirección'}
-            </Text>
-          </View>
-          
-          <View style={styles.debugSection}>
-            <Text style={styles.debugSectionTitle}>🗺️ Coordenadas:</Text>
-            <Text style={styles.debugText}>📐 Lat: {debugPayload.customer_lat || 'Sin coordenadas'}</Text>
-            <Text style={styles.debugText}>📐 Lng: {debugPayload.customer_long || 'Sin coordenadas'}</Text>
-            <Text style={styles.debugText}>🏗️ Origen: {debugPayload.address_source}</Text>
-          </View>
-          
-          {needInvoice && (
-            <View style={styles.debugSection}>
-              <Text style={styles.debugSectionTitle}>🧾 Facturación:</Text>
-              <Text style={styles.debugText}>✅ Requiere factura</Text>
-              <Text style={styles.debugText} numberOfLines={1}>
-                📄 RFC: {debugPayload.tax_details || 'Sin datos fiscales'}
-              </Text>
-            </View>
-          )}
-          
-          <View style={[styles.debugSection, styles.debugValidation]}>
-            <Text style={styles.debugSectionTitle}>✅ Validación:</Text>
-            <Text style={[styles.debugText, 
-              debugPayload.user_email ? styles.debugValid : styles.debugInvalid]}>
-              Email: {debugPayload.user_email ? '✅' : '❌'}
-            </Text>
-            <Text style={[styles.debugText, 
-              debugPayload.delivery_address ? styles.debugValid : styles.debugInvalid]}>
-              Dirección: {debugPayload.delivery_address ? '✅' : '❌'}
-            </Text>
-            <Text style={[styles.debugText, 
-              (debugPayload.customer_lat && debugPayload.customer_long) ? styles.debugValid : styles.debugInvalid]}>
-              Coordenadas: {(debugPayload.customer_lat && debugPayload.customer_long) ? '✅' : '❌'}
-            </Text>
-            <Text style={[styles.debugText, 
-              (debugPayload.delivery_date && debugPayload.delivery_slot) ? styles.debugValid : styles.debugInvalid]}>
-              Horario: {(debugPayload.delivery_date && debugPayload.delivery_slot) ? '✅' : '❌'}
-            </Text>
-          </View>
-        </View>
-      </View>
-    )}
-    */}
   </View>
   );
 };
