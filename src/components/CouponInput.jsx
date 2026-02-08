@@ -206,7 +206,13 @@ const CouponInput = ({
                 !isValid && styles.appliedDiscountInvalid
               ]}>
                 -{formatDiscount(appliedCoupon)} 
-                {isValid && `($${Math.min((appliedCoupon.type === 'percentage' ? (subtotal * appliedCoupon.discount) / 100 : appliedCoupon.discount), subtotal).toFixed(0)})`}
+                {isValid && (() => {
+                  const baseAmount = appliedCoupon.appliesTo === 'shipping' ? shippingCost : subtotal;
+                  const calculatedDiscount = appliedCoupon.type === 'percentage'
+                    ? (baseAmount * appliedCoupon.discount) / 100
+                    : appliedCoupon.discount;
+                  return `($${Math.min(calculatedDiscount, baseAmount).toFixed(0)})`;
+                })()}
               </Text>
             </View>
             {/* Mostrar beneficios múltiples o descripción simple */}

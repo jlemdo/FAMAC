@@ -345,8 +345,51 @@ export default function Cart() {
   };
 
   // 🎫 FUNCIONES DE CUPONES
+
+  // 🔧 BUG #10 FIX: Guardar cupón en AsyncStorage
+  const saveCoupon = async (couponData, odUserId) => {
+    try {
+      const key = `appliedCoupon_${odUserId}`;
+      await AsyncStorage.setItem(key, JSON.stringify(couponData));
+    } catch (error) {
+    }
+  };
+
+  // 🔧 BUG #10 FIX: Restaurar cupón desde AsyncStorage
+  const restoreCoupon = async (odUserId, currentSubtotal) => {
+    try {
+      const key = `appliedCoupon_${odUserId}`;
+      const savedData = await AsyncStorage.getItem(key);
+      if (savedData) {
+        const couponData = JSON.parse(savedData);
+        // Validar que el cupón aún cumpla el mínimo
+        if (currentSubtotal >= (couponData.minAmount || 0)) {
+          setAppliedCoupon(couponData);
+          return couponData;
+        } else {
+          // Ya no cumple mínimo, eliminar
+          await clearSavedCoupon(odUserId);
+        }
+      }
+    } catch (error) {
+    }
+    return null;
+  };
+
+  // 🔧 BUG #10 FIX: Limpiar cupón guardado
+  const clearSavedCoupon = async (odUserId) => {
+    try {
+      const key = `appliedCoupon_${odUserId}`;
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+    }
+  };
+
   const handleCouponApply = (couponData) => {
     setAppliedCoupon(couponData);
+    // 🔧 BUG #10 FIX: Persistir cupón
+    const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+    saveCoupon(couponData, odUserId);
     showAlert({
       type: 'success',
       title: 'Cupón aplicado',
@@ -356,6 +399,9 @@ export default function Cart() {
 
   const handleCouponRemove = () => {
     setAppliedCoupon(null);
+    // 🔧 BUG #10 FIX: Limpiar cupón persistido
+    const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+    clearSavedCoupon(odUserId);
     showAlert({
       type: 'info',
       title: 'Cupón removido',
@@ -699,12 +745,15 @@ export default function Cart() {
     const clearCartRelatedData = () => {
       setDeliveryInfo(null);
       setAppliedCoupon(null);
+      // 🔧 BUG #10 FIX: También limpiar cupón de AsyncStorage
+      const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+      clearSavedCoupon(odUserId);
     };
 
     if (setCartClearCallback) {
       setCartClearCallback(clearCartRelatedData);
     }
-  }, [setCartClearCallback]);
+  }, [setCartClearCallback, user?.id, user?.email]);
 
   // Inicializar estados cuando cambia el usuario
   useEffect(() => {
@@ -727,6 +776,13 @@ export default function Cart() {
   useFocusEffect(
     React.useCallback(() => {
       const handleFocus = async () => {
+        // 🔧 BUG #10 FIX: Restaurar cupón para cualquier usuario con carrito
+        if (cart.length > 0 && !appliedCoupon) {
+          const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+          const currentSubtotal = parseFloat(subtotalAfterProductDiscounts) || 0;
+          await restoreCoupon(odUserId, currentSubtotal);
+        }
+
         if (user?.usertype !== 'Guest' && user?.id) {
           fetchUserAddresses();
           // Solo restaurar datos si hay productos en el carrito
@@ -1004,10 +1060,14 @@ export default function Cart() {
 
     const orderNumber = realOrderId || orderData?.order?.id;
 
-    // Limpiar datos
+    // Limpiar datos - LIMPIEZA COMPLETA DESPUÉS DE PAGO
     clearCart();
     setDeliveryInfo(null);
-    setAppliedCoupon(null); // 🆕 Limpiar cupón aplicado
+    setAppliedCoupon(null);
+
+    // 🔧 FIX: Limpiar TODO de AsyncStorage después de pago exitoso
+    const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+    clearSavedCoupon(odUserId);
 
     if (user?.usertype !== 'Guest') {
       setLatlong(null);
@@ -1016,6 +1076,10 @@ export default function Cart() {
     if (user?.id) {
       clearSavedDeliveryInfo(user.id);
       clearSavedCoordinates(user.id);
+    } else if (user?.email) {
+      // 🔧 FIX: También limpiar para Guest usando email como key
+      clearSavedDeliveryInfo(user.email);
+      clearSavedCoordinates(user.email);
     }
 
     // Refrescar órdenes
@@ -1257,13 +1321,25 @@ export default function Cart() {
       if (isGratisOrder) {
         // Marcar la orden como pagada directamente en el backend
         try {
-          await axios.post(`${API_BASE_URL}/api/orders/mark-as-free`, {
+          const freeOrderResponse = await axios.post(`${API_BASE_URL}/api/orders/mark-as-free`, {
             order_id: realOrderId,
             reason: 'Cupón 100% descuento'
           });
+
+          // Verificar que el backend confirmó el cambio
+          if (!freeOrderResponse.data?.success) {
+            throw new Error(freeOrderResponse.data?.message || 'No se pudo procesar la orden gratuita');
+          }
         } catch (freeOrderError) {
-          // Si falla el endpoint, intentar continuar de todas formas
-          console.log('⚠️ Error marcando orden gratuita:', freeOrderError.message);
+          // Si falla, mostrar error y NO continuar
+          showAlert({
+            type: 'error',
+            title: 'Error procesando pedido',
+            message: 'No se pudo completar tu pedido gratuito. Por favor intenta de nuevo o contacta soporte.',
+            confirmText: 'Entendido'
+          });
+          setLoading(false);
+          return;
         }
 
         // Saltar directamente al flujo de éxito (sin Stripe)
