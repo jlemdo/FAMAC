@@ -11,6 +11,7 @@ export function CartProvider({ children }) {
     const [currentUserId, setCurrentUserId] = useState(null);
     const [onCartClearCallback, setOnCartClearCallback] = useState(null);
     const [automaticPromotions, setAutomaticPromotions] = useState([]);
+    const [cartLoaded, setCartLoaded] = useState(false); // 🔧 FIX: Flag para saber si ya cargamos del backend
     const { user } = useContext(AuthContext);
 
     // 🔧 REFS para debounce - evitar múltiples llamadas rápidas
@@ -84,6 +85,7 @@ export function CartProvider({ children }) {
         // 🚨 CASO CRÍTICO: Usuario hace logout (user cambia a null)
         if (currentUserId !== null && userId === null) {
             // console.log('🚨 CARRITO: Limpiando por LOGOUT');
+            setCartLoaded(false); // 🔧 FIX: Resetear flag para próximo usuario
             clearCartOnLogout(); // Limpiar TODOS los carritos de storage
             if (onCartClearCallback) {
                 onCartClearCallback();
@@ -98,6 +100,9 @@ export function CartProvider({ children }) {
                 newUserType: userId?.toString().includes('@') ? 'Guest' : 'User'
             });
 
+            // 🔧 FIX: Resetear flag antes de limpiar para que no se dispare el clear del backend
+            setCartLoaded(false);
+
             // Limpiar carrito actual INMEDIATAMENTE
             setCart([]);
 
@@ -106,7 +111,7 @@ export function CartProvider({ children }) {
                 onCartClearCallback();
             }
         }
-        
+
         // Actualizar el ID del usuario actual
         setCurrentUserId(userId);
     }, [user?.id, user?.email]); // REMOVIDO currentUserId de las dependencias
@@ -127,6 +132,7 @@ export function CartProvider({ children }) {
     // 📦 CORREGIDO: Guardar carrito con DEBOUNCE para evitar saturar el servidor
     useEffect(() => {
         if (user === undefined) return; // No hacer nada si user aún no cargó
+        if (!cartLoaded) return; // 🔧 FIX: No hacer nada hasta que hayamos cargado del backend
 
         // 🔧 Cancelar timeout anterior si existe
         if (saveCartTimeoutRef.current) {
@@ -134,15 +140,28 @@ export function CartProvider({ children }) {
         }
 
         if (cart.length > 0) {
-            // 🔧 DEBOUNCE: Esperar 800ms antes de guardar (para múltiples cambios rápidos)
+            // 🔧 DEBOUNCE: Esperar 500ms antes de guardar (reducido para evitar pérdida al cerrar app)
             saveCartTimeoutRef.current = setTimeout(() => {
                 saveCartToBackend();
-            }, 800);
+            }, 500);
         } else if (cart.length === 0 && user) {
-            // Si el carrito está vacío, limpiar AsyncStorage del usuario actual
+            // 🔧 FIX: Si el carrito está vacío Y ya habíamos cargado, limpiar backend
             const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
             const cartKey = `cart_${currentUserId}`;
-            AsyncStorage.removeItem(cartKey).catch(console.log);
+            AsyncStorage.removeItem(cartKey).catch(() => {});
+
+            // Limpiar backend solo si ya cargamos (evita limpiar antes de cargar)
+            if (user.usertype !== 'Driver') {
+                const payload = {
+                    user_type: user.usertype === 'Guest' ? 'guest' : 'user'
+                };
+                if (user.usertype === 'Guest') {
+                    payload.guest_email = user.email;
+                } else {
+                    payload.user_id = user.id;
+                }
+                axios.post(`${API_BASE_URL}/api/cart/clear`, payload).catch(() => {});
+            }
         }
 
         // Cleanup: cancelar timeout si el componente se desmonta
@@ -151,7 +170,7 @@ export function CartProvider({ children }) {
                 clearTimeout(saveCartTimeoutRef.current);
             }
         };
-    }, [cart, user?.id, user?.email]); // Ahora depende TAMBIÉN del user
+    }, [cart, user?.id, user?.email, cartLoaded]); // 🔧 FIX: Agregar cartLoaded como dependencia
 
     // 🆕 NUEVO: Guardar carrito en backend persistente
     const saveCartToBackend = async () => {
@@ -224,9 +243,10 @@ export function CartProvider({ children }) {
         try {
             // ✅ VALIDACIÓN CRÍTICA: Solo cargar si user está definido
             if (user === undefined || user.usertype === 'Driver') {
+                setCartLoaded(true); // 🔧 FIX: Marcar como cargado aunque no haya usuario
                 return;
             }
-            
+
             const payload = {
                 user_type: user.usertype === 'Guest' ? 'guest' : 'user'
             };
@@ -236,14 +256,14 @@ export function CartProvider({ children }) {
             } else {
                 payload.user_id = user.id;
             }
-            
+
             // console.log('📦 CARGANDO CARRITO DESDE BACKEND:', {
                 // userType: user.usertype,
                 // userId: user.id || user.email
             // });
-            
+
             const response = await axios.post(`${API_BASE_URL}/api/cart/get`, payload);
-            
+
             if (response.data.success && response.data.cart.length > 0) {
                 console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del BACKEND para ${user?.usertype}:`, user?.id || user?.email);
                 setCart(response.data.cart);
@@ -251,7 +271,9 @@ export function CartProvider({ children }) {
                 console.log(`📦 No hay carrito en backend para ${user?.usertype} ${user?.id || user?.email} - iniciando carrito vacío`);
                 setCart([]);
             }
-            
+
+            setCartLoaded(true); // 🔧 FIX: Marcar como cargado después de éxito
+
         } catch (error) {
             // console.log('❌ Error cargando carrito desde backend:', error.message);
             // Fallback: intentar cargar desde AsyncStorage local
@@ -259,12 +281,12 @@ export function CartProvider({ children }) {
                 const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
                 const cartKey = `cart_${currentUserId}`;
                 const savedCart = await AsyncStorage.getItem(cartKey);
-                
+
                 if (savedCart) {
                     const { items, timestamp } = JSON.parse(savedCart);
                     const currentTime = Date.now();
                     const twentyFourHours = 24 * 60 * 60 * 1000;
-                    
+
                     if (currentTime - timestamp < twentyFourHours && items.length > 0) {
                         // console.log(`🛒 Fallback: Restaurando ${items.length} items desde AsyncStorage`);
                         setCart(items);
@@ -273,6 +295,8 @@ export function CartProvider({ children }) {
             } catch (fallbackError) {
                 // console.log('❌ Fallback también falló:', fallbackError.message);
             }
+
+            setCartLoaded(true); // 🔧 FIX: Marcar como cargado incluso si falla (usará fallback)
         }
     };
 
