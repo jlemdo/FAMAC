@@ -16,6 +16,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   StyleSheet,
+  InteractionManager,
 } from 'react-native';
 import {useNavigation, useFocusEffect, useRoute} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
@@ -1946,14 +1947,17 @@ export default function Cart() {
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         onConfirm={({date, slot}) => {
-          
-          setDeliveryInfo({date, slot});
-          setPickerVisible(false);
-          
-          // Scroll automático al final donde está el botón de pagar
-          setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }, 300); // Pequeño delay para que se actualice el estado primero
+          // 🔧 FIX: Usar InteractionManager para evitar error "useInsertionEffect must not schedule updates"
+          // Este bug ocurre en React 19 + RN 0.79 cuando hay muchos items animados en FlatList
+          InteractionManager.runAfterInteractions(() => {
+            setDeliveryInfo({date, slot});
+            setPickerVisible(false);
+
+            // Scroll automático al final donde está el botón de pagar
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 300);
+          });
         }}
       />
 

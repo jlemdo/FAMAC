@@ -331,9 +331,14 @@ const DeliverySlotPicker = ({ visible, onClose, onConfirm }) => {
 
   const handleConfirm = () => {
     const selectedDay = days[selectedDateIndex];
-    
-    onConfirm({ date: selectedDay.date, slot: selectedSlot });
-    onClose();
+
+    // 🔧 FIX: Usar InteractionManager para evitar error "useInsertionEffect must not schedule updates"
+    // Este bug ocurre en React 19 + RN 0.79 cuando hay muchos items animados
+    // Diferir la actualización de estado hasta después de que las animaciones terminen
+    requestAnimationFrame(() => {
+      onConfirm({ date: selectedDay.date, slot: selectedSlot });
+      onClose();
+    });
   };
 
   return (
