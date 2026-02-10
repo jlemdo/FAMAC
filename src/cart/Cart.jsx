@@ -249,11 +249,9 @@ export default function Cart() {
       return;
     }
 
-    // Para Guest: solo calcular si tiene datos completos
-    const isGuest = user?.usertype === 'Guest';
-    const guestReady = !isGuest || (email?.trim() && address?.trim() && latlong?.driver_lat && latlong?.driver_long);
-
-    if (!guestReady) return;
+    // 🔧 FIX: El envío se calcula SIEMPRE basado en subtotal
+    // No importa si es Guest o User - el costo depende del monto, no del usuario
+    // La validación de datos del usuario es para PAGAR, no para mostrar el costo de envío
 
     // Solo recalcular si subtotal cambió significativamente o no se ha calculado
     const lastSubtotal = lastShippingSubtotalRef.current || 0;
@@ -427,6 +425,11 @@ export default function Cart() {
     // 🔧 BUG #10 FIX: Limpiar cupón persistido
     const odUserId = user?.id?.toString() || user?.email || 'anonymous';
     clearSavedCoupon(odUserId);
+
+    // 🔧 FIX: Forzar recálculo del envío al remover cupón
+    // Esto es necesario porque el subtotal no cambia pero el cupón podría tener free_shipping
+    setShippingCalculated(false);
+
     showAlert({
       type: 'info',
       title: 'Cupón removido',
