@@ -1464,10 +1464,18 @@ const AddressFormUberStyle = () => {
                   if (updateUser) {
                     updateUser({ email: verifiedEmail });
                   }
-                  showAlert('success', 'Correo verificado correctamente');
+                  showAlert({
+                    type: 'success',
+                    title: 'Verificación exitosa',
+                    message: 'Tu correo ha sido verificado correctamente'
+                  });
                 }}
                 onError={(errorMsg) => {
-                  showAlert('error', errorMsg);
+                  showAlert({
+                    type: 'error',
+                    title: 'Error',
+                    message: errorMsg
+                  });
                 }}
                 onGoToLogin={() => {
                   // Navegar a Login - después de iniciar sesión irá al Cart como usuario registrado

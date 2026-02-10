@@ -18,6 +18,7 @@ export function CartProvider({ children }) {
     const saveCartTimeoutRef = useRef(null);
     const promotionsTimeoutRef = useRef(null);
     const pendingGuestCartRef = useRef(null); // 🔀 Para merge Guest → User
+    const previousGuestEmailRef = useRef(null); // 🔧 FIX: Trackear email anterior para evitar reload innecesario
 
     // Obtener descuento promocional del usuario (del login API)
     const userPromotionalDiscount = user?.promotional_discount ? Number(user.promotional_discount) : 0;
@@ -133,8 +134,54 @@ export function CartProvider({ children }) {
     }, [user?.id, user?.email]); // REMOVIDO currentUserId de las dependencias
 
     // 📦 CORREGIDO: Cargar carrito DESPUÉS de cambio de usuario para evitar race conditions
+    // 🔧 FIX: NO recargar si Guest solo verificó su email (el carrito ya está en memoria)
     useEffect(() => {
         if (user !== undefined) { // user !== undefined significa que AuthContext ya cargó
+            const currentEmail = user?.email;
+            const isGuest = user?.usertype === 'Guest';
+
+            // 🔧 FIX BUG CRÍTICO: Si es Guest y solo cambió el email (verificación),
+            // NO recargar el carrito - preservar el carrito local y guardarlo con el nuevo email
+            if (isGuest && cartLoaded && cart.length > 0 &&
+                previousGuestEmailRef.current !== null &&
+                previousGuestEmailRef.current !== currentEmail) {
+
+                console.log('📦 CARTCONTEXT: Guest verificó email, preservando carrito local:', {
+                    previousEmail: previousGuestEmailRef.current,
+                    newEmail: currentEmail,
+                    cartItems: cart.length
+                });
+
+                // Actualizar la referencia del email
+                previousGuestEmailRef.current = currentEmail;
+
+                // 🔧 FIX: Guardar INMEDIATAMENTE el carrito con el nuevo email verificado
+                // No esperar al debounce porque el carrito se perdería al navegar
+                const saveCartWithNewEmail = async () => {
+                    try {
+                        const payload = {
+                            user_type: 'guest',
+                            guest_email: currentEmail,
+                            cart_data: cart
+                        };
+                        await axios.post(`${API_BASE_URL}/api/cart/save`, payload);
+                        console.log('💾 CARTCONTEXT: Carrito guardado con nuevo email:', currentEmail);
+                    } catch (error) {
+                        console.log('❌ Error guardando carrito con nuevo email:', error.message);
+                    }
+                };
+                saveCartWithNewEmail();
+
+                return; // NO recargar del backend
+            }
+
+            // Actualizar referencia del email
+            if (isGuest) {
+                previousGuestEmailRef.current = currentEmail;
+            } else {
+                previousGuestEmailRef.current = null;
+            }
+
             console.log('📦 CARTCONTEXT: Cargando carrito para usuario:', {
                 userType: user?.usertype,
                 userId: user?.id || user?.email,

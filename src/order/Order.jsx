@@ -32,12 +32,17 @@ const Order = () => {
   const navigation = useNavigation();
   const {user, loginAsGuest} = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
+  const [showLoadingUI, setShowLoadingUI] = useState(false); // 🆕 Solo mostrar UI de carga después de delay
   const [refreshing, setRefreshing] = useState(false);
   const [guestOrders, setGuestOrders] = useState([]);
   const [showingGuestOrders, setShowingGuestOrders] = useState(false);
+  const [guestSearchCompleted, setGuestSearchCompleted] = useState(false); // 🆕 Búsqueda completada (con o sin resultados)
   const [driverActiveTab, setDriverActiveTab] = useState('disponibles'); // 'disponibles', 'entregas' o 'canceladas'
   const [userActiveTab, setUserActiveTab] = useState('activas'); // 'activas', 'entregadas' o 'canceladas'
   const {orders, orderCount, refreshOrders, lastFetch, enableGuestOrders, disableGuestOrders, updateOrders} = useContext(OrderContext);
+
+  // Ref para el timeout del loading UI
+  const loadingTimeoutRef = React.useRef(null);
 
   // ✅ Backend ahora envía estados directamente en español - No necesitamos traducir
 
@@ -90,26 +95,34 @@ const Order = () => {
   };
 
   // 🆕 Función mejorada para ver pedidos Guest usando endpoint específico
+  // 🔧 OPTIMIZADO: Búsqueda silenciosa - solo muestra "Buscando..." si tarda > 1.5s
   const handleViewGuestOrders = async (guestEmail) => {
     if (!guestEmail || !guestEmail.trim()) {
       return;
     }
-    
+
     setLoading(true);
+    setShowLoadingUI(false); // No mostrar UI de carga inmediatamente
+
+    // Solo mostrar "Buscando..." si la búsqueda tarda más de 1.5 segundos
+    loadingTimeoutRef.current = setTimeout(() => {
+      setShowLoadingUI(true);
+    }, 1500);
+
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/guest/orders/${encodeURIComponent(guestEmail.trim())}`,
         { timeout: 10000 }
       );
-      
+
       if (response.data?.status === 'success') {
         const orders = response.data.orders.data || [];
-        
+
         if (orders.length > 0) {
           // Mostrar órdenes Guest directamente
           setGuestOrders(orders);
           setShowingGuestOrders(true);
-          
+
           // Actualizar el contador de órdenes para el badge de navegación
           // Backend estados finalizados: Delivered, Cancelled
           const finishedStatuses = ['delivered', 'cancelled'];
@@ -118,28 +131,35 @@ const Order = () => {
             order.payment_status === 'paid'
           );
           updateOrders(orders); // Esto actualiza el badge de navegación
-          
+
         } else {
-          // No hay órdenes para este guest
+          // No hay órdenes para este guest - búsqueda completada
           setGuestOrders([]);
-          setShowingGuestOrders(false);
+          setShowingGuestOrders(true);
           updateOrders([]);
         }
-        
+
       } else {
         // Error del servidor o email inválido
         setGuestOrders([]);
-        setShowingGuestOrders(false);
+        setShowingGuestOrders(true);
         updateOrders([]);
       }
-      
+
     } catch (error) {
       // Error de conexión o servidor
       setGuestOrders([]);
-      setShowingGuestOrders(false);
+      setShowingGuestOrders(true);
       updateOrders([]);
     } finally {
+      // Cancelar timeout y limpiar estados de carga
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
       setLoading(false);
+      setShowLoadingUI(false);
+      setGuestSearchCompleted(true); // Marcar que la búsqueda terminó
     }
   };
 
@@ -165,14 +185,40 @@ const Order = () => {
   };
 
   // ✅ Auto-carga de pedidos Guest cuando tiene email
+  // 🔧 FIX: Usar ref para evitar loop infinito - solo cargar UNA vez por email
+  const lastLoadedEmailRef = React.useRef(null);
+
   useEffect(() => {
-    if (user && user.usertype === 'Guest' && 
-        user.email && typeof user.email === 'string' && user.email.trim() &&
-        !showingGuestOrders && !loading) {
-      // Console log para debug
-      handleViewGuestOrders(user.email);
+    const guestEmail = user?.email?.trim();
+
+    // Resetear estados si cambió el email
+    if (lastLoadedEmailRef.current !== guestEmail) {
+      setGuestSearchCompleted(false);
+      setShowLoadingUI(false);
     }
-  }, [user?.email, user?.usertype, showingGuestOrders, loading]);
+
+    // Solo cargar si:
+    // 1. Es Guest con email válido
+    // 2. No estamos cargando actualmente
+    // 3. No hemos cargado ya para este email
+    if (user?.usertype === 'Guest' &&
+        guestEmail &&
+        !loading &&
+        lastLoadedEmailRef.current !== guestEmail) {
+
+      lastLoadedEmailRef.current = guestEmail; // Marcar como cargado ANTES de llamar
+      handleViewGuestOrders(guestEmail);
+    }
+  }, [user?.email, user?.usertype]); // 🔧 FIX: Remover loading y showingGuestOrders de dependencias
+
+  // 🧹 Cleanup del timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // 🚚 FUNCIÓN: Filtrar órdenes para drivers según tab activa
   const getFilteredDriverOrders = () => {
@@ -497,22 +543,9 @@ const Order = () => {
                 {user && user.usertype === 'Guest' ? (
                   // Mensajes para Guest
                   (user.email && typeof user.email === 'string' && user.email.trim()) ? (
-                    // Guest que ya hizo pedidos (tiene email)
-                    showingGuestOrders && guestOrders.length === 0 ? (
-                      <>
-                        <View style={styles.emptyIconContainer}>
-                          <Ionicons name="mail-unread-outline" size={60} color="#CCC" />
-                        </View>
-                        <Text style={styles.emptyTitle}>No se encontraron pedidos</Text>
-                        <Text style={styles.emptyText}>
-                          No encontramos pedidos para{'\n'}
-                          <Text style={styles.emptyHighlight}>{String(user.email)}</Text>
-                        </Text>
-                        <Text style={styles.emptySubtext}>
-                          Si acabas de hacer un pedido, puede tomar unos minutos en aparecer
-                        </Text>
-                      </>
-                    ) : !showingGuestOrders ? (
+                    // Guest con email verificado
+                    showLoadingUI && !guestSearchCompleted ? (
+                      // 🔧 Solo mostrar "Buscando..." si tarda más de 1.5s
                       <>
                         <View style={styles.emptyIconContainer}>
                           <ActivityIndicator size="large" color="#D27F27" />
@@ -523,9 +556,34 @@ const Order = () => {
                           <Text style={styles.emptyHighlight}>{String(user.email)}</Text>
                         </Text>
                       </>
+                    ) : guestSearchCompleted && guestOrders.length === 0 ? (
+                      // 🆕 Búsqueda completada sin resultados - mensaje amigable
+                      <>
+                        <View style={styles.emptyIconContainer}>
+                          <Ionicons name="cart-outline" size={60} color="#D27F27" />
+                        </View>
+                        <Text style={styles.emptyTitle}>¡Aún no tienes pedidos!</Text>
+                        <Text style={styles.emptyText}>
+                          Explora nuestros productos y haz tu primera compra.
+                        </Text>
+                        <Text style={styles.emptySubtext}>
+                          Tus pedidos aparecerán aquí automáticamente
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.emptyButton}
+                          onPress={() => navigation.navigate('Home')}
+                          activeOpacity={0.8}>
+                          <Ionicons name="storefront-outline" size={18} color="#FFF" />
+                          <Text style={styles.emptyButtonText}>Ver productos</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : !guestSearchCompleted ? (
+                      // Búsqueda en progreso pero aún no pasa el umbral de tiempo
+                      // No mostrar nada (búsqueda silenciosa)
+                      null
                     ) : null
                   ) : (
-                    // Guest que no ha hecho pedidos aún
+                    // Guest sin email - invitar a comprar
                     <>
                       <View style={styles.emptyIconContainer}>
                         <Ionicons name="person-outline" size={60} color="#CCC" />
