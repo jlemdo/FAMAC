@@ -1,6 +1,7 @@
 import React, {useContext, useCallback, useMemo, useEffect, useRef} from 'react';
 import {View, StyleSheet, ActivityIndicator, Platform, Dimensions, AppState} from 'react-native';
-import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
+// REMOVIDO: initializeGlobalNumericFont - Causaba inconsistencia de fuentes
+// import {initializeGlobalNumericFont} from './src/config/globalNumericFont';
 import NotificationService from './src/services/NotificationService';
 import AutoUpdateService from './src/services/AutoUpdateService';
 import {NavigationContainer} from '@react-navigation/native';
@@ -393,9 +394,10 @@ function AuthFlow() {
 }
 
 export default function App() {
-  // ✅ INICIALIZAR: Override global para fuentes numéricas y actualizaciones
+  // ✅ INICIALIZAR: Actualizaciones automáticas
   React.useEffect(() => {
-    initializeGlobalNumericFont();
+    // REMOVIDO: initializeGlobalNumericFont() - Causaba inconsistencia de fuentes
+    // Ahora todo usa Raleway consistentemente
 
     // Inicializar sistema de actualizaciones automáticas
     AutoUpdateService.initialize();

@@ -1,11 +1,14 @@
 // Sistema de fuentes FAMAC con auto-scaling responsivo
+// ✅ UNIFICADO: Toda la app usa SF Pro/Roboto para consistencia visual
 import { scaleFontSize } from '../utils/responsiveUtils';
 import { Platform } from 'react-native';
 
 // 1. Familias de fuentes disponibles
 const fontFamilyHeadings = 'GreatVibes-Regular';
-const fontFamilyParagraph = 'Raleway';
-const fontFamilyPrices = Platform.OS === 'ios' ? 'SF Pro Display' : 'Roboto'; // ✅ Fuente optimizada para precios
+// ✅ Fuente principal: SF Pro (iOS) / Roboto (Android) - limpia y profesional
+const fontFamilyMain = Platform.OS === 'ios' ? 'System' : 'Roboto';
+const fontFamilyMainMedium = Platform.OS === 'ios' ? 'System' : 'Roboto-Medium';
+const fontFamilyMainBold = Platform.OS === 'ios' ? 'System' : 'Roboto-Bold';
 
 // 2. Tamaños base (se escalan automáticamente según pantalla)
 const baseSizes = {
@@ -18,23 +21,22 @@ const baseSizes = {
   XLL: 36,
   XLLL: 48,
   title: 25,
+  XS: 11,
 };
 
 // 3. Exporta fuentes con escalado automático
 const fonts = {
   original: fontFamilyHeadings,
-  regular: `${fontFamilyParagraph}-Medium`,
-  bold: `${fontFamilyParagraph}-Medium`,
+  regular: fontFamilyMain,
+  bold: fontFamilyMainBold,
   headingBold: 'PlayfairDisplay-Bold',
-  
-  // ✅ NUEVA: Fuentes especializadas para números (perfectos y consistentes)
-  price: fontFamilyPrices,
-  priceBold: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
-  
-  // ✅ Para TODOS los números (cantidades, teléfonos, fechas, IDs, etc.)
-  numeric: fontFamilyPrices, // Misma fuente que precios para consistencia
-  numericBold: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
-  
+
+  // ✅ Precios y números - misma fuente para consistencia
+  price: fontFamilyMain,
+  priceBold: fontFamilyMainBold,
+  numeric: fontFamilyMain,
+  numericBold: fontFamilyMainBold,
+
   // Tamaños responsivos - se calculan dinámicamente
   size: {
     tiny: scaleFontSize(baseSizes.tiny),
@@ -46,30 +48,25 @@ const fonts = {
     XLL: scaleFontSize(baseSizes.XLL),
     XLLL: scaleFontSize(baseSizes.XLLL),
     title: scaleFontSize(baseSizes.title),
+    XS: scaleFontSize(baseSizes.XS),
   },
-  
-  // Tamaños base para referencia (no usar directamente en componentes)
+
+  // Tamaños base para referencia
   baseSize: baseSizes,
-  
-  // ✅ NUEVO: Estilos específicos para números con fontVariantNumeric
+
+  // Estilos numéricos
   numericStyles: {
-    // Para números monospaced (precios, cantidades, IDs)
     tabular: {
-      fontFamily: fontFamilyPrices,
-      fontVariantNumeric: ['tabular-nums'],
+      fontFamily: fontFamilyMain,
     },
     tabularBold: {
-      fontFamily: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
-      fontVariantNumeric: ['tabular-nums'],
+      fontFamily: fontFamilyMainBold,
     },
-    // Para números proporcionales (cuando sea necesario)
     proportional: {
-      fontFamily: fontFamilyPrices,
-      fontVariantNumeric: ['proportional-nums'],
+      fontFamily: fontFamilyMain,
     },
     proportionalBold: {
-      fontFamily: Platform.OS === 'ios' ? 'SF Pro Display-Semibold' : 'Roboto-Medium',
-      fontVariantNumeric: ['proportional-nums'],
+      fontFamily: fontFamilyMainBold,
     },
   },
 };
