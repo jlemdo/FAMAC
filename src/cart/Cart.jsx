@@ -67,7 +67,6 @@ export default function Cart() {
   const {user, updateUser} = useContext(AuthContext);
   const {refreshOrders, updateOrders, enableGuestOrders} = useContext(OrderContext);
   const [loading, setLoading] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState(null);
   const {initPaymentSheet, presentPaymentSheet, retrievePaymentIntent} = useStripe();
   const [email, setEmail] = useState((user?.email && typeof user?.email === 'string') ? user?.email : '');
   const [address, setAddress] = useState((user?.address && typeof user?.address === 'string') ? user?.address : '');
@@ -97,6 +96,7 @@ export default function Cart() {
   // 🔧 REF para debounce de cálculo de envío - evita saturar el servidor con múltiples llamadas rápidas
   const shippingDebounceRef = useRef(null);
   const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
+  const orderInProgressRef = useRef(false); // 🛡️ MUTEX: Previene doble envío de orden
 
   // Guardar deliveryInfo y coordenadas en AsyncStorage (solo usuarios registrados)
   useEffect(() => {
@@ -1013,7 +1013,11 @@ export default function Cart() {
   // La ubicación se obtiene justo antes del checkout en completeOrder()
 
   // Auto-pago Guest: Solo cuando acaba de completar su dirección por primera vez
+  // 🛡️ PROTECCIÓN: Mutex para prevenir doble envío de orden
   useEffect(() => {
+    // Guard: Si ya hay una orden en progreso, no hacer nada
+    if (orderInProgressRef.current) return;
+
     // Solo para Guest que acaba de completar su dirección
     if (user?.usertype === 'Guest' &&
         guestJustCompletedAddress &&
@@ -1026,17 +1030,26 @@ export default function Cart() {
         shippingCalculated &&
         !loadingShipping) {
 
+      orderInProgressRef.current = true; // 🔒 Bloquear
+
       const autoPayTimeout = setTimeout(() => {
         completeOrder();
         setGuestJustCompletedAddress(false);
+        // Nota: orderInProgressRef se resetea en handleOrderSuccess o en error
       }, 1000);
 
-      return () => clearTimeout(autoPayTimeout);
+      return () => {
+        clearTimeout(autoPayTimeout);
+        orderInProgressRef.current = false; // 🔓 Desbloquear si se cancela
+      };
     }
   }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length, shippingCalculated, loadingShipping]);
 
   // Función auxiliar: Manejar éxito de orden (para Stripe y órdenes gratuitas)
   const handleOrderSuccess = async (orderData, oxxoInfo = null) => {
+    // 🔓 Desbloquear mutex de orden
+    orderInProgressRef.current = false;
+
     const realOrderId = orderData?.order?.id;
 
     // Guardar datos de Guest para futuras compras
@@ -1154,6 +1167,12 @@ export default function Cart() {
   const validateGuestData = () => {
     if (!email?.trim()) {
       showValidationError('Información incompleta', 'Por favor proporciona tu email.');
+      return false;
+    }
+    // 🛡️ Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      showValidationError('Email inválido', 'Por favor ingresa un email válido (ejemplo: correo@dominio.com)');
       return false;
     }
     if (!address?.trim()) {
@@ -1462,6 +1481,7 @@ export default function Cart() {
     } finally {
       setLoading(false);
       setShowLoadingContent(true); // 🆕 Resetear para próximo uso
+      orderInProgressRef.current = false; // 🔓 Desbloquear mutex en cualquier caso
     }
   };
 

@@ -59,14 +59,20 @@ export function CartProvider({ children }) {
 
 
 
-    // Update quantity
+    // Update quantity - también actualiza selectedQuantity para mantener sincronización
     const updateQuantity = (id, type) => {
         setCart((prevCart) =>
-            prevCart.map((item) =>
-                item.id === id
-                    ? { ...item, quantity: type === 'increase' ? item.quantity + 1 : Math.max(1, item.quantity - 1) }
-                    : item
-            )
+            prevCart.map((item) => {
+                if (item.id === id) {
+                    const newQuantity = type === 'increase' ? item.quantity + 1 : Math.max(1, item.quantity - 1);
+                    return {
+                        ...item,
+                        quantity: newQuantity,
+                        selectedQuantity: newQuantity // 🔄 Mantener sincronizado
+                    };
+                }
+                return item;
+            })
         );
     };
 

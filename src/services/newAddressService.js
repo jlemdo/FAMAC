@@ -244,18 +244,19 @@ export const newAddressService = {
       errors.push('La dirección debe tener al menos 10 caracteres');
     }
     
+    // Validar que se proporcione userId O guestEmail (no ambos, no ninguno)
     if (addressData.userId && !addressData.guestEmail) {
-      // Usuario registrado
-      if (!addressData.userId) {
-        errors.push('ID de usuario requerido');
-      }
+      // Usuario registrado - OK, userId ya está validado por la condición
     } else if (addressData.guestEmail && !addressData.userId) {
-      // Guest
-      if (!addressData.guestEmail || !addressData.guestEmail.includes('@')) {
+      // Guest - validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(addressData.guestEmail)) {
         errors.push('Email válido requerido para guest');
       }
-    } else {
+    } else if (!addressData.userId && !addressData.guestEmail) {
       errors.push('Debe especificar userId o guestEmail');
+    } else {
+      errors.push('No se puede especificar userId y guestEmail al mismo tiempo');
     }
     
     if (addressData.phone && addressData.phone.trim().length > 0) {
