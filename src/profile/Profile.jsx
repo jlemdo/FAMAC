@@ -47,8 +47,9 @@ import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import SMSVerification from '../components/SMSVerification';
 import { useFocusEffect } from '@react-navigation/native';
 import { useOtpStatus } from '../hooks/useOtpStatus';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
+import Config from 'react-native-config';
 import { API_BASE_URL } from '../config/environment';
 
 // Helper function para parsear fechas en múltiples formatos
@@ -339,7 +340,25 @@ export default function Profile({ navigation, route }) {
   useEffect(() => {
     if (user?.id) fetchUserDetails();
   }, [user?.id, fetchUserDetails]);
-  
+
+  // Configurar GoogleSignin para re-autenticación (eliminación de cuenta)
+  useEffect(() => {
+    if (profile.provider === 'google') {
+      try {
+        GoogleSignin.configure({
+          webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+          iosClientId: Config.GOOGLE_IOS_CLIENT_ID,
+          offlineAccess: false,
+          scopes: ['profile', 'email'],
+          forceCodeForRefreshToken: true,
+          accountName: '',
+        });
+      } catch (error) {
+        console.log('Error configurando GoogleSignin:', error);
+      }
+    }
+  }, [profile.provider]);
+
   // Refrescar datos cuando la pantalla se enfoca
   useFocusEffect(
     useCallback(() => {
@@ -572,20 +591,28 @@ export default function Profile({ navigation, route }) {
   // ✅ FUNCIÓN: Re-autenticación Google SEGURA
   const handleGoogleReAuth = async () => {
     try {
+      // Verificar Play Services
       const hasPlayServices = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
-      if (!hasPlayServices) return false;
+      if (!hasPlayServices) {
+        console.log('Google ReAuth: No Play Services');
+        return false;
+      }
 
+      // Verificar si ya hay sesión activa
       let currentUser = null;
       try {
         currentUser = await GoogleSignin.getCurrentUser();
       } catch (getUserError) {
-        // No hay usuario actual
+        // No hay usuario actual, continuar con signIn
       }
 
+      // Si ya está autenticado con el mismo email, usar esa sesión
       if (currentUser && currentUser.user?.email === profile.email) {
+        console.log('Google ReAuth: Usuario ya autenticado');
         return true;
       }
 
+      // Cerrar sesión previa si existe
       try {
         if (currentUser) {
           await GoogleSignin.signOut();
@@ -594,10 +621,38 @@ export default function Profile({ navigation, route }) {
         // Ignorar error de logout
       }
 
-      const result = await GoogleSignin.signIn();
-      return result?.user?.email === profile.email;
+      // Iniciar nuevo signIn
+      try {
+        const result = await GoogleSignin.signIn();
+        const emailMatches = result?.user?.email === profile.email;
+        console.log('Google ReAuth: SignIn completado, email match:', emailMatches);
+        return emailMatches;
+      } catch (signInError) {
+        // Manejar errores específicos de Google SignIn usando statusCodes
+        if (signInError.code === statusCodes.SIGN_IN_CANCELLED) {
+          // Usuario canceló - no es un error crítico
+          console.log('Google ReAuth: Usuario canceló');
+          return false;
+        }
+
+        if (signInError.code === statusCodes.IN_PROGRESS) {
+          // Ya hay un signIn en progreso
+          console.log('Google ReAuth: SignIn ya en progreso');
+          return false;
+        }
+
+        if (signInError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          console.log('Google ReAuth: Play Services no disponible');
+          return false;
+        }
+
+        // Otros errores
+        console.log('Google ReAuth SignIn error:', signInError?.code, signInError?.message);
+        return false;
+      }
 
     } catch (error) {
+      console.log('Google ReAuth error general:', error?.code, error?.message);
       return false;
     }
   };

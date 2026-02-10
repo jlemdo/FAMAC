@@ -194,8 +194,8 @@ export default function SMSVerification({
             <ActivityIndicator color="#FFF" size="small" />
           ) : (
             <>
-              <Ionicons name="chatbubble-outline" size={18} color="#FFF" style={styles.buttonIcon} />
-              <Text style={styles.sendButtonText}>Verificar por SMS</Text>
+              <Ionicons name="logo-whatsapp" size={18} color="#FFF" style={styles.buttonIcon} />
+              <Text style={styles.sendButtonText}>Verificar por WhatsApp</Text>
             </>
           )}
         </TouchableOpacity>

@@ -22,10 +22,10 @@ const AddressPicker = ({
       // Guardar callbacks en store global
       addressCallbacks.set(pickerId, { onConfirm, onClose });
       
-      // Navegar a la pantalla de formulario de dirección
+      // Navegar a la pantalla de formulario de dirección (usando AddressFormUberStyle)
       const parentNavigator = navigation.getParent();
       if (parentNavigator) {
-        parentNavigator.navigate('AddressForm', {
+        parentNavigator.navigate('AddressFormUberStyle', {
           pickerId, // Solo pasamos el ID, no las funciones
           initialAddress,
           title,

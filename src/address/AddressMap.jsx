@@ -7,6 +7,7 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MapView, { Marker } from 'react-native-maps';
@@ -160,32 +161,33 @@ const AddressMap = () => {
     navigation.goBack();
   };
 
-  // Detectar si es pantalla pequeña para decidir si usar ScrollView
-  const needsScroll = isSmallScreen();
+  // Obtener dimensiones de pantalla para calcular altura del mapa
+  const { height: screenHeight } = Dimensions.get('window');
+  // Altura del mapa: pantalla - header(~90) - card instrucciones(~120) - botones(~90) - padding
+  const mapHeight = Math.max(screenHeight * 0.45, 280); // Mínimo 280px, ~45% de pantalla
 
-  // Función que renderiza el contenido principal
+  // Función que renderiza el contenido scrolleable
   const renderContent = () => (
     <>
-      {/* Instrucciones */}
+      {/* Card unificado de instrucciones y dirección */}
       <View style={styles.instructionsContainer}>
-        <Text style={styles.instructionsText}>
-          🗺️ Arrastra el mapa para posicionar el pin en tu ubicación exacta
-        </Text>
-        {userWrittenAddress && (
-          <View style={styles.addressContextContainer}>
-            <Text style={styles.addressContextLabel}>Tu dirección:</Text>
-            <Text style={styles.addressContextText} numberOfLines={2}>
-              {userWrittenAddress}
-            </Text>
-            <Text style={styles.addressContextNote}>
-              ℹ️ Esta dirección NO cambiará, solo selecciona la ubicación en el mapa
-            </Text>
-          </View>
-        )}
+        <View style={styles.unifiedCard}>
+          <Text style={styles.instructionsText}>
+            🗺️ Arrastra el mapa para posicionar el pin en tu ubicación exacta
+          </Text>
+          {userWrittenAddress && (
+            <View style={styles.addressContextInline}>
+              <Text style={styles.addressContextLabel} numberOfLines={2}>📍 {userWrittenAddress}</Text>
+              <Text style={styles.addressContextNote}>
+                ℹ️ Esta dirección NO cambiará, solo selecciona la ubicación en el mapa
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* Mapa con pin fijo central */}
-      <View style={styles.mapContainer}>
+      {/* Mapa con pin fijo central - altura dinámica */}
+      <View style={[styles.mapContainer, { height: mapHeight }]}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -200,7 +202,7 @@ const AddressMap = () => {
           showsMyLocationButton={false}>
           {/* Sin Markers - el pin es fijo en el centro */}
         </MapView>
-        
+
         {/* 🎯 PIN FIJO EN EL CENTRO (como Uber/DiDi) */}
         <View style={styles.centerMarker}>
           <View style={styles.markerFixed}>
@@ -208,21 +210,6 @@ const AddressMap = () => {
             <Ionicons name="location" size={40} color="#D27F27" />
           </View>
         </View>
-      </View>
-
-      {/* Botones */}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.cancelButton} 
-          onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>
-            {currentLocation ? 'Confirmar ubicación' : 'Seleccionar ubicación'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </>
   );
@@ -239,19 +226,29 @@ const AddressMap = () => {
         <Text style={styles.title}>Ubicar en mapa</Text>
       </View>
 
-      {/* Contenido - Con ScrollView en pantallas pequeñas */}
-      {needsScroll ? (
-        <ScrollView 
-          style={styles.contentContainer}
-          contentContainerStyle={styles.scrollContentContainer}
-          showsVerticalScrollIndicator={false}>
-          {renderContent()}
-        </ScrollView>
-      ) : (
-        <View style={styles.contentContainer}>
-          {renderContent()}
-        </View>
-      )}
+      {/* Contenido con ScrollView para dispositivos pequeños */}
+      <ScrollView
+        style={styles.contentContainer}
+        contentContainerStyle={styles.scrollContentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
+        {renderContent()}
+      </ScrollView>
+
+      {/* Botones fijos abajo */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => navigation.goBack()}>
+          <Text style={styles.cancelButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
+          <Text style={styles.confirmButtonText}>
+            {currentLocation ? 'Confirmar ubicación' : 'Seleccionar ubicación'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -291,26 +288,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   instructionsContainer: {
-    paddingHorizontal: scaleSpacing(20),
-    paddingVertical: scaleSpacing(15),
+    paddingHorizontal: scaleSpacing(16),
+    paddingTop: scaleSpacing(12),
+    paddingBottom: scaleSpacing(8),
   },
-  instructionsText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    textAlign: 'center',
+  unifiedCard: {
     backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  instructionsText: {
+    fontFamily: fonts.medium,
+    fontSize: fonts.size.medium,
+    color: '#2F2F2F',
+    textAlign: 'center',
+  },
+  addressContextInline: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 94, 60, 0.15)',
+  },
+  addressContextNote: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.tiny,
+    color: 'rgba(47,47,47,0.6)',
+    textAlign: 'center',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   mapContainer: {
-    flex: 1,
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -320,7 +335,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   map: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
   },
   
   // 🎯 ESTILOS PARA PIN FIJO CENTRAL
@@ -395,40 +410,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContentContainer: {
-    flexGrow: 1,
-    paddingBottom: scaleSpacing(20),
+    paddingBottom: 80, // Espacio para que el contenido pase por debajo de los botones fijos
   },
   
-  // NUEVOS ESTILOS PARA CONTEXTO DE DIRECCIÓN
-  addressContextContainer: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
+  // Estilo para dirección en card unificado
   addressContextLabel: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.medium,
     fontSize: fonts.size.small,
-    color: '#D27F27',
-    marginBottom: 6,
-  },
-  addressContextText: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.medium,
-    color: '#2F2F2F',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  addressContextNote: {
-    fontFamily: fonts.regular,
-    fontSize: fonts.size.small,
-    color: 'rgba(47,47,47,0.6)',
-    fontStyle: 'italic',
+    color: '#8B5E3C',
+    textAlign: 'center',
   },
 });
 

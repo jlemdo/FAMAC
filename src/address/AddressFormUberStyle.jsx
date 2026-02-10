@@ -1694,10 +1694,10 @@ const AddressFormUberStyle = () => {
                     setIsProcessingLocation(false);
                   }
                 }}>
-                <Ionicons 
-                  name={isProcessingLocation ? "time-outline" : (coordinatesSource ? "map-outline" : "map")} 
-                  size={16} 
-                  color={isProcessingLocation ? "#FFF" : (coordinatesSource ? "#8B5E3C" : "#FFF")} 
+                <Ionicons
+                  name={isProcessingLocation ? "time-outline" : (coordinatesSource ? "map-outline" : "map")}
+                  size={16}
+                  color="#FFF"
                 />
                 <Text style={coordinatesSource ? styles.adjustLocationButtonText : styles.selectLocationButtonText}>
                   {isProcessingLocation ? 'Preparando mapa...' : (coordinatesSource ? 'Ajustar' : 'Ir al mapa')}

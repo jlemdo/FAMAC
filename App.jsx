@@ -33,7 +33,6 @@ import ForgotPassword from './src/authentication/ForgotPassword';
 import Order from './src/order/Order';
 import OrderDetails from './src/order/OrderDetail';
 import SearchResults from './src/home/SearchResults';
-import AddressForm from './src/address/AddressForm';
 import AddressFormUberStyle from './src/address/AddressFormUberStyle';
 import AddressManager from './src/address/AddressManager';
 import AddressMap from './src/address/AddressMap';
@@ -330,7 +329,6 @@ function RootStack() {
       <Stack.Navigator screenOptions={{headerShown: false}} initialRouteName="MainTabs">
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="SearchResults" component={SearchResults} />
-        <Stack.Screen name="AddressForm" component={AddressForm} />
         <Stack.Screen name="AddressFormUberStyle" component={AddressFormUberStyle} />
         <Stack.Screen name="AddressManager" component={AddressManager} />
         <Stack.Screen name="AddressMap" component={AddressMap} />

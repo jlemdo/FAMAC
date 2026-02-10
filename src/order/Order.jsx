@@ -197,6 +197,34 @@ const Order = () => {
   };
 
   // 👤 FUNCIÓN: Filtrar órdenes para usuarios según tab activa
+  // Funciones para contar órdenes por categoría (para los badges)
+  const getUserOrdersCounts = () => {
+    const ordersToFilter = showingGuestOrders ? guestOrders : orders;
+    if (!Array.isArray(ordersToFilter)) return { activas: 0, entregadas: 0, canceladas: 0 };
+
+    const activas = ordersToFilter.filter(order => {
+      const status = order.status?.toLowerCase();
+      const paymentStatus = order.payment_status?.toLowerCase();
+      const hasValidPayment = paymentStatus === 'paid' || paymentStatus === 'pending';
+      const finishedStatuses = ['delivered', 'cancelled'];
+      return status && !finishedStatuses.includes(status) && hasValidPayment;
+    }).length;
+
+    const entregadas = ordersToFilter.filter(order => {
+      const status = order.status?.toLowerCase();
+      return status === 'delivered';
+    }).length;
+
+    const canceladas = ordersToFilter.filter(order => {
+      const status = order.status?.toLowerCase();
+      return status === 'cancelled';
+    }).length;
+
+    return { activas, entregadas, canceladas };
+  };
+
+  const orderCounts = getUserOrdersCounts();
+
   const getFilteredUserOrders = () => {
     const ordersToFilter = showingGuestOrders ? guestOrders : orders;
 
@@ -352,17 +380,19 @@ const Order = () => {
                 ]}>
                   Activas
                 </Text>
-                <View style={[
-                  styles.userTabBadge,
-                  userActiveTab !== 'activas' && styles.userTabBadgeInactive
-                ]}>
-                  <Text style={[
-                    styles.userTabBadgeText,
-                    userActiveTab !== 'activas' && styles.userTabBadgeTextInactive
+                {orderCounts.activas > 0 && (
+                  <View style={[
+                    styles.userTabBadge,
+                    userActiveTab !== 'activas' && styles.userTabBadgeInactive
                   ]}>
-                    {getFilteredUserOrders().length}
-                  </Text>
-                </View>
+                    <Text style={[
+                      styles.userTabBadgeText,
+                      userActiveTab !== 'activas' && styles.userTabBadgeTextInactive
+                    ]}>
+                      {orderCounts.activas}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -385,6 +415,19 @@ const Order = () => {
                 ]}>
                   Entregadas
                 </Text>
+                {orderCounts.entregadas > 0 && (
+                  <View style={[
+                    styles.userTabBadge,
+                    userActiveTab !== 'entregadas' && styles.userTabBadgeInactive
+                  ]}>
+                    <Text style={[
+                      styles.userTabBadgeText,
+                      userActiveTab !== 'entregadas' && styles.userTabBadgeTextInactive
+                    ]}>
+                      {orderCounts.entregadas}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -407,6 +450,19 @@ const Order = () => {
                 ]}>
                   Canceladas
                 </Text>
+                {orderCounts.canceladas > 0 && (
+                  <View style={[
+                    styles.userTabBadge,
+                    userActiveTab !== 'canceladas' && styles.userTabBadgeInactive
+                  ]}>
+                    <Text style={[
+                      styles.userTabBadgeText,
+                      userActiveTab !== 'canceladas' && styles.userTabBadgeTextInactive
+                    ]}>
+                      {orderCounts.canceladas}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           )}
