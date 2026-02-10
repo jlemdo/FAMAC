@@ -122,7 +122,10 @@ const CustomerTracking = ({order}) => {
           </Text>
           {retryCount >= 3 && (
             <TouchableOpacity
-              onPress={() => fetchDriverLocation(0)}
+              onPress={() => {
+                setRetryCount(0);
+                fetchDriverLocation();
+              }}
               style={styles.retryButton}>
               <Ionicons name="refresh" size={16} color="#2196F3" />
             </TouchableOpacity>

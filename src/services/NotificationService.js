@@ -331,129 +331,14 @@ class NotificationService {
       });
   }
 
-  // Mejorar contenido de notificación basado en contexto
+  // ⚡ OPTIMIZADO: Usar contenido del backend directamente
+  // El backend es la ÚNICA fuente de verdad para notificaciones
   enhanceNotificationContent(remoteMessage) {
-    const notificationType = remoteMessage.data?.type;
-    const orderId = remoteMessage.data?.order_id;
-    const orderStatus = remoteMessage.data?.order_status;
-    const deliveryTime = remoteMessage.data?.delivery_time;
-    const driverName = remoteMessage.data?.driver_name;
+    // Usar directamente el título y body que envía el backend
+    const title = remoteMessage.notification?.title || 'Nueva notificación';
+    const body = remoteMessage.notification?.body || 'Tienes una nueva actualización';
 
-    let enhancedTitle = remoteMessage.notification?.title || 'Nueva notificación';
-    let enhancedBody = remoteMessage.notification?.body || 'Tienes una nueva actualización';
-
-    switch (notificationType) {
-      case 'order_confirmed':
-        enhancedTitle = '🎉 ¡Pedido confirmado!';
-        enhancedBody = `Tu pedido #${orderId} ha sido confirmado y será preparado pronto.`;
-        break;
-        
-      case 'order_preparing':
-        enhancedTitle = '👨‍🍳 Preparando tu pedido';
-        enhancedBody = `Estamos preparando tu pedido #${orderId} con mucho cuidado.`;
-        break;
-        
-      case 'order_ready':
-        enhancedTitle = '✅ ¡Pedido listo!';
-        enhancedBody = `Tu pedido #${orderId} está listo y será enviado pronto.`;
-        break;
-        
-      case 'order_on_way':
-        enhancedTitle = '🚚 ¡En camino!';
-        if (driverName) {
-          enhancedBody = `${driverName} está en camino con tu pedido #${orderId}.`;
-        } else {
-          enhancedBody = `Tu pedido #${orderId} está en camino. ¡Llegará pronto!`;
-        }
-        if (deliveryTime) {
-          enhancedBody += ` Tiempo estimado: ${deliveryTime} min.`;
-        }
-        break;
-        
-      case 'order_delivered':
-        enhancedTitle = '🎊 ¡Entregado!';
-        enhancedBody = `Tu pedido #${orderId} ha sido entregado. ¡Esperamos que lo disfrutes!`;
-        break;
-        
-      case 'order_cancelled':
-        enhancedTitle = '❌ Pedido cancelado';
-        enhancedBody = `Tu pedido #${orderId} ha sido cancelado. Tu reembolso será procesado pronto.`;
-        break;
-        
-      case 'order_confirmed_and_paid':
-        enhancedTitle = '🎉 ¡Pedido confirmado y pagado!';
-        enhancedBody = `Tu pedido #${orderId} ha sido confirmado y el pago procesado exitosamente.`;
-        break;
-        
-      case 'order_confirmed_payment_pending':
-        enhancedTitle = '📋 ¡Pedido confirmado! Pago pendiente';
-        enhancedBody = `Tu pedido #${orderId} ha sido confirmado. Ve a OXXO a completar tu pago.`;
-        break;
-        
-      case 'payment_confirmed':
-        enhancedTitle = '💳 Pago confirmado';
-        enhancedBody = `El pago de tu pedido #${orderId} ha sido procesado exitosamente.`;
-        break;
-        
-      case 'new_promotion':
-        enhancedTitle = '🎁 ¡Nueva oferta especial!';
-        enhancedBody = remoteMessage.notification?.body || '¡No te pierdas nuestras promociones exclusivas!';
-        break;
-        
-      case 'delivery_delay':
-        enhancedTitle = '⏰ Retraso en entrega';
-        enhancedBody = `Tu pedido #${orderId} se retrasará unos minutos. Disculpa las molestias.`;
-        if (deliveryTime) {
-          enhancedBody += ` Nuevo tiempo estimado: ${deliveryTime} min.`;
-        }
-        break;
-        
-      case 'driver_assigned':
-        enhancedTitle = '🚗 Repartidor asignado';
-        if (driverName) {
-          enhancedBody = `${driverName} será quien entregue tu pedido #${orderId}.`;
-        } else {
-          enhancedBody = `Se ha asignado un repartidor para tu pedido #${orderId}.`;
-        }
-        break;
-        
-      case 'new_order_assigned':
-        enhancedTitle = '📦 Nuevo pedido asignado';
-        enhancedBody = `Se te ha asignado el pedido #${orderId}. ¡Revisa los detalles!`;
-        break;
-
-      case 'order_arriving':
-        const distanceMeters = remoteMessage.data?.distance_meters;
-        enhancedTitle = '📍 ¡Tu pedido está llegando!';
-        if (distanceMeters) {
-          enhancedBody = `Tu repartidor está a solo ${distanceMeters} metros de tu ubicación. ¡Prepárate para recibirlo!`;
-        } else {
-          enhancedBody = `Tu repartidor está muy cerca de tu ubicación. ¡Prepárate para recibirlo!`;
-        }
-        break;
-
-      case 'chat_message':
-        const senderName = remoteMessage.data?.sender_name;
-        const senderType = remoteMessage.data?.sender_type;
-        const messagePreview = remoteMessage.data?.message_preview;
-
-        if (senderType === 'driver') {
-          enhancedTitle = '💬 Mensaje de tu repartidor';
-          enhancedBody = `${senderName}: ${messagePreview}`;
-        } else {
-          enhancedTitle = `💬 Mensaje - Pedido #${orderId}`;
-          enhancedBody = `${senderName}: ${messagePreview}`;
-        }
-        break;
-
-      default:
-        // Intentar mejorar notificaciones genéricas
-        if (orderId) {
-          enhancedBody = `Actualización sobre tu pedido #${orderId}: ${enhancedBody}`;
-        }
-    }
-
-    return { title: enhancedTitle, body: enhancedBody };
+    return { title, body };
   }
 
   // Manejar cuando se presiona una notificación

@@ -190,10 +190,10 @@ const CouponInput = ({
         ]}>
           <View style={styles.appliedInfo}>
             <View style={styles.appliedHeader}>
-              <Ionicons 
-                name={isValid ? "checkmark-circle" : "alert-circle"} 
-                size={20} 
-                color={isValid ? "#33A744" : "#E74C3C"} 
+              <Ionicons
+                name={isValid ? "checkmark-circle" : "alert-circle"}
+                size={20}
+                color={isValid ? "#33A744" : "#E74C3C"}
               />
               <Text style={[
                 styles.appliedCode,
@@ -201,28 +201,45 @@ const CouponInput = ({
               ]}>
                 {appliedCoupon.code.toUpperCase()}
               </Text>
-              <Text style={[
-                styles.appliedDiscount,
-                !isValid && styles.appliedDiscountInvalid
-              ]}>
-                -{formatDiscount(appliedCoupon)} 
-                {isValid && (() => {
-                  const baseAmount = appliedCoupon.appliesTo === 'shipping' ? shippingCost : subtotal;
-                  const calculatedDiscount = appliedCoupon.type === 'percentage'
-                    ? (baseAmount * appliedCoupon.discount) / 100
-                    : appliedCoupon.discount;
-                  return `($${Math.min(calculatedDiscount, baseAmount).toFixed(0)})`;
-                })()}
-              </Text>
+              {/* Solo mostrar badge de descuento si NO tiene beneficios múltiples */}
+              {!(appliedCoupon.benefits && appliedCoupon.benefits.length > 0) && (
+                <Text style={[
+                  styles.appliedDiscount,
+                  !isValid && styles.appliedDiscountInvalid
+                ]}>
+                  -{formatDiscount(appliedCoupon)}
+                  {isValid && (() => {
+                    const baseAmount = appliedCoupon.appliesTo === 'shipping' ? shippingCost : subtotal;
+                    const calculatedDiscount = appliedCoupon.type === 'percentage'
+                      ? (baseAmount * appliedCoupon.discount) / 100
+                      : appliedCoupon.discount;
+                    return `($${Math.min(calculatedDiscount, baseAmount).toFixed(0)})`;
+                  })()}
+                </Text>
+              )}
             </View>
             {/* Mostrar beneficios múltiples o descripción simple */}
             {isValid && appliedCoupon.benefits && appliedCoupon.benefits.length > 0 ? (
               <View style={styles.benefitsList}>
-                {appliedCoupon.benefits.map((benefit, index) => (
-                  <Text key={index} style={styles.benefitItem}>
-                    • {benefit.description} {benefit.amount > 0 ? `($${benefit.amount.toFixed(0)})` : ''}
-                  </Text>
-                ))}
+                {appliedCoupon.benefits.map((benefit, index) => {
+                  // Formatear descripción clara con signo negativo
+                  let benefitText = '';
+                  const amount = benefit.amount || 0;
+
+                  if (benefit.type === 'free_shipping') {
+                    benefitText = `Envío gratis: -$${shippingCost.toFixed(0)}`;
+                  } else if (benefit.appliesTo === 'shipping') {
+                    benefitText = `Descuento en envío: -$${amount.toFixed(0)}`;
+                  } else {
+                    benefitText = `Descuento en productos: -$${amount.toFixed(0)}`;
+                  }
+
+                  return (
+                    <Text key={index} style={styles.benefitItem}>
+                      • {benefitText}
+                    </Text>
+                  );
+                })}
               </View>
             ) : (
               <Text style={[

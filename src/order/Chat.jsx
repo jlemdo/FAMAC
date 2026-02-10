@@ -1,5 +1,5 @@
-﻿import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard, ScrollView } from 'react-native';
+import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, AppState, Keyboard, ScrollView, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
@@ -9,85 +9,106 @@ import { API_BASE_URL } from '../config/environment';
 export default function Chat({ orderId, order }) {
     const [newMessage, setNewMessage] = useState('');
     const [chatMessages, setChatMessages] = useState([]);
+    const [isSending, setIsSending] = useState(false); // FIX #4: Estado de enviando
+    const [sendError, setSendError] = useState(false); // FIX #5: Estado de error
     const { user } = useContext(AuthContext);
     const scrollViewRef = useRef(null);
     const msgIntervalRef = useRef(null);
     const textInputRef = useRef(null);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
-    
+
+    // FIX #1 & #2: Usar ref para tracking de mensajes previos (evita stale closure)
+    const previousMessagesCountRef = useRef(0);
+
     // Generar título dinámico del chat
     const getChatTitle = () => {
         if (user?.usertype === 'driver') {
             const customerName = order?.customer?.first_name
                 ? order.customer.first_name
                 : order?.customer?.email || 'Cliente';
-            return `💬 Chatea con ${customerName}`;
+            return `Chatea con ${customerName}`;
         } else {
             const driverName = order?.driver?.first_name
                 ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
                 : order?.driver?.name || 'tu repartidor';
-            return `💬 Chatea con ${driverName}`;
+            return `Chatea con ${driverName}`;
         }
     };
 
+    // FIX #6: Formatear hora del mensaje
+    const formatMessageTime = (dateString) => {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch {
+            return '';
+        }
+    };
 
+    // FIX #1: Dependency array corregida - solo orderId
     const fetchMessages = useCallback(async (forceScroll = false) => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/msgfetch/${orderId}`);
             if (response.data) {
-                // ✅ FIX: SIN reverse() para que mensajes viejos estén arriba (como WhatsApp)
                 const formattedMessages = response.data.data.map(msg => ({
+                    id: msg.id,
                     sender: msg.sender,
                     senderName: msg.sender === 'driver' ? 'Driver' : 'Customer',
                     text: msg.message,
-                    created_at: msg.created_at, // Para debugging
+                    created_at: msg.created_at,
+                    // FIX #4: Mensajes del servidor siempre están "delivered"
+                    status: 'delivered'
                 }));
 
-                // ✅ PUNTO 13: Verificar si hay nuevos mensajes
-                const previousLength = chatMessages.length;
-                const newLength = formattedMessages.length;
+                // FIX #2: Usar ref para comparación confiable
+                const previousCount = previousMessagesCountRef.current;
+                const newCount = formattedMessages.length;
 
                 setChatMessages(formattedMessages);
+                previousMessagesCountRef.current = newCount;
 
-                // ✅ Auto-scroll cuando hay nuevos mensajes o forzado
-                if (forceScroll || newLength > previousLength) {
+                // Auto-scroll cuando hay nuevos mensajes o forzado
+                if (forceScroll || newCount > previousCount) {
                     setTimeout(() => {
                         scrollViewRef.current?.scrollToEnd({ animated: true });
                     }, 100);
                 }
             }
         } catch (err) {
-            // Chat fetch error
+            // Chat fetch error - silencioso
         }
-    }, [orderId, chatMessages.length]);
+    }, [orderId]); // FIX #1: Solo orderId como dependencia
 
-    // ✅ PUNTO 13: Sistema de auto-refresh mejorado con manejo de notificaciones
+    // Sistema de auto-refresh
     useEffect(() => {
         // Fetch inicial con scroll automático
         fetchMessages(true);
 
-        // Configurar intervalo más frecuente para chat activo
+        // Configurar intervalo para chat activo (3 segundos)
         msgIntervalRef.current = setInterval(() => {
             fetchMessages();
-        }, 3000); // Más frecuente para chat: 3 segundos vs 5
+        }, 3000);
 
-        // ✅ PUNTO 13: Listener para AppState - refresh cuando regresa del background
+        // Listener para AppState - refresh cuando regresa del background
         const handleAppStateChange = (nextAppState) => {
             if (nextAppState === 'active') {
-                // console.log('💬 Chat: App regresó del background - refrescando mensajes');
-                fetchMessages(true); // Forzar scroll al regresar
+                fetchMessages(true);
             }
         };
 
         const appStateListener = AppState.addEventListener('change', handleAppStateChange);
 
-        // ✅ PUNTO 18: Listeners de teclado para iOS
+        // Listeners de teclado para iOS
         let keyboardDidShowListener, keyboardDidHideListener;
 
         if (Platform.OS === 'ios') {
             keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (event) => {
                 setKeyboardHeight(event.endCoordinates.height);
-                // Auto-scroll al final cuando aparece teclado
                 setTimeout(() => {
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                 }, 100);
@@ -105,7 +126,6 @@ export default function Chat({ orderId, order }) {
             }
             appStateListener?.remove();
 
-            // ✅ PUNTO 18: Cleanup listeners de teclado
             if (Platform.OS === 'ios') {
                 keyboardDidShowListener?.remove();
                 keyboardDidHideListener?.remove();
@@ -113,41 +133,175 @@ export default function Chat({ orderId, order }) {
         };
     }, [fetchMessages]);
 
-    // ✅ PUNTO 18: Manejar focus del input para iOS
+    // Manejar focus del input para iOS
     const handleInputFocus = () => {
         if (Platform.OS === 'ios') {
-            // Delay para permitir que el teclado aparezca primero
             setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
             }, 300);
         }
     };
 
-    // ✅ PUNTO 13: Force refresh cuando se envía mensaje propio
+    // FIX #3, #4, #5: Envío de mensaje mejorado
     const handleSendMessageWithRefresh = async () => {
-        if (!newMessage.trim()) return;
+        const messageText = newMessage.trim();
+        if (!messageText || isSending) return;
+
+        // Limpiar error previo
+        setSendError(false);
+        setIsSending(true);
+
+        // Guardar mensaje y limpiar input inmediatamente (UX optimista)
+        const tempMessage = messageText;
+        setNewMessage('');
+
+        // FIX #4: Agregar mensaje temporal con estado "sending"
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMessage = {
+            id: tempId,
+            sender: user.usertype,
+            senderName: user.usertype === 'driver' ? 'Driver' : 'Customer',
+            text: tempMessage,
+            created_at: new Date().toISOString(),
+            status: 'sending' // Palomita gris
+        };
+
+        setChatMessages(prev => [...prev, optimisticMessage]);
+        previousMessagesCountRef.current += 1;
+
+        // Scroll al nuevo mensaje
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
 
         try {
             const payload = {
                 orderid: orderId,
                 sender: user.usertype,
-                message: newMessage,
+                message: tempMessage,
             };
-            const response = await axios.post(`${API_BASE_URL}/api/msgsubmit`, payload);
 
-            if (response) {
-                setNewMessage('');
-                // ✅ Refresh inmediato después de enviar mensaje
-                setTimeout(() => fetchMessages(true), 500);
-            }
+            await axios.post(`${API_BASE_URL}/api/msgsubmit`, payload);
+
+            // FIX #4: Actualizar estado a "sent" (una palomita)
+            setChatMessages(prev =>
+                prev.map(msg =>
+                    msg.id === tempId
+                        ? { ...msg, status: 'sent' }
+                        : msg
+                )
+            );
+
+            // Refresh para obtener el mensaje real del servidor
+            // Esto actualizará el estado a "delivered" (dos palomitas)
+            setTimeout(() => fetchMessages(true), 800);
+
         } catch (error) {
-            // Send message error
+            // FIX #5: Manejo de error visible
+            setSendError(true);
+
+            // Marcar mensaje como fallido
+            setChatMessages(prev =>
+                prev.map(msg =>
+                    msg.id === tempId
+                        ? { ...msg, status: 'failed' }
+                        : msg
+                )
+            );
+
+            // Restaurar mensaje al input para reintentar
+            setNewMessage(tempMessage);
+        } finally {
+            setIsSending(false);
         }
+    };
+
+    // FIX #4: Renderizar indicador de estado (palomitas)
+    // Sistema honesto: ✓ = enviado, ✓✓ = confirmado en servidor (mismo color gris)
+    const renderMessageStatus = (msg) => {
+        // Solo mostrar estado en mensajes propios
+        if (msg.sender !== user.usertype) return null;
+
+        switch (msg.status) {
+            case 'sending':
+                // Reloj mientras envía
+                return (
+                    <Ionicons
+                        name="time-outline"
+                        size={12}
+                        color="#999"
+                        style={styles.statusIcon}
+                    />
+                );
+            case 'sent':
+                // Una palomita gris - enviado al servidor
+                return (
+                    <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color="#8696A0"
+                        style={styles.statusIcon}
+                    />
+                );
+            case 'delivered':
+                // Dos palomitas grises - confirmado en servidor
+                return (
+                    <View style={styles.doubleCheck}>
+                        <Ionicons
+                            name="checkmark"
+                            size={14}
+                            color="#8696A0"
+                        />
+                        <Ionicons
+                            name="checkmark"
+                            size={14}
+                            color="#8696A0"
+                            style={styles.secondCheck}
+                        />
+                    </View>
+                );
+            case 'failed':
+                // Error - icono de advertencia
+                return (
+                    <Ionicons
+                        name="alert-circle"
+                        size={14}
+                        color="#E74C3C"
+                        style={styles.statusIcon}
+                    />
+                );
+            default:
+                return null;
+        }
+    };
+
+    // FIX #5: Reintentar envío de mensaje fallido
+    const handleRetryMessage = (msg) => {
+        // Remover mensaje fallido
+        setChatMessages(prev => prev.filter(m => m.id !== msg.id));
+        previousMessagesCountRef.current -= 1;
+
+        // Poner texto en input
+        setNewMessage(msg.text);
+
+        // Enfocar input
+        textInputRef.current?.focus();
     };
 
     return (
         <View style={styles.chatCard}>
-            <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
+            <View style={styles.headerContainer}>
+                <Ionicons name="chatbubbles" size={20} color="#33A744" />
+                <Text style={styles.sectionTitle}>{getChatTitle()}</Text>
+            </View>
+
+            {/* FIX #5: Mostrar error de conexión */}
+            {sendError && (
+                <View style={styles.errorBanner}>
+                    <Ionicons name="warning-outline" size={14} color="#E74C3C" />
+                    <Text style={styles.errorText}>Error al enviar. Toca el mensaje para reintentar.</Text>
+                </View>
+            )}
 
             {/* Área de mensajes con scroll */}
             <ScrollView
@@ -161,17 +315,39 @@ export default function Chat({ orderId, order }) {
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                 }}
             >
-                {chatMessages.map((msg, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.chatBubble,
-                            msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
-                        ]}
-                    >
-                        <Text style={styles.chatText}>{msg.text}</Text>
+                {chatMessages.length === 0 ? (
+                    <View style={styles.emptyChat}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={40} color="#CCC" />
+                        <Text style={styles.emptyChatText}>Inicia la conversación</Text>
                     </View>
-                ))}
+                ) : (
+                    chatMessages.map((msg, index) => (
+                        <TouchableOpacity
+                            key={msg.id || index}
+                            activeOpacity={msg.status === 'failed' ? 0.7 : 1}
+                            onPress={() => msg.status === 'failed' && handleRetryMessage(msg)}
+                            style={[
+                                styles.chatBubble,
+                                msg.sender === user.usertype ? styles.chatBubbleRight : styles.chatBubbleLeft,
+                                msg.status === 'failed' && styles.chatBubbleFailed,
+                            ]}
+                        >
+                            <Text style={[
+                                styles.chatText,
+                                msg.status === 'failed' && styles.chatTextFailed
+                            ]}>
+                                {msg.text}
+                            </Text>
+                            {/* FIX #6: Hora + Estado */}
+                            <View style={styles.messageFooter}>
+                                <Text style={styles.messageTime}>
+                                    {formatMessageTime(msg.created_at)}
+                                </Text>
+                                {renderMessageStatus(msg)}
+                            </View>
+                        </TouchableOpacity>
+                    ))
+                )}
             </ScrollView>
 
             {/* Input fijo en la parte inferior */}
@@ -182,16 +358,31 @@ export default function Chat({ orderId, order }) {
                     placeholder="Escribe tu mensaje..."
                     placeholderTextColor="#999"
                     value={newMessage}
-                    onChangeText={setNewMessage}
+                    onChangeText={(text) => {
+                        setNewMessage(text);
+                        setSendError(false); // Limpiar error al escribir
+                    }}
                     multiline={false}
                     returnKeyType="send"
                     onSubmitEditing={handleSendMessageWithRefresh}
                     onFocus={handleInputFocus}
                     blurOnSubmit={false}
                     enablesReturnKeyAutomatically={true}
+                    editable={!isSending}
                 />
-                <TouchableOpacity onPress={handleSendMessageWithRefresh} style={styles.sendButton}>
-                    <Ionicons name="send" size={20} color="#fff" />
+                <TouchableOpacity
+                    onPress={handleSendMessageWithRefresh}
+                    style={[
+                        styles.sendButton,
+                        (isSending || !newMessage.trim()) && styles.sendButtonDisabled
+                    ]}
+                    disabled={isSending || !newMessage.trim()}
+                >
+                    {isSending ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <Ionicons name="send" size={20} color="#fff" />
+                    )}
                 </TouchableOpacity>
             </View>
         </View>
@@ -208,19 +399,24 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         shadowOffset: {width: 0, height: 2},
         elevation: 3,
-        maxHeight: 400, // Altura máxima fija para que no ocupe toda la pantalla
-        minHeight: 250, // Altura mínima para que sea usable
+        maxHeight: 400,
+        minHeight: 250,
+    },
+    headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 8,
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        gap: 8,
     },
     sectionTitle: {
         fontSize: fonts.size.large,
         fontFamily: fonts.bold,
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
         color: '#333',
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
     },
     messagesScrollView: {
         flex: 1,
@@ -230,6 +426,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         flexGrow: 1,
+    },
+    emptyChat: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyChatText: {
+        marginTop: 8,
+        fontSize: fonts.size.medium,
+        fontFamily: fonts.regular,
+        color: '#999',
     },
     chatInputContainer: {
         flexDirection: 'row',
@@ -262,6 +470,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        minWidth: 40,
+        minHeight: 40,
+    },
+    sendButtonDisabled: {
+        backgroundColor: '#A5D6A7',
     },
     chatText: {
         fontSize: fonts.size.small,
@@ -269,10 +482,14 @@ const styles = StyleSheet.create({
         fontFamily: fonts.regular,
         lineHeight: 18,
     },
+    chatTextFailed: {
+        color: '#666',
+    },
     chatBubble: {
         maxWidth: '80%',
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingTop: 8,
+        paddingBottom: 4,
         borderRadius: 16,
         marginVertical: 4,
     },
@@ -285,5 +502,48 @@ const styles = StyleSheet.create({
         backgroundColor: '#DCF8C6',
         alignSelf: 'flex-end',
         borderBottomRightRadius: 4,
+    },
+    chatBubbleFailed: {
+        backgroundColor: '#FFEBEE',
+        borderWidth: 1,
+        borderColor: '#E74C3C',
+    },
+    // FIX #6: Estilos para hora y estado
+    messageFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        marginTop: 2,
+        gap: 4,
+    },
+    messageTime: {
+        fontSize: 10,
+        fontFamily: fonts.regular,
+        color: '#888',
+    },
+    statusIcon: {
+        marginLeft: 2,
+    },
+    doubleCheck: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 2,
+    },
+    secondCheck: {
+        marginLeft: -8, // Solapar las palomitas como WhatsApp
+    },
+    // FIX #5: Banner de error
+    errorBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFEBEE',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        gap: 6,
+    },
+    errorText: {
+        fontSize: fonts.size.tiny,
+        fontFamily: fonts.regular,
+        color: '#E74C3C',
     },
 });

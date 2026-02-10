@@ -1205,6 +1205,119 @@ const styles = StyleSheet.create({
   debugContainer: {
     display: 'none',
   },
+
+  // ============================================
+  // MODAL ORDEN GRATUITA
+  // ============================================
+  freeOrderModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  freeOrderModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 28,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  freeOrderIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(210, 127, 39, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  freeOrderTitle: {
+    fontSize: 26,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  freeOrderMessage: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+  freeOrderSubMessage: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  freeOrderSummary: {
+    backgroundColor: '#F8F6F0',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 24,
+  },
+  freeOrderSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  freeOrderSummaryLabel: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+  },
+  freeOrderSummaryValue: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.semiBold,
+    color: '#2F2F2F',
+  },
+  freeOrderSummaryValueHighlight: {
+    fontSize: 20,
+    fontFamily: fonts.bold,
+    color: '#28A745',
+  },
+  freeOrderConfirmButton: {
+    flexDirection: 'row',
+    backgroundColor: '#D27F27',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 12,
+    shadowColor: '#D27F27',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  freeOrderConfirmButtonText: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  freeOrderCancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  freeOrderCancelButtonText: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#888',
+  },
 });
 
 export default styles;

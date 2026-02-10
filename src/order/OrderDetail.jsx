@@ -685,20 +685,79 @@ const OrderDetails = () => {
                   </View>
                 )}
 
-                {/* Costo de envío */}
-                {order?.shipping_cost && order.shipping_cost > 0 && (
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>Costo de envío</Text>
-                    <Text style={styles.priceValue}>
-                      {formatPriceWithSymbol(order.shipping_cost)}
-                    </Text>
-                  </View>
-                )}
+                {/* Costo de envío - con lógica mejorada para cupones */}
+                {(() => {
+                  const shippingOriginal = parseFloat(order?.shipping_cost) || 0;
+                  let shippingDiscount = 0;
 
-                {/* Descuento */}
+                  // 🆕 Sistema de beneficios múltiples
+                  if (order?.coupon_benefits) {
+                    try {
+                      const benefits = typeof order.coupon_benefits === 'string'
+                        ? JSON.parse(order.coupon_benefits)
+                        : order.coupon_benefits;
+
+                      if (Array.isArray(benefits)) {
+                        for (const benefit of benefits) {
+                          if (benefit.type === 'free_shipping' || benefit.appliesTo === 'shipping') {
+                            shippingDiscount += parseFloat(benefit.amount) || 0;
+                          }
+                        }
+                      }
+                    } catch (e) {}
+                  } else if (order?.coupon_applies_to === 'shipping') {
+                    // Fallback: sistema antiguo
+                    shippingDiscount = parseFloat(order?.discount_amount) || 0;
+                  }
+
+                  const shippingEffective = Math.max(0, shippingOriginal - shippingDiscount);
+                  const shippingMadeFree = shippingDiscount > 0 && shippingEffective === 0;
+
+                  // Mostrar envío solo si hay costo original > 0
+                  if (shippingOriginal > 0) {
+                    return (
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Costo de envío</Text>
+                        <View style={styles.priceValueContainer}>
+                          {/* Precio original tachado si cupón redujo el envío */}
+                          {shippingDiscount > 0 && shippingEffective < shippingOriginal && (
+                            <Text style={styles.priceStrikethrough}>
+                              {formatPriceWithSymbol(shippingOriginal)}
+                            </Text>
+                          )}
+                          <Text style={[
+                            styles.priceValue,
+                            shippingMadeFree && styles.freeShipping
+                          ]}>
+                            {shippingEffective === 0 ? 'GRATIS' : formatPriceWithSymbol(shippingEffective)}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  } else if (order?.subtotal > 0) {
+                    // Envío gratis por monto mínimo
+                    return (
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Costo de envío</Text>
+                        <Text style={[styles.priceValue, styles.freeShipping]}>GRATIS</Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Descuento con código de cupón */}
                 {order?.discount_amount && order.discount_amount > 0 && (
                   <View style={styles.priceRow}>
-                    <Text style={[styles.priceLabel, styles.discountLabel]}>Descuento</Text>
+                    <View style={styles.discountLabelContainer}>
+                      <Text style={[styles.priceLabel, styles.discountLabel]}>Descuento</Text>
+                      {order?.coupon_code && (
+                        <Text style={styles.couponCodeBadge}>
+                          {order.coupon_code}
+                          {order?.coupon_discount && ` ${order.coupon_discount}%`}
+                        </Text>
+                      )}
+                    </View>
                     <Text style={[styles.priceValue, styles.discountValue]}>
                       -{formatPriceWithSymbol(order.discount_amount)}
                     </Text>
@@ -708,9 +767,45 @@ const OrderDetails = () => {
                 {/* Total */}
                 <View style={[styles.priceRow, styles.totalRow]}>
                   <Text style={styles.totalLabel}>Precio total</Text>
-                  <Text style={styles.totalValue}>
-                    {formatPriceWithSymbol(order?.total_amount || order?.total_price)}
-                  </Text>
+                  <View style={styles.priceValueContainer}>
+                    {/* Mostrar total original tachado si hay descuento en productos */}
+                    {(() => {
+                      let productDiscount = 0;
+
+                      // 🆕 Sistema de beneficios múltiples
+                      if (order?.coupon_benefits) {
+                        try {
+                          const benefits = typeof order.coupon_benefits === 'string'
+                            ? JSON.parse(order.coupon_benefits)
+                            : order.coupon_benefits;
+
+                          if (Array.isArray(benefits)) {
+                            for (const benefit of benefits) {
+                              if (benefit.type !== 'free_shipping' && benefit.appliesTo !== 'shipping') {
+                                productDiscount += parseFloat(benefit.amount) || 0;
+                              }
+                            }
+                          }
+                        } catch (e) {}
+                      } else if (order?.coupon_applies_to !== 'shipping' && order?.discount_amount > 0) {
+                        // Fallback: sistema antiguo
+                        productDiscount = parseFloat(order.discount_amount) || 0;
+                      }
+
+                      if (productDiscount > 0) {
+                        const originalTotal = (parseFloat(order?.total_amount) || 0) + productDiscount;
+                        return (
+                          <Text style={styles.priceStrikethrough}>
+                            {formatPriceWithSymbol(originalTotal)}
+                          </Text>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <Text style={styles.totalValue}>
+                      {formatPriceWithSymbol(order?.total_amount || order?.total_price)}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -1584,6 +1679,37 @@ const styles = StyleSheet.create({
   },
   discountValue: {
     color: '#28A745',
+  },
+  // 🆕 Estilos para desglose mejorado con cupones
+  priceValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priceStrikethrough: {
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.small,
+    color: '#ADB5BD',
+    textDecorationLine: 'line-through',
+  },
+  freeShipping: {
+    color: '#28A745',
+    fontFamily: fonts.bold,
+  },
+  discountLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  couponCodeBadge: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: '#28A745',
+    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   totalRow: {
     borderTopWidth: 1,

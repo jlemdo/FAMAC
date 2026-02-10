@@ -93,6 +93,10 @@ export default function Cart() {
   const [deliveryInfo, setDeliveryInfo] = useState(null);
   const [isRestoringDeliveryInfo, setIsRestoringDeliveryInfo] = useState(false);
 
+  // 🆕 Modal para órdenes gratuitas
+  const [showFreeOrderModal, setShowFreeOrderModal] = useState(false);
+  const pendingFreeOrderRef = useRef(null); // Guardar datos de orden pendiente
+
   // 🔧 REF para debounce de cálculo de envío - evita saturar el servidor con múltiples llamadas rápidas
   const shippingDebounceRef = useRef(null);
   const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
@@ -126,9 +130,10 @@ export default function Cart() {
           setLatlong(guestData.coordinates);
         }
 
-        const currentSubtotal = getSubtotal() - getDiscountAmount();
-        if (currentSubtotal > 0 && guestData.address?.trim()) {
-          setTimeout(() => calculateShippingAndMotivation(currentSubtotal), 300);
+        // 🔧 FIX: Usar subtotal ORIGINAL para calcular envío (no después del cupón)
+        const subtotalForShipping = getSubtotal();
+        if (subtotalForShipping > 0 && guestData.address?.trim()) {
+          setTimeout(() => calculateShippingAndMotivation(subtotalForShipping), 300);
         }
       } catch (error) {
         // Silently fail
@@ -224,16 +229,19 @@ export default function Cart() {
   }, [user?.id, user?.email, user?.usertype]);
 
   // Recalcular envío con debounce (para todos los usuarios)
+  // 🔧 FIX: El envío se calcula sobre el subtotal ORIGINAL, no después del cupón
+  // Un cupón de 100% descuento en productos NO debe eliminar el costo de envío
   useEffect(() => {
-    const currentSubtotal = getSubtotal() - getDiscountAmount();
+    // Usar subtotal ANTES del descuento del cupón para calcular envío
+    const subtotalForShipping = getSubtotal();
 
     // Cancelar timeout anterior
     if (shippingDebounceRef.current) {
       clearTimeout(shippingDebounceRef.current);
     }
 
-    // Sin subtotal: resetear shipping
-    if (currentSubtotal <= 0) {
+    // Sin subtotal: resetear shipping (carrito vacío)
+    if (subtotalForShipping <= 0) {
       setShippingCost(0);
       setShippingMotivation(null);
       setShippingCalculated(false);
@@ -249,12 +257,12 @@ export default function Cart() {
 
     // Solo recalcular si subtotal cambió significativamente o no se ha calculado
     const lastSubtotal = lastShippingSubtotalRef.current || 0;
-    const subtotalChanged = Math.abs(currentSubtotal - lastSubtotal) > 1;
+    const subtotalChanged = Math.abs(subtotalForShipping - lastSubtotal) > 1;
 
     if (subtotalChanged || !shippingCalculated) {
       shippingDebounceRef.current = setTimeout(() => {
-        lastShippingSubtotalRef.current = currentSubtotal;
-        calculateShippingAndMotivation(currentSubtotal);
+        lastShippingSubtotalRef.current = subtotalForShipping;
+        calculateShippingAndMotivation(subtotalForShipping);
       }, 500);
     }
 
@@ -391,10 +399,26 @@ export default function Cart() {
     // 🔧 BUG #10 FIX: Persistir cupón
     const odUserId = user?.id?.toString() || user?.email || 'anonymous';
     saveCoupon(couponData, odUserId);
+
+    // Construir mensaje detallado del cupón
+    let benefitsDetail = '';
+    if (couponData.benefits && couponData.benefits.length > 0) {
+      const details = couponData.benefits.map(benefit => {
+        if (benefit.type === 'free_shipping') {
+          return `• Envío gratis: -$${shippingCost.toFixed(0)}`;
+        } else if (benefit.appliesTo === 'shipping') {
+          return `• Descuento en envío: -$${(benefit.amount || 0).toFixed(0)}`;
+        } else {
+          return `• Descuento en productos: -$${(benefit.amount || 0).toFixed(0)}`;
+        }
+      });
+      benefitsDetail = '\n\n' + details.join('\n');
+    }
+
     showAlert({
       type: 'success',
       title: 'Cupón aplicado',
-      message: `${couponData.description} aplicado correctamente`
+      message: `${couponData.code.toUpperCase()}\n${couponData.description}${benefitsDetail}`
     });
   };
 
@@ -427,11 +451,30 @@ export default function Cart() {
       return 0; // No aplica descuento si no cumple mínimo
     }
 
-    // Determinar sobre qué base aplicar el descuento
+    // 🆕 Sistema de beneficios múltiples
+    if (appliedCoupon.benefits && appliedCoupon.benefits.length > 0) {
+      // Recalcular beneficios con valores actuales de subtotal y shipping
+      let totalDiscount = 0;
+
+      for (const benefit of appliedCoupon.benefits) {
+        if (benefit.type === 'percentage') {
+          const baseAmount = benefit.appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
+          totalDiscount += Math.min((baseAmount * benefit.value) / 100, baseAmount);
+        } else if (benefit.type === 'fixed') {
+          const baseAmount = benefit.appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
+          totalDiscount += Math.min(benefit.value, baseAmount);
+        } else if (benefit.type === 'free_shipping') {
+          totalDiscount += shippingCost; // Envío gratis = descuento igual al costo de envío
+        }
+      }
+
+      return totalDiscount;
+    }
+
+    // Sistema simple (retrocompatibilidad)
     const appliesTo = appliedCoupon.appliesTo || 'total';
     const baseAmount = appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
 
-    // Recalcular descuento basado en el monto base correspondiente
     let newDiscountAmount = 0;
     if (appliedCoupon.type === 'percentage') {
       newDiscountAmount = (baseAmount * appliedCoupon.discount) / 100;
@@ -445,6 +488,42 @@ export default function Cart() {
 
   const getFinalTotal = () => {
     const subtotal = getSubtotal(); // Subtotal final (con descuentos promocionales ya aplicados)
+    const subtotalForCoupon = getSubtotalForCoupons();
+
+    // 🆕 Sistema de beneficios múltiples
+    if (appliedCoupon && appliedCoupon.benefits && appliedCoupon.benefits.length > 0) {
+      // Verificar monto mínimo
+      if (subtotalForCoupon < appliedCoupon.minAmount) {
+        return Math.max(0, subtotal + shippingCost);
+      }
+
+      let totalDiscount = 0;
+      let shippingDiscount = 0;
+
+      for (const benefit of appliedCoupon.benefits) {
+        if (benefit.type === 'percentage') {
+          if (benefit.appliesTo === 'shipping') {
+            shippingDiscount += Math.min((shippingCost * benefit.value) / 100, shippingCost);
+          } else {
+            totalDiscount += Math.min((subtotalForCoupon * benefit.value) / 100, subtotalForCoupon);
+          }
+        } else if (benefit.type === 'fixed') {
+          if (benefit.appliesTo === 'shipping') {
+            shippingDiscount += Math.min(benefit.value, shippingCost);
+          } else {
+            totalDiscount += Math.min(benefit.value, subtotalForCoupon);
+          }
+        } else if (benefit.type === 'free_shipping') {
+          shippingDiscount = shippingCost; // Envío completamente gratis
+        }
+      }
+
+      const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
+      const discountedShipping = Math.max(0, shippingCost - shippingDiscount);
+      return Math.max(0, discountedSubtotal + discountedShipping);
+    }
+
+    // Sistema simple (retrocompatibilidad)
     const couponDiscount = getDiscountAmount();
 
     // Si el cupón aplica a envío, restar descuento del shipping
@@ -861,12 +940,13 @@ export default function Cart() {
             }
             
             // 🚚 CRÍTICO: Forzar recálculo inmediato del envío después de restaurar datos
+            // 🔧 FIX: Usar subtotal ORIGINAL para calcular envío
             setTimeout(() => {
-              const currentSubtotal = getSubtotal() - getDiscountAmount();
-              if (currentSubtotal > 0 && tempGuestData.email?.trim() && tempGuestData.address?.trim()) {
-                calculateShippingAndMotivation(currentSubtotal);
+              const subtotalForShipping = getSubtotal();
+              if (subtotalForShipping > 0 && tempGuestData.email?.trim() && tempGuestData.address?.trim()) {
+                calculateShippingAndMotivation(subtotalForShipping);
               }
-            }, 200); // Aumentado de 100ms a 200ms
+            }, 200);
             
             // 🚀 CRÍTICO: Activar flag de auto-pago para Guest que acaba de completar dirección
             setGuestJustCompletedAddress(true);
@@ -939,10 +1019,11 @@ export default function Cart() {
           setGuestJustCompletedAddress(true);
 
           // Forzar recálculo del envío
+          // 🔧 FIX: Usar subtotal ORIGINAL para calcular envío
           setTimeout(() => {
-            const currentSubtotal = getSubtotal() - getDiscountAmount();
-            if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              calculateShippingAndMotivation(currentSubtotal);
+            const subtotalForShipping = getSubtotal();
+            if (subtotalForShipping > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
+              calculateShippingAndMotivation(subtotalForShipping);
             }
           }, 200);
 
@@ -952,10 +1033,11 @@ export default function Cart() {
 
         } else {
           // Forzar recálculo del envío (flujo normal)
+          // 🔧 FIX: Usar subtotal ORIGINAL para calcular envío
           setTimeout(() => {
-            const currentSubtotal = getSubtotal() - getDiscountAmount();
-            if (currentSubtotal > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
-              calculateShippingAndMotivation(currentSubtotal);
+            const subtotalForShipping = getSubtotal();
+            if (subtotalForShipping > 0 && params.guestData.email?.trim() && params.guestData.address?.trim()) {
+              calculateShippingAndMotivation(subtotalForShipping);
             }
           }, 200);
 
@@ -1045,91 +1127,84 @@ export default function Cart() {
     }
   }, [user?.usertype, guestJustCompletedAddress, deliveryInfo, email, address, latlong?.driver_lat, latlong?.driver_long, cart.length, shippingCalculated, loadingShipping]);
 
+  // 🆕 Función para confirmar orden gratuita desde el modal
+  const confirmFreeOrder = async () => {
+    const pendingData = pendingFreeOrderRef.current;
+    if (!pendingData) {
+      setShowFreeOrderModal(false);
+      return;
+    }
+
+    const { orderData, realOrderId } = pendingData;
+    setShowFreeOrderModal(false);
+    setLoading(true);
+
+    try {
+      // Marcar la orden como pagada directamente en el backend
+      const freeOrderResponse = await axios.post(`${API_BASE_URL}/api/orders/mark-as-free`, {
+        order_id: realOrderId,
+        reason: 'Cupón 100% descuento'
+      });
+
+      // Verificar que el backend confirmó el cambio
+      if (!freeOrderResponse.data?.success) {
+        throw new Error(freeOrderResponse.data?.message || 'No se pudo procesar la orden gratuita');
+      }
+
+      // Limpiar referencia
+      pendingFreeOrderRef.current = null;
+
+      // Ir al flujo de éxito
+      await handleOrderSuccess(orderData, null);
+    } catch (freeOrderError) {
+      setLoading(false);
+      pendingFreeOrderRef.current = null;
+      showAlert({
+        type: 'error',
+        title: 'Error procesando pedido',
+        message: 'No se pudo completar tu pedido gratuito. Por favor intenta de nuevo o contacta soporte.',
+        confirmText: 'Entendido'
+      });
+    }
+  };
+
+  // 🆕 Función para cancelar orden gratuita
+  const cancelFreeOrder = () => {
+    pendingFreeOrderRef.current = null;
+    setShowFreeOrderModal(false);
+  };
+
   // Función auxiliar: Manejar éxito de orden (para Stripe y órdenes gratuitas)
-  const handleOrderSuccess = async (orderData, oxxoInfo = null) => {
+  // ⚡ OPTIMIZADO: Navegación inmediata, tareas secundarias en background
+  const handleOrderSuccess = (orderData, oxxoInfo = null) => {
     // 🔓 Desbloquear mutex de orden
     orderInProgressRef.current = false;
 
     const realOrderId = orderData?.order?.id;
 
-    // Guardar datos de Guest para futuras compras
-    if (user?.usertype === 'Guest') {
-      const updateData = {};
-      if ((!user?.email || user?.email?.trim() === '') && email?.trim()) {
-        updateData.email = email.trim();
-      }
-      if (address?.trim()) {
-        updateData.address = address.trim();
-      }
-      if (Object.keys(updateData).length > 0) {
-        await updateUser(updateData);
-      }
-    }
-
-    // Crear resumen del pedido
+    // ⚡ PASO 1: Capturar datos ANTES de limpiar (para el modal)
     const itemCount = cart.reduce((total, item) => total + item.quantity, 0);
     const deliveryText = deliveryInfo
       ? `📅 ${deliveryInfo.date.toLocaleDateString('es-ES')} - ${deliveryInfo.slot}`
       : 'Horario pendiente';
-
     const orderNumber = realOrderId || orderData?.order?.id;
+    const finalTotal = getFinalTotal();
+    const currentAddress = address;
+    const currentEmail = email;
 
-    // Limpiar datos - LIMPIEZA COMPLETA DESPUÉS DE PAGO
-    clearCart();
-    setDeliveryInfo(null);
-    setAppliedCoupon(null);
-
-    // 🔧 FIX: Limpiar TODO de AsyncStorage después de pago exitoso
-    const odUserId = user?.id?.toString() || user?.email || 'anonymous';
-    clearSavedCoupon(odUserId);
-
-    if (user?.usertype !== 'Guest') {
-      setLatlong(null);
-    }
-
-    if (user?.id) {
-      clearSavedDeliveryInfo(user.id);
-      clearSavedCoordinates(user.id);
-    } else if (user?.email) {
-      // 🔧 FIX: También limpiar para Guest usando email como key
-      clearSavedDeliveryInfo(user.email);
-      clearSavedCoordinates(user.email);
-    }
-
-    // Refrescar órdenes
-    refreshOrders();
-    setTimeout(() => refreshOrders(), 2000);
-    setTimeout(() => refreshOrders(), 5000);
-
-    if (user?.usertype === 'Guest') {
-      enableGuestOrders();
-      if (orderData?.order) {
-        const newGuestOrder = {
-          id: orderData.order.id,
-          status: orderData.order.status || 'pending',
-          payment_status: orderData.order.payment_status || 'paid',
-          user_email: user.email,
-          created_at: new Date().toISOString(),
-          total: totalPrice,
-          delivery_address: address,
-        };
-        updateOrders([newGuestOrder]);
-      }
-    }
-
-    // Construir datos del modal
+    // Construir datos del modal PRIMERO (antes de limpiar estado)
     const modalData = {
       orderNumber: formatOrderId(orderData?.created_at || orderData?.order?.created_at || new Date().toISOString()),
-      totalPrice: getFinalTotal(),
+      totalPrice: finalTotal,
       itemCount: itemCount,
       deliveryText: deliveryText,
       needInvoice: needInvoice,
       orderId: orderNumber ? orderNumber.toString() : null,
       oxxoInfo: oxxoInfo,
-      isGratisOrder: getFinalTotal() < 10, // 🆕 Indicar si fue orden gratuita
+      isGratisOrder: finalTotal < 10,
     };
 
-    // Navegar a pantalla de éxito
+    // ⚡ PASO 2: Navegar INMEDIATAMENTE (antes de tareas secundarias)
     navigation.reset({
       index: 0,
       routes: [
@@ -1155,6 +1230,58 @@ export default function Cart() {
           },
         },
       ],
+    });
+
+    // ⚡ PASO 3: Tareas secundarias en BACKGROUND (ejecutar después de navegación)
+    InteractionManager.runAfterInteractions(() => {
+      // Limpiar estado local
+      clearCart();
+      setDeliveryInfo(null);
+      setAppliedCoupon(null);
+
+      if (user?.usertype !== 'Guest') {
+        setLatlong(null);
+      }
+
+      // AsyncStorage cleanup en paralelo (no bloquea)
+      const odUserId = user?.id?.toString() || user?.email || 'anonymous';
+      Promise.all([
+        clearSavedCoupon(odUserId),
+        user?.id ? clearSavedDeliveryInfo(user.id) : null,
+        user?.id ? clearSavedCoordinates(user.id) : null,
+        user?.email && !user?.id ? clearSavedDeliveryInfo(user.email) : null,
+        user?.email && !user?.id ? clearSavedCoordinates(user.email) : null,
+      ].filter(Boolean)).catch(() => {}); // Ignorar errores de limpieza
+
+      // Actualizar datos de Guest (no bloquea)
+      if (user?.usertype === 'Guest') {
+        const updateData = {};
+        if ((!user?.email || user?.email?.trim() === '') && currentEmail?.trim()) {
+          updateData.email = currentEmail.trim();
+        }
+        if (currentAddress?.trim()) {
+          updateData.address = currentAddress.trim();
+        }
+        if (Object.keys(updateData).length > 0) {
+          updateUser(updateData).catch(() => {});
+        }
+
+        enableGuestOrders();
+        if (orderData?.order) {
+          updateOrders([{
+            id: orderData.order.id,
+            status: orderData.order.status || 'pending',
+            payment_status: orderData.order.payment_status || 'paid',
+            user_email: user.email,
+            created_at: new Date().toISOString(),
+            total: finalTotal,
+            delivery_address: currentAddress,
+          }]);
+        }
+      }
+
+      // ⚡ Refrescar órdenes UNA sola vez con delay (reducido de 3 llamadas a 1)
+      setTimeout(() => refreshOrders(), 2000);
     });
   };
 
@@ -1337,33 +1464,15 @@ export default function Cart() {
         throw new Error('No se pudo crear la orden correctamente.');
       }
 
-      // 🆕 PASO 1.5: Si es orden gratuita, procesar sin Stripe
+      // 🆕 PASO 1.5: Si es orden gratuita, mostrar modal de confirmación
       if (isGratisOrder) {
-        // Marcar la orden como pagada directamente en el backend
-        try {
-          const freeOrderResponse = await axios.post(`${API_BASE_URL}/api/orders/mark-as-free`, {
-            order_id: realOrderId,
-            reason: 'Cupón 100% descuento'
-          });
-
-          // Verificar que el backend confirmó el cambio
-          if (!freeOrderResponse.data?.success) {
-            throw new Error(freeOrderResponse.data?.message || 'No se pudo procesar la orden gratuita');
-          }
-        } catch (freeOrderError) {
-          // Si falla, mostrar error y NO continuar
-          showAlert({
-            type: 'error',
-            title: 'Error procesando pedido',
-            message: 'No se pudo completar tu pedido gratuito. Por favor intenta de nuevo o contacta soporte.',
-            confirmText: 'Entendido'
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Saltar directamente al flujo de éxito (sin Stripe)
-        await handleOrderSuccess(orderData, null);
+        // Guardar datos para procesar después de confirmar
+        pendingFreeOrderRef.current = {
+          orderData,
+          realOrderId
+        };
+        setLoading(false);
+        setShowFreeOrderModal(true);
         return;
       }
 
@@ -1603,6 +1712,8 @@ export default function Cart() {
         coupon_code: couponValid ? appliedCoupon.code : null,
         coupon_discount: couponValid ? appliedCoupon.discount : null,
         coupon_type: couponValid ? appliedCoupon.type : null,
+        coupon_applies_to: couponValid ? (appliedCoupon.appliesTo || 'total') : null,
+        coupon_benefits: couponValid && appliedCoupon.benefits ? JSON.stringify(appliedCoupon.benefits) : null,
         discount_amount: couponValid ? getDiscountAmount() : 0,
         fcm_token: fcmToken,
       };
@@ -2265,6 +2376,71 @@ export default function Cart() {
             </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* 🆕 Modal de confirmación para órdenes gratuitas */}
+      <Modal
+        visible={showFreeOrderModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelFreeOrder}
+      >
+        <View style={styles.freeOrderModalOverlay}>
+          <View style={styles.freeOrderModalContent}>
+            {/* Icono de regalo/celebración */}
+            <View style={styles.freeOrderIconContainer}>
+              <Ionicons name="gift" size={60} color="#D27F27" />
+            </View>
+
+            {/* Título */}
+            <Text style={styles.freeOrderTitle}>¡Felicidades!</Text>
+
+            {/* Mensaje */}
+            <Text style={styles.freeOrderMessage}>
+              Este pedido no tiene costo gracias a tu cupón de descuento.
+            </Text>
+            <Text style={styles.freeOrderSubMessage}>
+              {getFinalTotal() < 1
+                ? 'El cupón cubre tanto los productos como el envío.'
+                : `El envío tiene un costo de ${formatPriceWithSymbol(getFinalTotal())}.`
+              }
+            </Text>
+
+            {/* Resumen */}
+            <View style={styles.freeOrderSummary}>
+              <View style={styles.freeOrderSummaryRow}>
+                <Text style={styles.freeOrderSummaryLabel}>Productos:</Text>
+                <Text style={styles.freeOrderSummaryValue}>
+                  {cart.reduce((total, item) => total + item.quantity, 0)} artículos
+                </Text>
+              </View>
+              <View style={styles.freeOrderSummaryRow}>
+                <Text style={styles.freeOrderSummaryLabel}>Total a pagar:</Text>
+                <Text style={styles.freeOrderSummaryValueHighlight}>
+                  {getFinalTotal() < 1 ? 'GRATIS' : formatPriceWithSymbol(getFinalTotal())}
+                </Text>
+              </View>
+            </View>
+
+            {/* Botones */}
+            <TouchableOpacity
+              style={styles.freeOrderConfirmButton}
+              onPress={confirmFreeOrder}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle" size={22} color="#FFF" style={{marginRight: 8}} />
+              <Text style={styles.freeOrderConfirmButtonText}>Confirmar Pedido</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.freeOrderCancelButton}
+              onPress={cancelFreeOrder}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.freeOrderCancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );

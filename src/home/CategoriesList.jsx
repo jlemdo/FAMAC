@@ -408,20 +408,13 @@ export default function CategoriesList() {
           });
 
           showAlert({
-            type: 'success',
-            title: '🏪 Voucher OXXO Generado',
-            message: `¡Tu voucher OXXO está listo!\n\n` +
-                     `📋 Número de pedido: ${orderData.orderNumber}\n` +
-                     `🎫 Referencia OXXO:\n${orderData.oxxoInfo.voucherNumber}\n` +
-                     `💰 Monto a pagar: $${orderData.oxxoInfo.amount}\n\n` +
-                     `📍 Instrucciones para pagar:\n` +
-                     `1. Ve a cualquier tienda OXXO\n` +
-                     `2. Dile al cajero "Quiero hacer un pago de servicios"\n` +
-                     `3. Proporciona esta referencia:\n   ${orderData.oxxoInfo.voucherNumber}\n` +
-                     `4. Paga $${orderData.oxxoInfo.amount} en efectivo\n` +
-                     `5. Guarda tu comprobante\n\n` +
-                     `⏰ Fecha límite: ${expirationDate}\n\n` +
-                     `💡 Tip: Guarda este voucher en tu teléfono`,
+            type: 'warning',
+            title: 'Voucher OXXO Listo',
+            message: `Pedido #${orderData.orderNumber}\n\n` +
+                     `Referencia:\n${orderData.oxxoInfo.voucherNumber}\n\n` +
+                     `Monto: $${orderData.oxxoInfo.amount}\n` +
+                     `Fecha límite: ${expirationDate}\n\n` +
+                     `Presenta esta referencia en cualquier OXXO para completar tu pago.`,
             confirmText: 'Descargar Voucher',
             cancelText: 'Continuar',
             onConfirm: () => {
@@ -434,13 +427,11 @@ export default function CategoriesList() {
         } else {
           showAlert({
             type: 'success',
-            title: '¡Pedido Realizado Exitosamente!',
-            message: `Tu pedido ha sido procesado correctamente.\n\n` +
-                     `📋 Número de pedido: ${orderData.orderNumber}\n` +
-                     `💰 Total: $${orderData.totalPrice}\n` +
-                     `📦 ${orderData.itemCount} producto${orderData.itemCount !== 1 ? 's' : ''}\n` +
-                     `🚚 ${orderData.deliveryText}` +
-                     `${orderData.needInvoice ? '\n🧾 Factura solicitada' : ''}`,
+            title: '¡Pedido Confirmado!',
+            message: `Pedido #${orderData.orderNumber}\n` +
+                     `${orderData.itemCount} producto${orderData.itemCount !== 1 ? 's' : ''} • $${orderData.totalPrice.toFixed(2)}\n\n` +
+                     `Fecha y hora de entrega:\n${orderData.deliveryText}` +
+                     `${orderData.needInvoice ? '\n\nFactura solicitada' : ''}`,
             confirmText: 'Ver pedido',
             cancelText: 'Continuar',
             onConfirm: () => {
