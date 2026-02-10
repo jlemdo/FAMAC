@@ -19,6 +19,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { OrderContext } from '../context/OrderContext';
+import { CartContext } from '../context/CartContext';
 import { useAlert } from '../context/AlertContext';
 import { useProfile } from '../context/ProfileContext';
 import fonts from '../theme/fonts';
@@ -142,6 +143,7 @@ const getPlainPhone = (phone) => {
 export default function Profile({ navigation, route }) {
   const { user, logout, updateUser } = useContext(AuthContext);
   const { orders } = useContext(OrderContext);
+  const { clearCart } = useContext(CartContext);
   const { showAlert } = useAlert();
   const { updateProfile, refreshAddresses } = useProfile();
   const [loading, setLoading] = useState(false);
@@ -431,6 +433,13 @@ export default function Profile({ navigation, route }) {
       );
 
       if (response.status === 200 || response.status === 201) {
+        // 🧹 Limpiar carrito del backend antes de logout
+        try {
+          await clearCart();
+        } catch (cartError) {
+          // Ignorar error de carrito, la cuenta ya fue eliminada
+        }
+
         showAlert({
           type: 'success',
           title: 'Cuenta eliminada',
@@ -700,6 +709,13 @@ export default function Profile({ navigation, route }) {
       );
 
       if (response.status === 200 || response.status === 201) {
+        // 🧹 Limpiar carrito del backend antes de logout
+        try {
+          await clearCart();
+        } catch (cartError) {
+          // Ignorar error de carrito, la cuenta ya fue eliminada
+        }
+
         showAlert({
           type: 'success',
           title: 'Cuenta eliminada',

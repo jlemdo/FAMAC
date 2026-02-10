@@ -155,16 +155,16 @@ export function AuthProvider({ children }) {
     setIsLoggedIn(true);
 
     // Migrar órdenes de Guest si es necesario
+    // Se hace DESPUÉS de setUser para que el usuario ya esté establecido
     if (wasGuest && userData.usertype !== 'Guest') {
       if (previousUser.email && previousUser.email.trim()) {
+        // Pequeño delay para asegurar que el estado se actualizó
         setTimeout(async () => {
           try {
-            const migrationSuccess = await migrateGuestOrders(previousUser.email);
-            if (migrationSuccess) {
-              await clearGuestData(previousUser.email);
-            }
+            await migrateGuestOrders(previousUser.email);
+            await clearGuestData(previousUser.email);
           } catch (error) {}
-        }, 1000);
+        }, 500);
       }
     }
   };

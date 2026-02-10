@@ -963,16 +963,9 @@ export default function Cart() {
             // Limpiar AsyncStorage después de usar
             await AsyncStorage.removeItem('tempGuestData');
             
-            // Scroll automático igual que antes
+            // Scroll automático al final para ver opciones de entrega/pago
             setTimeout(() => {
-              if (tempGuestData.preservedDeliveryInfo) {
-                flatListRef.current?.scrollToEnd({ animated: true });
-              } else {
-                if (deliverySlotRef.current?.scrollToView) {
-                  deliverySlotRef.current.scrollToView();
-                } else {
-                }
-              }
+              flatListRef.current?.scrollToEnd({ animated: true });
             }, 600);
             
             return; // No procesar el flujo antiguo
@@ -1097,6 +1090,19 @@ export default function Cart() {
         }, 800); // Delay para asegurar que todo esté renderizado
       }
     }, [user?.id, user?.usertype, navigation, cart.length, deliveryInfo])
+  );
+
+  // 🔧 FIX: Cleanup SEPARADO - Solo cuando Cart pierde el foco (sin dependencias que cambien)
+  useFocusEffect(
+    React.useCallback(() => {
+      // No hacer nada al ganar foco
+      return () => {
+        // Cleanup: Resetear flag cuando Cart pierde el foco
+        if (user?.usertype === 'Guest') {
+          setGuestJustCompletedAddress(false);
+        }
+      };
+    }, []) // Sin dependencias - solo se ejecuta al montar/desmontar
   );
 
 

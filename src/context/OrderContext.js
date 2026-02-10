@@ -1,5 +1,5 @@
-﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+﻿import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import { Platform, Alert } from 'react-native';
 import { AuthContext } from './AuthContext';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/environment';
@@ -11,7 +11,19 @@ export function OrderProvider({ children }) {
     const [orders, setOrders] = useState([]);
     const [lastFetch, setLastFetch] = useState(null);
     const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
-    const { user } = useContext(AuthContext);
+    const { user, logout } = useContext(AuthContext);
+
+    // ✅ useRef para logout - evita dependencia circular en useCallback
+    const logoutRef = useRef(logout);
+    useEffect(() => {
+        logoutRef.current = logout;
+    }, [logout]);
+
+    // ✅ useRef para user - evita race conditions en el useEffect
+    const userRef = useRef(user);
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
 
     // ✅ Estado para permitir cargar órdenes Guest temporalmente
     const [allowGuestOrders, setAllowGuestOrders] = useState(false);
@@ -28,37 +40,39 @@ export function OrderProvider({ children }) {
         
         // console.log('👤 USER COMPLETO:', JSON.stringify(user, null, 2));
 
-        // ✅ Solo bloquear si no hay usuario o si es Guest sin permisos
+        // ✅ Solo bloquear si no hay usuario
         if (!user) {
             setOrders([]);
             setOrderCount(0);
             return;
         }
 
-        // ✅ FIX: Guest con email válido SIEMPRE puede ver sus órdenes
-        // Solo bloquear si es Guest SIN email o con email generado/proxy
-        if (user.usertype === 'Guest') {
-            const hasValidEmail = user.email &&
-                                  user.email.trim() !== '' &&
-                                  !user.email.includes('@guest.') &&
-                                  !user.email.includes('@proxy.');
-
-            if (!hasValidEmail && !allowGuestOrders) {
-                setOrders([]);
-                setOrderCount(0);
-                return;
-            }
-        }
-
         let url = 'URL_NO_DEFINIDA';
-        
+
         try {
             if (user.usertype === 'driver') {
                 url = `/api/orderhistorydriver/${user.id}`;
-            } else if (user.usertype === 'Guest' && allowGuestOrders) {
-                // ✅ Para Guest, usar email como user_id en el endpoint normal
-                url = `/api/orderhistory/${encodeURIComponent(user.email)}`;
+            } else if (user.usertype === 'Guest') {
+                // ✅ FIX: Guest SIEMPRE usa email (nunca user.id que es null)
+                const hasValidEmail = user.email &&
+                                      user.email.trim() !== '' &&
+                                      !user.email.includes('@guest.') &&
+                                      !user.email.includes('@proxy.');
+                if (hasValidEmail) {
+                    url = `/api/orderhistory/${encodeURIComponent(user.email)}`;
+                } else {
+                    // Guest sin email válido, no hacer fetch
+                    setOrders([]);
+                    setOrderCount(0);
+                    return;
+                }
             } else {
+                // Usuario registrado, usar ID
+                if (!user.id) {
+                    setOrders([]);
+                    setOrderCount(0);
+                    return;
+                }
                 url = `/api/orderhistory/${user.id}`;
             }
 
@@ -71,6 +85,18 @@ export function OrderProvider({ children }) {
             });
 
             if (!fetchResponse.ok) {
+                // 🔐 Detectar usuario eliminado (404)
+                if (fetchResponse.status === 404) {
+                    const errorData = await fetchResponse.json().catch(() => ({}));
+                    if (errorData.user_deleted) {
+                        Alert.alert(
+                            'Sesión terminada',
+                            'Tu cuenta ha sido eliminada. Se cerrará la sesión.',
+                            [{ text: 'OK', onPress: () => logoutRef.current && logoutRef.current() }]
+                        );
+                        return;
+                    }
+                }
                 throw new Error(`FETCH failed with status ${fetchResponse.status}`);
             }
 
@@ -217,26 +243,41 @@ export function OrderProvider({ children }) {
         fetchOrdersFromServer();
     }, [fetchOrdersFromServer]);
 
+    // ✅ Ref para fetchOrdersFromServer - evita recrear el interval
+    const fetchRef = useRef(fetchOrdersFromServer);
+    useEffect(() => {
+        fetchRef.current = fetchOrdersFromServer;
+    }, [fetchOrdersFromServer]);
+
     // Auto-refresh optimizado por tipo de usuario
     useEffect(() => {
-        if (user && (user.usertype !== 'Guest' || allowGuestOrders)) {
-            // Fetch inicial
-            fetchOrdersFromServer();
-            
+        // ✅ FIX: Usar userRef.current para evitar race conditions
+        const currentUser = user;
+
+        if (currentUser && (currentUser.usertype !== 'Guest' || allowGuestOrders)) {
+            // ✅ FIX: Pequeño delay para usuarios que acaban de hacer login
+            // Esto permite que la migración de órdenes Guest se complete primero
+            const initialDelay = currentUser.usertype !== 'Guest' ? 800 : 0;
+
+            const initialFetchTimeout = setTimeout(() => {
+                fetchRef.current();
+            }, initialDelay);
+
             // ✅ AUTO-REFRESH MEJORADO: Más frecuente para todos los usuarios
-            const refreshInterval = user.usertype === 'driver' ? 5000 : 15000; // Drivers: 5s, Users: 15s (antes 30s)
-            
+            const refreshInterval = currentUser.usertype === 'driver' ? 5000 : 15000;
+
             const interval = setInterval(() => {
-                fetchOrdersFromServer();
+                fetchRef.current();
             }, refreshInterval);
-            
+
             setAutoRefreshInterval(interval);
-            
+
             return () => {
+                clearTimeout(initialFetchTimeout);
                 clearInterval(interval);
             };
         } else {
-            // Limpiar para guests
+            // Limpiar para guests sin email válido
             setOrders([]);
             setOrderCount(0);
             if (autoRefreshInterval) {
@@ -244,7 +285,7 @@ export function OrderProvider({ children }) {
                 setAutoRefreshInterval(null);
             }
         }
-    }, [user, fetchOrdersFromServer, allowGuestOrders]);
+    }, [user?.id, user?.usertype, user?.email, allowGuestOrders]); // ✅ FIX: Dependencias específicas en lugar de todo el objeto user
 
     return (
         <OrderContext.Provider value={{ 

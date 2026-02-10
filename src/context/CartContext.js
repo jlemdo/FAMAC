@@ -140,23 +140,29 @@ export function CartProvider({ children }) {
             const currentEmail = user?.email;
             const isGuest = user?.usertype === 'Guest';
 
-            // 🔧 FIX BUG CRÍTICO: Si es Guest y solo cambió el email (verificación),
+            // 🔧 FIX BUG CRÍTICO: Si es Guest con carrito en memoria y acaba de verificar email,
             // NO recargar el carrito - preservar el carrito local y guardarlo con el nuevo email
-            if (isGuest && cartLoaded && cart.length > 0 &&
-                previousGuestEmailRef.current !== null &&
-                previousGuestEmailRef.current !== currentEmail) {
+            // CASO 1: Guest sin email verifica por primera vez (previousEmail = null, newEmail existe)
+            // CASO 2: Guest cambia de email (previousEmail !== newEmail)
+            const guestJustVerifiedEmail = isGuest &&
+                cartLoaded &&
+                cart.length > 0 &&
+                currentEmail &&
+                currentEmail.trim() &&
+                (previousGuestEmailRef.current === null || previousGuestEmailRef.current !== currentEmail);
 
+            if (guestJustVerifiedEmail && previousGuestEmailRef.current !== currentEmail) {
                 console.log('📦 CARTCONTEXT: Guest verificó email, preservando carrito local:', {
                     previousEmail: previousGuestEmailRef.current,
                     newEmail: currentEmail,
                     cartItems: cart.length
                 });
 
-                // Actualizar la referencia del email
+                // Actualizar la referencia del email ANTES de guardar
+                const oldEmail = previousGuestEmailRef.current;
                 previousGuestEmailRef.current = currentEmail;
 
                 // 🔧 FIX: Guardar INMEDIATAMENTE el carrito con el nuevo email verificado
-                // No esperar al debounce porque el carrito se perdería al navegar
                 const saveCartWithNewEmail = async () => {
                     try {
                         const payload = {
@@ -172,7 +178,7 @@ export function CartProvider({ children }) {
                 };
                 saveCartWithNewEmail();
 
-                return; // NO recargar del backend
+                return; // NO recargar del backend - ya tenemos el carrito en memoria
             }
 
             // Actualizar referencia del email
@@ -412,12 +418,22 @@ export function CartProvider({ children }) {
         try {
             // Limpiar memoria
             setCart([]);
-            
+
             // Ejecutar callback para limpiar información adicional (como deliveryInfo)
             if (onCartClearCallback) {
                 onCartClearCallback();
             }
-            
+
+            // 🧹 Limpiar AsyncStorage ANTES de limpiar backend (por si hay logout después)
+            if (user) {
+                const userId = user?.id?.toString() || user?.email || 'anonymous';
+                const cartKey = `cart_${userId}`;
+                await AsyncStorage.removeItem(cartKey);
+
+                // 🔧 FIX: También limpiar cart_anonymous para evitar que persista al volver como Guest
+                await AsyncStorage.removeItem('cart_anonymous');
+            }
+
             // Limpiar backend
             if (user && user.usertype !== 'Driver') {
                 const payload = {
@@ -433,7 +449,7 @@ export function CartProvider({ children }) {
                 await axios.post(`${API_BASE_URL}/api/cart/clear`, payload);
                 // console.log('🧹 Carrito limpiado en backend');
             }
-            
+
         } catch (error) {
             // console.log('❌ Error limpiando carrito:', error.message);
         }

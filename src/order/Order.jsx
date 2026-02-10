@@ -581,6 +581,43 @@ const Order = () => {
                       // Búsqueda en progreso pero aún no pasa el umbral de tiempo
                       // No mostrar nada (búsqueda silenciosa)
                       null
+                    ) : guestSearchCompleted && guestOrders.length > 0 ? (
+                      // 🔧 FIX: Guest tiene pedidos pero la tab actual está vacía
+                      // Mostrar mensajes diferenciados por tab igual que usuarios normales
+                      userActiveTab === 'activas' ? (
+                        <>
+                          <View style={styles.emptyIconContainer}>
+                            <Ionicons name="cube-outline" size={60} color="#CCC" />
+                          </View>
+                          <Text style={styles.emptyTitle}>Sin pedidos activos</Text>
+                          <Text style={styles.emptyText}>
+                            No tienes pedidos en proceso en este momento.
+                          </Text>
+                        </>
+                      ) : userActiveTab === 'entregadas' ? (
+                        <>
+                          <View style={styles.emptyIconContainer}>
+                            <Ionicons name="gift-outline" size={60} color="#CCC" />
+                          </View>
+                          <Text style={styles.emptyTitle}>Sin pedidos entregados</Text>
+                          <Text style={styles.emptyText}>
+                            Aún no tienes pedidos completados.
+                          </Text>
+                          <Text style={styles.emptySubtext}>
+                            Tus pedidos entregados aparecerán aquí
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.emptyIconContainer}>
+                            <Ionicons name="happy-outline" size={60} color="#33A744" />
+                          </View>
+                          <Text style={styles.emptyTitle}>¡Todo bien!</Text>
+                          <Text style={styles.emptyText}>
+                            No tienes pedidos cancelados.
+                          </Text>
+                        </>
+                      )
                     ) : null
                   ) : (
                     // Guest sin email - invitar a comprar
