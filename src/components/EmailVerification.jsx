@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   },
   sentLabel: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.regular,
     color: '#2F2F2F',
     textAlign: 'center',
     marginBottom: 12,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.regular,
     color: '#D27F27',
   },
   resendTextDisabled: {
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     fontSize: fonts.size.small,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.regular,
     color: '#33A744',
     marginLeft: 6,
   },
