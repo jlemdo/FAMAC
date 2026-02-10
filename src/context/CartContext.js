@@ -17,6 +17,7 @@ export function CartProvider({ children }) {
     // 🔧 REFS para debounce - evitar múltiples llamadas rápidas
     const saveCartTimeoutRef = useRef(null);
     const promotionsTimeoutRef = useRef(null);
+    const pendingGuestCartRef = useRef(null); // 🔀 Para merge Guest → User
 
     // Obtener descuento promocional del usuario (del login API)
     const userPromotionalDiscount = user?.promotional_discount ? Number(user.promotional_discount) : 0;
@@ -99,23 +100,32 @@ export function CartProvider({ children }) {
         }
         // 🔄 CASO CRÍTICO: Cambio entre usuarios diferentes (Guest ↔ Registrado)
         else if (currentUserId !== null && currentUserId !== userId && userId !== null) {
-            console.log('🚨 CARRITO: Limpiando por CAMBIO DE USUARIO:', {
+            const wasGuest = currentUserId?.toString().includes('@');
+            const isNowRegistered = !userId?.toString().includes('@');
+
+            console.log('🚨 CARRITO: Cambio de usuario:', {
                 from: currentUserId,
                 to: userId,
-                previousUserType: currentUserId?.toString().includes('@') ? 'Guest' : 'User',
-                newUserType: userId?.toString().includes('@') ? 'Guest' : 'User'
+                wasGuest,
+                isNowRegistered
             });
 
-            // 🔧 FIX: Resetear flag antes de limpiar para que no se dispare el clear del backend
-            setCartLoaded(false);
-
-            // Limpiar carrito actual INMEDIATAMENTE
-            setCart([]);
-
-            // Ejecutar callback para limpiar información adicional (deliveryInfo, etc.)
-            if (onCartClearCallback) {
-                onCartClearCallback();
+            // 🔧 FIX BUG CRÍTICO: Si era Guest y ahora es usuario registrado, PRESERVAR carrito para merge
+            if (wasGuest && isNowRegistered && cart.length > 0) {
+                console.log('🔀 MERGE: Preservando carrito Guest para merge con usuario registrado:', cart.length, 'items');
+                // NO limpiar el carrito - se hará merge en loadCartFromBackend
+                // Guardar referencia al carrito Guest para merge
+                pendingGuestCartRef.current = [...cart];
+            } else {
+                // Limpiar carrito si no es caso de merge
+                setCart([]);
+                if (onCartClearCallback) {
+                    onCartClearCallback();
+                }
             }
+
+            // 🔧 FIX: Resetear flag para cargar carrito del nuevo usuario
+            setCartLoaded(false);
         }
 
         // Actualizar el ID del usuario actual
@@ -272,10 +282,41 @@ export function CartProvider({ children }) {
 
             if (response.data.success && response.data.cart.length > 0) {
                 console.log(`🛒 CartContext: Restaurando ${response.data.cart.length} items del BACKEND para ${user?.usertype}:`, user?.id || user?.email);
-                setCart(response.data.cart);
+
+                // 🔀 MERGE: Si hay carrito Guest pendiente, combinar con carrito del usuario
+                if (pendingGuestCartRef.current && pendingGuestCartRef.current.length > 0) {
+                    const guestCart = pendingGuestCartRef.current;
+                    const userCart = response.data.cart;
+
+                    // Merge: agregar items del Guest que no estén en el carrito del usuario
+                    const mergedCart = [...userCart];
+                    guestCart.forEach(guestItem => {
+                        const existingIndex = mergedCart.findIndex(item => item.id === guestItem.id);
+                        if (existingIndex >= 0) {
+                            // Item existe: sumar cantidades
+                            mergedCart[existingIndex].quantity += guestItem.quantity;
+                        } else {
+                            // Item nuevo: agregar
+                            mergedCart.push(guestItem);
+                        }
+                    });
+
+                    console.log(`🔀 MERGE EXITOSO: ${guestCart.length} items Guest + ${userCart.length} items User = ${mergedCart.length} items totales`);
+                    setCart(mergedCart);
+                    pendingGuestCartRef.current = null; // Limpiar ref
+                } else {
+                    setCart(response.data.cart);
+                }
             } else {
-                console.log(`📦 No hay carrito en backend para ${user?.usertype} ${user?.id || user?.email} - iniciando carrito vacío`);
-                setCart([]);
+                // 🔀 Si no hay carrito en backend pero hay Guest pendiente, usar ese
+                if (pendingGuestCartRef.current && pendingGuestCartRef.current.length > 0) {
+                    console.log(`🔀 MERGE: Usando carrito Guest (${pendingGuestCartRef.current.length} items) para usuario sin carrito previo`);
+                    setCart(pendingGuestCartRef.current);
+                    pendingGuestCartRef.current = null;
+                } else {
+                    console.log(`📦 No hay carrito en backend para ${user?.usertype} ${user?.id || user?.email} - iniciando carrito vacío`);
+                    setCart([]);
+                }
             }
 
             setCartLoaded(true); // 🔧 FIX: Marcar como cargado después de éxito

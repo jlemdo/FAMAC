@@ -102,17 +102,21 @@ export default function Cart() {
   const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
   const orderInProgressRef = useRef(false); // 🛡️ MUTEX: Previene doble envío de orden
 
-  // Guardar deliveryInfo y coordenadas en AsyncStorage (solo usuarios registrados)
+  // Guardar deliveryInfo y coordenadas en AsyncStorage (usuarios registrados Y guests)
   useEffect(() => {
-    if (user?.id && user?.usertype !== 'Guest' && cart.length > 0) {
+    // 🔧 FIX: También guardar para Guest con email válido
+    const userId = user?.id || user?.email;
+    const hasValidData = cart.length > 0 && userId;
+
+    if (hasValidData) {
       if (deliveryInfo) {
-        saveDeliveryInfo(deliveryInfo, user.id);
+        saveDeliveryInfo(deliveryInfo, userId);
       }
       if (latlong?.driver_lat && latlong?.driver_long) {
-        saveCoordinates(latlong, user.id);
+        saveCoordinates(latlong, userId);
       }
     }
-  }, [deliveryInfo, latlong, user?.id, cart.length]);
+  }, [deliveryInfo, latlong, user?.id, user?.email, cart.length]);
 
   // Cargar datos Guest desde BD al inicializar
   useEffect(() => {
@@ -128,6 +132,12 @@ export default function Cart() {
         setAddress(guestData.address);
         if (guestData.coordinates) {
           setLatlong(guestData.coordinates);
+        }
+
+        // 🔧 FIX: También restaurar deliveryInfo para Guest
+        const savedDeliveryInfo = await restoreDeliveryInfo(user.email);
+        if (savedDeliveryInfo) {
+          setDeliveryInfo(savedDeliveryInfo);
         }
 
         // 🔧 FIX: Usar subtotal ORIGINAL para calcular envío (no después del cupón)
@@ -184,49 +194,8 @@ export default function Cart() {
     fetchShippingConfig();
   }, []);
 
-  // 🛒 NUEVO: Verificar expiración del carrito (24h)
-  useEffect(() => {
-    const checkCartExpiration = async () => {
-      try {
-        // Solo verificar cuando el usuario esté definido
-        if (user === undefined) return;
-        
-        // Obtener timestamp del carrito en AsyncStorage
-        const currentUserId = user?.id?.toString() || user?.email || 'anonymous';
-        const cartKey = `cart_${currentUserId}`;
-        
-        const savedCart = await AsyncStorage.getItem(cartKey);
-        let lastModified = null;
-        
-        if (savedCart) {
-          const cartData = JSON.parse(savedCart);
-          lastModified = cartData.timestamp;
-        }
-        
-        // Construir payload con timestamp
-        const payload = {
-          last_modified: lastModified,
-          user_type: user?.id ? 'user' : user?.email ? 'guest' : 'anonymous'
-        };
-
-        const response = await axios.post(`${API_BASE_URL}/api/cart-cleanup`, payload);
-
-        if (response.data.expired) {
-          // 🚨 TEMPORAL: Deshabilitar limpieza automática para debug
-          // clearCart();
-        } else {
-        }
-        
-      } catch (error) {
-        // Fallar silenciosamente, mantener carrito actual
-      }
-    };
-    
-    // Solo ejecutar cuando AuthContext haya cargado completamente
-    if (user !== undefined) {
-      checkCartExpiration();
-    }
-  }, [user?.id, user?.email, user?.usertype]);
+  // 🛒 NOTA: La expiración del carrito (24h) se maneja en el backend
+  // CartController.php verifica cart_updated_at y devuelve array vacío si expiró
 
   // Recalcular envío con debounce (para todos los usuarios)
   // 🔧 FIX: El envío se calcula sobre el subtotal ORIGINAL, no después del cupón

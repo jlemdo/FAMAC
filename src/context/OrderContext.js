@@ -35,11 +35,19 @@ export function OrderProvider({ children }) {
             return;
         }
 
-        // ✅ Bloquear Guest SOLO si allowGuestOrders está false
-        if (user.usertype === 'Guest' && !allowGuestOrders) {
-            setOrders([]);
-            setOrderCount(0);
-            return;
+        // ✅ FIX: Guest con email válido SIEMPRE puede ver sus órdenes
+        // Solo bloquear si es Guest SIN email o con email generado/proxy
+        if (user.usertype === 'Guest') {
+            const hasValidEmail = user.email &&
+                                  user.email.trim() !== '' &&
+                                  !user.email.includes('@guest.') &&
+                                  !user.email.includes('@proxy.');
+
+            if (!hasValidEmail && !allowGuestOrders) {
+                setOrders([]);
+                setOrderCount(0);
+                return;
+            }
         }
 
         let url = 'URL_NO_DEFINIDA';
