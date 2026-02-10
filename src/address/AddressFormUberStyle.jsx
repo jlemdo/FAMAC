@@ -39,6 +39,7 @@ import {
   MUNICIPIOS_EDOMEX,
   validateEmail
 } from '../utils/addressValidators';
+import EmailVerification from '../components/EmailVerification';
 // Debugging removido para producciónn
 
 const AddressFormUberStyle = () => {
@@ -103,6 +104,7 @@ const AddressFormUberStyle = () => {
   // NUEVO: Estados para flujo Guest consolidado
   const [guestEmail, setGuestEmail] = useState(currentEmail || '');
   const [emailLocked, setEmailLocked] = useState(false);
+  const [guestEmailVerified, setGuestEmailVerified] = useState(false);
 
   // Estados para manejo del mapa
   const [mapCoordinates, setMapCoordinates] = useState(null); // Coordenadas actuales
@@ -1227,15 +1229,17 @@ const AddressFormUberStyle = () => {
   // ✅ NUEVO: Inicializar email de Guest si viene del flujo consolidado
   useEffect(() => {
     if (fromGuestCheckout) {
-      // Inicializar email si el guest ya tiene uno en context
+      // Inicializar email si el guest ya tiene uno en context (ya fue verificado previamente)
       if (user?.usertype === 'Guest' && user?.email?.trim()) {
         setGuestEmail(user.email);
         setEmailLocked(true);
+        setGuestEmailVerified(true); // Email en context = ya verificado
       }
       // Si viene con currentEmail, usar ese
       if (currentEmail?.trim()) {
         setGuestEmail(currentEmail);
         setEmailLocked(true);
+        setGuestEmailVerified(true); // currentEmail pasado = ya verificado
       }
     }
   }, [fromGuestCheckout, user, currentEmail]);
@@ -1398,8 +1402,8 @@ const AddressFormUberStyle = () => {
   // Renderizar paso 2: Dirección Manual con Campos Estructurados
   const renderManualAddressStep = () => {
     const hasRequiredFields = streetName.trim() && exteriorNumber.trim() && neighborhood.trim() && postalCode.trim() && municipality.trim();
-    // NUEVO: Validación adicional para Guest - requiere email válido
-    const hasValidEmail = !fromGuestCheckout || (guestEmail?.trim() && validateEmail(guestEmail.trim()));
+    // NUEVO: Validación adicional para Guest - requiere email válido Y verificado
+    const hasValidEmail = !fromGuestCheckout || (guestEmail?.trim() && validateEmail(guestEmail.trim()) && guestEmailVerified);
     const canSubmit = hasRequiredFields && hasValidEmail;
 
     return (
@@ -1447,6 +1451,29 @@ const AddressFormUberStyle = () => {
                   Este email ya fue usado en tu dispositivo
                 </Text>
               )}
+
+              {/* Verificación de email para Guest - siempre activo */}
+              <EmailVerification
+                email={guestEmail}
+                disabled={emailLocked}
+                alreadyVerified={guestEmailVerified}
+                onVerified={(verifiedEmail) => {
+                  setGuestEmailVerified(true);
+                  setEmailLocked(true);
+                  // Guardar email verificado en AuthContext para persistencia
+                  if (updateUser) {
+                    updateUser({ email: verifiedEmail });
+                  }
+                  showAlert('success', 'Correo verificado correctamente');
+                }}
+                onError={(errorMsg) => {
+                  showAlert('error', errorMsg);
+                }}
+                onGoToLogin={() => {
+                  // Navegar a Login - después de iniciar sesión irá al Cart como usuario registrado
+                  navigation.navigate('Login');
+                }}
+              />
             </View>
             <View style={styles.sectionDivider} />
           </View>

@@ -1,319 +1,534 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+// src/components/EmailVerification.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
+  StyleSheet,
   Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
-import fonts from '../theme/fonts';
 import { API_BASE_URL } from '../config/environment';
+import fonts from '../theme/fonts';
 
-const EmailVerification = ({ 
-  isVisible,
-  onCancel, 
-  email, 
-  type, 
+/**
+ * Componente para verificación de email de Guest
+ * SIEMPRE ACTIVO - No depende de settings OTP global
+ * Incluye validación de email ya registrado
+ *
+ * @param {string} email - Email a verificar
+ * @param {function} onVerified - Callback cuando la verificación es exitosa (recibe email verificado)
+ * @param {function} onError - Callback cuando hay un error
+ * @param {function} onGoToLogin - Callback para navegar a Login
+ * @param {boolean} disabled - Si true, el componente está deshabilitado
+ * @param {boolean} alreadyVerified - Si true, muestra estado verificado
+ */
+export default function EmailVerification({
+  email,
   onVerified,
-  onResend,
-  title = "Verificar Email",
-  subtitle = "Te enviamos un código de 6 dígitos"
-}) => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  onError,
+  onGoToLogin,
+  disabled = false,
+  alreadyVerified = false
+}) {
+  const [codeSent, setCodeSent] = useState(false);
+  const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [otpSent, setOtpSent] = useState(false);
-  const inputs = useRef([]);
+  const [verifying, setVerifying] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [verified, setVerified] = useState(alreadyVerified);
 
-  
+  // Modal para email ya registrado
+  const [showExistsModal, setShowExistsModal] = useState(false);
+  const [existingUserName, setExistingUserName] = useState('');
+
+  const otpInputRef = useRef(null);
+
+  // Reset cuando cambia el email
+  useEffect(() => {
+    if (!alreadyVerified) {
+      setCodeSent(false);
+      setOtp('');
+      setVerified(false);
+      setCountdown(0);
+    }
+  }, [email, alreadyVerified]);
+
+  // Sincronizar verified con alreadyVerified
+  useEffect(() => {
+    setVerified(alreadyVerified);
+  }, [alreadyVerified]);
 
   // Countdown timer
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     }
-  }, [timeLeft]);
+  }, [countdown]);
 
-  const sendOTP = async () => {
-    setSending(true);
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/otp/send`, {
-        email: email,
-        type: type
-      });
-
-      if (response.data.success) {
-        if (!response.data.otp_enabled) {
-          // OTP desactivado - proceder directamente
-          Alert.alert('Info', 'Verificación de email desactivada', [
-            { text: 'OK', onPress: () => onVerified() }
-          ]);
-          return;
-        }
-        
-        setOtpSent(true);
-        setTimeLeft(300); // 5 minutos
-        Alert.alert('Código Enviado', 'Revisa tu email para obtener el código de verificación');
-        
-        // Debug en desarrollo
-        if (__DEV__ && response.data.debug_otp) {
-        }
-      } else {
-        Alert.alert('Error', response.data.message || 'Error enviando código');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo enviar el código de verificación');
-    }
-    setSending(false);
+  const isValidEmail = (emailStr) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(emailStr?.trim() || '');
   };
 
-  const verifyOTP = async () => {
-    const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
-      Alert.alert('Error', 'Ingresa el código completo de 6 dígitos');
+  // Verificar si el email ya está registrado
+  const checkEmailExists = async () => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/check-email-exists`, {
+        email: email.trim()
+      });
+
+      if (data.exists) {
+        setExistingUserName(data.user_name || 'Usuario');
+        setShowExistsModal(true);
+        return true; // Email existe
+      }
+      return false; // Email disponible
+    } catch (error) {
+      // Si falla la verificación, permitir continuar
+      console.error('Error verificando email:', error);
+      return false;
+    }
+  };
+
+  const sendCode = async () => {
+    if (!email || !isValidEmail(email)) {
+      if (onError) onError('Por favor ingresa un email válido');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/otp/verify`, {
-        email: email,
-        otp: otpCode,
-        type: type
+      // Primero verificar si el email ya está registrado
+      const emailExists = await checkEmailExists();
+      if (emailExists) {
+        setLoading(false);
+        return; // No continuar, mostrar modal
+      }
+
+      // Email disponible, enviar OTP
+      const { data } = await axios.post(`${API_BASE_URL}/api/guest/email/send-otp`, {
+        email: email.trim()
       });
 
-      if (response.data.success) {
-        onVerified(otpCode);
+      if (data.success) {
+        setCodeSent(true);
+        setCountdown(60); // 60 segundos para reenviar
+
+        // Auto-focus en el input del código
+        setTimeout(() => {
+          otpInputRef.current?.focus();
+        }, 300);
+
+        // En desarrollo, mostrar el código en consola
+        if (__DEV__ && data.debug_otp) {
+          console.log('DEBUG OTP:', data.debug_otp);
+        }
       } else {
-        Alert.alert('Error', response.data.message || 'Código inválido');
-        setOtp(['', '', '', '', '', '']); // Limpiar código
-        inputs.current[0]?.focus();
+        if (onError) onError(data.message || 'Error al enviar código');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'No se pudo verificar el código';
-      Alert.alert('Error', errorMessage);
-    }
-    setLoading(false);
-  };
-
-  const handleOtpChange = (index, value) => {
-    if (value.length > 1) return; // Solo un dígito
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    // Auto-focus al siguiente input
-    if (value && index < 5) {
-      inputs.current[index + 1]?.focus();
+      console.error('Error enviando código email:', error);
+      const errorMsg = error.response?.data?.message || 'Error al enviar código de verificación';
+      if (onError) onError(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleKeyPress = (index, key) => {
-    if (key === 'Backspace' && !otp[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
+  const verifyCode = async () => {
+    if (otp.length !== 6) {
+      if (onError) onError('El código debe tener 6 dígitos');
+      return;
+    }
+
+    setVerifying(true);
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/guest/email/verify-otp`, {
+        email: email.trim(),
+        otp: otp
+      });
+
+      if (data.success) {
+        setVerified(true);
+        setCodeSent(false);
+        if (onVerified) onVerified(data.verified_email || email.trim());
+      } else {
+        if (onError) onError(data.message || 'Código inválido');
+        setOtp(''); // Limpiar código incorrecto
+      }
+    } catch (error) {
+      console.error('Error verificando código:', error);
+      const errorMsg = error.response?.data?.message || 'Código inválido o expirado';
+      if (onError) onError(errorMsg);
+      setOtp(''); // Limpiar código incorrecto
+    } finally {
+      setVerifying(false);
     }
   };
 
-  const resendOTP = () => {
-    setOtp(['', '', '', '', '', '']);
-    setOtpSent(false);
-    sendOTP();
+  const handleGoToLogin = () => {
+    setShowExistsModal(false);
+    if (onGoToLogin) {
+      onGoToLogin();
+    }
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Si ya está verificado, mostrar badge de verificación
+  if (verified) {
+    return (
+      <View style={styles.verifiedContainer}>
+        <Ionicons name="checkmark-circle" size={18} color="#33A744" />
+        <Text style={styles.verifiedText}>Email verificado</Text>
+      </View>
+    );
+  }
+
+  // Si no hay email válido, no mostrar nada
+  if (!email || !isValidEmail(email)) {
+    return null;
+  }
+
+  // Si está deshabilitado, no mostrar
+  if (disabled) {
+    return null;
+  }
 
   return (
-    <Modal visible={isVisible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>
-            Ingresa el código de 6 dígitos que enviamos a:
-          </Text>
-          <Text style={styles.email}>{email}</Text>
-
-          {sending ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#D27F27" />
-              <Text style={styles.loadingText}>Enviando código...</Text>
-            </View>
+    <View style={styles.container}>
+      {!codeSent ? (
+        // Botón para enviar código
+        <TouchableOpacity
+          style={[styles.sendButton, loading && styles.buttonDisabled]}
+          onPress={sendCode}
+          disabled={loading}
+          activeOpacity={0.8}>
+          {loading ? (
+            <ActivityIndicator color="#FFF" size="small" />
           ) : (
             <>
-              <View style={styles.otpContainer}>
-                {otp.map((digit, index) => (
-                  <TextInput
-                    key={index}
-                    ref={(ref) => inputs.current[index] = ref}
-                    style={[
-                      styles.otpInput,
-                      digit ? styles.otpInputFilled : null,
-                      fonts.numericStyles.tabular // ✅ Aplicar estilo para números
-                    ]}
-                    value={digit}
-                    onChangeText={(value) => handleOtpChange(index, value)}
-                    onKeyPress={({ nativeEvent: { key } }) => handleKeyPress(index, key)}
-                    keyboardType="numeric"
-                    maxLength={1}
-                    textAlign="center"
-                  />
-                ))}
-              </View>
-
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.button, styles.verifyButton]}
-                  onPress={verifyOTP}
-                  disabled={loading || otp.join('').length !== 6}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.buttonText}>Verificar</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={onCancel}
-                >
-                  <Text style={[styles.buttonText, styles.cancelText]}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.resendContainer}>
-                {timeLeft > 0 ? (
-                  <Text style={styles.timerText}>
-                    Reenviar código en {formatTime(timeLeft)}
-                  </Text>
-                ) : (
-                  <TouchableOpacity onPress={resendOTP}>
-                    <Text style={styles.resendText}>Reenviar código</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <Ionicons name="mail-outline" size={18} color="#FFF" style={styles.buttonIcon} />
+              <Text style={styles.sendButtonText}>Verificar correo</Text>
             </>
           )}
+        </TouchableOpacity>
+      ) : (
+        // Input para código + botón verificar
+        <View style={styles.verificationContainer}>
+          <Text style={styles.sentLabel}>
+            Código enviado a {email}
+          </Text>
+
+          <View style={styles.codeInputContainer}>
+            <TextInput
+              ref={otpInputRef}
+              style={styles.codeInput}
+              placeholder="123456"
+              placeholderTextColor="#999"
+              keyboardType="number-pad"
+              maxLength={6}
+              value={otp}
+              onChangeText={setOtp}
+              editable={!verifying}
+              returnKeyType="done"
+              onSubmitEditing={verifyCode}
+            />
+
+            <TouchableOpacity
+              style={[styles.verifyButton, (verifying || otp.length !== 6) && styles.buttonDisabled]}
+              onPress={verifyCode}
+              disabled={verifying || otp.length !== 6}
+              activeOpacity={0.8}>
+              {verifying ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Botón reenviar */}
+          <TouchableOpacity
+            style={[styles.resendButton, (loading || countdown > 0) && styles.resendButtonDisabled]}
+            onPress={sendCode}
+            disabled={loading || countdown > 0}
+            activeOpacity={0.7}>
+            <Ionicons
+              name="refresh"
+              size={14}
+              color={countdown > 0 ? '#999' : '#D27F27'}
+              style={styles.resendIcon}
+            />
+            <Text style={[styles.resendText, countdown > 0 && styles.resendTextDisabled]}>
+              {countdown > 0 ? `Reenviar en ${countdown}s` : 'Reenviar código'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.helpText}>
+            El código expira en 10 minutos
+          </Text>
         </View>
-      </View>
-    </Modal>
+      )}
+
+      {/* Modal: Email ya registrado */}
+      <Modal
+        visible={showExistsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExistsModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowExistsModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="person-circle-outline" size={50} color="#D27F27" />
+                </View>
+
+                <Text style={styles.modalTitle}>Correo ya registrado</Text>
+
+                <Text style={styles.modalMessage}>
+                  El correo <Text style={styles.modalEmail}>{email}</Text> ya tiene una cuenta registrada.
+                </Text>
+
+                <Text style={styles.modalSubMessage}>
+                  Puedes iniciar sesión o usar otro correo para continuar como invitado.
+                </Text>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButtonSecondary}
+                    onPress={() => setShowExistsModal(false)}
+                    activeOpacity={0.8}>
+                    <Ionicons name="close-outline" size={18} color="#FFF" style={styles.modalButtonIcon} />
+                    <Text style={styles.modalButtonSecondaryText}>Cambiar correo</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.modalButtonPrimary}
+                    onPress={handleGoToLogin}
+                    activeOpacity={0.8}>
+                    <Ionicons name="log-in-outline" size={18} color="#FFF" style={styles.modalButtonIcon} />
+                    <Text style={styles.modalButtonPrimaryText}>Iniciar sesión</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
     width: '100%',
-    maxWidth: 400,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  title: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    textAlign: 'center',
-    marginBottom: 8,
-    color: '#2F2F2F',
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 8,
-  },
-  email: {
-    fontSize: 16,
-    fontFamily: fonts.medium,
-    textAlign: 'center',
-    color: '#D27F27',
-    marginBottom: 24,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-    fontFamily: fonts.regular,
-  },
-  otpContainer: {
+  sendButton: {
+    width: '100%',
+    backgroundColor: '#D27F27',
+    borderRadius: 8,
+    paddingVertical: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
-  otpInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    fontSize: 18,
+  buttonIcon: {
+    marginRight: 8,
+  },
+  sendButtonText: {
+    color: '#FFF',
+    fontFamily: fonts.bold,
+    fontSize: fonts.size.medium,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  verificationContainer: {
+    width: '100%',
+  },
+  sentLabel: {
+    fontSize: fonts.size.small,
     fontFamily: fonts.medium,
     color: '#2F2F2F',
+    textAlign: 'center',
+    marginBottom: 12,
   },
-  otpInputFilled: {
-    borderColor: '#D27F27',
-    backgroundColor: '#FFF8F0',
-  },
-  buttonContainer: {
-    gap: 12,
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 8,
+  codeInputContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  codeInput: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#8B5E3C',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    textAlign: 'center',
+    letterSpacing: 4,
   },
   verifyButton: {
-    backgroundColor: '#D27F27',
-  },
-  cancelButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontFamily: fonts.medium,
-    color: '#fff',
-  },
-  cancelText: {
-    color: '#666',
-  },
-  resendContainer: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#33A744',
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
-  timerText: {
-    fontSize: 14,
-    color: '#666',
-    fontFamily: fonts.regular,
+  resendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    backgroundColor: 'rgba(210, 127, 39, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(210, 127, 39, 0.3)',
+  },
+  resendButtonDisabled: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  resendIcon: {
+    marginRight: 6,
   },
   resendText: {
-    fontSize: 14,
-    color: '#D27F27',
+    fontSize: fonts.size.small,
     fontFamily: fonts.medium,
-    textDecorationLine: 'underline',
+    color: '#D27F27',
+  },
+  resendTextDisabled: {
+    color: '#999',
+  },
+  helpText: {
+    fontSize: fonts.size.tiny,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  verifiedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(51, 167, 68, 0.1)',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  verifiedText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.medium,
+    color: '#33A744',
+    marginLeft: 6,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  modalIconContainer: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: fonts.size.large,
+    fontFamily: fonts.bold,
+    color: '#2F2F2F',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: fonts.size.medium,
+    fontFamily: fonts.regular,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  modalEmail: {
+    fontFamily: fonts.bold,
+    color: '#D27F27',
+  },
+  modalSubMessage: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.regular,
+    color: '#999',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    backgroundColor: '#D27F27',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    backgroundColor: '#8B5E3C',
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonIcon: {
+    marginRight: 6,
+  },
+  modalButtonPrimaryText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
+  },
+  modalButtonSecondaryText: {
+    fontSize: fonts.size.small,
+    fontFamily: fonts.bold,
+    color: '#FFF',
   },
 });
-
-export default EmailVerification;

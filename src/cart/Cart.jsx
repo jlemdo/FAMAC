@@ -304,12 +304,23 @@ export default function Cart() {
     return null;
   };
   
-  // Función para limpiar deliveryInfo guardado
+  // Función para limpiar deliveryInfo guardado (AsyncStorage + BD)
   const clearSavedDeliveryInfo = async (userId) => {
     try {
+      // Limpiar de AsyncStorage
       const key = `deliveryInfo_${userId}`;
       await AsyncStorage.removeItem(key);
+
+      // Limpiar de BD también
+      const isGuest = user?.usertype === 'Guest';
+      await axios.post(`${API_BASE_URL}/api/delivery-info/save`, {
+        user_type: isGuest ? 'guest' : 'user',
+        user_id: isGuest ? null : user?.id,
+        guest_email: isGuest ? user?.email : null,
+        delivery_info: null // null para limpiar
+      });
     } catch (error) {
+      // Silently fail
     }
   };
   
