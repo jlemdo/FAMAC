@@ -154,40 +154,21 @@ export default function Cart() {
   }, [user?.usertype, user?.email, latlong?.driver_lat, latlong?.driver_long]);
 
   // 🛒 MONITOR: Resetear datos cuando carrito esté vacío
+  // 🔧 FIX: NO resetear deliveryInfo ni coordenadas aquí - solo flags y facturación
+  // El deliveryInfo y coordenadas se preservan en BD para próximas compras
   useEffect(() => {
-    // Si el carrito está vacío, resetear todos los datos
     if (cart.length === 0) {
-      
-      // Resetear fecha y hora de entrega
-      setDeliveryInfo(null);
-      
-      // 🆕 GUEST FIX: NUNCA resetear coordenadas para Guest - siempre preservarlas
-      // Solo resetear coordenadas para usuarios registrados
-      if (user?.usertype !== 'Guest') {
-        setLatlong({
-          driver_lat: '',
-          driver_long: '',
-        });
-      }
-      
-      // Resetear datos de facturación
+      // Solo resetear datos de facturación y flags de sesión
       setNeedInvoice(false);
       setTaxDetails('');
-      
-      // 🆕 RESETEAR FLAGS para próxima compra
       setGuestJustCompletedAddress(false);
-      setShippingCalculated(false); // ⚡ Resetear flag de envío calculado
-      
-      // Limpiar AsyncStorage si hay usuario registrado
-      if (user?.id && user?.usertype !== 'Guest') {
-        clearSavedDeliveryInfo(user.id);
-        clearSavedCoordinates(user.id);
-      }
-      
-      // Para Guest, no hay AsyncStorage que limpiar, solo resetear estado local
-      
+      setShippingCalculated(false);
+
+      // 🔧 FIX: NO resetear deliveryInfo ni coordenadas
+      // Estos datos se preservan en BD para que no tengan que volver a ingresarlos
+      // Solo se limpian explícitamente después de completar una orden (en handleOrderSuccess)
     }
-  }, [cart.length, totalPrice, user?.id]);
+  }, [cart.length]);
 
   // 📦 NUEVO: Cargar configuración inicial de envío
   useEffect(() => {
@@ -240,39 +221,84 @@ export default function Cart() {
     };
   }, [totalPrice, appliedCoupon, user?.usertype, email, address, latlong?.driver_lat, latlong?.driver_long, shippingCalculated]);
   
-  // Función para guardar deliveryInfo en AsyncStorage
+  // Función para guardar deliveryInfo en BD + AsyncStorage (fallback)
   const saveDeliveryInfo = async (info, userId) => {
     try {
-      const key = `deliveryInfo_${userId}`;
       const dataToSave = {
         ...info,
         date: info.date.toISOString() // Serializar Date a string
       };
+
+      // Guardar en AsyncStorage como fallback local
+      const key = `deliveryInfo_${userId}`;
       await AsyncStorage.setItem(key, JSON.stringify(dataToSave));
+
+      // Guardar en BD para persistencia entre dispositivos
+      const isGuest = user?.usertype === 'Guest';
+      await axios.post(`${API_BASE_URL}/api/delivery-info/save`, {
+        user_type: isGuest ? 'guest' : 'user',
+        user_id: isGuest ? null : user?.id,
+        guest_email: isGuest ? user?.email : null,
+        delivery_info: dataToSave
+      });
     } catch (error) {
+      // Silently fail - AsyncStorage ya tiene el backup
     }
   };
-  
-  // Función para restaurar deliveryInfo desde AsyncStorage
+
+  // Función para restaurar deliveryInfo desde BD (primero) o AsyncStorage (fallback)
   const restoreDeliveryInfo = async (userId) => {
     setIsRestoringDeliveryInfo(true);
     try {
+      // Intentar cargar desde BD primero
+      const isGuest = user?.usertype === 'Guest';
+      const response = await axios.post(`${API_BASE_URL}/api/delivery-info/get`, {
+        user_type: isGuest ? 'guest' : 'user',
+        user_id: isGuest ? null : user?.id,
+        guest_email: isGuest ? user?.email : null
+      });
+
+      if (response.data.status === 'success' && response.data.delivery_info) {
+        const restoredInfo = {
+          ...response.data.delivery_info,
+          date: new Date(response.data.delivery_info.date)
+        };
+        setDeliveryInfo(restoredInfo);
+        setTimeout(() => setIsRestoringDeliveryInfo(false), 100);
+        return restoredInfo;
+      }
+
+      // Fallback: cargar desde AsyncStorage si BD no tiene datos
       const key = `deliveryInfo_${userId}`;
       const savedData = await AsyncStorage.getItem(key);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         const restoredInfo = {
           ...parsedData,
-          date: new Date(parsedData.date) // Deserializar string a Date
+          date: new Date(parsedData.date)
         };
         setDeliveryInfo(restoredInfo);
-        // Pequeño delay para asegurar que el estado se actualice
-        setTimeout(() => {
-          setIsRestoringDeliveryInfo(false);
-        }, 100);
+        setTimeout(() => setIsRestoringDeliveryInfo(false), 100);
         return restoredInfo;
       }
     } catch (error) {
+      // Fallback a AsyncStorage si falla la BD
+      try {
+        const key = `deliveryInfo_${userId}`;
+        const savedData = await AsyncStorage.getItem(key);
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          const restoredInfo = {
+            ...parsedData,
+            date: new Date(parsedData.date)
+          };
+          setDeliveryInfo(restoredInfo);
+          setTimeout(() => setIsRestoringDeliveryInfo(false), 100);
+          return restoredInfo;
+        }
+      } catch (fallbackError) {
+        // Silently fail
+      }
     }
     setIsRestoringDeliveryInfo(false);
     return null;
@@ -1916,11 +1942,13 @@ export default function Cart() {
               {shippingMotivation && (
                 <Text style={[
                   styles.compactShippingText,
-                  shippingMotivation.type === 'success' 
-                    ? styles.shippingMotivationSuccess 
+                  (appliedCoupon?.benefits?.some(b => b.type === 'free_shipping') || shippingMotivation.type === 'success')
+                    ? styles.shippingMotivationSuccess
                     : styles.shippingMotivationRegular
                 ]}>
-                  {shippingMotivation.message}
+                  {appliedCoupon?.benefits?.some(b => b.type === 'free_shipping')
+                    ? '🎉 ¡Felicidades! Tienes envío gratis'
+                    : shippingMotivation.message}
                 </Text>
               )}
             </View>
