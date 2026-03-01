@@ -59,6 +59,10 @@ export default function Cart() {
     updateQuantity,
     totalPrice,
     subtotalAfterProductDiscounts, // 🆕 Subtotal ANTES de descuentos promocionales (para cupones)
+    subtotalBeforeDiscounts, // Precio original sin ningún descuento
+    userPromotionalDiscount, // Porcentaje de descuento del usuario
+    userDiscountAmount, // Monto del descuento promocional del usuario
+    hasUserDiscount, // Si el usuario tiene descuento promocional activo
     clearCart,
     setCartClearCallback,
     automaticPromotions,
@@ -443,37 +447,82 @@ export default function Cart() {
     });
   };
 
-  // 🧮 CÁLCULOS DINÁMICOS DE CUPONES
-  // 🔧 FIX BUG #3: Usar subtotalAfterProductDiscounts para cupones (ANTES de descuentos promocionales)
-  // Esto asegura que los cupones se calculen sobre el precio correcto
+  // 🧮 CÁLCULOS DINÁMICOS DE CUPONES Y PROMOCIONES
+  // 🔧 ORDEN DE DESCUENTOS:
+  // 1. subtotalAfterProductDiscounts = precio de productos con descuentos individuales
+  // 2. userDiscountAmount = descuento de promoción permanente del usuario (calculado en CartContext)
+  // 3. automaticPromotionsDiscount = descuento de promociones automáticas (Global, Birthday, etc.)
+  // 4. couponDiscount = descuento de cupón aplicado manualmente
+  // 5. shippingCost = costo de envío
+
   const getSubtotal = () => parseFloat(totalPrice); // Subtotal final (para mostrar al usuario)
   const getSubtotalForCoupons = () => parseFloat(subtotalAfterProductDiscounts); // Subtotal para validar cupones
 
+  // Calcular descuento total de promociones automáticas (Global, Birthday, etc.)
+  const getAutomaticPromotionsDiscount = () => {
+    if (!automaticPromotions || automaticPromotions.length === 0) return { total: 0, shipping: 0 };
+
+    let totalDiscount = 0;
+    let shippingDiscount = 0;
+    const subtotalBase = parseFloat(subtotalAfterProductDiscounts);
+
+    for (const promo of automaticPromotions) {
+      const appliesTo = promo.applies_to || 'total';
+
+      if (appliesTo === 'shipping') {
+        if (promo.discount_type === 'percentage') {
+          shippingDiscount += Math.min((shippingCost * promo.discount) / 100, shippingCost);
+        } else {
+          shippingDiscount += Math.min(promo.discount, shippingCost);
+        }
+      } else {
+        if (promo.discount_type === 'percentage') {
+          totalDiscount += Math.min((subtotalBase * promo.discount) / 100, subtotalBase);
+        } else {
+          totalDiscount += Math.min(promo.discount, subtotalBase);
+        }
+      }
+    }
+
+    return { total: totalDiscount, shipping: shippingDiscount };
+  };
+
+  // Obtener el descuento del cupón para mostrar en el desglose
+  // NOTA: Este valor es solo para mostrar al usuario, el cálculo real está en getFinalTotal()
   const getDiscountAmount = () => {
     if (!appliedCoupon) return 0;
 
-    // 🔧 FIX: Usar subtotal ANTES de descuentos promocionales para calcular cupón
-    const subtotalForCoupon = getSubtotalForCoupons();
+    const subtotalBase = parseFloat(subtotalAfterProductDiscounts);
+    const userDiscount = parseFloat(userDiscountAmount) || 0;
+    const autoPromoDiscounts = getAutomaticPromotionsDiscount();
 
-    // Verificar si aún cumple el monto mínimo
-    if (subtotalForCoupon < appliedCoupon.minAmount) {
-      return 0; // No aplica descuento si no cumple mínimo
+    // Subtotal después de promociones (para calcular cupón)
+    const subtotalAfterPromos = Math.max(0, subtotalBase - userDiscount - autoPromoDiscounts.total);
+
+    // Verificar monto mínimo (sobre subtotal original para validar)
+    if (subtotalBase < appliedCoupon.minAmount) {
+      return 0;
     }
 
     // 🆕 Sistema de beneficios múltiples
     if (appliedCoupon.benefits && appliedCoupon.benefits.length > 0) {
-      // Recalcular beneficios con valores actuales de subtotal y shipping
       let totalDiscount = 0;
 
       for (const benefit of appliedCoupon.benefits) {
         if (benefit.type === 'percentage') {
-          const baseAmount = benefit.appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
-          totalDiscount += Math.min((baseAmount * benefit.value) / 100, baseAmount);
+          if (benefit.appliesTo === 'shipping') {
+            totalDiscount += Math.min((shippingCost * benefit.value) / 100, shippingCost);
+          } else {
+            totalDiscount += Math.min((subtotalAfterPromos * benefit.value) / 100, subtotalAfterPromos);
+          }
         } else if (benefit.type === 'fixed') {
-          const baseAmount = benefit.appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
-          totalDiscount += Math.min(benefit.value, baseAmount);
+          if (benefit.appliesTo === 'shipping') {
+            totalDiscount += Math.min(benefit.value, shippingCost);
+          } else {
+            totalDiscount += Math.min(benefit.value, subtotalAfterPromos);
+          }
         } else if (benefit.type === 'free_shipping') {
-          totalDiscount += shippingCost; // Envío gratis = descuento igual al costo de envío
+          totalDiscount += shippingCost;
         }
       }
 
@@ -482,67 +531,93 @@ export default function Cart() {
 
     // Sistema simple (retrocompatibilidad)
     const appliesTo = appliedCoupon.appliesTo || 'total';
-    const baseAmount = appliesTo === 'shipping' ? shippingCost : subtotalForCoupon;
 
-    let newDiscountAmount = 0;
-    if (appliedCoupon.type === 'percentage') {
-      newDiscountAmount = (baseAmount * appliedCoupon.discount) / 100;
+    if (appliesTo === 'shipping') {
+      if (appliedCoupon.type === 'percentage') {
+        return Math.min((shippingCost * appliedCoupon.discount) / 100, shippingCost);
+      } else {
+        return Math.min(appliedCoupon.discount, shippingCost);
+      }
     } else {
-      newDiscountAmount = appliedCoupon.discount;
+      if (appliedCoupon.type === 'percentage') {
+        return Math.min((subtotalAfterPromos * appliedCoupon.discount) / 100, subtotalAfterPromos);
+      } else {
+        return Math.min(appliedCoupon.discount, subtotalAfterPromos);
+      }
     }
-
-    // Asegurar que el descuento no exceda el monto base
-    return Math.min(newDiscountAmount, baseAmount);
   };
 
   const getFinalTotal = () => {
-    const subtotal = getSubtotal(); // Subtotal final (con descuentos promocionales ya aplicados)
-    const subtotalForCoupon = getSubtotalForCoupons();
+    const subtotalBase = parseFloat(subtotalAfterProductDiscounts); // Subtotal después de descuentos de productos
+    const userDiscount = parseFloat(userDiscountAmount) || 0; // Descuento promoción permanente del usuario
+    const autoPromoDiscounts = getAutomaticPromotionsDiscount(); // Descuentos de promociones automáticas
+    const subtotalForCoupon = subtotalBase; // Para validar mínimos de cupones
 
-    // 🆕 Sistema de beneficios múltiples
+    // Subtotal después de TODOS los descuentos promocionales (usuario + automáticas)
+    const subtotalAfterAllPromotions = Math.max(0, subtotalBase - userDiscount - autoPromoDiscounts.total);
+
+    // 🆕 Sistema de beneficios múltiples de cupones
     if (appliedCoupon && appliedCoupon.benefits && appliedCoupon.benefits.length > 0) {
-      // Verificar monto mínimo
+      // Verificar monto mínimo (sobre subtotal SIN descuentos promocionales para ser justo)
       if (subtotalForCoupon < appliedCoupon.minAmount) {
-        return Math.max(0, subtotal + shippingCost);
+        const finalShipping = Math.max(0, shippingCost - autoPromoDiscounts.shipping);
+        return Math.max(0, subtotalAfterAllPromotions + finalShipping);
       }
 
-      let totalDiscount = 0;
-      let shippingDiscount = 0;
+      let couponTotalDiscount = 0;
+      let couponShippingDiscount = 0;
 
       for (const benefit of appliedCoupon.benefits) {
         if (benefit.type === 'percentage') {
           if (benefit.appliesTo === 'shipping') {
-            shippingDiscount += Math.min((shippingCost * benefit.value) / 100, shippingCost);
+            couponShippingDiscount += Math.min((shippingCost * benefit.value) / 100, shippingCost);
           } else {
-            totalDiscount += Math.min((subtotalForCoupon * benefit.value) / 100, subtotalForCoupon);
+            // Cupón se calcula sobre subtotal YA con promociones aplicadas
+            couponTotalDiscount += Math.min((subtotalAfterAllPromotions * benefit.value) / 100, subtotalAfterAllPromotions);
           }
         } else if (benefit.type === 'fixed') {
           if (benefit.appliesTo === 'shipping') {
-            shippingDiscount += Math.min(benefit.value, shippingCost);
+            couponShippingDiscount += Math.min(benefit.value, shippingCost);
           } else {
-            totalDiscount += Math.min(benefit.value, subtotalForCoupon);
+            couponTotalDiscount += Math.min(benefit.value, subtotalAfterAllPromotions);
           }
         } else if (benefit.type === 'free_shipping') {
-          shippingDiscount = shippingCost; // Envío completamente gratis
+          couponShippingDiscount = shippingCost; // Envío completamente gratis
         }
       }
 
-      const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
-      const discountedShipping = Math.max(0, shippingCost - shippingDiscount);
-      return Math.max(0, discountedSubtotal + discountedShipping);
+      const finalSubtotal = Math.max(0, subtotalAfterAllPromotions - couponTotalDiscount);
+      const finalShipping = Math.max(0, shippingCost - autoPromoDiscounts.shipping - couponShippingDiscount);
+      return Math.max(0, finalSubtotal + finalShipping);
     }
 
-    // Sistema simple (retrocompatibilidad)
-    const couponDiscount = getDiscountAmount();
+    // Sistema simple de cupones (retrocompatibilidad)
+    let couponDiscount = 0;
+    let couponShippingDiscount = 0;
 
-    // Si el cupón aplica a envío, restar descuento del shipping
-    if (appliedCoupon && appliedCoupon.appliesTo === 'shipping') {
-      const discountedShipping = Math.max(0, shippingCost - couponDiscount);
-      return Math.max(0, subtotal + discountedShipping);
+    if (appliedCoupon && subtotalForCoupon >= appliedCoupon.minAmount) {
+      const appliesTo = appliedCoupon.appliesTo || 'total';
+
+      if (appliesTo === 'shipping') {
+        // Cupón aplica al envío
+        if (appliedCoupon.type === 'percentage') {
+          couponShippingDiscount = Math.min((shippingCost * appliedCoupon.discount) / 100, shippingCost);
+        } else {
+          couponShippingDiscount = Math.min(appliedCoupon.discount, shippingCost);
+        }
+      } else {
+        // Cupón aplica al total (calculado sobre subtotal con promociones)
+        if (appliedCoupon.type === 'percentage') {
+          couponDiscount = Math.min((subtotalAfterAllPromotions * appliedCoupon.discount) / 100, subtotalAfterAllPromotions);
+        } else {
+          couponDiscount = Math.min(appliedCoupon.discount, subtotalAfterAllPromotions);
+        }
+      }
     }
 
-    // Si aplica a total, restar descuento del subtotal y luego agregar shipping
-    return Math.max(0, subtotal - couponDiscount + shippingCost);
+    const finalSubtotal = Math.max(0, subtotalAfterAllPromotions - couponDiscount);
+    const finalShipping = Math.max(0, shippingCost - autoPromoDiscounts.shipping - couponShippingDiscount);
+    return Math.max(0, finalSubtotal + finalShipping);
   };
 
   // 📦 NUEVO: Obtener configuración de envío
@@ -1708,6 +1783,11 @@ export default function Cart() {
       const couponValid = appliedCoupon && isCouponStillValid();
       const coordinates = getOrderCoordinates();
 
+      // Calcular descuentos promocionales para enviar al backend
+      const autoPromoDiscounts = getAutomaticPromotionsDiscount();
+      const userPromoDiscount = parseFloat(userDiscountAmount) || 0;
+      const totalPromoDiscount = userPromoDiscount + autoPromoDiscounts.total;
+
       const payload = {
         userid: user?.id,
         orderno: '1',
@@ -1722,8 +1802,20 @@ export default function Cart() {
         delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
         delivery_slot: deliveryInfo?.slot || '',
         shipping_cost: shippingCost || 0,
-        subtotal: getSubtotal(),
+        // 🔧 FIX: Enviar subtotal DESPUÉS de promociones para cálculo correcto
+        subtotal: parseFloat(subtotalAfterProductDiscounts) - totalPromoDiscount,
+        subtotal_before_promotions: parseFloat(subtotalAfterProductDiscounts),
         total_amount: getFinalTotal(),
+        // Información de promociones permanentes del usuario
+        user_promotional_discount: userPromoDiscount,
+        user_promotional_percentage: hasUserDiscount ? userPromotionalDiscount : 0,
+        // Información de promociones automáticas
+        automatic_promotions_discount: autoPromoDiscounts.total,
+        automatic_promotions_shipping_discount: autoPromoDiscounts.shipping,
+        automatic_promotions: automaticPromotions && automaticPromotions.length > 0
+          ? JSON.stringify(automaticPromotions.map(p => ({ id: p.id, name: p.name, discount: p.discountAmount })))
+          : null,
+        // Información de cupón
         coupon_code: couponValid ? appliedCoupon.code : null,
         coupon_discount: couponValid ? appliedCoupon.discount : null,
         coupon_type: couponValid ? appliedCoupon.type : null,
@@ -1919,31 +2011,68 @@ export default function Cart() {
         <>
           {/* 📊 DESGLOSE DEL TOTAL - Sticky siempre visible */}
           <View style={styles.totalBreakdownContainer}>
+            {/* Subtotal (precio de productos con descuentos de producto) */}
             <View style={styles.breakdownRow}>
               <Text style={styles.breakdownLabel}>Subtotal</Text>
               <Text style={styles.breakdownAmount}>
-                {formatPriceWithSymbol(totalPrice)}
+                {formatPriceWithSymbol(subtotalAfterProductDiscounts)}
               </Text>
             </View>
-            
+
+            {/* Descuento de promoción permanente del usuario */}
+            {hasUserDiscount && parseFloat(userDiscountAmount) > 0 && (
+              <View style={styles.breakdownRow}>
+                <Text style={[styles.breakdownLabel, styles.discountLabel]}>
+                  Promoción ({userPromotionalDiscount}%)
+                </Text>
+                <Text style={[styles.breakdownAmount, styles.discountAmount]}>
+                  -{formatPriceWithSymbol(userDiscountAmount)}
+                </Text>
+              </View>
+            )}
+
+            {/* Descuento de promociones automáticas (Global, Birthday, etc.) */}
+            {automaticPromotions && automaticPromotions.length > 0 && getAutomaticPromotionsDiscount().total > 0 && (
+              <View style={styles.breakdownRow}>
+                <Text style={[styles.breakdownLabel, styles.discountLabel]}>
+                  Promo Automática
+                </Text>
+                <Text style={[styles.breakdownAmount, styles.discountAmount]}>
+                  -{formatPriceWithSymbol(getAutomaticPromotionsDiscount().total)}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.breakdownRow}>
               <Text style={styles.breakdownLabel}>Envío</Text>
               <Text style={[styles.breakdownAmount, shippingCost === 0 && styles.freeShippingText]}>
                 {shippingCost === 0 ? 'Gratis' : `+${formatPriceWithSymbol(shippingCost)}`}
               </Text>
             </View>
-            
+
+            {/* Descuento de promoción automática en envío */}
+            {automaticPromotions && automaticPromotions.length > 0 && getAutomaticPromotionsDiscount().shipping > 0 && (
+              <View style={styles.breakdownRow}>
+                <Text style={[styles.breakdownLabel, styles.discountLabel]}>
+                  Desc. envío (Promo)
+                </Text>
+                <Text style={[styles.breakdownAmount, styles.discountAmount]}>
+                  -{formatPriceWithSymbol(getAutomaticPromotionsDiscount().shipping)}
+                </Text>
+              </View>
+            )}
+
             {appliedCoupon && (
               <View style={styles.breakdownRow}>
                 <Text style={[styles.breakdownLabel, styles.discountLabel]}>
-                  Descuento ({appliedCoupon.code})
+                  Cupón ({appliedCoupon.code})
                 </Text>
                 <Text style={[styles.breakdownAmount, styles.discountAmount]}>
                   -{formatPriceWithSymbol(getDiscountAmount())}
                 </Text>
               </View>
             )}
-            
+
             <View style={[styles.breakdownRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalAmount}>
