@@ -69,7 +69,7 @@ const OrderDetails = () => {
   const orderStatus = order?.status;
   const [buttontxt, setButtontxt] = useState(null);
   const [getLocation, setGetLocation] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(order.status);
+  // ✅ FIX: Usar orderStatus directamente en vez de currentStatus (evita crash en order=null)
   // ✅ Estados para cancelación de pedido
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -473,7 +473,7 @@ const OrderDetails = () => {
             <TouchableOpacity
               style={styles.rescheduleButton}
               onPress={handleDriverLocation}>
-              <Text style={styles.rescheduleText}>{translateStatus(currentStatus)}</Text>
+              <Text style={styles.rescheduleText}>{translateStatus(orderStatus)}</Text>
             </TouchableOpacity>
           </>
         )}
