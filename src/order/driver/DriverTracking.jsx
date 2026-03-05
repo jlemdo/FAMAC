@@ -46,6 +46,8 @@ const DriverTracking = ({order}) => {
   const mapRef = useRef(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalAction, setModalAction] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const lastDriverLocationRef = useRef(null); // Para detectar cambios significativos
   const [distanceToCustomer, setDistanceToCustomer] = useState(null); // Distancia en metros
 
@@ -76,6 +78,43 @@ const DriverTracking = ({order}) => {
       await handleAcceptOrder();
     } else if (modalAction === 'deliver') {
       await handleDeliverOrder();
+    }
+  };
+
+  const handleRejectOrder = async () => {
+    try {
+      setLoading(true);
+      setShowRejectModal(false);
+
+      const response = await axios.post(`${API_BASE_URL}/api/driver/reject-order`, {
+        order_id: order.id,
+        driver_id: order.dman || order.driver_id,
+        reason: rejectReason || 'Sin razón especificada'
+      });
+
+      if (response.data.success) {
+        Alert.alert(
+          '✅ Pedido Rechazado',
+          'Has rechazado este pedido. Se notificará al administrador para reasignación.',
+          [{
+            text: 'Entendido',
+            onPress: () => navigation.goBack()
+          }]
+        );
+      } else {
+        throw new Error(response.data.message || 'Error desconocido');
+      }
+
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Error al rechazar el pedido';
+      Alert.alert(
+        '❌ Error',
+        errorMessage,
+        [{ text: 'Entendido', style: 'default' }]
+      );
+    } finally {
+      setLoading(false);
+      setRejectReason('');
     }
   };
 
@@ -483,15 +522,44 @@ const DriverTracking = ({order}) => {
             {/* Botón Waze */}
             <TouchableOpacity
               style={[styles.navigationButton, styles.wazeButton]}
-              onPress={() => {
-                const url = `waze://?ll=${customer.latitude},${customer.longitude}&navigate=yes`;
-                Linking.canOpenURL(url).then(supported => {
-                  if (supported) {
-                    Linking.openURL(url);
-                  } else {
-                    Alert.alert('Waze no está instalado', 'Por favor instala Waze para usar esta función.');
-                  }
+              onPress={async () => {
+                const lat = customer.latitude;
+                const lng = customer.longitude;
+
+                // URLs para Waze según plataforma
+                const wazeUrl = Platform.select({
+                  ios: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+                  android: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
                 });
+
+                // URL de fallback para abrir en App Store / Play Store
+                const storeUrl = Platform.select({
+                  ios: 'https://apps.apple.com/app/waze-navigation-live-traffic/id323229106',
+                  android: 'https://play.google.com/store/apps/details?id=com.waze',
+                });
+
+                try {
+                  const supported = await Linking.canOpenURL(wazeUrl);
+                  if (supported) {
+                    await Linking.openURL(wazeUrl);
+                  } else {
+                    // Si no puede abrir Waze, preguntar si quiere instalarlo
+                    Alert.alert(
+                      'Waze',
+                      '¿Deseas abrir Waze o instalarlo?',
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        {
+                          text: 'Abrir/Instalar Waze',
+                          onPress: () => Linking.openURL(storeUrl)
+                        }
+                      ]
+                    );
+                  }
+                } catch (error) {
+                  // Si hay error, intentar abrir directamente la URL web
+                  Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+                }
               }}
               activeOpacity={0.8}>
               <Ionicons name="navigate" size={22} color="#FFF" />
@@ -501,13 +569,28 @@ const DriverTracking = ({order}) => {
             {/* Botón Google Maps */}
             <TouchableOpacity
               style={[styles.navigationButton, styles.mapsButton]}
-              onPress={() => {
-                const url = `https://www.google.com/maps/dir/?api=1&destination=${customer.latitude},${customer.longitude}`;
-                Linking.openURL(url);
+              onPress={async () => {
+                const lat = customer.latitude;
+                const lng = customer.longitude;
+
+                // URL universal que funciona en iOS y Android
+                const mapsUrl = Platform.select({
+                  ios: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+                  android: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+                });
+
+                // Fallback a Google Maps web
+                const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+                try {
+                  await Linking.openURL(mapsUrl);
+                } catch (error) {
+                  Linking.openURL(fallbackUrl);
+                }
               }}
               activeOpacity={0.8}>
               <Ionicons name="map" size={22} color="#FFF" />
-              <Text style={styles.navigationButtonText}>Google Maps</Text>
+              <Text style={styles.navigationButtonText}>{Platform.OS === 'ios' ? 'Apple Maps' : 'Google Maps'}</Text>
             </TouchableOpacity>
 
             {/* Botón Copiar Dirección */}
@@ -532,22 +615,35 @@ const DriverTracking = ({order}) => {
         
         {order?.payment_status === 'paid' ? (
           <>
-            {/* 🎯 BOTÓN ACEPTAR - Estados que permiten aceptar pedido */}
+            {/* 🎯 BOTONES ACEPTAR/RECHAZAR - Estados que permiten aceptar pedido */}
             {/* Backend estado para aceptar: Open */}
             {(() => {
               const status = currentStatus?.toLowerCase()?.trim() || '';
               return status === 'open';
             })() && (
-              <TouchableOpacity
-                style={[styles.actionButton, styles.acceptButton, loading && styles.buttonDisabled]}
-                onPress={() => showConfirmationModal('accept')}
-                disabled={loading}>
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.actionButtonText}>✅ Aceptar Pedido</Text>
-                )}
-              </TouchableOpacity>
+              <View style={styles.acceptRejectContainer}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.acceptButton, styles.halfButton, loading && styles.buttonDisabled]}
+                  onPress={() => showConfirmationModal('accept')}
+                  disabled={loading}>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>✅ Aceptar</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.rejectButton, styles.halfButton, loading && styles.buttonDisabled]}
+                  onPress={() => setShowRejectModal(true)}
+                  disabled={loading}>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>❌ Rechazar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
 
             {/* 🚚 BOTÓN ENTREGAR - Solo cuando está en camino Y cerca del cliente (≤250m) */}
@@ -631,18 +727,62 @@ const DriverTracking = ({order}) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{getModalContent().title}</Text>
             <Text style={styles.modalMessage}>{getModalContent().message}</Text>
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setShowConfirmModal(false)}>
                 <Text style={styles.modalCancelText}>{getModalContent().cancelText}</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.modalConfirmButton}
                 onPress={handleConfirmAction}>
                 <Text style={styles.modalConfirmText}>{getModalContent().confirmText}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Rechazo */}
+      <Modal
+        visible={showRejectModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRejectModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>❌ Rechazar Pedido</Text>
+            <Text style={styles.modalMessage}>
+              ¿Estás seguro que quieres rechazar este pedido? Se notificará al administrador.
+            </Text>
+
+            <TextInput
+              style={styles.rejectReasonInput}
+              placeholder="Razón del rechazo (opcional)"
+              placeholderTextColor="#999"
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowRejectModal(false);
+                  setRejectReason('');
+                }}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, styles.rejectConfirmButton]}
+                onPress={handleRejectOrder}>
+                <Text style={styles.modalConfirmText}>Rechazar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -978,11 +1118,39 @@ const styles = StyleSheet.create({
   acceptButton: {
     backgroundColor: '#33A744', // Verde para aceptar
   },
+  rejectButton: {
+    backgroundColor: '#DC3545', // Rojo para rechazar
+  },
   deliverButton: {
     backgroundColor: '#2196F3', // Azul para entregar
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  acceptRejectContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  halfButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  rejectReasonInput: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    fontFamily: fonts.regular,
+    fontSize: fonts.size.medium,
+    color: '#333',
+    backgroundColor: '#F9F9F9',
+  },
+  rejectConfirmButton: {
+    backgroundColor: '#DC3545',
   },
 
   // 🆕 Estilos para estado completado

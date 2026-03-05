@@ -397,7 +397,7 @@ const Order = () => {
                   styles.userTabText,
                   driverActiveTab === 'canceladas' && styles.userTabTextActive
                 ]}>
-                  Canceladas
+                  Cancelados
                 </Text>
               </TouchableOpacity>
             </View>
@@ -424,7 +424,7 @@ const Order = () => {
                   styles.userTabText,
                   userActiveTab === 'activas' && styles.userTabTextActive
                 ]}>
-                  Activas
+                  Activos
                 </Text>
                 {orderCounts.activas > 0 && (
                   <View style={[
@@ -459,7 +459,7 @@ const Order = () => {
                   styles.userTabText,
                   userActiveTab === 'entregadas' && styles.userTabTextActive
                 ]}>
-                  Entregadas
+                  Entregados
                 </Text>
                 {orderCounts.entregadas > 0 && (
                   <View style={[
@@ -494,7 +494,7 @@ const Order = () => {
                   styles.userTabText,
                   userActiveTab === 'canceladas' && styles.userTabTextActive
                 ]}>
-                  Canceladas
+                  Cancelados
                 </Text>
                 {orderCounts.canceladas > 0 && (
                   <View style={[
@@ -532,7 +532,7 @@ const Order = () => {
                 color="#D27F27"
               />
               <Text style={styles.header}>
-                {user?.usertype === 'driver' ? 'Órdenes Asignadas' : 'Mis Pedidos'}
+                {user?.usertype === 'driver' ? 'Pedidos Asignados' : 'Mis Pedidos'}
               </Text>
             </View>
           }
