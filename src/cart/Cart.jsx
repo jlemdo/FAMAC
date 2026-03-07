@@ -648,8 +648,10 @@ export default function Cart() {
     setLoadingShipping(true);
 
     try {
+      // 🔧 FIX: Enviar user_email para verificar promociones de envío del usuario
+      const userEmail = user?.email || '';
       const response = await axios.get(
-        `${API_BASE_URL}/api/shipping-motivation/${subtotal}`,
+        `${API_BASE_URL}/api/shipping-motivation/${subtotal}?user_email=${encodeURIComponent(userEmail)}`,
         { headers: { 'Accept': 'application/json' } }
       );
 
@@ -2088,13 +2090,19 @@ export default function Cart() {
               {shippingMotivation && (
                 <Text style={[
                   styles.compactShippingText,
-                  (appliedCoupon?.benefits?.some(b => b.type === 'free_shipping') || shippingMotivation.type === 'success')
+                  // 🔧 FIX: También verificar promociones automáticas de envío
+                  (appliedCoupon?.benefits?.some(b => b.type === 'free_shipping') ||
+                   getAutomaticPromotionsDiscount().shipping >= shippingCost ||
+                   shippingMotivation.type === 'success' ||
+                   shippingMotivation.has_shipping_promo)
                     ? styles.shippingMotivationSuccess
                     : styles.shippingMotivationRegular
                 ]}>
                   {appliedCoupon?.benefits?.some(b => b.type === 'free_shipping')
                     ? '🎉 ¡Felicidades! Tienes envío gratis'
-                    : shippingMotivation.message}
+                    : (getAutomaticPromotionsDiscount().shipping >= shippingCost && shippingCost > 0)
+                      ? '🎁 ¡Tienes envío gratis por tu promoción!'
+                      : shippingMotivation.message}
                 </Text>
               )}
             </View>
