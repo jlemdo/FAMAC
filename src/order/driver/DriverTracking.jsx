@@ -34,6 +34,12 @@ import axios from 'axios';
 import fonts from '../../theme/fonts';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
 import { API_BASE_URL } from '../../config/environment';
+import {
+  startBackgroundTracking,
+  stopBackgroundTracking,
+  isTrackingActive,
+  updateTrackingNotification
+} from '../../services/BackgroundLocationService';
 
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
@@ -364,6 +370,7 @@ const DriverTracking = ({order}) => {
                                   customerLat !== 0 && customerLong !== 0;
 
   // ✅ INICIALIZACIÓN CRÍTICA: Driver SIEMPRE necesita ubicación
+  // 🆕 Ahora usa BackgroundLocationService para tracking en segundo plano
   useEffect(() => {
     // CRÍTICO: Obtener ubicación inmediatamente para cualquier estado
     getCurrentLocation();
@@ -371,15 +378,35 @@ const DriverTracking = ({order}) => {
     // Backend estados activos: On the Way, Arriving
     const activeStatuses = ['on the way', 'arriving'];
     if (activeStatuses.includes(currentStatus?.toLowerCase())) {
-      // Intervalo para tracking en tiempo real - 8 segundos
+      // 🆕 Iniciar tracking en segundo plano (funciona con Waze/Maps abierto)
+      startBackgroundTracking(order.id).then((started) => {
+        if (started) {
+          console.log('✅ Background tracking iniciado para orden:', order.id);
+        } else {
+          console.log('⚠️ Usando tracking en primer plano (fallback)');
+        }
+      });
+
+      // Fallback: Intervalo para actualizar UI local cada 8 segundos
       const interval = setInterval(async () => {
         await getCurrentLocation();
       }, 8000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        // Detener background tracking cuando cambie de estado o se desmonte
+        if (!activeStatuses.includes(currentStatus?.toLowerCase())) {
+          stopBackgroundTracking();
+        }
+      };
     } else if (currentStatus?.toLowerCase() === 'delivered') {
+      // Detener tracking cuando se entrega
+      stopBackgroundTracking();
       // Para órdenes entregadas, obtener ubicación final guardada
       getDriverLocaton();
+    } else {
+      // Para otros estados, detener tracking
+      stopBackgroundTracking();
     }
   }, [order.id, currentStatus]);
 
@@ -526,11 +553,10 @@ const DriverTracking = ({order}) => {
                 const lat = customer.latitude;
                 const lng = customer.longitude;
 
-                // URLs para Waze según plataforma
-                const wazeUrl = Platform.select({
-                  ios: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
-                  android: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
-                });
+                // URL scheme nativo de Waze (abre la app directamente)
+                const wazeAppUrl = `waze://?ll=${lat},${lng}&navigate=yes`;
+                // URL web de fallback (funciona si la app está instalada)
+                const wazeWebUrl = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
 
                 // URL de fallback para abrir en App Store / Play Store
                 const storeUrl = Platform.select({
@@ -539,26 +565,36 @@ const DriverTracking = ({order}) => {
                 });
 
                 try {
-                  const supported = await Linking.canOpenURL(wazeUrl);
-                  if (supported) {
-                    await Linking.openURL(wazeUrl);
+                  // Primero intentar con el scheme nativo waze://
+                  const canOpenWazeApp = await Linking.canOpenURL(wazeAppUrl);
+                  if (canOpenWazeApp) {
+                    await Linking.openURL(wazeAppUrl);
                   } else {
-                    // Si no puede abrir Waze, preguntar si quiere instalarlo
-                    Alert.alert(
-                      'Waze',
-                      '¿Deseas abrir Waze o instalarlo?',
-                      [
-                        { text: 'Cancelar', style: 'cancel' },
-                        {
-                          text: 'Abrir/Instalar Waze',
-                          onPress: () => Linking.openURL(storeUrl)
-                        }
-                      ]
-                    );
+                    // Si no puede abrir waze://, intentar con URL web
+                    const canOpenWazeWeb = await Linking.canOpenURL(wazeWebUrl);
+                    if (canOpenWazeWeb) {
+                      await Linking.openURL(wazeWebUrl);
+                    } else {
+                      // Si ninguna funciona, preguntar si quiere instalar
+                      Alert.alert(
+                        'Waze no instalado',
+                        '¿Deseas instalar Waze para navegar?',
+                        [
+                          { text: 'Cancelar', style: 'cancel' },
+                          {
+                            text: 'Instalar Waze',
+                            onPress: () => Linking.openURL(storeUrl)
+                          }
+                        ]
+                      );
+                    }
                   }
                 } catch (error) {
-                  // Si hay error, intentar abrir directamente la URL web
-                  Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+                  console.log('Error abriendo Waze:', error);
+                  // Fallback: intentar URL web directamente
+                  Linking.openURL(wazeWebUrl).catch(() => {
+                    Alert.alert('Error', 'No se pudo abrir Waze');
+                  });
                 }
               }}
               activeOpacity={0.8}>

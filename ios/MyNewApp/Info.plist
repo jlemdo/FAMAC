@@ -42,6 +42,12 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -57,6 +63,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>waze</string>
+		<string>comgooglemaps</string>
+		<string>maps</string>
+	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Necesitamos tu permiso para enviarte notificaciones sobre el estado de tus pedidos y otras actualizaciones importantes.</string>
 	<key>CFBundleURLTypes</key>
