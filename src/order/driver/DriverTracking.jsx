@@ -321,7 +321,10 @@ const DriverTracking = ({order}) => {
   //     }
   // };
 
-  const getCurrentLocation = async () => {
+  // Ref para evitar alertas repetidas de ubicación
+  const locationAlertShownRef = useRef(false);
+
+  const getCurrentLocation = async (showAlerts = true) => {
     try {
       const location = await getCurrentLocationUtil('driver');
 
@@ -330,7 +333,10 @@ const DriverTracking = ({order}) => {
           driver_lat: location.latitude,
           driver_long: location.longitude,
         });
-      } else {
+        // Reset de la bandera cuando se obtiene ubicación exitosamente
+        locationAlertShownRef.current = false;
+      } else if (showAlerts && !locationAlertShownRef.current) {
+        locationAlertShownRef.current = true;
         showAlert({
           type: 'warning',
           title: 'Ubicación requerida',
@@ -339,12 +345,15 @@ const DriverTracking = ({order}) => {
         });
       }
     } catch (error) {
-      showAlert({
-        type: 'error',
-        title: 'Error de ubicación',
-        message: `No se pudo obtener tu ubicación: ${error.message}. Verifica que el GPS esté activado.`,
-        confirmText: 'Entendido'
-      });
+      if (showAlerts && !locationAlertShownRef.current) {
+        locationAlertShownRef.current = true;
+        showAlert({
+          type: 'error',
+          title: 'Error de ubicación',
+          message: `No se pudo obtener tu ubicación: ${error.message}. Verifica que el GPS esté activado.`,
+          confirmText: 'Entendido'
+        });
+      }
     }
   };
 
@@ -417,8 +426,9 @@ const DriverTracking = ({order}) => {
       initBackgroundTracking();
 
       // Fallback: Intervalo para actualizar UI local cada 8 segundos
+      // showAlerts=false para evitar alertas repetidas en el intervalo
       const interval = setInterval(async () => {
-        await getCurrentLocation();
+        await getCurrentLocation(false);
       }, 8000);
 
       return () => {
