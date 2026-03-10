@@ -38,7 +38,7 @@ import {
   startBackgroundTracking,
   stopBackgroundTracking,
   isTrackingActive,
-  updateTrackingNotification
+  updateTrackingNotification,
 } from '../../services/BackgroundLocationService';
 
 const DriverTracking = ({order}) => {
@@ -378,14 +378,28 @@ const DriverTracking = ({order}) => {
     // Backend estados activos: On the Way, Arriving
     const activeStatuses = ['on the way', 'arriving'];
     if (activeStatuses.includes(currentStatus?.toLowerCase())) {
-      // 🆕 Iniciar tracking en segundo plano (funciona con Waze/Maps abierto)
-      startBackgroundTracking(order.id).then((started) => {
-        if (started) {
-          console.log('✅ Background tracking iniciado para orden:', order.id);
-        } else {
-          console.log('⚠️ Usando tracking en primer plano (fallback)');
+      // 🆕 Iniciar background tracking directamente
+      // Los permisos de ubicación ya fueron otorgados por getCurrentLocation()
+      // Solo intentamos iniciar el servicio de background
+      let mounted = true;
+
+      const initBackgroundTracking = async () => {
+        try {
+          // Pequeña espera para asegurar que el componente esté completamente montado
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          if (!mounted) return;
+
+          const started = await startBackgroundTracking(order.id);
+          if (started) {
+            console.log('✅ Background tracking iniciado para orden:', order.id);
+          }
+        } catch (error) {
+          console.log('⚠️ Background tracking no disponible:', error.message);
         }
-      });
+      };
+
+      initBackgroundTracking();
 
       // Fallback: Intervalo para actualizar UI local cada 8 segundos
       const interval = setInterval(async () => {
@@ -393,6 +407,7 @@ const DriverTracking = ({order}) => {
       }, 8000);
 
       return () => {
+        mounted = false;
         clearInterval(interval);
         // Detener background tracking cuando cambie de estado o se desmonte
         if (!activeStatuses.includes(currentStatus?.toLowerCase())) {

@@ -17,8 +17,8 @@ const backgroundOptions = {
   taskTitle: 'Rastreando entrega',
   taskDesc: 'Actualizando tu ubicación para el cliente',
   taskIcon: {
-    name: 'ic_launcher',
-    type: 'mipmap',
+    name: 'ic_notification', // Icono monocromático para notificaciones
+    type: 'drawable',
   },
   color: '#D27F27', // Color naranja de la marca
   linkingURI: 'saboresdo://', // Deep link de la app
@@ -32,8 +32,32 @@ let currentOrderId = null;
 let locationWatchId = null;
 
 /**
+ * Función auxiliar para esperar un tiempo
+ */
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Función auxiliar para obtener ubicación actual como promesa
+ */
+const getCurrentPositionAsync = () => {
+  return new Promise((resolve, reject) => {
+    Geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 5000,
+      }
+    );
+  });
+};
+
+/**
  * Tarea que se ejecuta en segundo plano
  * Esta función corre indefinidamente mientras el servicio está activo
+ * USA UN LOOP CON getCurrentPosition en lugar de watchPosition
+ * porque watchPosition no funciona bien en HeadlessJS
  */
 const backgroundTask = async (taskDataArguments) => {
   const { orderId } = taskDataArguments;
@@ -41,70 +65,99 @@ const backgroundTask = async (taskDataArguments) => {
 
   console.log('🚀 Background location tracking iniciado para orden:', orderId);
 
-  // Loop infinito que mantiene el servicio vivo
-  await new Promise(async (resolve) => {
-    // Configurar watchPosition para tracking continuo
-    locationWatchId = Geolocation.watchPosition(
-      async (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
+  // Loop infinito que obtiene ubicación cada 8 segundos
+  while (BackgroundActions.isRunning()) {
+    try {
+      const position = await getCurrentPositionAsync();
+      const { latitude, longitude, accuracy } = position.coords;
 
-        console.log(`📍 Ubicación actualizada: ${latitude}, ${longitude} (precisión: ${accuracy}m)`);
+      console.log(`📍 Ubicación actualizada: ${latitude}, ${longitude} (precisión: ${accuracy}m)`);
 
-        // Enviar ubicación al servidor
-        try {
-          await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
-            orderid: currentOrderId,
-            driver_lat: latitude,
-            driver_long: longitude,
-          });
-          console.log('✅ Ubicación enviada al servidor');
-        } catch (error) {
-          console.log('⚠️ Error enviando ubicación:', error.message);
-        }
-      },
-      (error) => {
-        console.log('❌ Error obteniendo ubicación:', error.message);
-      },
-      {
-        enableHighAccuracy: true,
-        distanceFilter: 10, // Actualizar cada 10 metros
-        interval: 8000, // Cada 8 segundos (Android)
-        fastestInterval: 5000, // Mínimo 5 segundos entre actualizaciones
-        showLocationDialog: true,
-        forceRequestLocation: true,
+      // Enviar ubicación al servidor
+      try {
+        await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
+          orderid: currentOrderId,
+          driver_lat: latitude,
+          driver_long: longitude,
+        });
+        console.log('✅ Ubicación enviada al servidor');
+      } catch (error) {
+        console.log('⚠️ Error enviando ubicación:', error.message);
       }
-    );
+    } catch (error) {
+      console.log('❌ Error obteniendo ubicación:', error.message);
+    }
 
-    // Mantener el servicio vivo - nunca resolver la promesa
-    // El servicio se detiene manualmente con stopBackgroundTracking()
-  });
+    // Esperar 8 segundos antes de la siguiente actualización
+    await sleep(8000);
+  }
+
+  console.log('🛑 Background tracking detenido');
+};
+
+/**
+ * Verificar si ya tenemos permisos de ubicación (sin solicitarlos)
+ * @returns {Promise<boolean>} true si ya se tienen los permisos
+ */
+export const checkLocationPermission = async () => {
+  try {
+    if (Platform.OS === 'android') {
+      const fineLocation = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      return fineLocation;
+    } else {
+      // iOS
+      const status = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      return status === RESULTS.GRANTED;
+    }
+  } catch (error) {
+    console.log('Error verificando permisos:', error.message);
+    return false;
+  }
 };
 
 /**
  * Solicitar permisos de ubicación en segundo plano
+ * IMPORTANTE: Solo llamar cuando hay una Activity activa (app en primer plano)
  * @returns {Promise<boolean>} true si se otorgaron los permisos
  */
 export const requestBackgroundLocationPermission = async () => {
   try {
     if (Platform.OS === 'android') {
-      // Primero solicitar permiso de ubicación normal
-      const fineLocation = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Ubicación requerida',
-          message: 'Necesitamos tu ubicación para rastrear la entrega.',
-          buttonNeutral: 'Preguntar después',
-          buttonNegative: 'Cancelar',
-          buttonPositive: 'Permitir',
-        }
+      // Verificar primero si ya tenemos permiso de ubicación
+      const hasFineLoc = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       );
 
-      if (fineLocation !== PermissionsAndroid.RESULTS.GRANTED) {
-        return false;
+      if (!hasFineLoc) {
+        // Solicitar permiso de ubicación normal
+        const fineLocation = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Ubicación requerida',
+            message: 'Necesitamos tu ubicación para rastrear la entrega.',
+            buttonNeutral: 'Preguntar después',
+            buttonNegative: 'Cancelar',
+            buttonPositive: 'Permitir',
+          }
+        );
+
+        if (fineLocation !== PermissionsAndroid.RESULTS.GRANTED) {
+          return false;
+        }
       }
 
-      // En Android 10+ solicitar permiso de ubicación en segundo plano
+      // En Android 10+ verificar/solicitar permiso de ubicación en segundo plano
       if (Platform.Version >= 29) {
+        const hasBackgroundLoc = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION
+        );
+
+        if (hasBackgroundLoc) {
+          return true;
+        }
+
         const backgroundLocation = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
           {
@@ -126,13 +179,25 @@ export const requestBackgroundLocationPermission = async () => {
       return status === RESULTS.GRANTED;
     }
   } catch (error) {
-    console.error('Error solicitando permisos:', error);
-    return false;
+    // Si falla por "not attached to Activity", retornar true si ya tenemos permisos básicos
+    console.log('Error solicitando permisos (puede ser normal):', error.message);
+
+    // Verificar si ya tenemos al menos permisos básicos
+    try {
+      const hasBasicPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      return hasBasicPermission;
+    } catch {
+      return false;
+    }
   }
 };
 
 /**
  * Iniciar tracking de ubicación en segundo plano
+ * IMPORTANTE: Los permisos deben solicitarse ANTES de llamar esta función
+ * usando requestBackgroundLocationPermission() desde el componente
  * @param {number} orderId - ID de la orden a rastrear
  * @returns {Promise<boolean>} true si se inició correctamente
  */
@@ -147,12 +212,8 @@ export const startBackgroundTracking = async (orderId) => {
       return true;
     }
 
-    // Solicitar permisos
-    const hasPermission = await requestBackgroundLocationPermission();
-    if (!hasPermission) {
-      console.log('❌ No se otorgaron permisos de ubicación en segundo plano');
-      return false;
-    }
+    // NO solicitar permisos aquí - deben solicitarse desde el componente
+    // mientras la app está en primer plano y hay una Activity activa
 
     // Iniciar servicio en segundo plano
     await BackgroundActions.start(backgroundTask, {
