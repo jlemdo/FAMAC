@@ -39,6 +39,7 @@ import {
   stopBackgroundTracking,
   isTrackingActive,
   updateTrackingNotification,
+  requestBackgroundLocationPermission,
 } from '../../services/BackgroundLocationService';
 
 const DriverTracking = ({order}) => {
@@ -389,6 +390,12 @@ const DriverTracking = ({order}) => {
           await new Promise(resolve => setTimeout(resolve, 500));
 
           if (!mounted) return;
+
+          // Solicitar permiso "Always" para iOS (necesario para background)
+          if (Platform.OS === 'ios') {
+            const hasPermission = await requestBackgroundLocationPermission();
+            console.log('📍 Permiso de ubicación Always:', hasPermission ? 'otorgado' : 'denegado');
+          }
 
           const started = await startBackgroundTracking(order.id);
           if (started) {
