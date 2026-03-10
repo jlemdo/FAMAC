@@ -56,8 +56,9 @@ const getCurrentPositionAsync = () => {
 /**
  * Tarea que se ejecuta en segundo plano
  * Esta función corre indefinidamente mientras el servicio está activo
- * USA UN LOOP CON getCurrentPosition en lugar de watchPosition
- * porque watchPosition no funciona bien en HeadlessJS
+ *
+ * iOS: Usa watchPosition porque iOS mantiene la app viva mientras hay un watcher activo
+ * Android: Usa getCurrentPosition en loop porque HeadlessJS no soporta bien watchPosition
  */
 const backgroundTask = async (taskDataArguments) => {
   const { orderId } = taskDataArguments;
@@ -65,31 +66,65 @@ const backgroundTask = async (taskDataArguments) => {
 
   console.log('🚀 Background location tracking iniciado para orden:', orderId);
 
-  // Loop infinito que obtiene ubicación cada 8 segundos
-  while (BackgroundActions.isRunning()) {
-    try {
-      const position = await getCurrentPositionAsync();
-      const { latitude, longitude, accuracy } = position.coords;
+  if (Platform.OS === 'ios') {
+    // iOS: Usar watchPosition - iOS mantiene la app viva mientras hay un watcher
+    await new Promise((resolve) => {
+      locationWatchId = Geolocation.watchPosition(
+        async (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log(`📍 iOS ubicación: ${latitude}, ${longitude} (precisión: ${accuracy}m)`);
 
-      console.log(`📍 Ubicación actualizada: ${latitude}, ${longitude} (precisión: ${accuracy}m)`);
-
-      // Enviar ubicación al servidor
+          try {
+            await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
+              orderid: currentOrderId,
+              driver_lat: latitude,
+              driver_long: longitude,
+            });
+            console.log('✅ Ubicación enviada al servidor');
+          } catch (error) {
+            console.log('⚠️ Error enviando ubicación:', error.message);
+          }
+        },
+        (error) => {
+          console.log('❌ Error obteniendo ubicación iOS:', error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 10, // Actualizar cada 10 metros
+          interval: 8000,
+          fastestInterval: 5000,
+          showsBackgroundLocationIndicator: true, // Muestra el indicador azul en iOS
+          pausesLocationUpdatesAutomatically: false, // No pausar automáticamente
+          activityType: 'automotiveNavigation', // Optimizado para navegación en auto
+        }
+      );
+      // Esta promesa nunca se resuelve - el servicio corre hasta que se detenga
+    });
+  } else {
+    // Android: Usar loop con getCurrentPosition (HeadlessJS compatible)
+    while (BackgroundActions.isRunning()) {
       try {
-        await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
-          orderid: currentOrderId,
-          driver_lat: latitude,
-          driver_long: longitude,
-        });
-        console.log('✅ Ubicación enviada al servidor');
-      } catch (error) {
-        console.log('⚠️ Error enviando ubicación:', error.message);
-      }
-    } catch (error) {
-      console.log('❌ Error obteniendo ubicación:', error.message);
-    }
+        const position = await getCurrentPositionAsync();
+        const { latitude, longitude, accuracy } = position.coords;
 
-    // Esperar 8 segundos antes de la siguiente actualización
-    await sleep(8000);
+        console.log(`📍 Ubicación actualizada: ${latitude}, ${longitude} (precisión: ${accuracy}m)`);
+
+        try {
+          await axios.post(`${API_BASE_URL}/api/driverlocsubmit`, {
+            orderid: currentOrderId,
+            driver_lat: latitude,
+            driver_long: longitude,
+          });
+          console.log('✅ Ubicación enviada al servidor');
+        } catch (error) {
+          console.log('⚠️ Error enviando ubicación:', error.message);
+        }
+      } catch (error) {
+        console.log('❌ Error obteniendo ubicación:', error.message);
+      }
+
+      await sleep(8000);
+    }
   }
 
   console.log('🛑 Background tracking detenido');
