@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
-  Alert,
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -630,11 +629,12 @@ const AddressFormUberStyle = () => {
         });
       }
     } catch (error) {
-      Alert.alert(
-        'Error', 
-        'Hubo un problema al obtener tu ubicación. Puedes buscar manualmente tu dirección.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Hubo un problema al obtener tu ubicación. Puedes buscar manualmente tu dirección.',
+        confirmText: 'Entendido'
+      });
     } finally {
       setIsLoadingLocation(false);
     }
@@ -707,7 +707,12 @@ const AddressFormUberStyle = () => {
         setCurrentStep(2); // Ir a dirección manual
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo obtener los detalles de la dirección');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo obtener los detalles de la dirección',
+        confirmText: 'Cerrar'
+      });
     } finally {
       setIsSearching(false);
     }
@@ -792,7 +797,12 @@ const AddressFormUberStyle = () => {
     // Usar providedAddress si se pasó, sino userWrittenAddress del estado
     const addressToValidate = providedAddress || userWrittenAddress;
     if (!addressToValidate?.trim()) {
-      Alert.alert('Error', 'Por favor escribe una dirección válida.');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Por favor escribe una dirección válida.',
+        confirmText: 'Cerrar'
+      });
       return;
     }
     
@@ -902,14 +912,15 @@ const AddressFormUberStyle = () => {
           errorMessage = 'Datos inválidos. Verifica la información e inténtalo de nuevo.';
         }
         
-        Alert.alert(
-          'Error al actualizar',
-          errorMessage,
-          [
-            { text: 'Reintentar', onPress: () => handleConfirm() },
-            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
-          ]
-        );
+        showAlert({
+          type: 'error',
+          title: 'Error al actualizar',
+          message: errorMessage,
+          confirmText: 'Reintentar',
+          cancelText: 'Cancelar',
+          onConfirm: () => handleConfirm(),
+          onCancel: () => navigation.goBack()
+        });
       }
     }
     // Si viene del AddressManager, Cart, o necesita guardar como nueva dirección
@@ -928,7 +939,12 @@ const AddressFormUberStyle = () => {
         // Validar datos antes de enviar
         const validation = newAddressService.validateAddressData(addressData);
         if (!validation.isValid) {
-          Alert.alert('Error', validation.errors.join('\n'));
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: validation.errors.join('\n'),
+            confirmText: 'Cerrar'
+          });
           return;
         }
 
@@ -1025,14 +1041,15 @@ const AddressFormUberStyle = () => {
           errorMessage = 'Sin conexión a internet. Verifica tu conexión e inténtalo de nuevo.';
         }
         
-        Alert.alert(
-          'Error al guardar',
-          errorMessage,
-          [
-            { text: 'Reintentar', onPress: () => handleConfirm() },
-            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
-          ]
-        );
+        showAlert({
+          type: 'error',
+          title: 'Error al guardar',
+          message: errorMessage,
+          confirmText: 'Reintentar',
+          cancelText: 'Cancelar',
+          onConfirm: () => handleConfirm(),
+          onCancel: () => navigation.goBack()
+        });
       }
     }
     // Si viene de GuestCheckout
@@ -1111,14 +1128,15 @@ const AddressFormUberStyle = () => {
         
         
       } catch (error) {
-        Alert.alert(
-          'Error',
-          'Hubo un problema al regresar al checkout. Inténtalo de nuevo.',
-          [
-            { text: 'Reintentar', onPress: () => handleConfirm() },
-            { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
-          ]
-        );
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Hubo un problema al regresar al checkout. Inténtalo de nuevo.',
+          confirmText: 'Reintentar',
+          cancelText: 'Cancelar',
+          onConfirm: () => handleConfirm(),
+          onCancel: () => navigation.goBack()
+        });
         return;
       }
       }, 0); // Cierre del setTimeout de iOS fix
@@ -1129,16 +1147,17 @@ const AddressFormUberStyle = () => {
     }
 
     } catch (error) {
-      
+
       // Alert de emergencia para el usuario
-      Alert.alert(
-        '⚠️ Error Crítico',
-        `Error en handleConfirm: ${error.message}. Por favor reporta este error.`,
-        [
-          { text: 'Reintentar', onPress: () => navigation.goBack(), style: 'default' },
-          { text: 'Cancelar', onPress: () => navigation.goBack(), style: 'cancel' }
-        ]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error Crítico',
+        message: `Error en handleConfirm: ${error.message}. Por favor reporta este error.`,
+        confirmText: 'Reintentar',
+        cancelText: 'Cancelar',
+        onConfirm: () => navigation.goBack(),
+        onCancel: () => navigation.goBack()
+      });
     }
   };
 

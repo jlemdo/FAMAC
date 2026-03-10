@@ -19,7 +19,6 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
-  Alert,
   Clipboard,
 } from 'react-native';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
@@ -32,6 +31,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AuthContext} from '../../context/AuthContext';
 import axios from 'axios';
 import fonts from '../../theme/fonts';
+import { useAlert } from '../../context/AlertContext';
 import { getCurrentLocation as getCurrentLocationUtil, startLocationTracking, stopLocationTracking } from '../../utils/locationUtils';
 import { API_BASE_URL } from '../../config/environment';
 import {
@@ -45,6 +45,7 @@ import {
 const DriverTracking = ({order}) => {
   const navigation = useNavigation();
   const { orders } = useContext(OrderContext);
+  const { showAlert } = useAlert();
   const [latlong, setLatlong] = useState(null);
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(order.status);
@@ -100,25 +101,25 @@ const DriverTracking = ({order}) => {
       });
 
       if (response.data.success) {
-        Alert.alert(
-          '✅ Pedido Rechazado',
-          'Has rechazado este pedido. Se notificará al administrador para reasignación.',
-          [{
-            text: 'Entendido',
-            onPress: () => navigation.goBack()
-          }]
-        );
+        showAlert({
+          type: 'success',
+          title: 'Pedido Rechazado',
+          message: 'Has rechazado este pedido. Se notificará al administrador para reasignación.',
+          confirmText: 'Entendido',
+          onConfirm: () => navigation.goBack()
+        });
       } else {
         throw new Error(response.data.message || 'Error desconocido');
       }
 
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Error al rechazar el pedido';
-      Alert.alert(
-        '❌ Error',
-        errorMessage,
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+        confirmText: 'Entendido'
+      });
     } finally {
       setLoading(false);
       setRejectReason('');
@@ -137,11 +138,12 @@ const DriverTracking = ({order}) => {
       );
 
       if (activeOrders && activeOrders.length > 0) {
-        Alert.alert(
-          '⚠️ Ya tienes un pedido activo',
-          'Debes completar tu pedido actual antes de aceptar uno nuevo.',
-          [{ text: 'Entendido', style: 'default' }]
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Ya tienes un pedido activo',
+          message: 'Debes completar tu pedido actual antes de aceptar uno nuevo.',
+          confirmText: 'Entendido'
+        });
         setLoading(false);
         return;
       }
@@ -155,19 +157,21 @@ const DriverTracking = ({order}) => {
       // Actualizar estado local inmediatamente
       setCurrentStatus('On the Way');
 
-      Alert.alert(
-        '✅ Pedido Aceptado',
-        'Has aceptado este pedido. Dirígete a recoger los productos.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'success',
+        title: 'Pedido Aceptado',
+        message: 'Has aceptado este pedido. Dirígete a recoger los productos.',
+        confirmText: 'Entendido'
+      });
 
     } catch (error) {
       // console.error('Error aceptando pedido:', error);
-      Alert.alert(
-        '❌ Error',
-        'No se pudo aceptar el pedido. Intenta nuevamente.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo aceptar el pedido. Intenta nuevamente.',
+        confirmText: 'Entendido'
+      });
     } finally {
       setLoading(false);
     }
@@ -182,19 +186,21 @@ const DriverTracking = ({order}) => {
       // Actualizar estado local inmediatamente
       setCurrentStatus('Delivered');
 
-      Alert.alert(
-        '✅ Pedido Entregado',
-        '¡Excelente! Has marcado el pedido como entregado exitosamente.',
-        [{ text: 'Perfecto', style: 'default' }]
-      );
+      showAlert({
+        type: 'success',
+        title: 'Pedido Entregado',
+        message: '¡Excelente! Has marcado el pedido como entregado exitosamente.',
+        confirmText: 'Perfecto'
+      });
 
     } catch (error) {
       // console.error('Error entregando pedido:', error);
-      Alert.alert(
-        '❌ Error',
-        'No se pudo marcar el pedido como entregado. Intenta nuevamente.',
-        [{ text: 'Entendido', style: 'default' }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'No se pudo marcar el pedido como entregado. Intenta nuevamente.',
+        confirmText: 'Entendido'
+      });
     } finally {
       setLoading(false);
     }
@@ -325,18 +331,20 @@ const DriverTracking = ({order}) => {
           driver_long: location.longitude,
         });
       } else {
-        Alert.alert(
-          'Ubicación requerida',
-          'No pudimos obtener tu ubicación. Por favor activa el GPS y los permisos de ubicación.',
-          [{ text: 'Entendido' }]
-        );
+        showAlert({
+          type: 'warning',
+          title: 'Ubicación requerida',
+          message: 'No pudimos obtener tu ubicación. Por favor activa el GPS y los permisos de ubicación.',
+          confirmText: 'Entendido'
+        });
       }
     } catch (error) {
-      Alert.alert(
-        'Error de ubicación',
-        `No se pudo obtener tu ubicación: ${error.message}. Verifica que el GPS esté activado.`,
-        [{ text: 'Entendido' }]
-      );
+      showAlert({
+        type: 'error',
+        title: 'Error de ubicación',
+        message: `No se pudo obtener tu ubicación: ${error.message}. Verifica que el GPS esté activado.`,
+        confirmText: 'Entendido'
+      });
     }
   };
 
@@ -598,24 +606,26 @@ const DriverTracking = ({order}) => {
                       await Linking.openURL(wazeWebUrl);
                     } else {
                       // Si ninguna funciona, preguntar si quiere instalar
-                      Alert.alert(
-                        'Waze no instalado',
-                        '¿Deseas instalar Waze para navegar?',
-                        [
-                          { text: 'Cancelar', style: 'cancel' },
-                          {
-                            text: 'Instalar Waze',
-                            onPress: () => Linking.openURL(storeUrl)
-                          }
-                        ]
-                      );
+                      showAlert({
+                        type: 'info',
+                        title: 'Waze no instalado',
+                        message: '¿Deseas instalar Waze para navegar?',
+                        confirmText: 'Instalar Waze',
+                        cancelText: 'Cancelar',
+                        onConfirm: () => Linking.openURL(storeUrl)
+                      });
                     }
                   }
                 } catch (error) {
                   console.log('Error abriendo Waze:', error);
                   // Fallback: intentar URL web directamente
                   Linking.openURL(wazeWebUrl).catch(() => {
-                    Alert.alert('Error', 'No se pudo abrir Waze');
+                    showAlert({
+                      type: 'error',
+                      title: 'Error',
+                      message: 'No se pudo abrir Waze',
+                      confirmText: 'Cerrar'
+                    });
                   });
                 }
               }}
@@ -657,7 +667,12 @@ const DriverTracking = ({order}) => {
               onPress={() => {
                 const address = order?.delivery_address || `${customer.latitude}, ${customer.longitude}`;
                 Clipboard.setString(address);
-                Alert.alert('Dirección copiada', 'La dirección se ha copiado al portapapeles.');
+                showAlert({
+                  type: 'success',
+                  title: 'Dirección copiada',
+                  message: 'La dirección se ha copiado al portapapeles.',
+                  confirmText: 'OK'
+                });
               }}
               activeOpacity={0.8}>
               <Ionicons name="copy-outline" size={22} color="#FFF" />
