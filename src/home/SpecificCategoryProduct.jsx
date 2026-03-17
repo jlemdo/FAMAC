@@ -3,13 +3,13 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
   Animated,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
@@ -44,7 +44,17 @@ export default function SpecificCategoryProduct() {
         const response = await axios.get(
           `${API_BASE_URL}/api/products/${categoryName}`,
         );
-        setProducts(response.data.data || []);
+        const productsData = response.data.data || [];
+        setProducts(productsData);
+
+        // 🚀 Precargar imágenes para carga instantánea
+        const imagesToPreload = productsData
+          .filter(p => p.photo)
+          .map(p => ({
+            uri: p.photo,
+            priority: FastImage.priority.high,
+          }));
+        FastImage.preload(imagesToPreload);
       } catch (err) {
         setError('No se pudieron cargar los productos. Intenta de nuevo.');
       } finally {
@@ -120,10 +130,14 @@ export default function SpecificCategoryProduct() {
           </View>
         )}
 
-        <Image
-          source={{ uri: item.photo }}
+        <FastImage
+          source={{
+            uri: item.photo,
+            priority: FastImage.priority.high,
+            cache: FastImage.cacheControl.immutable,
+          }}
           style={styles.productImage}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>

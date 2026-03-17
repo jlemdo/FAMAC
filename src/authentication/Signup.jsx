@@ -497,13 +497,13 @@ export default function SignUp({ onForgotPassword, onLogin, onSuccess, onError }
     setSubmitting(true);
     
     // Preparar payload de registro
+    // 🔧 FIX: Enviar fecha en formato ISO (YYYY-MM-DD) que el backend acepta
     let dob = null;
-    if (values.birthDate) {
-      const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-      const month = months[values.birthDate.getMonth()];
+    if (values.birthDate instanceof Date && !isNaN(values.birthDate.getTime())) {
       const year = values.birthDate.getFullYear();
-      dob = `${month} ${year}`;
+      const month = String(values.birthDate.getMonth() + 1).padStart(2, '0');
+      const day = String(values.birthDate.getDate()).padStart(2, '0');
+      dob = `${year}-${month}-${day}`;
     }
 
     const payload = {

@@ -7,12 +7,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Platform,
   StatusBar,
   Dimensions,
   Animated,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { CartContext } from '../context/CartContext';
@@ -136,10 +136,14 @@ const SearchResults = () => {
           </View>
         )}
 
-        <Image
-          source={{ uri: item.photo }}
+        <FastImage
+          source={{
+            uri: item.photo,
+            priority: FastImage.priority.high,
+            cache: FastImage.cacheControl.immutable,
+          }}
           style={styles.productImage}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>

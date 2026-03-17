@@ -2,7 +2,6 @@ import React, {useState, useContext, useRef, useEffect} from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {CartContext} from '../context/CartContext';
@@ -161,11 +161,15 @@ export default function ProductDetails() {
                 scrollEventThrottle={16}
                 style={styles.imageCarousel}>
                 {productImages.map((imageUrl, index) => (
-                  <Image
+                  <FastImage
                     key={`${product?.id}-${index}`}
-                    source={{uri: imageUrl}}
+                    source={{
+                      uri: imageUrl,
+                      priority: FastImage.priority.high,
+                      cache: FastImage.cacheControl.immutable,
+                    }}
                     style={styles.productImage}
-                    resizeMode="cover"
+                    resizeMode={FastImage.resizeMode.cover}
                   />
                 ))}
               </ScrollView>

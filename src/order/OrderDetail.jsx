@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Linking,
   TextInput,
@@ -15,6 +14,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {AuthContext} from '../context/AuthContext';
@@ -157,9 +157,9 @@ const OrderDetails = () => {
       if (response.status === 201) {
         showAlert({
           type: 'success',
-          title: '¡Enviado!',
-          message: 'Tu mensaje fue enviado con éxito',
-          confirmText: 'OK',
+          title: '¡Muchas gracias!',
+          message: 'Nos comunicaremos contigo en menos de 24 horas.\n\nHorario de atención: 9:00 am a 6:00 pm',
+          confirmText: 'Entendido',
         });
         resetForm();
         setShowSupportModal(false);
@@ -312,18 +312,25 @@ const OrderDetails = () => {
       );
 
       if (response.data.success) {
-        showAlert({
-          type: 'success',
-          title: '✅ Pedido Cancelado',
-          message: 'Tu pedido ha sido cancelado exitosamente.',
-          confirmText: 'OK',
-        });
+        // 🔧 FIX: Detener el auto-refresh INMEDIATAMENTE para evitar que la app se trabe
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
 
         setShowCancelModal(false);
         setCancelReason('');
 
-        // Recargar datos de la orden
-        fetchOrder();
+        showAlert({
+          type: 'success',
+          title: '✅ Pedido Cancelado',
+          message: 'Tu pedido ha sido cancelado exitosamente.',
+          confirmText: 'Ver mis pedidos',
+          onConfirm: () => {
+            // Navegar de regreso a la lista de órdenes
+            navigation.navigate('Order');
+          },
+        });
       } else {
         showAlert({
           type: 'error',
@@ -373,18 +380,25 @@ const OrderDetails = () => {
       );
 
       if (response.data.success) {
-        showAlert({
-          type: 'success',
-          title: '✅ Pedido Cancelado',
-          message: 'Tu pedido ha sido cancelado exitosamente.',
-          confirmText: 'OK',
-        });
+        // 🔧 FIX: Detener el auto-refresh INMEDIATAMENTE para evitar que la app se trabe
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
 
         setShowCancelModal(false);
         setCancelReason('');
 
-        // Recargar datos de la orden
-        fetchOrder();
+        showAlert({
+          type: 'success',
+          title: '✅ Pedido Cancelado',
+          message: 'El pedido ha sido cancelado exitosamente.',
+          confirmText: 'Ver mis entregas',
+          onConfirm: () => {
+            // Navegar de regreso a la lista de órdenes
+            navigation.navigate('Order');
+          },
+        });
       } else {
         showAlert({
           type: 'error',
@@ -495,9 +509,14 @@ const OrderDetails = () => {
             {order?.order_details?.length > 0 ? (
               order.order_details.map((product, i) => (
                 <View key={i} style={styles.driverItemRow}>
-                  <Image
-                    source={{uri: product.item_image}}
+                  <FastImage
+                    source={{
+                      uri: product.item_image,
+                      priority: FastImage.priority.normal,
+                      cache: FastImage.cacheControl.immutable,
+                    }}
                     style={styles.itemImage}
+                    resizeMode={FastImage.resizeMode.cover}
                   />
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemText}>
@@ -652,9 +671,14 @@ const OrderDetails = () => {
               {order?.order_details?.length > 0 ? (
                 order.order_details.map((product, i) => (
                   <View key={i} style={styles.itemRow}>
-                    <Image
-                      source={{uri: product.item_image}}
+                    <FastImage
+                      source={{
+                        uri: product.item_image,
+                        priority: FastImage.priority.normal,
+                        cache: FastImage.cacheControl.immutable,
+                      }}
                       style={styles.itemImage}
+                      resizeMode={FastImage.resizeMode.cover}
                     />
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemText}>

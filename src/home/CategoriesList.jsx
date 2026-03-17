@@ -2,7 +2,6 @@ import React, {useState, useEffect, useCallback, useMemo, memo} from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import Video from 'react-native-video';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
@@ -25,49 +25,39 @@ import { API_BASE_URL } from '../config/environment';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ============================================
-// COMPONENTE OPTIMIZADO DE IMAGEN CON SKELETON
+// COMPONENTE OPTIMIZADO DE IMAGEN CON FASTIMAGE
 // ============================================
 const OptimizedImage = memo(({ uri, style, containerStyle }) => {
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const opacity = useState(new Animated.Value(0))[0];
-
-  const onLoad = useCallback(() => {
-    setLoaded(true);
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [opacity]);
-
-  const onError = useCallback(() => {
-    setError(true);
-    setLoaded(true);
-  }, []);
 
   return (
     <View style={containerStyle}>
-      {/* Skeleton placeholder */}
-      {!loaded && (
-        <View style={[style, styles.skeleton]}>
+      {/* Skeleton mientras carga */}
+      {loading && !error && (
+        <View style={[style, styles.skeleton, { position: 'absolute', zIndex: 1 }]}>
           <ActivityIndicator size="small" color="#D27F27" />
         </View>
       )}
 
-      {/* Imagen real */}
-      {!error && (
-        <Animated.Image
-          source={{ uri, cache: 'force-cache' }}
-          style={[style, { opacity, position: loaded ? 'relative' : 'absolute' }]}
-          onLoad={onLoad}
-          onError={onError}
-          resizeMode="cover"
+      {/* Imagen con FastImage */}
+      {!error ? (
+        <FastImage
+          source={{
+            uri,
+            priority: FastImage.priority.high,
+            cache: FastImage.cacheControl.immutable,
+          }}
+          style={style}
+          resizeMode={FastImage.resizeMode.cover}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onError={() => {
+            setError(true);
+            setLoading(false);
+          }}
         />
-      )}
-
-      {/* Fallback si hay error */}
-      {error && (
+      ) : (
         <View style={[style, styles.errorPlaceholder]}>
           <Ionicons name="image-outline" size={24} color="#CCC" />
         </View>
@@ -106,10 +96,14 @@ const CategoryItem = memo(({ item, onPress }) => {
 });
 
 // ============================================
-// COMPONENTE DE VIDEO OPTIMIZADO
+// COMPONENTE DE VIDEO OPTIMIZADO (LAZY LOADING)
 // ============================================
-const VideoCard = memo(({ video, index, isActive, isScrolling, onPress, onVideoReady }) => {
+const VideoCard = memo(({ video, index, currentIndex, isScrolling, onPress, onVideoReady }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Solo cargar el video que se está viendo
+  const shouldLoadVideo = index === currentIndex;
+  const isActive = index === currentIndex && !isScrolling;
 
   const handleLoad = useCallback(() => {
     setIsLoaded(true);
@@ -122,9 +116,6 @@ const VideoCard = memo(({ video, index, isActive, isScrolling, onPress, onVideoR
     onPress(index);
   }, [index, onPress]);
 
-  // Solo renderizar el video si está activo o es adyacente
-  const shouldRenderVideo = Math.abs(index - (isActive ? index : 0)) <= 1;
-
   return (
     <View style={styles.videoCard}>
       <TouchableOpacity
@@ -132,21 +123,30 @@ const VideoCard = memo(({ video, index, isActive, isScrolling, onPress, onVideoR
         onPress={handlePress}
         activeOpacity={0.9}>
 
-        {/* Thumbnail/Placeholder mientras carga */}
-        {!isLoaded && (
+        {/* Thumbnail/Placeholder mientras carga o si no debe cargar aún */}
+        {(!shouldLoadVideo || !isLoaded) && (
           <View style={styles.videoPlaceholder}>
-            <ActivityIndicator size="large" color="#D27F27" />
+            {video.thumbnail ? (
+              <FastImage
+                source={{ uri: video.thumbnail, priority: FastImage.priority.low }}
+                style={styles.video}
+                resizeMode={FastImage.resizeMode.cover}
+              />
+            ) : (
+              <ActivityIndicator size="large" color="#D27F27" />
+            )}
           </View>
         )}
 
-        {shouldRenderVideo && (
+        {/* Solo renderizar Video si debe cargarse */}
+        {shouldLoadVideo && (
           <Video
             source={video.source}
             style={styles.video}
             resizeMode="cover"
             repeat={true}
             muted={true}
-            paused={!isActive || isScrolling}
+            paused={!isActive}
             onLoad={handleLoad}
             onError={() => {}}
             bufferConfig={{
@@ -347,12 +347,14 @@ export default function CategoriesList() {
         setCategories(sortedCategories);
         setLoading(false);
 
-        // Prefetch de imágenes de categorías
-        sortedCategories.forEach(cat => {
-          if (cat.photo) {
-            Image.prefetch(cat.photo).catch(() => {});
-          }
-        });
+        // 🚀 Precargar imágenes con FastImage para carga instantánea
+        const imagesToPreload = sortedCategories
+          .filter(cat => cat.photo)
+          .map(cat => ({
+            uri: cat.photo,
+            priority: FastImage.priority.high,
+          }));
+        FastImage.preload(imagesToPreload);
       })
       .catch(err => {
         if (!axios.isCancel(err)) {
@@ -519,7 +521,7 @@ export default function CategoriesList() {
               key={video.id}
               video={video}
               index={index}
-              isActive={index === currentVideoIndex && videoCarouselReady && !scrolling}
+              currentIndex={currentVideoIndex}
               isScrolling={scrolling}
               onPress={openFullscreenVideo}
               onVideoReady={handleVideoReady}

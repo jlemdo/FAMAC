@@ -3,7 +3,6 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   TouchableOpacity,
   Modal,
   ActivityIndicator,
@@ -18,6 +17,7 @@ import {
   StyleSheet,
   InteractionManager,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import {useNavigation, useFocusEffect, useRoute} from '@react-navigation/native';
 import {CartContext} from '../context/CartContext';
 import {AuthContext} from '../context/AuthContext';
@@ -2128,7 +2128,15 @@ export default function Cart() {
                         <Text style={styles.cartDiscountText}>-${itemDiscount}</Text>
                       </View>
                     )}
-                    <Image source={{uri: item.photo}} style={styles.image} />
+                    <FastImage
+                      source={{
+                        uri: item.photo,
+                        priority: FastImage.priority.normal,
+                        cache: FastImage.cacheControl.immutable,
+                      }}
+                      style={styles.image}
+                      resizeMode={FastImage.resizeMode.cover}
+                    />
                   </View>
                   <View style={styles.info}>
                     <View style={styles.row}>

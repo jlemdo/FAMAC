@@ -917,9 +917,9 @@ export default function Profile({ navigation, route }) {
       if (response.status === 201) {
         showAlert({
           type: 'success',
-          title: '¡Enviado!',
-          message: 'Tu mensaje fue enviado con éxito',
-          confirmText: 'OK',
+          title: '¡Muchas gracias!',
+          message: 'Nos comunicaremos contigo en menos de 24 horas.\n\nHorario de atención: 9:00 am a 6:00 pm',
+          confirmText: 'Entendido',
         });
         resetForm();
         setShowSupportModal(false);
@@ -1166,28 +1166,22 @@ export default function Profile({ navigation, route }) {
               // 🔧 ELIMINADO: address legacy - ahora usamos newAddressService para direcciones múltiples
             };
             
-            // 🔧 ARREGLADO: Lógica simplificada y no conflictiva para DOB
-            if (dobFormatted) {
-              // Usuario seleccionó nueva fecha
-              payload.dob = dobFormatted;
-            } else if (hasExistingBirthDate && profile.birthDate instanceof Date) {
-              // 🔧 ARREGLADO: Preservar formato español como lo escribió el usuario
-              const monthNamesSpanish = [
-                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-              ];
-              const monthName = monthNamesSpanish[profile.birthDate.getMonth()];
-              const year = profile.birthDate.getFullYear();
-              payload.dob = `${monthName} de ${year}`;
-            } else if (currentServerData.dob && typeof currentServerData.dob === 'string') {
-              // Solo preservar si es string válido (evitar corrupción)
-              payload.dob = currentServerData.dob;
+            // 🔧 FIX: Enviar fecha en formato ISO (YYYY-MM-DD) que el backend acepta
+            // La app muestra "abril de 2005" pero envía "2005-04-01"
+            if (values.birthDate instanceof Date && !isNaN(values.birthDate.getTime())) {
+              const year = values.birthDate.getFullYear();
+              const month = String(values.birthDate.getMonth() + 1).padStart(2, '0');
+              const day = String(values.birthDate.getDate()).padStart(2, '0');
+              payload.dob = `${year}-${month}-${day}`;
             }
-            // Si no hay DOB válido, no enviamos el campo (backend mantendrá el existente)
-            
+            // Si no hay fecha válida, no enviamos DOB (backend mantiene el existente)
+
             // 🔧 ELIMINADO: Endpoint duplicado /updatedob - causaba conflictos
             // Ahora enviamos DOB junto con otros datos en un solo request
-            
+
+            // DEBUG: Ver qué se está enviando
+            console.log('📤 PAYLOAD A ENVIAR:', JSON.stringify(payload, null, 2));
+
             const res = await axios.post(
               `${API_BASE_URL}/api/updateuserprofile`,
               payload
@@ -1230,11 +1224,15 @@ export default function Profile({ navigation, route }) {
                 }
               });
             }
-          } catch {
+          } catch (error) {
+            console.log('❌ ERROR ACTUALIZANDO PERFIL:', error);
+            console.log('❌ ERROR RESPONSE:', error?.response?.data);
+            console.log('❌ ERROR STATUS:', error?.response?.status);
+            console.log('❌ ERROR MESSAGE:', error?.message);
             showAlert({
               type: 'error',
               title: 'Error',
-              message: 'No se pudo actualizar tu perfil.',
+              message: error?.response?.data?.message || error?.message || 'No se pudo actualizar tu perfil.',
               confirmText: 'Cerrar',
             });
           } finally {

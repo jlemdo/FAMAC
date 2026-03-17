@@ -6,9 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Linking,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {AuthContext} from '../context/AuthContext';
 import axios from 'axios';
@@ -828,9 +828,14 @@ const Order = () => {
 
                       return (
                         <View key={i} style={styles.itemRow}>
-                          <Image
-                            source={{uri: product.item_image || ''}}
+                          <FastImage
+                            source={{
+                              uri: product.item_image || '',
+                              priority: FastImage.priority.normal,
+                              cache: FastImage.cacheControl.immutable,
+                            }}
                             style={styles.itemImage}
+                            resizeMode={FastImage.resizeMode.cover}
                           />
                           <View style={styles.itemInfo}>
                             <Text style={styles.itemText} numberOfLines={1}>

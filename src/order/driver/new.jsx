@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Linking,
   TextInput,
@@ -15,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import MapView, {Marker} from 'react-native-maps';
@@ -395,7 +395,15 @@ const OrderDetails = () => {
           <Text style={styles.sectionTitle}>Items</Text>
           {order?.order_details?.map(item => (
             <View key={item.id} style={styles.itemCard}>
-              <Image source={{uri: item.item_image}} style={styles.itemImage} />
+              <FastImage
+                source={{
+                  uri: item.item_image,
+                  priority: FastImage.priority.normal,
+                  cache: FastImage.cacheControl.immutable,
+                }}
+                style={styles.itemImage}
+                resizeMode={FastImage.resizeMode.cover}
+              />
               <View style={styles.itemDetails}>
                 <Text style={styles.itemName}>{item.item_name}</Text>
                 <Text style={styles.itemPrice}>

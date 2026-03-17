@@ -3,12 +3,12 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import FastImage from '@d11/react-native-fast-image';
 import {useNavigation} from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import fonts from '../theme/fonts';
@@ -105,7 +105,15 @@ export default function Suggestions() {
                   
                   {/* Sección superior: Imagen y contenido */}
                   <View style={styles.topSection}>
-                    <Image source={{uri: item.photo}} style={styles.image} />
+                    <FastImage
+                      source={{
+                        uri: item.photo,
+                        priority: FastImage.priority.high,
+                        cache: FastImage.cacheControl.immutable,
+                      }}
+                      style={styles.image}
+                      resizeMode={FastImage.resizeMode.cover}
+                    />
                     
                     <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
                     
