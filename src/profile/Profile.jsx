@@ -62,8 +62,10 @@ const parseFlexibleDate = (dateValue) => {
     
     if (typeof dateValue === 'string') {
       // Formato 1: ISO date (YYYY-MM-DD)
+      // Fix: agregar T00:00:00 para evitar que JS interprete como UTC y reste un día por timezone
       if (dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
-        parsedDate = new Date(dateValue);
+        const dateOnly = dateValue.substring(0, 10);
+        parsedDate = new Date(dateOnly + 'T00:00:00');
       }
       // Formato 2: "Month YYYY" como "June 1993" o "diciembre de 1976"
       else if (dateValue.match(/^[A-Za-zñáéíóú]+ (de )?\d{4}$/)) {
