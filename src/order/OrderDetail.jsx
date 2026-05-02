@@ -43,6 +43,7 @@ const translateStatus = (status) => {
     'arriving': 'Llegando',
     'delivered': 'Entregado',
     'cancelled': 'Cancelado',
+    'rejected': 'Rechazado',
   };
 
   return translations[status.toLowerCase()] || status;
@@ -258,9 +259,8 @@ const OrderDetails = () => {
 
     const status = order.status?.toLowerCase();
 
-    // No mostrar si ya está cancelado o entregado
-    // Backend estados finalizados: Delivered, Cancelled
-    const finishedStatuses = ['cancelled', 'delivered'];
+    // No mostrar si ya está cancelado, rechazado o entregado
+    const finishedStatuses = ['cancelled', 'rejected', 'delivered'];
     if (finishedStatuses.includes(status)) return false;
 
     return true;
@@ -470,7 +470,7 @@ const OrderDetails = () => {
               <View style={[
                 styles.statusBadge,
                 order?.status?.toLowerCase() === 'delivered' && styles.statusBadgeDelivered,
-                order?.status?.toLowerCase() === 'cancelled' && styles.statusBadgeCancelled,
+                (order?.status?.toLowerCase() === 'cancelled' || order?.status?.toLowerCase() === 'rejected') && styles.statusBadgeCancelled,
                 (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusBadgeActive,
               ]}>
                 <Text style={[
@@ -617,7 +617,7 @@ const OrderDetails = () => {
                 <View style={[
                   styles.statusBadge,
                   order?.status?.toLowerCase() === 'delivered' && styles.statusBadgeDelivered,
-                  order?.status?.toLowerCase() === 'cancelled' && styles.statusBadgeCancelled,
+                  (order?.status?.toLowerCase() === 'cancelled' || order?.status?.toLowerCase() === 'rejected') && styles.statusBadgeCancelled,
                   (order?.status?.toLowerCase() === 'on the way' || order?.status?.toLowerCase() === 'arriving') && styles.statusBadgeActive,
                 ]}>
                   <Text style={[
@@ -921,8 +921,9 @@ const OrderDetails = () => {
 
           // Backend estados: Processing Payment, Open, On the Way, Arriving, Delivered, Cancelled
 
-          // ESTADOS DE CANCELACIÓN
+          // ESTADOS DE CANCELACIÓN Y RECHAZO
           const isCancelled = status === 'cancelled';
+          const isRejected = status === 'rejected';
 
           // ESTADOS DE ENTREGA COMPLETADA
           const isDelivered = status === 'delivered';
@@ -943,7 +944,26 @@ const OrderDetails = () => {
           // Backend estados activos: On the Way, Arriving
           const isActive = status === 'on the way' || status === 'arriving';
 
-          // 1. PEDIDO CANCELADO - Prioridad máxima
+          // 1. PEDIDO RECHAZADO POR REPARTIDOR - Prioridad máxima
+          if (isRejected) {
+            return (
+              <View style={styles.statusCard}>
+                <View style={styles.statusCardBorder} />
+                <View style={[styles.statusIconCircle, styles.statusIconCircleCancelled]}>
+                  <Ionicons name="close-circle" size={50} color="#E63946" />
+                </View>
+                <Text style={[styles.statusCardTitle, styles.statusCardTitleCancelled]}>Pedido Rechazado</Text>
+                <Text style={styles.statusCardMessage}>
+                  {isDriver
+                    ? 'Rechazaste este pedido. No es necesario realizar ninguna acción.'
+                    : 'El repartidor no pudo completar la entrega. Nos comunicaremos contigo pronto.'
+                  }
+                </Text>
+              </View>
+            );
+          }
+
+          // 2. PEDIDO CANCELADO
           if (isCancelled) {
             return (
               <View style={styles.statusCard}>
@@ -962,7 +982,7 @@ const OrderDetails = () => {
             );
           }
 
-          // 2. OXXO PENDIENTE - Específico para pagos OXXO
+          // 3. OXXO PENDIENTE - Específico para pagos OXXO
           if (isOxxoPending) {
             // console.log('🏪 ENTRANDO A: OXXO PENDIENTE');
             return (

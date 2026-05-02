@@ -313,7 +313,7 @@ const OrderDetails = () => {
     const status = order.status?.toLowerCase();
 
     // No mostrar si ya está cancelado, entregado o completado
-    const finishedStatuses = ['cancelled', 'cancelado', 'delivered', 'entregado', 'completed', 'completado'];
+    const finishedStatuses = ['cancelled', 'cancelado', 'rejected', 'rechazado', 'delivered', 'entregado', 'completed', 'completado'];
     if (finishedStatuses.includes(status)) return false;
 
     return true;

@@ -60,7 +60,7 @@ const Order = () => {
     // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled
     if (statusLower === 'delivered') {
       return { badge: styles.statusDelivered, text: styles.statusDeliveredText };
-    } else if (statusLower === 'cancelled') {
+    } else if (statusLower === 'cancelled' || statusLower === 'rejected') {
       return { badge: styles.statusCancelled, text: styles.statusCancelledText };
     } else if (statusLower === 'on the way' || statusLower === 'arriving') {
       return { badge: styles.statusInTransit, text: styles.statusInTransitText };
@@ -71,9 +71,14 @@ const Order = () => {
   };
 
   const handleInvoices = order => {
-    const invoiceURL = `${API_BASE_URL}/invoices/${order.invoice}`;
+    // order.invoice puede ser: URL completa (CloudFront/S3) o solo filename
+    let invoiceURL = order.invoice;
+    if (invoiceURL && !invoiceURL.startsWith('http')) {
+      // Solo filename — construir URL via backend redirect
+      invoiceURL = `${API_BASE_URL}/invoices/${invoiceURL}`;
+    }
     Linking.openURL(invoiceURL).catch(err => {
-      alert('Unable to open invoice. Please try again.');
+      alert('No se pudo abrir el ticket. Intenta de nuevo.');
     });
   };
 
@@ -124,8 +129,8 @@ const Order = () => {
           setShowingGuestOrders(true);
 
           // Actualizar el contador de órdenes para el badge de navegación
-          // Backend estados finalizados: Delivered, Cancelled
-          const finishedStatuses = ['delivered', 'cancelled'];
+          // Backend estados finalizados: Delivered, Cancelled, Rejected
+          const finishedStatuses = ['delivered', 'cancelled', 'rejected'];
           const activeOrders = orders.filter(order =>
             order.status && !finishedStatuses.includes(order.status.toLowerCase()) &&
             order.payment_status === 'paid'
@@ -220,6 +225,29 @@ const Order = () => {
     };
   }, []);
 
+  // 🚚 FUNCIÓN: Contar órdenes por categoría para driver (para badges)
+  const getDriverOrdersCounts = () => {
+    if (!Array.isArray(orders)) return { disponibles: 0, entregas: 0, canceladas: 0 };
+
+    const disponibles = orders.filter(order => {
+      const status = order.status?.toLowerCase();
+      return ['open', 'on the way', 'arriving'].includes(status);
+    }).length;
+
+    const entregas = orders.filter(order => {
+      return order.status?.toLowerCase() === 'delivered';
+    }).length;
+
+    const canceladas = orders.filter(order => {
+      const status = order.status?.toLowerCase();
+      return status === 'cancelled' || status === 'rejected';
+    }).length;
+
+    return { disponibles, entregas, canceladas };
+  };
+
+  const driverOrderCounts = getDriverOrdersCounts();
+
   // 🚚 FUNCIÓN: Filtrar órdenes para drivers según tab activa
   const getFilteredDriverOrders = () => {
     // Protección: si orders no es un array válido, devolver array vacío
@@ -236,8 +264,11 @@ const Order = () => {
       // Tab "Mis Entregas": Backend estado: Delivered
       return orders.filter(order => order.status?.toLowerCase() === 'delivered');
     } else if (driverActiveTab === 'canceladas') {
-      // Tab "Canceladas": Backend estado: Cancelled
-      return orders.filter(order => order.status?.toLowerCase() === 'cancelled');
+      // Tab "Canceladas": Backend estados: Cancelled, Rejected
+      return orders.filter(order => {
+        const status = order.status?.toLowerCase();
+        return status === 'cancelled' || status === 'rejected';
+      });
     }
     return orders;
   };
@@ -252,7 +283,7 @@ const Order = () => {
       const status = order.status?.toLowerCase();
       const paymentStatus = order.payment_status?.toLowerCase();
       const hasValidPayment = paymentStatus === 'paid' || paymentStatus === 'pending';
-      const finishedStatuses = ['delivered', 'cancelled'];
+      const finishedStatuses = ['delivered', 'cancelled', 'rejected'];
       return status && !finishedStatuses.includes(status) && hasValidPayment;
     }).length;
 
@@ -263,7 +294,7 @@ const Order = () => {
 
     const canceladas = ordersToFilter.filter(order => {
       const status = order.status?.toLowerCase();
-      return status === 'cancelled';
+      return status === 'cancelled' || status === 'rejected';
     }).length;
 
     return { activas, entregadas, canceladas };
@@ -278,13 +309,12 @@ const Order = () => {
     if (!Array.isArray(ordersToFilter)) return [];
 
     if (userActiveTab === 'activas') {
-      // Tab "Activas": Órdenes que NO están entregadas ni canceladas
-      // Backend estados activos: Open, Processing Payment, On the Way, Arriving
+      // Tab "Activas": Órdenes que NO están entregadas, canceladas ni rechazadas
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
         const paymentStatus = order.payment_status?.toLowerCase();
         const hasValidPayment = paymentStatus === 'paid' || paymentStatus === 'pending';
-        const finishedStatuses = ['delivered', 'cancelled'];
+        const finishedStatuses = ['delivered', 'cancelled', 'rejected'];
         return status && !finishedStatuses.includes(status) && hasValidPayment;
       });
     } else if (userActiveTab === 'entregadas') {
@@ -294,10 +324,10 @@ const Order = () => {
         return status === 'delivered';
       });
     } else if (userActiveTab === 'canceladas') {
-      // Tab "Canceladas": Backend estado: Cancelled
+      // Tab "Canceladas": Backend estados: Cancelled, Rejected
       return ordersToFilter.filter(order => {
         const status = order.status?.toLowerCase();
-        return status === 'cancelled';
+        return status === 'cancelled' || status === 'rejected';
       });
     }
     return ordersToFilter;
@@ -352,7 +382,7 @@ const Order = () => {
                     styles.userTabBadgeText,
                     driverActiveTab !== 'disponibles' && styles.userTabBadgeTextInactive
                   ]}>
-                    {getFilteredDriverOrders().length}
+                    {driverOrderCounts.disponibles}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -377,6 +407,19 @@ const Order = () => {
                 ]}>
                   Entregas
                 </Text>
+                {driverOrderCounts.entregas > 0 && (
+                  <View style={[
+                    styles.userTabBadge,
+                    driverActiveTab !== 'entregas' && styles.userTabBadgeInactive
+                  ]}>
+                    <Text style={[
+                      styles.userTabBadgeText,
+                      driverActiveTab !== 'entregas' && styles.userTabBadgeTextInactive
+                    ]}>
+                      {driverOrderCounts.entregas}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -399,6 +442,19 @@ const Order = () => {
                 ]}>
                   Cancelados
                 </Text>
+                {driverOrderCounts.canceladas > 0 && (
+                  <View style={[
+                    styles.userTabBadge,
+                    driverActiveTab !== 'canceladas' && styles.userTabBadgeInactive
+                  ]}>
+                    <Text style={[
+                      styles.userTabBadgeText,
+                      driverActiveTab !== 'canceladas' && styles.userTabBadgeTextInactive
+                    ]}>
+                      {driverOrderCounts.canceladas}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           )}

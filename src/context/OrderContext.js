@@ -146,8 +146,8 @@ export function OrderProvider({ children }) {
                 // 2. Estados específicos de workflow del driver (incluyendo canceladas)
                 filteredOrders = ordersData.filter(order => {
                     const paymentValid = ['paid', 'pending', 'completed'].includes(order.payment_status);
-                    // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled
-                    const validStatuses = ['open', 'on the way', 'arriving', 'delivered', 'cancelled'];
+                    // Backend estados: Open, On the Way, Arriving, Delivered, Cancelled, Rejected
+                    const validStatuses = ['open', 'on the way', 'arriving', 'delivered', 'cancelled', 'rejected'];
                     const statusValid = validStatuses.includes(order.status?.toLowerCase());
                     return paymentValid && statusValid;
                 });
@@ -163,7 +163,7 @@ export function OrderProvider({ children }) {
             // 🎯 Contar SOLO órdenes activas según tipo de usuario
             let activeOrders;
             if (user.usertype === 'driver') {
-                // Para drivers: contar SOLO órdenes activas (EXCLUIR entregadas y canceladas)
+                // Para drivers: contar SOLO órdenes activas (EXCLUIR entregadas, canceladas y rechazadas)
                 // Backend estados activos: Open, On the Way, Arriving
                 const activeDriverStatuses = ['open', 'on the way', 'arriving'];
                 activeOrders = sortedOrders.filter(order =>
@@ -171,9 +171,9 @@ export function OrderProvider({ children }) {
                     ['paid', 'pending', 'completed'].includes(order.payment_status)
                 );
             } else {
-                // Para usuarios normales: contar SOLO órdenes activas (EXCLUIR entregadas y canceladas)
-                // Backend estados finalizados: Delivered, Cancelled
-                const finishedStatuses = ['delivered', 'cancelled'];
+                // Para usuarios normales: contar SOLO órdenes activas (EXCLUIR entregadas, canceladas y rechazadas)
+                // Backend estados finalizados: Delivered, Cancelled, Rejected
+                const finishedStatuses = ['delivered', 'cancelled', 'rejected'];
                 activeOrders = sortedOrders.filter(order =>
                     order.status && !finishedStatuses.includes(order.status.toLowerCase()) &&
                     order.payment_status === 'paid'
@@ -224,8 +224,8 @@ export function OrderProvider({ children }) {
     // Función manual para actualizar (para compatibilidad)
     const updateOrders = (ordersData) => {
         setOrders(ordersData);
-        // Backend estados finalizados: Delivered, Cancelled
-        const finishedStatuses = ['delivered', 'cancelled'];
+        // Backend estados finalizados: Delivered, Cancelled, Rejected
+        const finishedStatuses = ['delivered', 'cancelled', 'rejected'];
         const activeOrders = ordersData.filter(order =>
             order.status && !finishedStatuses.includes(order.status.toLowerCase())
         );
