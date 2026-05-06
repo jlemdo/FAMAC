@@ -56,7 +56,8 @@ export const newAddressService = {
         longitude: addressData.longitude,
         phone: addressData.phone || '',
         label: addressData.label || 'Dirección',
-        is_primary: addressData.isDefault || false
+        is_primary: addressData.isDefault || false,
+        postal_code: addressData.postalCode || null
       };
       
       const response = await axios.post(`${BASE_URL}/user/addresses`, payload);
@@ -185,7 +186,8 @@ export const newAddressService = {
         latitude: addressData.latitude,
         longitude: addressData.longitude,
         phone: addressData.phone || '',
-        fcm_token: fcmToken // 🔑 CRÍTICO: Incluir FCM token para push notifications
+        fcm_token: fcmToken,
+        postal_code: addressData.postalCode || null
       };
       
       const response = await axios.post(`${BASE_URL}/guest/address`, payload);

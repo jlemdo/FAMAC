@@ -24,6 +24,7 @@ import { useAlert } from '../context/AlertContext';
 import { getCurrentLocation } from '../utils/locationUtils';
 import { getAddressPickerCallbacks, cleanupAddressPickerCallbacks } from '../components/AddressPicker';
 import { newAddressService } from '../services/newAddressService';
+import { fetchFeatureStatus, validatePostalCodeAPI } from '../utils/postalCodeValidator';
 
 import { useKeyboardBehavior } from '../hooks/useKeyboardBehavior';
 import { 
@@ -119,6 +120,20 @@ const AddressFormUberStyle = () => {
   const [successModalTitle, setSuccessModalTitle] = useState('');
   const [successModalMessage, setSuccessModalMessage] = useState('');
   const [successModalCallback, setSuccessModalCallback] = useState(null);
+
+  // Estados para validación de código postal
+  const [cpFeatureEnabled, setCpFeatureEnabled] = useState(false);
+  const [cpValidated, setCpValidated] = useState(false);
+  const [cpValidating, setCpValidating] = useState(false);
+  const [showNoCoverageModal, setShowNoCoverageModal] = useState(false);
+
+  // Consultar feature status al montar
+  useEffect(() => {
+    fetchFeatureStatus().then(result => {
+      setCpFeatureEnabled(result.enabled);
+      if (!result.enabled) setCpValidated(true); // si está desactivado, todo pasa
+    });
+  }, []);
 
   // Función para mostrar modal de éxito personalizado
   const displaySuccessModal = (title, message, callback = null) => {
@@ -260,31 +275,58 @@ const AddressFormUberStyle = () => {
     }
   };
 
-  // 🆕 FUNCIÓN: Manejar cambios en código postal (SIN VALIDACIÓN)
-  const handlePostalCodeChange = (value) => {
+  // Manejar cambios en código postal con validación de cobertura
+  const handlePostalCodeChange = async (value) => {
     setPostalCode(value);
-    
-    // 🎯 NUEVA LÓGICA: Auto-actualizar opciones según CP
-    if (value.length === 5) {
+
+    // Reset validación si cambia el CP
+    if (cpFeatureEnabled) {
+      setCpValidated(false);
+    }
+
+    if (value.length === 5 && /^\d{5}$/.test(value)) {
+      // Auto-actualizar estado según rango de CP
       const postalCodeNum = parseInt(value);
-      
       if ((postalCodeNum >= 1000 && postalCodeNum <= 16999) || (postalCodeNum >= 1 && postalCodeNum <= 9999)) {
-        // CDMX (rango corregido: incluye 00001-09999 y 01000-16999)
         setState('CDMX');
         setAvailableOptions(ALCALDIAS_CDMX);
-        // Limpiar municipio si no está en alcaldías
-        if (municipality && !ALCALDIAS_CDMX.includes(municipality)) {
-          setMunicipality('');
-        }
+        if (municipality && !ALCALDIAS_CDMX.includes(municipality)) setMunicipality('');
       } else if (postalCodeNum >= 50000 && postalCodeNum <= 56999) {
-        // Estado de México
         setState('Estado de México');
         setAvailableOptions(MUNICIPIOS_EDOMEX);
-        // Limpiar municipio si no está en municipios
-        if (municipality && !MUNICIPIOS_EDOMEX.includes(municipality)) {
-          setMunicipality('');
+        if (municipality && !MUNICIPIOS_EDOMEX.includes(municipality)) setMunicipality('');
+      }
+
+      // Validar cobertura si la feature está activa
+      if (cpFeatureEnabled) {
+        setCpValidating(true);
+        try {
+          const result = await validatePostalCodeAPI(value, user?.id || null, null);
+          if (result.feature_enabled && !result.covered) {
+            setCpValidated(false);
+            setShowNoCoverageModal(true);
+          } else {
+            setCpValidated(true);
+            // Auto-fill estado y municipio desde API si disponible
+            if (result.info) {
+              if (result.info.state) {
+                const apiState = result.info.state;
+                setState(apiState);
+                setAvailableOptions(apiState === 'CDMX' ? ALCALDIAS_CDMX : MUNICIPIOS_EDOMEX);
+              }
+              if (result.info.municipality) {
+                setMunicipality(result.info.municipality);
+              }
+              if (result.info.neighborhood) {
+                setNeighborhood(result.info.neighborhood);
+              }
+            }
+          }
+        } catch (error) {
+          setCpValidated(true); // fail-open
+        } finally {
+          setCpValidating(false);
         }
-      } else {
       }
     }
   };
@@ -932,8 +974,9 @@ const AddressFormUberStyle = () => {
           address: `${finalAddress.userWrittenAddress}${finalAddress.references ? `, Referencias: ${finalAddress.references}` : ''}`,
           latitude: finalAddress.coordinates?.latitude || null,
           longitude: finalAddress.coordinates?.longitude || null,
-          phone: route.params?.phone || '', // Si se proporciona teléfono
-          isDefault: route.params?.setAsDefault || false // Si debe ser predeterminada
+          phone: route.params?.phone || '',
+          isDefault: route.params?.setAsDefault || false,
+          postalCode: postalCode || null
         };
 
         // Validar datos antes de enviar
@@ -1110,7 +1153,8 @@ const AddressFormUberStyle = () => {
               address: tempGuestData.address,
               latitude: tempGuestData.mapCoordinates.driver_lat,
               longitude: tempGuestData.mapCoordinates.driver_long,
-              phone: null
+              phone: null,
+              postalCode: postalCode || null
             });
           }
         } catch (error) {
@@ -1506,8 +1550,44 @@ const AddressFormUberStyle = () => {
           </View>
         )}
 
-        {/* Fila 1: Calle y Número Exterior */}
+        {/* Fila 0: Código Postal (PRIMERO - valida cobertura) */}
         <View style={styles.addressRow}>
+          <View style={styles.addressField}>
+            <Text style={[styles.fieldLabel, { fontSize: 14, fontWeight: '600' }]}>
+              {cpFeatureEnabled ? 'Verifica tu código postal *' : 'Código postal *'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                ref={(ref) => registerInput('postalCode', ref)}
+                style={[
+                  styles.addressInput,
+                  fonts.numericStyles.tabular,
+                  { flex: 1 },
+                  cpFeatureEnabled && cpValidated && { borderColor: '#28a745', borderWidth: 1.5 },
+                ]}
+                placeholder="5 dígitos"
+                value={postalCode}
+                onChangeText={handlePostalCodeChange}
+                onFocus={() => {
+                  createFocusHandler('postalCode', 0, { disableOnIOS: true })();
+                  closeModalOnFocus();
+                }}
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                maxLength={5}
+              />
+              {cpValidating && (
+                <ActivityIndicator size="small" color="#D27F27" style={{ marginLeft: 8 }} />
+              )}
+              {cpFeatureEnabled && cpValidated && postalCode.length === 5 && (
+                <Ionicons name="checkmark-circle" size={22} color="#28a745" style={{ marginLeft: 8 }} />
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Fila 1: Calle y Número Exterior */}
+        <View style={[styles.addressRow, cpFeatureEnabled && !cpValidated && { opacity: 0.4 }]}>
           <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Calle *</Text>
             <TextInput
@@ -1521,6 +1601,7 @@ const AddressFormUberStyle = () => {
                 closeModalOnFocus();
               }}
               placeholderTextColor="#999"
+              editable={!cpFeatureEnabled || cpValidated}
             />
           </View>
           <View style={[styles.addressField, {flex: 1}]}>
@@ -1537,12 +1618,13 @@ const AddressFormUberStyle = () => {
               }}
               placeholderTextColor="#999"
               keyboardType="numeric"
+              editable={!cpFeatureEnabled || cpValidated}
             />
           </View>
         </View>
 
         {/* Fila 2: Número Interior y Colonia */}
-        <View style={styles.addressRow}>
+        <View style={[styles.addressRow, cpFeatureEnabled && !cpValidated && { opacity: 0.4 }]}>
           <View style={[styles.addressField, {flex: 1}]}>
             <Text style={styles.fieldLabel}>No. Int</Text>
             <TextInput
@@ -1556,6 +1638,7 @@ const AddressFormUberStyle = () => {
                 closeModalOnFocus();
               }}
               placeholderTextColor="#999"
+              editable={!cpFeatureEnabled || cpValidated}
             />
           </View>
           <View style={[styles.addressField, {flex: 2}]}>
@@ -1571,30 +1654,14 @@ const AddressFormUberStyle = () => {
                 closeModalOnFocus();
               }}
               placeholderTextColor="#999"
+              editable={!cpFeatureEnabled || cpValidated}
             />
           </View>
         </View>
 
-        {/* Fila 3: Código Postal y Alcaldía/Municipio */}
-        <View style={styles.addressRow}>
+        {/* Fila 3: Alcaldía/Municipio */}
+        <View style={[styles.addressRow, cpFeatureEnabled && !cpValidated && { opacity: 0.4 }]}>
           <View style={[styles.addressField, {flex: 1}]}>
-            <Text style={styles.fieldLabel}>CP</Text>
-            <TextInput
-              ref={(ref) => registerInput('postalCode', ref)}
-              style={[styles.addressInput, fonts.numericStyles.tabular]}
-              placeholder="5 dígitos"
-              value={postalCode}
-              onChangeText={handlePostalCodeChange}
-              onFocus={() => {
-                createFocusHandler('postalCode', 0, { disableOnIOS: true })();
-                closeModalOnFocus();
-              }}
-              placeholderTextColor="#999"
-              keyboardType="numeric"
-              maxLength={5}
-            />
-          </View>
-          <View style={[styles.addressField, {flex: 2}]}>
             <Text style={styles.fieldLabel}>Alcaldía/Municipio *</Text>
             <TouchableOpacity
               style={[
@@ -1602,7 +1669,8 @@ const AddressFormUberStyle = () => {
                 styles.modalSelector,
                 municipality && styles.modalSelectorSelected
               ]}
-              onPress={() => setShowMunicipalityModal(true)}>
+              onPress={() => (!cpFeatureEnabled || cpValidated) && setShowMunicipalityModal(true)}
+              disabled={cpFeatureEnabled && !cpValidated}>
               <Text style={[
                 styles.modalSelectorText,
                 !municipality && styles.modalSelectorPlaceholder
@@ -1615,7 +1683,7 @@ const AddressFormUberStyle = () => {
         </View>
 
         {/* Fila 4: Estado */}
-        <View style={styles.addressRow}>
+        <View style={[styles.addressRow, cpFeatureEnabled && !cpValidated && { opacity: 0.4 }]}>
           <View style={styles.addressField}>
             <Text style={styles.fieldLabel}>Estado</Text>
             <View style={styles.stateSelector}>
@@ -1873,6 +1941,42 @@ const AddressFormUberStyle = () => {
           
         </ScrollView>
       </TouchableWithoutFeedback>
+
+      {/* Modal de sin cobertura */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showNoCoverageModal}
+        onRequestClose={() => setShowNoCoverageModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxWidth: 340 }]}>
+            <View style={styles.modalHeader}>
+              <View style={{
+                width: 80, height: 80, borderRadius: 40,
+                backgroundColor: 'rgba(210, 127, 39, 0.1)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 8
+              }}>
+                <Ionicons name="location-outline" size={42} color="#D27F27" />
+              </View>
+              <Text style={[styles.modalTitle, { color: '#D27F27' }]}>
+                Estamos trabajando para llegar a tu zona
+              </Text>
+            </View>
+            <Text style={styles.modalMessage}>
+              Por el momento no contamos con cobertura en tu codigo postal. Estamos en constante expansion, vuelve a consultarnos pronto.
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: '#D27F27' }]}
+              onPress={() => {
+                setShowNoCoverageModal(false);
+                setPostalCode('');
+                navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+              }}>
+              <Text style={styles.modalButtonText}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de confirmación de éxito */}
       <Modal

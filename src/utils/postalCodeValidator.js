@@ -1,72 +1,74 @@
 /**
  * Validador de códigos postales para zonas de entrega
- * FAMAC - Sistema de validación por CP específicos
+ * FAMAC - Validación contra API backend
  */
 
-// 📍 ZONAS DE ENTREGA PERMITIDAS
-// Puedes actualizar estos rangos según las zonas donde quieras entregar
-const ALLOWED_POSTAL_CODES = {
-  // 🏙️ CDMX - Alcaldías seleccionadas
-  CDMX: {
-    // Benito Juárez
-    '03100': 'Benito Juárez - Del Valle Centro',
-    '03103': 'Benito Juárez - Del Valle Norte',
-    '03104': 'Benito Juárez - Del Valle Sur',
-    '03200': 'Benito Juárez - Acacias',
-    '03300': 'Benito Juárez - Portales Norte',
-    '03400': 'Benito Juárez - Álamos',
-    
-    // Miguel Hidalgo
-    '11000': 'Miguel Hidalgo - Anzures',
-    '11100': 'Miguel Hidalgo - Polanco',
-    '11200': 'Miguel Hidalgo - Reforma Social',
-    '11300': 'Miguel Hidalgo - Ampliación Granada',
-    
-    // Cuauhtémoc
-    '06000': 'Cuauhtémoc - Centro Histórico',
-    '06100': 'Cuauhtémoc - Centro',
-    '06140': 'Cuauhtémoc - Tabacalera',
-    '06200': 'Cuauhtémoc - Tlatelolco',
-    '06300': 'Cuauhtémoc - Doctores',
-    '06400': 'Cuauhtémoc - Obrera',
-    '06500': 'Cuauhtémoc - Algarin',
-    
-    // Álvaro Obregón
-    '01000': 'Álvaro Obregón - San Ángel',
-    '01100': 'Álvaro Obregón - San Ángel Inn',
-    '01200': 'Álvaro Obregón - Tlacopac',
-    '01300': 'Álvaro Obregón - Santa María Nonoalco',
-    
-    // Coyoacán
-    '04000': 'Coyoacán - Villa Coyoacán',
-    '04100': 'Coyoacán - Del Carmen',
-    '04200': 'Coyoacán - Copilco Universidad',
-    '04300': 'Coyoacán - Copilco',
-    '04400': 'Coyoacán - Pedregal de Santa Úrsula',
-  },
-  
-  // 🏘️ ESTADO DE MÉXICO - Municipios seleccionados
-  EDOMEX: {
-    // Naucalpan
-    '53000': 'Naucalpan - Centro',
-    '53100': 'Naucalpan - San Bartolomé Naucalpan',
-    '53200': 'Naucalpan - Echegaray',
-    
-    // Tlalnepantla
-    '54000': 'Tlalnepantla - Centro',
-    '54030': 'Tlalnepantla - Hab San Javier',
-    '54040': 'Tlalnepantla - Hab Valle Dorado',
-    
-    // Atizapán de Zaragoza
-    '52900': 'Atizapán - Centro',
-    '52930': 'Atizapán - Condado de Sayavedra',
-    '52977': 'Atizapán - Lomas Lindas',
+import { API_BASE_URL } from '../config/environment';
+
+const BASE_URL = `${API_BASE_URL}/api`;
+
+// Cache de cobertura y feature status
+let cachedCodes = null;
+let cacheTimestamp = 0;
+let cachedFeatureEnabled = null;
+let featureCacheTimestamp = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
+
+// Consultar si la feature está activa
+export const fetchFeatureStatus = async () => {
+  try {
+    const now = Date.now();
+    if (cachedFeatureEnabled !== null && (now - featureCacheTimestamp) < CACHE_DURATION) {
+      return { enabled: cachedFeatureEnabled };
+    }
+
+    const response = await fetch(`${BASE_URL}/settings/postal-code-status`);
+    const data = await response.json();
+    cachedFeatureEnabled = data.enabled;
+    featureCacheTimestamp = now;
+    return { enabled: data.enabled };
+  } catch (error) {
+    return { enabled: false }; // fail-open: si falla, no bloquear
   }
 };
 
-// 🎯 FUNCIÓN PRINCIPAL: Validar código postal
-export const validatePostalCode = (postalCode) => {
-  // Validación básica
+// Obtener lista de CPs con cobertura (para cache local)
+export const fetchCoverageFromAPI = async () => {
+  try {
+    const now = Date.now();
+    if (cachedCodes && (now - cacheTimestamp) < CACHE_DURATION) {
+      return cachedCodes;
+    }
+
+    const response = await fetch(`${BASE_URL}/postal-codes/coverage`);
+    const data = await response.json();
+    cachedCodes = data.postal_codes || [];
+    cacheTimestamp = now;
+    return cachedCodes;
+  } catch (error) {
+    return cachedCodes || []; // devolver cache viejo si hay, o vacío
+  }
+};
+
+// Validar un CP contra el backend
+export const validatePostalCodeAPI = async (cp, userId = null, guestEmail = null) => {
+  try {
+    let url = `${BASE_URL}/postal-codes/validate/${cp}`;
+    const params = [];
+    if (userId) params.push(`user_id=${userId}`);
+    if (guestEmail) params.push(`guest_email=${encodeURIComponent(guestEmail)}`);
+    if (params.length) url += `?${params.join('&')}`;
+
+    const response = await fetch(url);
+    return await response.json();
+  } catch (error) {
+    // fail-open: si la API falla, dejar pasar
+    return { valid: true, covered: true, feature_enabled: false };
+  }
+};
+
+// Validar formato + cobertura
+export const validatePostalCode = async (postalCode, userId = null, guestEmail = null) => {
   if (!postalCode || typeof postalCode !== 'string') {
     return {
       isValid: false,
@@ -74,10 +76,9 @@ export const validatePostalCode = (postalCode) => {
       message: 'El código postal es obligatorio'
     };
   }
-  
-  // Limpiar y validar formato
+
   const cleanCP = postalCode.trim();
-  
+
   if (cleanCP.length !== 5) {
     return {
       isValid: false,
@@ -85,7 +86,7 @@ export const validatePostalCode = (postalCode) => {
       message: 'El código postal debe tener exactamente 5 dígitos'
     };
   }
-  
+
   if (!/^\d{5}$/.test(cleanCP)) {
     return {
       isValid: false,
@@ -93,100 +94,86 @@ export const validatePostalCode = (postalCode) => {
       message: 'El código postal solo puede contener números'
     };
   }
-  
-  // Verificar si está en zonas permitidas (CDMX o EdoMex)
-  const locationInfo = getPostalCodeInfo(cleanCP);
-  
-  if (!locationInfo) {
+
+  // Consultar feature status
+  const featureStatus = await fetchFeatureStatus();
+
+  if (!featureStatus.enabled) {
+    // Feature desactivada: aceptar todo
     return {
-      isValid: false,
-      error: 'DELIVERY_NOT_AVAILABLE',
-      message: 'Lo sentimos, solo entregamos en CDMX y Estado de México',
-      suggestion: 'Códigos postales válidos: CDMX (01000-16999) o EdoMex (50000-57999)'
+      isValid: true,
+      postalCode: cleanCP,
+      featureEnabled: false,
+      location: { state: '', zone: '', description: '', deliveryAvailable: true }
     };
   }
-  
-  return {
-    isValid: true,
-    postalCode: cleanCP,
-    location: locationInfo
-  };
-};
 
-// 📍 FUNCIÓN: Obtener información de un código postal (LÓGICA SIMPLIFICADA - VALIDACIÓN DE ZONA DESACTIVADA)
-export const getPostalCodeInfo = (postalCode) => {
-  const cleanCP = postalCode?.trim();
-  
-  // No procesar si el CP está vacío o no tiene el formato correcto
-  if (!cleanCP || !/^\d{5}$/.test(cleanCP)) {
-    return null;
+  // Feature activa: validar contra API
+  const result = await validatePostalCodeAPI(cleanCP, userId, guestEmail);
+
+  if (result.covered) {
+    return {
+      isValid: true,
+      postalCode: cleanCP,
+      featureEnabled: true,
+      location: result.info || { state: '', zone: '', description: '', deliveryAvailable: true }
+    };
   }
 
-  // Devolver una respuesta genérica exitosa para cualquier CP de 5 dígitos
   return {
-    state: 'CDMX', // Se mantiene un valor por defecto para compatibilidad
-    zone: 'Zona General',
-    description: 'Zona de entrega válida',
-    deliveryAvailable: true
+    isValid: false,
+    error: 'CP_NOT_COVERED',
+    featureEnabled: true,
+    message: 'Por el momento no contamos con cobertura en tu código postal.'
   };
 };
 
-// 📋 FUNCIÓN: Obtener todos los códigos postales permitidos
-export const getAllowedPostalCodes = () => {
-  const allCodes = [];
-  
-  Object.keys(ALLOWED_POSTAL_CODES.CDMX).forEach(cp => {
-    allCodes.push({
-      code: cp,
-      state: 'CDMX',
-      description: ALLOWED_POSTAL_CODES.CDMX[cp]
-    });
-  });
-  
-  Object.keys(ALLOWED_POSTAL_CODES.EDOMEX).forEach(cp => {
-    allCodes.push({
-      code: cp,
-      state: 'Estado de México', 
-      description: ALLOWED_POSTAL_CODES.EDOMEX[cp]
-    });
-  });
-  
-  return allCodes;
-};
-
-// 🔧 FUNCIÓN: Agregar nuevos códigos postales (para administración futura)
-export const addPostalCode = (postalCode, state, description) => {
+// Obtener info de un CP desde cache
+export const getPostalCodeInfo = async (postalCode) => {
   const cleanCP = postalCode?.trim();
-  const stateKey = state === 'CDMX' ? 'CDMX' : 'EDOMEX';
-  
-  if (cleanCP && /^\d{5}$/.test(cleanCP) && description) {
-    ALLOWED_POSTAL_CODES[stateKey][cleanCP] = description;
-    return true;
+  if (!cleanCP || !/^\d{5}$/.test(cleanCP)) return null;
+
+  const featureStatus = await fetchFeatureStatus();
+
+  if (!featureStatus.enabled) {
+    return {
+      state: '',
+      zone: 'Zona General',
+      description: 'Zona de entrega válida',
+      deliveryAvailable: true
+    };
   }
-  
-  return false;
+
+  const codes = await fetchCoverageFromAPI();
+  const found = codes.find(c => c.cp === cleanCP);
+
+  if (found) {
+    return {
+      state: found.state,
+      municipality: found.municipality,
+      neighborhood: found.neighborhood,
+      zone: found.municipality,
+      description: `${found.municipality} - ${found.neighborhood || ''}`.trim(),
+      deliveryAvailable: true
+    };
+  }
+
+  return null;
 };
 
-// 📊 FUNCIÓN: Obtener estadísticas de cobertura
-export const getCoverageStats = () => {
-  const cdmxCount = Object.keys(ALLOWED_POSTAL_CODES.CDMX).length;
-  const edomexCount = Object.keys(ALLOWED_POSTAL_CODES.EDOMEX).length;
-  
-  return {
-    total: cdmxCount + edomexCount,
-    cdmx: cdmxCount,
-    edomex: edomexCount,
-    coverage: {
-      'CDMX': Object.keys(ALLOWED_POSTAL_CODES.CDMX),
-      'Estado de México': Object.keys(ALLOWED_POSTAL_CODES.EDOMEX)
-    }
-  };
+// Limpiar cache (útil al cambiar configuración)
+export const clearPostalCodeCache = () => {
+  cachedCodes = null;
+  cacheTimestamp = 0;
+  cachedFeatureEnabled = null;
+  featureCacheTimestamp = 0;
 };
 
 export default {
   validatePostalCode,
   getPostalCodeInfo,
-  getAllowedPostalCodes,
-  addPostalCode,
-  getCoverageStats
+  fetchFeatureStatus,
+  fetchCoverageFromAPI,
+  validatePostalCodeAPI,
+  clearPostalCodeCache
 };
