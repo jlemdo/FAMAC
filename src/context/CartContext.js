@@ -348,6 +348,7 @@ export function CartProvider({ children }) {
                         if (existingIndex >= 0) {
                             // Item existe: sumar cantidades
                             mergedCart[existingIndex].quantity += guestItem.quantity;
+                            mergedCart[existingIndex].selectedQuantity = mergedCart[existingIndex].quantity;
                         } else {
                             // Item nuevo: agregar
                             mergedCart.push(guestItem);
