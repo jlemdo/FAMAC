@@ -1011,6 +1011,11 @@ const OrderDetails = () => {
                     : 'Tu pedido ha sido cancelado. Si tienes alguna duda, contáctanos.'
                   }
                 </Text>
+                {!isDriver && order?.payment_status === 'paid' && (
+                  <Text style={[styles.statusCardMessage, {marginTop: 12, fontStyle: 'italic', fontSize: 12.5, color: '#666'}]}>
+                    Iniciaremos tu devolución al método de pago registrado y debe reflejarse en un periodo de máximo 72 horas, dependiendo de la institución bancaria.
+                  </Text>
+                )}
               </View>
             );
           }
