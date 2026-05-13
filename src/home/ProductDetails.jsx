@@ -104,7 +104,10 @@ export default function ProductDetails() {
     }, 2500);
   };
 
+  const [lastAddedQty, setLastAddedQty] = useState(1);
+
   const handleAddToCart = () => {
+    setLastAddedQty(quantity);
     addToCart(product, quantity);
     setQuantity(1);
     showSuccessMessage();
@@ -307,7 +310,7 @@ export default function ProductDetails() {
           <View style={styles.successAlertContent}>
             <Ionicons name="checkmark-circle" size={20} color="#33A744" />
             <Text style={styles.successAlertText}>
-              ¡{formatQuantity(quantity)} de {product.name} agregado!
+              ¡{formatQuantity(lastAddedQty)} de {product.name} agregado!
             </Text>
           </View>
         </Animated.View>

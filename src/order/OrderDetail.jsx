@@ -13,6 +13,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  AppState,
 } from 'react-native';
 import FastImage from '@d11/react-native-fast-image';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -100,25 +101,57 @@ const OrderDetails = () => {
   }, [orderId]);
 
   // ✅ Auto-refresh: Actualizar estado del pedido cada 5 segundos
+  // Pausa en background y para en estados finales
   useEffect(() => {
     if (!orderId) return;
 
-    // Fetch inicial
-    fetchOrder();
+    const FINISHED_STATUSES = ['cancelled', 'rejected', 'delivered'];
 
-    // Configurar intervalo de auto-refresh (5 segundos)
-    refreshIntervalRef.current = setInterval(() => {
-      fetchOrder();
-    }, 5000);
+    const startPolling = () => {
+      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = setInterval(() => {
+        fetchOrder();
+      }, 5000);
+    };
 
-    // Cleanup: Limpiar intervalo al desmontar
-    return () => {
+    const stopPolling = () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
     };
+
+    // Fetch inicial
+    fetchOrder();
+    startPolling();
+
+    // Pausar en background, reanudar al volver
+    const handleAppState = (nextAppState) => {
+      if (nextAppState === 'active') {
+        fetchOrder();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+    const appStateListener = AppState.addEventListener('change', handleAppState);
+
+    // Cleanup al desmontar
+    return () => {
+      stopPolling();
+      appStateListener?.remove();
+    };
   }, [orderId, fetchOrder]);
+
+  // Parar polling cuando el pedido llega a estado final
+  useEffect(() => {
+    if (order && ['cancelled', 'rejected', 'delivered'].includes(order.status?.toLowerCase())) {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    }
+  }, [order?.status]);
 
   // Schema de validación para el formulario de soporte
   const SupportSchema = Yup.object().shape({

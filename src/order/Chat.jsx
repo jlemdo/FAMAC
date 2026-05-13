@@ -84,20 +84,33 @@ export default function Chat({ orderId, order }) {
         }
     }, [orderId]); // FIX #1: Solo orderId como dependencia
 
-    // Sistema de auto-refresh
+    // Sistema de auto-refresh con control de background
     useEffect(() => {
+        const startPolling = () => {
+            if (msgIntervalRef.current) clearInterval(msgIntervalRef.current);
+            msgIntervalRef.current = setInterval(() => {
+                fetchMessages();
+            }, 3000);
+        };
+
+        const stopPolling = () => {
+            if (msgIntervalRef.current) {
+                clearInterval(msgIntervalRef.current);
+                msgIntervalRef.current = null;
+            }
+        };
+
         // Fetch inicial con scroll automático
         fetchMessages(true);
+        startPolling();
 
-        // Configurar intervalo para chat activo (3 segundos)
-        msgIntervalRef.current = setInterval(() => {
-            fetchMessages();
-        }, 3000);
-
-        // Listener para AppState - refresh cuando regresa del background
+        // Pausar polling en background, reanudar al volver
         const handleAppStateChange = (nextAppState) => {
             if (nextAppState === 'active') {
                 fetchMessages(true);
+                startPolling();
+            } else {
+                stopPolling();
             }
         };
 
@@ -120,10 +133,7 @@ export default function Chat({ orderId, order }) {
         }
 
         return () => {
-            if (msgIntervalRef.current) {
-                clearInterval(msgIntervalRef.current);
-                msgIntervalRef.current = null;
-            }
+            stopPolling();
             appStateListener?.remove();
 
             if (Platform.OS === 'ios') {

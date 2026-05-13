@@ -1573,11 +1573,17 @@ export default function Cart() {
 
       // Usar el cálculo unificado de precio final (incluye envío)
       const finalPrice = getFinalTotal();
-      
-      // 🚨 DEBUG: Verificar qué se envía a Stripe
+
+      // Validar que el monto sea un número válido y positivo antes de enviar a Stripe
+      const stripeAmount = Math.round(parseFloat(finalPrice) * 100);
+      if (!isFinite(stripeAmount) || stripeAmount < 1000) {
+        // Stripe MXN mínimo es $10 (1000 centavos), si llegó aquí con menos es un error
+        throw new Error('El monto del pago no es válido. Por favor revisa tu carrito.');
+      }
+
       const {data} = await axios.post(
         `${API_BASE_URL}/api/create-payment-intent`,
-        {amount: parseFloat(finalPrice) * 100, currency: 'mxn', email: orderEmail, order_id: realOrderId},
+        {amount: stripeAmount, currency: 'mxn', email: orderEmail, order_id: realOrderId},
       );
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
