@@ -107,10 +107,16 @@ export default function Login({ showGuest = true, onForgotPassword, onSignUp }) 
       });
       await login(data.user, data.token);
     } catch (err) {
+      let message = 'No se pudo conectar al servidor. Verifica tu conexion a internet.';
+      if (err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err.response?.status === 401) {
+        message = 'Credenciales invalidas. Verifica tu email y contrasena.';
+      }
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'Credenciales inválidas',
+        message,
         confirmText: 'Cerrar',
       });
     } finally {
