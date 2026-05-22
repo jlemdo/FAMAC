@@ -124,7 +124,8 @@ export const validatePostalCode = async (postalCode, userId = null, guestEmail =
     isValid: false,
     error: 'CP_NOT_COVERED',
     featureEnabled: true,
-    message: 'Por el momento no contamos con cobertura en tu código postal.'
+    message: 'Por el momento no contamos con cobertura en tu código postal.',
+    suggestion: 'Verifica que tu código postal esté dentro de nuestra zona de cobertura o contacta a soporte.'
   };
 };
 
