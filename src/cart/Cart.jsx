@@ -1541,14 +1541,15 @@ export default function Cart() {
     setLoading(true);
     setShowLoadingContent(true);
 
+    // Dar tiempo al bridge de iOS para pintar el loader antes de HTTP calls
+    await new Promise(r => setTimeout(r, 100));
+
     setTimeout(() => {
       setShowLoadingContent(false);
     }, 2000);
 
     try {
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
-      addDebug('⏳ completeOrderFunc (crear orden)...');
-      const t1 = Date.now();
       const orderData = await completeOrderFunc();
       addDebug(`✅ Orden ${Date.now()-t1}ms id=${orderData?.order?.id}`);
 
@@ -1642,9 +1643,10 @@ export default function Cart() {
         throw initError;
       }
 
+      // Dar tiempo al bridge de iOS para procesar initPaymentSheet antes de presentar
+      await new Promise(r => setTimeout(r, 50));
+
       // Presentar la UI de pago
-      addDebug('⏳ presentPaymentSheet...');
-      const t4 = Date.now();
       const {error: paymentError} = await presentPaymentSheet();
       addDebug(`✅ presentPaymentSheet ${Date.now()-t4}ms code=${paymentError?.code || 'OK'}`);
 
