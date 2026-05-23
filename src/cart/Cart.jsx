@@ -107,6 +107,17 @@ export default function Cart() {
   const orderInProgressRef = useRef(false); // 🛡️ MUTEX: Previene doble envío de orden
   const validatedPostalCodeRef = useRef(null); // CP validado para enviar en payload
 
+  // 🔍 DEBUG: Panel profesional de diagnóstico — TEMPORAL, quitar en producción
+  const [debugLog, setDebugLog] = useState([]);
+  const debugStartRef = useRef(null);
+  const addDebug = (msg) => {
+    const now = Date.now();
+    if (!debugStartRef.current) debugStartRef.current = now;
+    const elapsed = ((now - debugStartRef.current) / 1000).toFixed(2);
+    setDebugLog(prev => [...prev.slice(-20), `+${elapsed}s | ${msg}`]);
+  };
+  const resetDebugTimer = () => { debugStartRef.current = Date.now(); };
+
   // Guardar deliveryInfo y coordenadas en AsyncStorage (usuarios registrados Y guests)
   useEffect(() => {
     // 🔧 FIX: También guardar para Guest con email válido
@@ -838,7 +849,10 @@ export default function Cart() {
     }
 
     const postalCode = cpMatch[1];
+    addDebug(`⏳ validatePostalCode CP=${postalCode}...`);
+    const tCP = Date.now();
     const validation = await validatePostalCode(postalCode);
+    addDebug(`✅ validatePostalCode ${Date.now()-tCP}ms valid=${validation.isValid}`);
 
     if (!validation.isValid) {
       return {
@@ -1484,7 +1498,9 @@ export default function Cart() {
 
   // Flujo único y robusto de pago
   const completeOrder = async () => {
-    if (loading) return;
+    resetDebugTimer();
+    addDebug(`▶ INICIO loading=${loading} mutex=${orderInProgressRef.current}`);
+    if (loading) { addDebug('⛔ BLOQ: loading=true'); return; }
 
     // 1. Validar carrito
     if (cart.length === 0) {
@@ -1499,6 +1515,7 @@ export default function Cart() {
 
     // 3. Validar información de entrega
     if (isRestoringDeliveryInfo) {
+      addDebug('⛔ BLOQ: isRestoringDeliveryInfo');
       showAlert({
         type: 'info',
         title: 'Cargando datos',
@@ -1509,6 +1526,7 @@ export default function Cart() {
     }
 
     if (!deliveryInfo) {
+      addDebug('⚠ deliveryInfo=null, restaurando...');
       if (user?.id && user?.usertype !== 'Guest') {
         const restored = await restoreDeliveryInfo(user.id);
         if (!restored) {
@@ -1531,32 +1549,37 @@ export default function Cart() {
     }
 
     // 4. Validar según tipo de usuario
+    addDebug(`📋 Validar ${user?.usertype || 'unknown'}`);
     if (user?.usertype === 'Guest') {
+      addDebug('⏳ validateGuestData...');
+      const t0 = Date.now();
       const guestValid = await validateGuestData();
-      if (!guestValid) return;
+      addDebug(`✅ validateGuestData ${Date.now()-t0}ms res=${guestValid}`);
+      if (!guestValid) { addDebug('⛔ Guest validation failed'); return; }
     } else {
+      addDebug('⏳ validateRegisteredUser...');
+      const t0 = Date.now();
       const isValid = await validateRegisteredUserData();
-      if (!isValid) return;
+      addDebug(`✅ validateRegistered ${Date.now()-t0}ms res=${isValid}`);
+      if (!isValid) { addDebug('⛔ Registered validation failed'); return; }
     }
 
+    addDebug('🔒 setLoading(true)');
     setLoading(true);
-    setShowLoadingContent(true); // 🆕 Mostrar el cuadro al inicio
-    
-    // 🆕 Después de 2 segundos, ocultar el cuadro pero mantener el bloqueo
+    setShowLoadingContent(true);
+
     setTimeout(() => {
       setShowLoadingContent(false);
     }, 2000);
-    
+
     try {
-      // Las coordenadas ya fueron confirmadas por el usuario en el mapa
-      // No necesitamos pedir permisos de ubicación nuevamente
-      // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
-
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
+      addDebug('⏳ completeOrderFunc (crear orden)...');
+      const t1 = Date.now();
       const orderData = await completeOrderFunc();
+      addDebug(`✅ Orden ${Date.now()-t1}ms id=${orderData?.order?.id}`);
 
-      // Si completeOrderFunc retornó sin datos (ej: email faltante ya mostró su alert)
-      if (!orderData) return;
+      if (!orderData) { addDebug('⛔ orderData=null'); return; }
 
       const realOrderId = orderData?.order?.id;
 
@@ -1578,27 +1601,27 @@ export default function Cart() {
 
       // 1.1) Crear PaymentIntent con ID real de la orden
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
-
-      // Usar el cálculo unificado de precio final (incluye envío)
       const finalPrice = getFinalTotal();
-
-      // Validar que el monto sea un número válido y positivo antes de enviar a Stripe
       const stripeAmount = Math.round(parseFloat(finalPrice) * 100);
       if (!isFinite(stripeAmount) || stripeAmount < 1000) {
-        // Stripe MXN mínimo es $10 (1000 centavos), si llegó aquí con menos es un error
         throw new Error('El monto del pago no es válido. Por favor revisa tu carrito.');
       }
 
+      addDebug(`⏳ PaymentIntent $${finalPrice}...`);
+      const t2 = Date.now();
       const {data} = await axios.post(
         `${API_BASE_URL}/api/create-payment-intent`,
         {amount: stripeAmount, currency: 'mxn', email: orderEmail, order_id: realOrderId},
       );
+      addDebug(`✅ PaymentIntent ${Date.now()-t2}ms`);
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
         throw new Error('No se obtuvo clientSecret del servidor.');
       }
 
       // Inicializar Stripe PaymentSheet
+      addDebug('⏳ initPaymentSheet...');
+      const t3 = Date.now();
       const paymentSheetConfig = {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Sabores de Origen',
@@ -1640,12 +1663,17 @@ export default function Cart() {
           },
         },
       });
+      addDebug(`✅ initPaymentSheet ${Date.now()-t3}ms`);
       if (initError) {
+        addDebug(`⛔ initError: ${initError.message}`);
         throw initError;
       }
 
       // Presentar la UI de pago
+      addDebug('⏳ presentPaymentSheet...');
+      const t4 = Date.now();
       const {error: paymentError} = await presentPaymentSheet();
+      addDebug(`✅ presentPaymentSheet ${Date.now()-t4}ms code=${paymentError?.code || 'OK'}`);
 
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
@@ -1684,9 +1712,11 @@ export default function Cart() {
       }
 
       // Pago exitoso - usar función centralizada
+      addDebug('🎉 PAGO EXITOSO → handleOrderSuccess');
       await handleOrderSuccess(orderData, oxxoInfo);
 
     } catch (err) {
+      addDebug(`❌ ERROR: ${err?.message?.substring(0,50)}`);
       showAlert({
         type: 'error',
         title: 'Error',
@@ -1694,9 +1724,10 @@ export default function Cart() {
         confirmText: 'Cerrar',
       });
     } finally {
+      addDebug(`🔓 FINALLY loading=false mutex=false`);
       setLoading(false);
-      setShowLoadingContent(true); // 🆕 Resetear para próximo uso
-      orderInProgressRef.current = false; // 🔓 Desbloquear mutex en cualquier caso
+      setShowLoadingContent(true);
+      orderInProgressRef.current = false;
     }
   };
 
@@ -1875,6 +1906,7 @@ export default function Cart() {
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
+    addDebug(`🔘 handleCheckout TAP loading=${loading} mutex=${orderInProgressRef.current}`);
     const hasEmail = email?.trim();
     const hasAddress = address?.trim();
     const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
@@ -2912,6 +2944,23 @@ const CartFooter = ({
              'Proceder al Pago'}
           </Text>
         </TouchableOpacity>
+      </View>
+    )}
+
+    {/* 🔍 DEBUG PANEL — TEMPORAL */}
+    {debugLog.length > 0 && (
+      <View style={{backgroundColor:'#1a1a2e',padding:10,margin:10,borderRadius:8,maxHeight:250}}>
+        <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:4}}>
+          <Text style={{color:'#00ff88',fontSize:11,fontWeight:'bold'}}>DEBUG CHECKOUT</Text>
+          <TouchableOpacity onPress={() => setDebugLog([])}>
+            <Text style={{color:'#ff6b6b',fontSize:11}}>LIMPIAR</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={{maxHeight:220}}>
+          {debugLog.map((log, i) => (
+            <Text key={i} style={{color: log.includes('⛔') || log.includes('❌') ? '#ff6b6b' : log.includes('✅') || log.includes('🎉') ? '#00ff88' : '#e0e0e0', fontSize:10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom:1}}>{log}</Text>
+          ))}
+        </ScrollView>
       </View>
     )}
   </View>
