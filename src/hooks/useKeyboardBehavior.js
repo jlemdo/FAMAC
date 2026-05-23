@@ -5,10 +5,12 @@
  */
 import { useRef, useCallback, useEffect } from 'react';
 import { Keyboard, Platform, Dimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+
+// Valor estático del safe area top — se lee una vez, no causa re-renders
+const SAFE_AREA_TOP = initialWindowMetrics?.insets?.top ?? 50;
 
 export const useKeyboardBehavior = () => {
-  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef(null);
   const inputRefs = useRef({});
   const keyboardHeight = useRef(0);
@@ -133,7 +135,7 @@ export const useKeyboardBehavior = () => {
     // Configuración recomendada para KeyboardAvoidingView
     keyboardAvoidingViewProps: {
       behavior: Platform.OS === 'ios' ? 'padding' : 'height',
-      keyboardVerticalOffset: Platform.OS === 'ios' ? insets.top : 0,
+      keyboardVerticalOffset: Platform.OS === 'ios' ? SAFE_AREA_TOP : 0,
     },
     
     // Configuración recomendada para ScrollView

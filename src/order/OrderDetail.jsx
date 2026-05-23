@@ -31,7 +31,9 @@ import {useAlert} from '../context/AlertContext';
 import {formatPriceWithSymbol} from '../utils/priceFormatter';
 import {formatOrderId} from '../utils/orderIdFormatter';
 import { API_BASE_URL } from '../config/environment';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+
+const SAFE_AREA_TOP = initialWindowMetrics?.insets?.top ?? 50;
 
 // ✅ FUNCIÓN: Traducir estados de órdenes a español
 // Backend estados: Processing Payment, Open, On the Way, Arriving, Delivered, Cancelled
@@ -68,7 +70,6 @@ const translatePaymentStatus = (paymentStatus) => {
 };
 
 const OrderDetails = () => {
-  const insets = useSafeAreaInsets();
   const {user} = useContext(AuthContext);
   const {showAlert} = useAlert();
   const navigation = useNavigation();
@@ -470,7 +471,7 @@ const OrderDetails = () => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? SAFE_AREA_TOP : 0}
     >
       <View style={styles.headerContainer}>
         <TouchableOpacity
@@ -1218,7 +1219,7 @@ const OrderDetails = () => {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{flex: 1}}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+          keyboardVerticalOffset={Platform.OS === 'ios' ? SAFE_AREA_TOP : 0}>
           <TouchableWithoutFeedback
             onPress={() => {
               Keyboard.dismiss();
@@ -1333,7 +1334,7 @@ const OrderDetails = () => {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{flex: 1}}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+          keyboardVerticalOffset={Platform.OS === 'ios' ? SAFE_AREA_TOP : 0}>
           <TouchableWithoutFeedback
             onPress={() => {
               Keyboard.dismiss();
@@ -1398,7 +1399,7 @@ const OrderDetails = () => {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{flex: 1}}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+          keyboardVerticalOffset={Platform.OS === 'ios' ? SAFE_AREA_TOP : 0}>
           <TouchableWithoutFeedback
             onPress={() => {
               Keyboard.dismiss();
