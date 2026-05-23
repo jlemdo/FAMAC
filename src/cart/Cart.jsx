@@ -826,8 +826,10 @@ export default function Cart() {
 
   const {showAlert} = useAlert();
 
-  // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal
-  const validateDeliveryZone = async (addressString) => {
+  // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal (LOCAL, sin HTTP)
+  // La validación de cobertura ya se hizo al crear la dirección (AddressFormUberStyle)
+  // y se revalida en el backend al crear la orden (orderSubs)
+  const validateDeliveryZone = (addressString) => {
     if (!addressString) return { isValid: false, error: 'Dirección vacía' };
 
     // Extraer código postal: priorizar formato "CP XXXXX", fallback a primer 5-dígitos
@@ -841,25 +843,9 @@ export default function Cart() {
       };
     }
 
-    const postalCode = cpMatch[1];
-    addDebug(`⏳ validatePostalCode CP=${postalCode}...`);
-    const tCP = Date.now();
-    const validation = await validatePostalCode(postalCode);
-    addDebug(`✅ validatePostalCode ${Date.now()-tCP}ms valid=${validation.isValid}`);
-
-    if (!validation.isValid) {
-      return {
-        isValid: false,
-        error: validation.message,
-        suggestion: validation.suggestion,
-        postalCode: postalCode
-      };
-    }
-
     return {
       isValid: true,
-      postalCode: postalCode,
-      location: validation.location
+      postalCode: cpMatch[1]
     };
   };
 
@@ -1406,7 +1392,7 @@ export default function Cart() {
       showValidationError('Información incompleta', 'Por favor proporciona tu dirección.');
       return false;
     }
-    const zoneValidation = await validateDeliveryZone(address);
+    const zoneValidation = validateDeliveryZone(address);
     if (!zoneValidation.isValid) {
       showValidationError(
         'Zona de entrega no disponible',
@@ -1436,7 +1422,7 @@ export default function Cart() {
       return false;
     }
 
-    const zoneValidation = await validateDeliveryZone(address);
+    const zoneValidation = validateDeliveryZone(address);
     if (!zoneValidation.isValid) {
       showValidationError(
         'Zona de entrega no disponible',
@@ -1491,13 +1477,13 @@ export default function Cart() {
 
   // Flujo único y robusto de pago
   const completeOrder = async () => {
-    resetDebugTimer();
-    addDebug(`▶ INICIO loading=${loading} mutex=${orderInProgressRef.current}`);
-    if (loading) { addDebug('⛔ BLOQ: loading=true'); return; }
+    if (loading || orderInProgressRef.current) return;
+    orderInProgressRef.current = true;
 
     // 1. Validar carrito
     if (cart.length === 0) {
       showValidationError('Carrito vacío', 'No hay productos en el carrito.');
+      orderInProgressRef.current = false;
       return;
     }
 
@@ -1508,25 +1494,26 @@ export default function Cart() {
 
     // 3. Validar información de entrega
     if (isRestoringDeliveryInfo) {
-      addDebug('⛔ BLOQ: isRestoringDeliveryInfo');
       showAlert({
         type: 'info',
         title: 'Cargando datos',
         message: 'Espera un momento mientras restauramos tu información de entrega...',
         confirmText: 'Cerrar',
       });
+      orderInProgressRef.current = false;
       return;
     }
 
     if (!deliveryInfo) {
-      addDebug('⚠ deliveryInfo=null, restaurando...');
       if (user?.id && user?.usertype !== 'Guest') {
         const restored = await restoreDeliveryInfo(user.id);
         if (!restored) {
           showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
+          orderInProgressRef.current = false;
           return;
         }
       } else if (user?.usertype === 'Guest') {
+        orderInProgressRef.current = false;
         setTimeout(() => {
           if (deliveryInfo) {
             completeOrder();
@@ -1537,27 +1524,20 @@ export default function Cart() {
         return;
       } else {
         showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
+        orderInProgressRef.current = false;
         return;
       }
     }
 
     // 4. Validar según tipo de usuario
-    addDebug(`📋 Validar ${user?.usertype || 'unknown'}`);
     if (user?.usertype === 'Guest') {
-      addDebug('⏳ validateGuestData...');
-      const t0 = Date.now();
       const guestValid = await validateGuestData();
-      addDebug(`✅ validateGuestData ${Date.now()-t0}ms res=${guestValid}`);
-      if (!guestValid) { addDebug('⛔ Guest validation failed'); return; }
+      if (!guestValid) { orderInProgressRef.current = false; return; }
     } else {
-      addDebug('⏳ validateRegisteredUser...');
-      const t0 = Date.now();
       const isValid = await validateRegisteredUserData();
-      addDebug(`✅ validateRegistered ${Date.now()-t0}ms res=${isValid}`);
-      if (!isValid) { addDebug('⛔ Registered validation failed'); return; }
+      if (!isValid) { orderInProgressRef.current = false; return; }
     }
 
-    addDebug('🔒 setLoading(true)');
     setLoading(true);
     setShowLoadingContent(true);
 
