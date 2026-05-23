@@ -107,16 +107,19 @@ export default function Cart() {
   const orderInProgressRef = useRef(false); // 🛡️ MUTEX: Previene doble envío de orden
   const validatedPostalCodeRef = useRef(null); // CP validado para enviar en payload
 
-  // 🔍 DEBUG: Panel profesional de diagnóstico — TEMPORAL, quitar en producción
-  const [debugLog, setDebugLog] = useState([]);
+  // 🔍 DEBUG: useRef para logs (NO causa re-renders), botón manual para ver
+  const debugLogRef = useRef([]);
   const debugStartRef = useRef(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugSnapshot, setDebugSnapshot] = useState([]);
   const addDebug = (msg) => {
     const now = Date.now();
     if (!debugStartRef.current) debugStartRef.current = now;
     const elapsed = ((now - debugStartRef.current) / 1000).toFixed(2);
-    setDebugLog(prev => [...prev.slice(-20), `+${elapsed}s | ${msg}`]);
+    debugLogRef.current = [...debugLogRef.current.slice(-20), `+${elapsed}s | ${msg}`];
   };
   const resetDebugTimer = () => { debugStartRef.current = Date.now(); };
+  const refreshDebug = () => { setDebugSnapshot([...debugLogRef.current]); setShowDebug(true); };
 
   // Guardar deliveryInfo y coordenadas en AsyncStorage (usuarios registrados Y guests)
   useEffect(() => {
@@ -2947,11 +2950,16 @@ const CartFooter = ({
       </View>
     )}
 
-    {/* DEBUG PANEL */}
-    {debugLog.length > 0 && (
+    {/* DEBUG PANEL — Botón para ver logs sin causar re-renders */}
+    <TouchableOpacity onPress={refreshDebug} style={{backgroundColor:'#333',padding:8,margin:8,borderRadius:6,alignItems:'center'}}>
+      <Text style={{color:'#0f0',fontSize:11}}>VER DEBUG ({debugLogRef.current.length} logs)</Text>
+    </TouchableOpacity>
+    {showDebug && debugSnapshot.length > 0 && (
       <View style={{backgroundColor:'#111',padding:8,margin:8,borderRadius:6}}>
-        <Text style={{color:'#0f0',fontSize:10,fontWeight:'bold',marginBottom:4}}>DEBUG</Text>
-        {debugLog.map((log, i) => (
+        <TouchableOpacity onPress={() => setShowDebug(false)}>
+          <Text style={{color:'#f66',fontSize:10,marginBottom:4}}>CERRAR</Text>
+        </TouchableOpacity>
+        {debugSnapshot.map((log, i) => (
           <Text key={i} style={{color:'#ccc',fontSize:9,marginBottom:1}}>{log}</Text>
         ))}
       </View>
