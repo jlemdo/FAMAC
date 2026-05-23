@@ -98,8 +98,7 @@ export const newAddressService = {
         longitude: addressData.longitude,
         phone: addressData.phone || '',
         label: addressData.label || 'Dirección',
-        is_primary: addressData.isDefault || false,
-        postal_code: addressData.postalCode || null
+        is_primary: addressData.isDefault || false
       };
       
       const response = await axios.put(`${BASE_URL}/user/addresses/${addressData.addressId}`, payload);
