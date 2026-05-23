@@ -824,10 +824,12 @@ export default function Cart() {
   // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal
   const validateDeliveryZone = (addressString) => {
     if (!addressString) return { isValid: false, error: 'Dirección vacía' };
-    
-    // Extraer código postal de la dirección usando regex
-    const cpMatch = addressString.match(/\b(\d{5})\b/);
-    
+
+    // Extraer código postal de la dirección (solo regex, sin HTTP)
+    // La validación de cobertura ya se hizo al crear la dirección en AddressFormUberStyle
+    // y se revalida en el backend al crear la orden en orderSubs()
+    const cpMatch = addressString.match(/CP\s*(\d{5})\b/) || addressString.match(/\b(\d{5})\b/);
+
     if (!cpMatch) {
       return {
         isValid: false,
@@ -835,23 +837,10 @@ export default function Cart() {
         suggestion: 'Asegúrate de que tu dirección incluya un código postal de 5 dígitos'
       };
     }
-    
-    const postalCode = cpMatch[1];
-    const validation = validatePostalCode(postalCode);
-    
-    if (!validation.isValid) {
-      return {
-        isValid: false,
-        error: validation.message,
-        suggestion: validation.suggestion,
-        postalCode: postalCode
-      };
-    }
-    
+
     return {
       isValid: true,
-      postalCode: postalCode,
-      location: validation.location
+      postalCode: cpMatch[1]
     };
   };
 
