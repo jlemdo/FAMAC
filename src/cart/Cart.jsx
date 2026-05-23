@@ -105,6 +105,11 @@ export default function Cart() {
   const shippingDebounceRef = useRef(null);
   const lastShippingSubtotalRef = useRef(null); // Para evitar llamadas redundantes con el mismo subtotal
   const orderInProgressRef = useRef(false); // 🛡️ MUTEX: Previene doble envío de orden
+  const validatedPostalCodeRef = useRef(null); // CP validado para enviar en payload
+
+  // 🔍 DEBUG: no-op (desactivado)
+  const addDebug = () => {};
+  const resetDebugTimer = () => {};
 
   // Guardar deliveryInfo y coordenadas en AsyncStorage (usuarios registrados Y guests)
   useEffect(() => {
@@ -821,13 +826,13 @@ export default function Cart() {
 
   const {showAlert} = useAlert();
 
-  // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal
+  // ✅ FUNCIÓN HELPER: Validar zona de entrega por código postal (LOCAL, sin HTTP)
+  // La validación de cobertura ya se hizo al crear la dirección (AddressFormUberStyle)
+  // y se revalida en el backend al crear la orden (orderSubs)
   const validateDeliveryZone = (addressString) => {
     if (!addressString) return { isValid: false, error: 'Dirección vacía' };
 
-    // Extraer código postal de la dirección (solo regex, sin HTTP)
-    // La validación de cobertura ya se hizo al crear la dirección en AddressFormUberStyle
-    // y se revalida en el backend al crear la orden en orderSubs()
+    // Extraer código postal: priorizar formato "CP XXXXX", fallback a primer 5-dígitos
     const cpMatch = addressString.match(/CP\s*(\d{5})\b/) || addressString.match(/\b(\d{5})\b/);
 
     if (!cpMatch) {
@@ -1372,7 +1377,7 @@ export default function Cart() {
   };
 
   // Validar datos de Guest para checkout
-  const validateGuestData = () => {
+  const validateGuestData = async () => {
     if (!email?.trim()) {
       showValidationError('Información incompleta', 'Por favor proporciona tu email.');
       return false;
@@ -1396,6 +1401,7 @@ export default function Cart() {
       );
       return false;
     }
+    validatedPostalCodeRef.current = zoneValidation.postalCode || null;
     if (!latlong?.driver_lat || !latlong?.driver_long) {
       setTimeout(() => {
         if (latlong?.driver_lat && latlong?.driver_long) {
@@ -1425,6 +1431,7 @@ export default function Cart() {
       );
       return false;
     }
+    validatedPostalCodeRef.current = zoneValidation.postalCode || null;
 
     if (!latlong?.driver_lat || !latlong?.driver_long) {
       // Intentar restaurar coordenadas guardadas
@@ -1470,11 +1477,13 @@ export default function Cart() {
 
   // Flujo único y robusto de pago
   const completeOrder = async () => {
-    if (loading) return;
+    if (loading || orderInProgressRef.current) return;
+    orderInProgressRef.current = true;
 
     // 1. Validar carrito
     if (cart.length === 0) {
       showValidationError('Carrito vacío', 'No hay productos en el carrito.');
+      orderInProgressRef.current = false;
       return;
     }
 
@@ -1491,6 +1500,7 @@ export default function Cart() {
         message: 'Espera un momento mientras restauramos tu información de entrega...',
         confirmText: 'Cerrar',
       });
+      orderInProgressRef.current = false;
       return;
     }
 
@@ -1499,9 +1509,11 @@ export default function Cart() {
         const restored = await restoreDeliveryInfo(user.id);
         if (!restored) {
           showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
+          orderInProgressRef.current = false;
           return;
         }
       } else if (user?.usertype === 'Guest') {
+        orderInProgressRef.current = false;
         setTimeout(() => {
           if (deliveryInfo) {
             completeOrder();
@@ -1512,36 +1524,38 @@ export default function Cart() {
         return;
       } else {
         showValidationError('Información incompleta', 'Por favor selecciona la fecha y hora de entrega.');
+        orderInProgressRef.current = false;
         return;
       }
     }
 
     // 4. Validar según tipo de usuario
     if (user?.usertype === 'Guest') {
-      if (!validateGuestData()) return;
+      const guestValid = await validateGuestData();
+      if (!guestValid) { orderInProgressRef.current = false; return; }
     } else {
       const isValid = await validateRegisteredUserData();
-      if (!isValid) return;
+      if (!isValid) { orderInProgressRef.current = false; return; }
     }
 
     setLoading(true);
-    setShowLoadingContent(true); // 🆕 Mostrar el cuadro al inicio
-    
-    // 🆕 Después de 2 segundos, ocultar el cuadro pero mantener el bloqueo
+    setShowLoadingContent(true);
+
+    // Forzar que iOS pinte el loader antes de continuar con operaciones pesadas
+    await new Promise(resolve => InteractionManager.runAfterInteractions(resolve));
+
     setTimeout(() => {
       setShowLoadingContent(false);
     }, 2000);
-    
+
     try {
-      // Las coordenadas ya fueron confirmadas por el usuario en el mapa
-      // No necesitamos pedir permisos de ubicación nuevamente
-      // Si no se obtiene ubicación, continuar igual (es opcional para users/guests)
-
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
+      addDebug('⏳ completeOrderFunc (crear orden)...');
+      const t1 = Date.now();
       const orderData = await completeOrderFunc();
+      addDebug(`✅ Orden ${Date.now()-t1}ms id=${orderData?.order?.id}`);
 
-      // Si completeOrderFunc retornó sin datos (ej: email faltante ya mostró su alert)
-      if (!orderData) return;
+      if (!orderData) { addDebug('⛔ orderData=null'); return; }
 
       const realOrderId = orderData?.order?.id;
 
@@ -1563,27 +1577,27 @@ export default function Cart() {
 
       // 1.1) Crear PaymentIntent con ID real de la orden
       const orderEmail = user?.usertype === 'Guest' ? (email?.trim() || user?.email || '') : (user?.email || '');
-
-      // Usar el cálculo unificado de precio final (incluye envío)
       const finalPrice = getFinalTotal();
-
-      // Validar que el monto sea un número válido y positivo antes de enviar a Stripe
       const stripeAmount = Math.round(parseFloat(finalPrice) * 100);
       if (!isFinite(stripeAmount) || stripeAmount < 1000) {
-        // Stripe MXN mínimo es $10 (1000 centavos), si llegó aquí con menos es un error
         throw new Error('El monto del pago no es válido. Por favor revisa tu carrito.');
       }
 
+      addDebug(`⏳ PaymentIntent $${finalPrice}...`);
+      const t2 = Date.now();
       const {data} = await axios.post(
         `${API_BASE_URL}/api/create-payment-intent`,
         {amount: stripeAmount, currency: 'mxn', email: orderEmail, order_id: realOrderId},
       );
+      addDebug(`✅ PaymentIntent ${Date.now()-t2}ms`);
       const clientSecret = data.clientSecret;
       if (!clientSecret) {
         throw new Error('No se obtuvo clientSecret del servidor.');
       }
 
       // Inicializar Stripe PaymentSheet
+      addDebug('⏳ initPaymentSheet...');
+      const t3 = Date.now();
       const paymentSheetConfig = {
         paymentIntentClientSecret: clientSecret,
         merchantDisplayName: 'Sabores de Origen',
@@ -1625,12 +1639,17 @@ export default function Cart() {
           },
         },
       });
+      addDebug(`✅ initPaymentSheet ${Date.now()-t3}ms`);
       if (initError) {
+        addDebug(`⛔ initError: ${initError.message}`);
         throw initError;
       }
 
       // Presentar la UI de pago
+      addDebug('⏳ presentPaymentSheet...');
+      const t4 = Date.now();
       const {error: paymentError} = await presentPaymentSheet();
+      addDebug(`✅ presentPaymentSheet ${Date.now()-t4}ms code=${paymentError?.code || 'OK'}`);
 
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
@@ -1669,9 +1688,11 @@ export default function Cart() {
       }
 
       // Pago exitoso - usar función centralizada
+      addDebug('🎉 PAGO EXITOSO → handleOrderSuccess');
       await handleOrderSuccess(orderData, oxxoInfo);
 
     } catch (err) {
+      addDebug(`❌ ERROR: ${err?.message?.substring(0,50)}`);
       showAlert({
         type: 'error',
         title: 'Error',
@@ -1679,9 +1700,10 @@ export default function Cart() {
         confirmText: 'Cerrar',
       });
     } finally {
+      addDebug(`🔓 FINALLY loading=false mutex=false`);
       setLoading(false);
-      setShowLoadingContent(true); // 🆕 Resetear para próximo uso
-      orderInProgressRef.current = false; // 🔓 Desbloquear mutex en cualquier caso
+      setShowLoadingContent(true);
+      orderInProgressRef.current = false;
     }
   };
 
@@ -1692,8 +1714,8 @@ export default function Cart() {
     if (userType === 'Guest') {
       // Guest: usa dirección manual que escribió + coordenadas del mapa (fallback)
       return {
-        customer_lat: latlong?.driver_lat || '',
-        customer_long: latlong?.driver_long || '',
+        customer_lat: latlong?.driver_lat || '', // Coordenadas del MapSelector
+        customer_long: latlong?.driver_long || '', // Coordenadas del MapSelector
         address_source: 'guest_manual_address',
         delivery_address: address?.trim() || ''
       };
@@ -1798,7 +1820,7 @@ export default function Cart() {
         customer_long: coordinates.customer_long,
         address_source: coordinates.address_source,
         delivery_address: coordinates.delivery_address || address?.trim() || '',
-        postal_code: null,
+        postal_code: validatedPostalCodeRef.current || null,
         need_invoice: needInvoice ? "true" : "false",
         tax_details: needInvoice ? (taxDetails || '') : '',
         delivery_date: deliveryInfo?.date ? `${deliveryInfo.date.getFullYear()}-${String(deliveryInfo.date.getMonth()+1).padStart(2,'0')}-${String(deliveryInfo.date.getDate()).padStart(2,'0')}` : '',
@@ -1843,6 +1865,7 @@ export default function Cart() {
 
       return response.data;
     } catch (err) {
+      // Solo mostrar alert si no fue ya mostrado arriba (status === 0)
       if (!err.message?.includes('no contamos con cobertura') && !err.message?.includes('No se pudo procesar')) {
         const backendMsg = err.response?.data?.message;
         showAlert({
@@ -1853,12 +1876,13 @@ export default function Cart() {
         });
       }
 
-      throw err; // para que completeOrder no continúe si falla
+      throw err;
     }
   };
 
   // Decide flujo según tipo de usuario
   const handleCheckout = () => {
+    addDebug(`🔘 handleCheckout TAP loading=${loading} mutex=${orderInProgressRef.current}`);
     const hasEmail = email?.trim();
     const hasAddress = address?.trim();
     const hasCoordinates = latlong?.driver_lat && latlong?.driver_long;
@@ -2898,6 +2922,8 @@ const CartFooter = ({
         </TouchableOpacity>
       </View>
     )}
+
+    {/* DEBUG DESACTIVADO */}
   </View>
   );
 };
