@@ -2947,20 +2947,13 @@ const CartFooter = ({
       </View>
     )}
 
-    {/* 🔍 DEBUG PANEL — TEMPORAL */}
+    {/* DEBUG PANEL */}
     {debugLog.length > 0 && (
-      <View style={{backgroundColor:'#1a1a2e',padding:10,margin:10,borderRadius:8,maxHeight:250}}>
-        <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:4}}>
-          <Text style={{color:'#00ff88',fontSize:11,fontWeight:'bold'}}>DEBUG CHECKOUT</Text>
-          <TouchableOpacity onPress={() => setDebugLog([])}>
-            <Text style={{color:'#ff6b6b',fontSize:11}}>LIMPIAR</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={{maxHeight:220}}>
-          {debugLog.map((log, i) => (
-            <Text key={i} style={{color: log.includes('⛔') || log.includes('❌') ? '#ff6b6b' : log.includes('✅') || log.includes('🎉') ? '#00ff88' : '#e0e0e0', fontSize:10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom:1}}>{log}</Text>
-          ))}
-        </ScrollView>
+      <View style={{backgroundColor:'#111',padding:8,margin:8,borderRadius:6}}>
+        <Text style={{color:'#0f0',fontSize:10,fontWeight:'bold',marginBottom:4}}>DEBUG</Text>
+        {debugLog.map((log, i) => (
+          <Text key={i} style={{color:'#ccc',fontSize:9,marginBottom:1}}>{log}</Text>
+        ))}
       </View>
     )}
   </View>
