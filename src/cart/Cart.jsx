@@ -1539,6 +1539,10 @@ export default function Cart() {
 
       // 🔧 PASO 1: CREAR ORDEN PRIMERO para obtener ID real
       const orderData = await completeOrderFunc();
+
+      // Si completeOrderFunc retornó sin datos (ej: email faltante ya mostró su alert)
+      if (!orderData) return;
+
       const realOrderId = orderData?.order?.id;
 
       if (!realOrderId) {
@@ -1688,8 +1692,8 @@ export default function Cart() {
     if (userType === 'Guest') {
       // Guest: usa dirección manual que escribió + coordenadas del mapa (fallback)
       return {
-        customer_lat: latlong.driver_lat || '', // Coordenadas del MapSelector
-        customer_long: latlong.driver_long || '', // Coordenadas del MapSelector
+        customer_lat: latlong?.driver_lat || '',
+        customer_long: latlong?.driver_long || '',
         address_source: 'guest_manual_address',
         delivery_address: address?.trim() || ''
       };
@@ -1717,8 +1721,8 @@ export default function Cart() {
         // Fallback: sistema anterior (MapSelector + perfil)
         const savedAddress = userProfile?.address || user?.address;
         return {
-          customer_lat: latlong.driver_lat || '',
-          customer_long: latlong.driver_long || '',
+          customer_lat: latlong?.driver_lat || '',
+          customer_long: latlong?.driver_long || '',
           address_source: 'legacy_system_fallback',
           delivery_address: savedAddress?.trim() || address?.trim() || ''
         };
@@ -1794,9 +1798,10 @@ export default function Cart() {
         customer_long: coordinates.customer_long,
         address_source: coordinates.address_source,
         delivery_address: coordinates.delivery_address || address?.trim() || '',
+        postal_code: null,
         need_invoice: needInvoice ? "true" : "false",
         tax_details: needInvoice ? (taxDetails || '') : '',
-        delivery_date: deliveryInfo?.date ? deliveryInfo.date.toISOString().split('T')[0] : '',
+        delivery_date: deliveryInfo?.date ? `${deliveryInfo.date.getFullYear()}-${String(deliveryInfo.date.getMonth()+1).padStart(2,'0')}-${String(deliveryInfo.date.getDate()).padStart(2,'0')}` : '',
         delivery_slot: deliveryInfo?.slot || '',
         shipping_cost: shippingCost || 0,
         // 🔧 FIX: Enviar subtotal DESPUÉS de promociones para cálculo correcto
@@ -1823,14 +1828,30 @@ export default function Cart() {
       };
 
       const response = await axios.post(`${API_BASE_URL}/api/ordersubmit`, payload);
+
+      // Verificar si el backend retornó un error con HTTP 200 (ej: CP sin cobertura)
+      if (response.data?.status === 0) {
+        const backendMessage = response.data?.message || 'No se pudo procesar tu pedido.';
+        showAlert({
+          type: 'error',
+          title: 'No se pudo crear el pedido',
+          message: backendMessage,
+          confirmText: 'Entendido',
+        });
+        throw new Error(backendMessage);
+      }
+
       return response.data;
     } catch (err) {
-      showAlert({
-        type: 'error',
-        title: 'Error',
-        message: 'No se pudo enviar la orden. Inténtalo de nuevo.',
-        confirmText: 'Cerrar',
-      });
+      if (!err.message?.includes('no contamos con cobertura') && !err.message?.includes('No se pudo procesar')) {
+        const backendMsg = err.response?.data?.message;
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: backendMsg || 'No se pudo enviar la orden. Inténtalo de nuevo.',
+          confirmText: 'Cerrar',
+        });
+      }
 
       throw err; // para que completeOrder no continúe si falla
     }
