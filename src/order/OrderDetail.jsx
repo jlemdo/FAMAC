@@ -66,6 +66,15 @@ const translatePaymentStatus = (paymentStatus) => {
   return translations[paymentStatus.toLowerCase()] || paymentStatus;
 };
 
+// ✅ FIX: Parsear fecha YYYY-MM-DD como local (no UTC)
+// new Date("2026-06-01") interpreta UTC medianoche → en México (UTC-6) muestra día anterior
+// Este helper separa el string y crea la fecha en timezone local del dispositivo
+const parseLocalDate = (dateString) => {
+  if (!dateString) return null;
+  const [y, m, d] = dateString.split('-');
+  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+};
+
 const OrderDetails = () => {
   const {user} = useContext(AuthContext);
   const {showAlert} = useAlert();
@@ -595,12 +604,12 @@ const OrderDetails = () => {
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Fecha programada</Text>
                     <Text style={styles.infoValue}>
-                      {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                      {parseLocalDate(order.delivery_date)?.toLocaleDateString('es-MX', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
-                      })}
+                      }) || order.delivery_date}
                     </Text>
                   </View>
                 </View>
@@ -901,12 +910,12 @@ const OrderDetails = () => {
                     <View style={styles.infoContent}>
                       <Text style={styles.infoLabel}>Fecha programada</Text>
                       <Text style={styles.infoValue}>
-                        {new Date(order.delivery_date).toLocaleDateString('es-MX', {
+                        {parseLocalDate(order.delivery_date)?.toLocaleDateString('es-MX', {
                           weekday: 'long',
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
-                        })}
+                        }) || order.delivery_date}
                       </Text>
                     </View>
                   </View>
@@ -1135,7 +1144,7 @@ const OrderDetails = () => {
                 <Text style={styles.statusCardMessage}>
                   Hemos asignado a {order?.driver?.first_name
                     ? `${order.driver.first_name} ${order.driver.last_name || ''}`.trim()
-                    : order?.driver?.name || 'un repartidor'} a tu pedido. Prepárate para el día de tu entrega{order?.delivery_date ? ` el ${new Date(order.delivery_date).toLocaleDateString('es-MX')}` : ''}{order?.delivery_slot ? ` a las ${order.delivery_slot}` : ''}. Da seguimiento a tu fecha de entrega.
+                    : order?.driver?.name || 'un repartidor'} a tu pedido. Prepárate para el día de tu entrega{order?.delivery_date ? ` el ${parseLocalDate(order.delivery_date)?.toLocaleDateString('es-MX') || order.delivery_date}` : ''}{order?.delivery_slot ? ` a las ${order.delivery_slot}` : ''}. Da seguimiento a tu fecha de entrega.
                 </Text>
               </View>
             );

@@ -1646,10 +1646,26 @@ export default function Cart() {
       }
 
       // Presentar la UI de pago
+      // 🔧 FIX iOS: Ocultar el overlay ANTES de presentar el PaymentSheet.
+      // En iOS (Old Architecture/Bridge), un View con position:'absolute' y zIndex alto
+      // bloquea la presentación nativa de UIViewController (presentViewController).
+      // El PaymentSheet se renderiza DETRÁS del overlay y nunca se hace visible.
+      // Solución: quitar el overlay, dar un ciclo de render completo a iOS, y luego presentar.
+      if (Platform.OS === 'ios') {
+        setLoading(false);
+        // Esperar a que iOS complete el ciclo de render y elimine el overlay del view hierarchy
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      }
+
       addDebug('⏳ presentPaymentSheet...');
       const t4 = Date.now();
       const {error: paymentError} = await presentPaymentSheet();
       addDebug(`✅ presentPaymentSheet ${Date.now()-t4}ms code=${paymentError?.code || 'OK'}`);
+
+      // 🔧 FIX iOS: Restaurar el overlay después de que el usuario interactúe con el PaymentSheet
+      if (Platform.OS === 'ios') {
+        setLoading(true);
+      }
 
       if (paymentError) {
         if (paymentError.code === 'Canceled') {
@@ -1786,6 +1802,8 @@ export default function Cart() {
           item_discount: itemDiscount.toString(),
           item_qty: it.quantity.toString(),
           item_image: it.photo,
+          item_unit: it.unit || null,
+          item_quantity: it.productQuantity || it.quantity || null,
         };
       });
 
